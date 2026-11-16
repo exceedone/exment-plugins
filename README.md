@@ -17,7 +17,7 @@ The branches follow Exment. / ブランチは Exment に合わせます。
 | Branch | Exment |
 |---|---|
 | `7.1` | Exment 7.1 |
-| `master` | Exment master (next) |
+| `main` | Exment master (next) |
 
 ## Plugin categories / プラグインの区分
 
