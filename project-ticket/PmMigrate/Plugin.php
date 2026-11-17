@@ -1,153 +1,152 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-sezlK6NieoNumIG=
+<?php
+
+namespace App\Plugins\PmMigrate;
+
+use Exceedone\Exment\Services\Plugin\PluginPageBase;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Moves the portal's projects from one Exment to another.
+ *
+ * One screen, install it on both ends: on the source it exports the projects
+ * that were ticked into a ZIP, on the target it takes that ZIP, shows what an
+ * import would do (a dry run), and writes it when asked. The work is in
+ * Exporter and Importer; this class only checks who is asking and shapes the
+ * answers.
+ */
+class Plugin extends PluginPageBase
+{
+    public function index()
+    {
+        $this->assertAdmin();
+
+        return $this->screen();
+    }
+
+    /**
+     * Build the bundle of the ticked projects and send it as a download.
+     *
+     * @return mixed
+     */
+    public function postExport()
+    {
+        $this->assertAdmin();
+
+        $ids = array_filter(array_map('intval', (array)request()->input('projects', [])));
+        if (empty($ids)) {
+            return $this->screen(['error' => '移行するプロジェクトを選択してください。']);
+        }
+
+        $this->lift();
+        try {
+            $path = Exporter::run(array_values($ids));
+        } catch (\Throwable $e) {
+            return $this->screen(['error' => $this->message($e, 'export')]);
+        }
+
+        return response()->download($path, 'pm-migrate-' . date('Ymd-His') . '.zip')->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Check a bundle against this Exment, and write it if asked to.
+     *
+     * @return mixed
+     */
+    public function postImport()
+    {
+        $this->assertAdmin();
+
+        $file = request()->file('bundle');
+        if ($file === null || !$file->isValid()) {
+            return $this->screen(['error' => '移行ファイル(ZIP)を選択してください。']);
+        }
+
+        $execute = request()->input('action') === 'execute';
+        if ($execute && !request()->boolean('confirm')) {
+            return $this->screen(['error' => '実行するには、確認のチェックを入れてください。']);
+        }
+
+        $this->lift();
+        try {
+            $spec = UserMap::parseSpec(strval(request()->input('user_map', '')));
+            $mode = request()->input('master_mode') === Importer::MASTER_REPLACE ? Importer::MASTER_REPLACE : Importer::MASTER_ABORT;
+            $report = Importer::run(strval($file->getRealPath()), $spec, $mode, $execute);
+        } catch (\Throwable $e) {
+            return $this->screen(['error' => $this->message($e, 'import')]);
+        }
+
+        return $this->screen(['report' => $report, 'ran' => $execute ? 'execute' : 'dry']);
+    }
+
+    // ---- helpers --------------------------------------------------------
+
+    /**
+     * @param array<string, mixed> $extra
+     * @return mixed
+     */
+    protected function screen(array $extra = [])
+    {
+        $projects = [];
+        $error = $extra['error'] ?? null;
+        try {
+            $projects = Exporter::projectChoices();
+        } catch (\Throwable $e) {
+            $error = $error ?? $this->message($e, 'projects');
+        }
+
+        return $this->pluginView('index', array_merge([
+            'plugin' => $this->_plugin(),
+            'projects' => $projects,
+            'error' => null,
+            'report' => null,
+            'ran' => null,
+            'urls' => [
+                'export' => admin_urls($this->getRouteUri(), 'export'),
+                'import' => admin_urls($this->getRouteUri(), 'import'),
+            ],
+        ], $extra, ['error' => $error]));
+    }
+
+    /**
+     * System administrators only: the screen reads and writes every project.
+     *
+     * @return void
+     */
+    protected function assertAdmin(): void
+    {
+        $user = \Exment::user();
+        if ($user === null || !$user->isAdministrator()) {
+            abort(403, 'システム管理者のみ利用できます。');
+        }
+    }
+
+    /**
+     * A bundle can take longer than a web request is normally allowed.
+     *
+     * @return void
+     */
+    protected function lift(): void
+    {
+        @set_time_limit(0);
+        @ini_set('memory_limit', '1024M');
+    }
+
+    /**
+     * The sentence shown for a failure. Only MigrateException carries one that
+     * is safe to show: anything else may hold SQL, a host name or a path.
+     *
+     * @param \Throwable $e
+     * @param string $what
+     * @return string
+     */
+    protected function message(\Throwable $e, string $what): string
+    {
+        if ($e instanceof MigrateException) {
+            return $e->getMessage();
+        }
+
+        Log::error('pm_migrate ' . $what . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+
+        return '処理中にエラーが発生しました。サーバーのログを確認してください。';
+    }
+}

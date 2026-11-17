@@ -1,114 +1,133 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-HR+cPttY9DstU9qI8YMn/aYfqJGi54qr3yfq7TWiQRKmXTHVVp4JsvSu7HJvFlKxqX0tbONGRUse
-d7xI5fUST83vuhHDq+rHZ2Q/fyOQYt7uVnOnAi+b1UIM33aNLGHD37XYjH7H7iMp0LKK1ziWJSE0
-HSc3eY+FPWVqOUKPsBhdUoozxDYxTQ0PcfxhEVmvrDZopkj0x/BvXI94Tb44Bgp4zGgPg3w6Wxij
-CuhOiURpTkgCj6O7Z1F+BSQ2NKAnsHMk0fCMmAIdO1V36fRn9AsE6X53e8VVZIpSs2o7cRSUFHhl
-5uGOWgBN5jn6nMM3YlnMGdOubVR61kXLW2ANXLU+cLJ/KYmdeHw+3wnuYt49dncWnPQC02FFtgen
-1i6jlPRC/R+krdx0xWx4QPXFJjLTWvw0G2TNPDM+SxiVPRi4z8Ymv15LK+kTR8cXd6wwZS3ul8ke
-laI0ALMAGO0xAJ7lB3KO5FPviP5KoQgSy7zemR7aaDl0gW2mqTjgtGd7c84KD/5R7QZoJ3etERq3
-zMPBgZeYzspWCwsElQpTkTgomOmG+2aSDvQWzqmop1YcUkwrKBd9+4o18Co5vaUR9xtfHtbsSiPx
-oeXBRMu3ROytd1v0TVwctFUnRDiAakpDzfMR+yIv0+o4JSn8Xqb1bxBzE13HiAnLOSja0RnKOmaa
-OgbZ6JLKQattf/1zjv6DWOl8pCZtrC40nzPSea5l39EXb7mLKutRPbiP23UPsgi6G8AlZj9Twrcz
-r9dZCSbWk+3SilR2zqJbsIuAY7QI7c4rUwbOleKVgo7a3oZfLCFCambYGuC2nZ77Tfa2wI59Jwu7
-c7JwC1d20FXrTpy58zzkdzOaHU5/a/mmS55/tUCIkjfcXfisCQ1xYEQrGx1wSzLIu+NT5m4txASC
-n8CFTK/OQ+27KDGIvC82iMj5Nptg2Ehej6vfY0fv6+sT5tMqLH7e9Pxt353UTJMmVXK++JJsP2Pd
-TbQ2+IfWYaAobp9Sy4JQ0lW/XlLtJEyCcUez+Lskw6z/wZuz1Vv8dcOedOWc2midn6PCYsg4sksD
-XkWNO1ZzeawGK9eSi4pvgda+xcWU87Zu78tfJvvb5aV0eNPxHWf1dkSi8AUuglOmvs3D22XC43sK
-2JIKEzD8a/wnD0nBVCT6VfWrQkH7PSbnghZ9WjFHDbkP3DNGIgbNKYtz+fVxTY2Py9wxhxtUMO8F
-kf64L+sNBSH+mU+819uT0JPurNGXsPRN9o0k19wM5Zb21t1PhfC31qfbgrdAC0/QExNCOfp9+b52
-nuUYLGOKwbFsTgULg2j36W9Pv/bvcZjvJhRbGQZRZwEr28FxnHN4uGwcbYMf+h2QvSI0mzvNtbXL
-wUkZWjsQXLw2DoCzX/y8LNDc4c0S99hVQrTDLi63X5JZx2QRuJPxInyw7fQkYreQ5vKGU8Rzc9+h
-8F12EaN8dNxpj35v2RPpHx3pg4w8UWBkk+bhlN2UtTYoJ+vHlBG8peugcD7Yl+ENMGonl4eWVevt
-LIb1mdjmRs741LFZr65+fdLtal0Z6Pei1dsLHYPF31rHBUTa/pPLvXNKrAnFg4+VR8L4GxazVfFE
-zRJesbR97ULVvsuijscSuph9iluhPNSI0LbGveCpp7BWAxZO62xgdBagz/sAklpkzdyutLhdkkJE
-lFEajulYUrQjA1hEs5lttNr17OoGCigcYZqaPaps+cYHcQD2nITRlp/+vAQKxU3C7rlilB8Conh4
-V4a1iibn8DkRp6oS9vNtxVEoD3cFOJekdFyR7l5tzcBY3rfu+P9fiaFqr1nU0l3EFJGz4Ea2Y+s+
-+VApgHWJ1t0bIagohSxH96CidDaQAMC7mTeTtWYkACMlFUe/djheAKHTZ4HNv35jl5Sdc0WXmSJt
-SS6RuFhTch99Yy36WkSe7si5t5ZX/sy1tGuUGQbetWFUARFab9wlqnhd+d6oOabR9q7JSw9RCzSO
-8lya3hIdByh5XYXtVzhNNG7kze9iB7mX/urP6hoBMnAmTOd6uvh6xWM0kQRtOH/L2N74DpkThm6o
-QBrGrwnKmwGX0O98i6vw9kV0pUTH32hXpm7iCiuhJTALB38eHfw+JKZQCXZLHxiczPOq0TVR69s2
-iDNcPijYid0T0NUDTvs2yxOp9cnDMS2NH7WaR72SmQZYhMlJPALSI6wohcg1eVWE75F8Uncsy0Uu
-ED5jgNDx7tq6gEtWRlUDa1RHLUXzyalnM8YUYTw+hByQ6OJkyXpUEIboMXcoODygkPn0LcnzfQXx
-jsH4ta+sdzEVmCcSy38gjmISvWuAfEXXoKkdVjAt1gOzMV65aMuUZUvxRv2iOFFEz2c9V3spG0av
-7JdvyXx3quw58pEWlwVglAEMMoEbaCCIP/4UHtQL1YmYKc+EUvxbvFS00TZiu8/jvOHfMFPaFi7J
-wxdqq16nID2PdL01q0V/ExQE5p26pV+Ybz+qqwdgkXF95WeWicAd+/pwE7qjc3zubGgoRk5vWoF7
-oWm+UGb/WwMeahSmhQhifRJ85WsFzMBM+8rNT7GvsDreQjFCqrODC2BfiwVIEP7N8/NcoDlnECCM
-M9iBEej46OcpdaB7/6v3Hs/2MoMLWuv1GscmCq11lgXmUB85o3Ihe2DUWbkzRiU6O2vkMND2nphp
-5IvcQaMLrzskmcNcYOvvIkOXENnS8qxGFawhC99cQxA/j/VNoXCqY+LML1nT6etWosvQMeyYgY4l
-0FeNeos6okLUrpTKVOGiJIUZi3GNvq6UptJItmaE+A2ana+aAIV0a5JaGSb7aMDQm+n9VjpptWGE
-bHXamzyLT/hIxVg1uFbu28BNtCUb350S91p2uN5cx+g4uvz5Jskxl/p+g5TmhbQsuBwfvtURk0x5
-g3QsI08MtsIVuMBAFS1rajV5iaydbV/6WcLB/hYmedkmidNU3+ZcDKfBFXpKDrKFYczrGeF0Y6B6
-gbGlILgCcwQdWPk5/MnzSl9K3sY7J6jpNTu5RI1ldmyTTcx08mRrjuXW4GkDhooyEFJw3Q2dmQXI
-/koO9g4rbuL77rjFGoIH2Us16r4rGLcNvvtV1sst7Hl8B1fVlVBQnQlNtYYI/Ai71ZMzoC6i5FMe
-KDVxfc4bRGhKb12GV8MGQfWe/mpo6PF6ZfCpNR1jxIEYjgV+26HfLLl2H3GkPCPFXe2Hi5lLWxEl
-8eMX0ADXJC0satw69wBTmTP7qHIBEAnDDqQwtu2wiEByPnj5SsVagIB2ghEJZjNxjNg0YWwu5Kiq
-EJZ4Ct8UjQgJOz5lKfWnAHFwZ6kdDVBVs0oa784/MaV3ZkjI/2XcDoCJLfHzbAYDLdMGXWkStzYP
-tSUQ6YQoyMl6KKeZbMOP+xd79BIeckHgJ6C86GjWMwegbR/crVObUKZpC4z/wRI22Xmivua78TDt
-B2DIC1Pmc5Mwyq55v2g8gBKMtzldXK3SkvowFgxoFQ/0i30YmAWTjhreJfv+8mJ/+3YVrcR34Uko
-qmpv4DgWSZeNHuGuNSI7OCDRlW4dpDdVJ1aAY/bdbZ2WH0E4qkrUua3vS9BlTgVun5nOe11Dc9OV
-6vUcZHpT163vXVK6pyXB+dqvhF7b8bTsP/fnYAEotjZnA0Pnmvc9PH7Vjxtint9f/cMiwldNi+FK
-fUZDtRyL2HCuBIF4Gldw+zJQrN4zUm63hNSZaMyowhdCVEkGEv5F6GXMDp9YW2UD39AN+qNcMW2Q
-+SUdvQSZ3MoIv+WGP2Y+SpApOGVbdpc28Scf3GCEX3C9Ktg4aVUpTEzsBdriU4EQjMMq42BkuX6w
-VWvbY9yY4PtvigVmLjMmXKvDQ/+la663oqMM/PP0FO5+RuKNrEZbc71ZD9BKR4nDsvGd8CySR50x
-S3aVvY1eG1ax6gXAoYkFcU/eNlppaMCBWQ78VJq+lxahZaVOcoKG04kVh+scPDrimwZvHa2ZlWhU
-hgh8zyPzBegFOm5Mawf/uThCRWMtYD0X/wrfvNz/qbOaaTx73zn4gEqxKAkRnenLEowQKZyoIYcD
-9hSTDE5lIlDQRfyCsT8uoxGXZP3mmdikiRju5EARzA5yop0XDyO/hmCN6AbOlsX6IWX+Yaxbuj40
-B7wG4KJDPw4IBg68iZGg5Qr7hftVdrHIawCV4zXh7dw5VKI+lO9EPDiAYK4GWcbq/rkWPiBgRL3w
-xtlgEGwUOEv2KJEuS68l3mDVOAkwpVZ8af8Xe30V5A+TtK1vaeQHUyPJOyHJsE5mMA5gKGWU/2JN
-DPd8UimV5G5ad+CQ/nqPoUYtYd3bAxbJWh74uObhwdpVTsF8Un4r/W/enS7ypW42WCoDSA8wvM8r
-o+A1EYVQVhlTOqLWEHhv4lzSulez/fIECSSTLoB5HZCK1bSVhmtpDM7SerZuI6hdBYamqnVKORNf
-/Tm8FhA2kvMxwZ5H0KHzEPDrBds2OKBJmy/CV9VDdJkfe9lWqu7IUhKJUO4tuIS2w63TRZv5AeGo
-wCyZDsJVVxPBrq2kp2HbUaUUl5ILPb6srpO3RAuxAXEwDQN6fBh/o/H0Cjr37R79eX1PKQv5j4hU
-4v2OrSzRn0Q0mse2UcRo+d4XWbAwagIiW8mJ6smTUi+32d+Td6uFI25DYKrQWr5bxRTI3QXl7NpZ
-i3L32mYqRM2v90pbmpl4wUcEHLRN7iyhc+AcpMPP69FSvLW9xW0YpvweTo+pKeInO2rPVxn1hAcK
-lHjf4gdSLDu2NhLESllKWbgHaIjhynHoTdGuQKVFzlMd34BBRT5UijJDOzjumh44qSDPR+a1JLeA
-a7WTCAjv148IWz5tTPib7o9q/qXlf1spebOYB24uo6BGnWJkbvyQcrQ2rEZ9lJVDv4nd2Qx5GuI3
-JC+OKye/wlw+n2D2VphmP5e5+hQP1GRtw9tBiVQebewU/nn5DHA5DDr8ERleNqqzpN/yfh7liEEd
-ZFBsOlVaU9uxctXjVUXEFk6ArdxXpIU4d59kEWJd0RwZlkzXn9GfrTcMG978P3ZRa4DNo+vnu79s
-stktFKgYhSvPHBp45X4bXHkyGYlGjM8iYPo0cf7P9xkply681rUbDi17RvJmIvNtbyz8t9ZId7I9
-C4HG3Z5R7nOw7agPspiwLuvz4DY4H/+AWt2+Xx6yrbHS+u+qkT8L2bOIfkuSRWhpl5CtfygOC3Zo
-yXzEVxbrqGLHIsAFmZ9i9xF7m7q/Mv/ERiK4/sasvyrWem+s5FudXuXc0VJAYW9HSwM/mlRM4YNZ
-+ejlJfPAbGoDv/KnurXcI4XchvvDpvpTT04z+INQ/YI1FVsAzOcKJVaTD5PN2S6dvxvNlO+AxurB
-gJbSya0ROuv/EWdKmsTvj7CkfHzDkVwsiFiMx4GRyFZ4YIw9s/It2+DoWn0wUw5PqElPgld6knpB
-3DLpts9JvIJ63nYPdEwDb3EAAA8kCkun3SruMOgYosZQywq45rnJPVkek17YcOGF3kxeLwtfjn/Q
-gsld1rNxKnI9epRlRnXOKQhrM01kjIYcp17coi0Bu5obnW+El4m+mqN2nlGgWSPqbH4QEplUnJ0d
-/49isowWslQaVMcs6llqrurYlmvewvzbiLm2eRn9+F83xq/r2Ne6aCW0rs/WeGQ/P17Tdjgv1gog
-d4K8tVhTf2cqxEMYxLWL8VQcqR0pgRkl5hgrxy8fBES9s/APQOE4FhqFHv/cXqg8IyLbr7gBaMHn
-uXheIexpgAs3Hvkbx4zMtpl3jjlLEjiULuDc2uTdgoOdv0yTipxRUa3lBzdJh/GIFnHhUTYpzxZA
-flZu0XtHGyJS8fD/1bIlcjsMdHZdEOyZDsFBOZEyMUgcT6cuHDsP3tZSGBf7eLKkJsZ4XPsghwhe
-9p9epzQm05rSeNFxLQRzn/5z05XzHHmAqf9iKLJbHl/Yk0bpFGoLMTgEDtSFlL9Za52uxw1WPdH4
-MS3rfdy1t9WxZrvGrhGwMFOCiZSLMLcdvQz57NGwlTVxFvP1clG7ZtYS7IPLdJyZwd6vBbQIRjkx
-rWw5nt2beBOE0/n3qe7d7Fu/dHV7xtaL+8nV7m1rPkeN5nwxxSc7VLxBKal2vnDvXYTURwc8inEv
-rT3qG635HlZv5NnLGQibXO7ZYRQTHjkwL+TLJIzrfIjI7rYUL063/pZBzmAmqTJhFy6BvAAXA1z+
-hhbSBUZNIV+R3Fsc4qJmIB7QvVN92WNza3jyOl2OYr/920CxP8VrpkabeN1stgjsjdH8k27h0XjE
-3jz9JCCU+vgUflem9RXZDlC2B1rWElpM7RS/V0ZBZLd4oool6P5DuordmqNqnvgAfR9uWbnsfUG1
-WhRfI1zvrRlQ5ZInp7GR4K459Y6EqBp9UrsoERS74XwSRjJ/NrxSpcRVopNWxSRFmpG+EjjHG9xH
-jJQm+BHK6eiA46Wt1+nBOu9umCHTrnthrKdbAI0SNRzxyvAbliSpHWcw1R5sK3tdAcMZ0B87UAcV
-nQmBOP+DsMPqPemHZ335Q5ku24utKYt6uXVFGnsRDu3uhbZ9cN/5Jfawe8rSFNo+rfBzWWNoGQqM
-yDzhCcnGVNNBRDYB2fEnX4RTGBnacIi9H0B2LFsC8galI3WSo23dHzBFW/P8CSlAiPws0a3m6rkd
-MFhW95prJPWbV045dCySu82c/8BiBzI5YZWuKnlKA8BnH9JgSwrK9sXUOg7rSzEhe5DlHz7i/D2/
-2G7M+jdS9b5KYS82jpznP19coAu2AUAjAMC5w7kJq0anUlCmA4GGzGqCGfuC7Did0n+AuRDZvw+2
-BWH5SQ1HzgVnnOOE9deMT9Kr1BLFsXyB+DWCeBoa5XrBRHUsgfMTPInb7D/u0r6WYtprBCYkYFLz
-AOPKsT7M4Cvz4IDdA3Bh1/PWfPpfpL6gC77IGknYoS2yXCQfKRLjFHekK7Kn6/BKMkejGWnupPgO
-0cjBUsu6G+AQcE+S3e9B6YwiODpgBSp+iFD/Pl7+mrKitAb8BrDhrSR7OFlAWLtMgo6o+0Mksqlo
-UOUDk6vr+ZxBxyX/yLPVoJXQJBRg6Tc8zvKxTgADw/MT6KbthcMLr3OHfnKH3bKfpWwXTF/SGCJ1
-y9590IY1pSMBqa5eRU3Zc2+oHXT0TyA5fjrKii/SZWqcEmNsBc8ijkRv5//hKrv+46NtcVYYnCtA
-K3Mu/zqTNT7b5VLvDMAhHoLFbV1jrKDkkp0hyBI7GsWtrlMaU041cEezF/4F2RUQWm4XojeRTUqP
-fBn0vFzw3HPX8/bfo4S/LVUZlB6HvzKmx9mGV9IW/5w27xpL4LFLrKggXxFn3AFjpp+ZqXDmWB30
-WeID6oFqBRWKOq1BrEn2feaQbAx0OgpSeqx0GuR44hh0/2dTXmsUNSinKKjJt9RDsMLuLIyYiHoP
-Ln0mpuriWusShOXKOSwvxhomJm2EknYhPvsLotbHj9XR39nAn1CDW52sgMFwdH3qI5rRnMI39dPg
-888f/nfE/wwbWzlSEhq61OrzA+4guF3kWytAl7v1s3xKJYUlzvs7e/Ddxf/HUri6cxpw72VgIzsE
-Be4UfMpF9BpxD4fM4g9JZuVduLNILQTYIurUwxvejZ3QechMmM8pOxm3B6KUtfxIIsL+Q7RVBVOK
-fY7r3EKgNlTcgd3OSI1WAH8lspssPkOFJMGJm1P+zL7s1JvvtEE3+NUAbBbGMD8K//dwVjK+CX6c
-Bt84/STrH613jH9xy7D21Z9PjpYU2O4kYMgJxXnNK33cQfezT8EWz9k5tptl4okDH3sadvVz7QVO
-+nJnI2w0FRi+myhlZVXsclFntpTw7HiPCDsCZwxpjy6S4iGl2U5KQNb1qJ2Cop5+drZYiIvh03t6
-HIVXI9LhE7tKMXeBOSEwv17SKCfPoTe85c71dGjVIoTAorzKZwcaCaX4QP85I2teW07YSvP0893J
-C7Gk49OY9/FqMnv/RV05P6xsCt97r2eg4+on+OevL/o+8rta7oJkKAxH56IuQGGTX8QOqP3oe6T7
-/pTT6Mh1eCwxC0zR53ieyo/vsv+W4Oj6fFl5nmUcBGBUfqvv47d/rkTuLxUaCjxmhPQYJo13a5nI
-o7S9tirXlrbXCoffBqaSxaZePMyky2Zuqx/7qoVyRxNqlRf7bpTdITTzQH0gVN2f+PlYNbRNuQ+P
-GkvjoIpC7ryRCI4eMQW6Ly0Z6czXM32jg0yBcY7Q8DP0y9+h8k8XNOgINxxIzkuM4Fbh7YmVImE/
-2qAMxy571am+ZJ1m3MbYVbsP0aE50aZyut0YQD/rMMC/+q0MTcdpMR4jZlAfTfMGRlhzG95mxakQ
-RHGpqLGRbg7Zd8VIqtmK0Tent9iB9DlOyUslEtKdPz0Q+yo7EAxYH9BKtEc3lVmcV1495kLbrK2Z
-FPkPPk9KLRBjhiYrevlhoCC=
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Exceedone\Exment\Model\CustomTable;
+use Exceedone\Exment\Model\ModelBase;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * The Git repository one project asked for, and how far that request got.
+ *
+ * The row is created the moment somebody clicks "create repository" in the
+ * project settings; whether an actual repository appears on a Git server is
+ * the provisioner's business (GitProvisioner), which is the only writer of
+ * status / remote_url / last_error.
+ *
+ * @property mixed $project_id
+ * @property mixed $repo_name
+ * @property mixed $provider
+ * @property mixed $status
+ * @property mixed $remote_url
+ * @property mixed $last_error
+ * @property mixed $requested_user_id
+ * @property mixed $provisioned_at
+ * @phpstan-consistent-constructor
+ */
+class GitRepo extends ModelBase
+{
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_READY = 'ready';
+    public const STATUS_FAILED = 'failed';
+
+    /** What a repository may be called on any of the intended providers. */
+    public const NAME_PATTERN = '/\A[a-z0-9][a-z0-9._-]{0,99}\z/';
+
+    /** Prefix of the owner mark a provisioner leaves on the repository. */
+    public const MARK_PREFIX = 'pm_portal:';
+
+    protected $table = 'pm_portal_git_repos';
+
+    protected $guarded = ['id'];
+
+    /**
+     * The repo row of one project, or null.
+     *
+     * @param mixed $project_id
+     * @return static|null
+     */
+    public static function ofProject($project_id): ?self
+    {
+        return static::where('project_id', intval($project_id))->first();
+    }
+
+    /**
+     * A safe default repository name derived from the project key:
+     * "PORTAL_FE" becomes "portal_fe", an empty key falls back to the id.
+     *
+     * @param string $key
+     * @param mixed $project_id
+     * @return string
+     */
+    public static function suggestName(string $key, $project_id): string
+    {
+        $name = preg_replace('/[^a-z0-9._-]+/', '-', strtolower(trim($key)));
+        $name = trim(strval($name), '-._');
+
+        return $name !== '' ? mb_substr($name, 0, 100) : 'project-' . intval($project_id);
+    }
+
+    /**
+     * What a provisioner writes on the repository it creates, so that the
+     * repository can later be recognised as this project's own.
+     *
+     * The project row's suuid rather than its id: an id comes back after
+     * exment:refreshdata, a suuid does not, so a new project that happens to
+     * carry an old one's id is never taken for it. Null when the project row
+     * cannot be found, and then nothing is ever recognised.
+     *
+     * @return string|null
+     */
+    public function ownerMark(): ?string
+    {
+        $table = CustomTable::getEloquent(array_get(PortalDefinition::config(), 'project_table'));
+        if (!isset($table) || is_nullorempty($this->project_id)) {
+            return null;
+        }
+        // Unscoped and with the trash: this is the plugin's own bookkeeping,
+        // not something the person asking may or may not see.
+        $suuid = $table->getValueModel()->newQueryWithoutScopes()
+            ->where('id', intval($this->project_id))
+            ->value('suuid');
+
+        return is_nullorempty($suuid) ? null : static::MARK_PREFIX . strval($suuid);
+    }
+
+    /**
+     * Drop the repository row of one project and the credential rows that
+     * hang off it. Nothing is sent to the Git server: the repository itself
+     * stays where it is, and so does any credential a provider still holds.
+     *
+     * Project ids are not forever - exment:refreshdata truncates the custom
+     * tables and numbering starts again at 1 - and a brand new project must
+     * not find an old one's repository waiting for it, with clone access for
+     * whoever is on the new project. Called for a project that was just
+     * created, and for one that has been deleted once its credentials have
+     * been revoked.
+     *
+     * @param int $projectId
+     * @return void
+     */
+    public static function forgetProject(int $projectId): void
+    {
+        if ($projectId <= 0) {
+            return;
+        }
+
+        foreach (static::where('project_id', $projectId)->get() as $repo) {
+            $left = GitKey::where('git_repo_id', intval($repo->id))->count();
+            if ($left > 0) {
+                // The rows are the portal's only record of who holds what on
+                // that repository. Say so where an operator will look.
+                Log::warning(sprintf(
+                    'pm_portal git: forgetting repository %s of project %d with %d credential record(s); revoke them on the Git server if they are still active',
+                    strval($repo->repo_name),
+                    $projectId,
+                    $left
+                ));
+            }
+            GitKey::where('git_repo_id', intval($repo->id))->delete();
+            $repo->delete();
+        }
+    }
+}

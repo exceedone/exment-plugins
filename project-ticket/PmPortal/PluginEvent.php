@@ -1,177 +1,242 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Exceedone\Exment\Enums\PluginEventTrigger;
+use Exceedone\Exment\Model\CustomValue;
+use Exceedone\Exment\Model\NotifyNavbar;
+use Exceedone\Exment\Services\Plugin\PluginEventBase;
+use Illuminate\Database\Events\TransactionRolledBack;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Last line of defence for the integrity rules, on the model's saving event.
+ *
+ * PluginValidator alone is not enough. Exment hands a validator plugin
+ * array_get($input, 'value'), but CustomValue::setValueStrictly calls
+ * validateValue with a flat column map that has no 'value' key, so the
+ * validator receives null and waves the write through. That path is the one
+ * the plugin's own lightapi uses, so relying on the validator by itself would
+ * leave the rules enforced on the admin form and bypassable over HTTP.
+ *
+ * The saving event does not have that problem: it fires from CustomValue::save
+ * for nearly every caller, and the model already carries the merged values and
+ * its parent, so the rules see exactly what is about to be written. The one
+ * save it misses, a revision restore, is caught by registerGuards().
+ */
+class PluginEvent extends PluginEventBase
+{
+    /**
+     * Whether this process already listens on the models itself.
+     *
+     * @var bool
+     */
+    protected static $guarding = false;
+
+    /**
+     * Rows whose side tables were already cleared in this process, so a
+     * second save of a new row in the same request leaves alone whatever
+     * the first one set up.
+     *
+     * @var array<string, bool>
+     */
+    protected static $forgotten = [];
+
+    public function execute()
+    {
+        $model = $this->custom_value;
+        if (!isset($model) || !isset($model->custom_table)) {
+            return;
+        }
+
+        $event = optional($this->pluginOptions)->event_type;
+        if ($event === PluginEventTrigger::SAVED) {
+            $this->afterSave($model);
+
+            return;
+        }
+        if ($event !== null && $event !== PluginEventTrigger::SAVING) {
+            return;
+        }
+
+        static::check($model);
+    }
+
+    /**
+     * Refuse a write that breaks the portal's rules.
+     *
+     * A ValidationException keeps the admin form and the json endpoints
+     * behaving the way each already expects: a redirect back with the errors
+     * attached, or a 422 carrying them.
+     *
+     * @throws ValidationException
+     */
+    public static function check(CustomValue $model): void
+    {
+        $messages = PortalRules::validateSave($model);
+        if (empty($messages)) {
+            return;
+        }
+
+        $validator = Validator::make([], []);
+        foreach ($messages as $column => $message) {
+            $validator->errors()->add('value.' . $column, $message);
+        }
+
+        throw new ValidationException($validator);
+    }
+
+    /**
+     * Put the portal's own model listeners in place, once per process.
+     *
+     * Two kinds of write never reach a plugin event, so the plugin listens on
+     * the models themselves:
+     *
+     * - A revision restore. Exment's "restore this version" saves the row with
+     *   restore_revision set, and that switch skips the plugin saving event
+     *   altogether. An old version went back in with no rule looked at: a key
+     *   another project has taken since, a sub-issue of another project, a
+     *   change to an archived project, a manager list put back by a member.
+     *   Eloquent's own saving event still fires, after Exment's listener.
+     * - A bell. Exment notifies creators, assignees and the users a row names
+     *   without asking whether they can still open the row - see PortalNotify.
+     *
+     * Called from PluginPage's constructor, which Exment runs on every boot,
+     * web request and artisan command alike.
+     */
+    public static function registerGuards(): void
+    {
+        if (static::$guarding) {
+            return;
+        }
+        static::$guarding = true;
+
+        Event::listen('eloquent.saving: *', function ($eventName, array $data) {
+            $model = $data[0] ?? null;
+            if ($model instanceof CustomValue && static::restoring($model)) {
+                static::check($model);
+            }
+        });
+
+        Event::listen('eloquent.creating: ' . NotifyNavbar::class, function ($bell) {
+            return PortalNotify::allow($bell) ? null : false;
+        });
+
+        // A project key lock is let go after the save commits; a save that is
+        // rolled back instead lets go here.
+        Event::listen(TransactionRolledBack::class, function () {
+            PortalRules::rolledBack();
+        });
+    }
+
+    /**
+     * Whether this save is a revision restore. Exment keeps the switch
+     * protected and offers no getter.
+     */
+    protected static function restoring(CustomValue $model): bool
+    {
+        $read = function () {
+            return $this->restore_revision ?? false;
+        };
+
+        return boolval(\Closure::bind($read, $model, CustomValue::class)());
+    }
+
+    /**
+     * A new project starts life with the standard status and issue type lists,
+     * the way Backlog does it.
+     *
+     * This runs on "saved" rather than "saving" because the rows hang off the
+     * project's id, which does not exist yet while it is being saved.
+     *
+     * A failure here must not take the save down with it: the project is
+     * already written by the time this runs, and an administrator can always
+     * re-run the schema upgrade from the settings screen to fill the lists in.
+     *
+     * A project that already existed has its shares brought in line with
+     * whoever the save took off it or moved, and an issue gets the listener
+     * that keeps an assignee who is off the project from being handed the
+     * issue back - see PortalMembership. Neither of those is caught: a revoke
+     * that failed would never be retried.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $model
+     * @return void
+     */
+    protected function afterSave($model): void
+    {
+        $def = PortalDefinition::config();
+        $table_name = $model->custom_table->table_name;
+
+        if ($table_name === array_get($def, 'project_table')) {
+            PortalRules::saved();
+        }
+
+        if ($model->wasRecentlyCreated) {
+            static::forget($model, $def);
+        }
+
+        if ($table_name === array_get($def, 'issue_table')) {
+            PortalMembership::watchIssue($model);
+
+            return;
+        }
+
+        if ($table_name !== array_get($def, 'project_table')) {
+            return;
+        }
+
+        if (!$model->wasRecentlyCreated) {
+            PortalMembership::projectSaved($model);
+
+            return;
+        }
+
+        try {
+            PortalUpgrade::seedProject($model);
+        } catch (\Throwable $e) {
+            Log::error('pm_portal could not seed master lists for project ' . $model->id . ': ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+        }
+    }
+
+    /**
+     * Clear what the plugin's own tables still hold for a new row's id.
+     *
+     * Ids come back: Exment's refreshdata and refreshtable empty the custom
+     * tables and count from 1 again, while the plugin's tables keep every row.
+     * A new project would otherwise show the old project's Git repository and
+     * hand out tokens to it, and inherit its AI log and its watchers; a new
+     * issue would inherit another issue's stars and AI history.
+     *
+     * @param CustomValue $model
+     * @param array<string, mixed> $def
+     */
+    protected static function forget(CustomValue $model, array $def): void
+    {
+        $table_name = strval($model->custom_table->table_name);
+        $id = intval($model->id);
+        $key = $table_name . ':' . $id;
+        if ($id <= 0 || isset(static::$forgotten[$key])) {
+            return;
+        }
+        static::$forgotten[$key] = true;
+
+        try {
+            Star::purge($table_name, $id);
+            if ($table_name === array_get($def, 'project_table')) {
+                GitRepo::forgetProject($id);
+                AiLog::forgetProject($id);
+            } elseif ($table_name === array_get($def, 'issue_table')) {
+                AiLog::forgetIssue($id);
+            }
+        } catch (\Throwable $e) {
+            Log::error('pm_portal could not clear side rows for ' . $key . ': ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+        }
+    }
+}

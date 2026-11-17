@@ -1,120 +1,141 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-WKk/qMfY5anyBzfISA6hErsekm==
+<?php
+
+namespace App\Plugins\PmMigrate;
+
+/**
+ * Rewrites the user ids a bundle carries.
+ *
+ * A user id here is the id of a row on the user table (the custom value), the
+ * same number created_user_id, a user column and a revision hold. Nothing in
+ * this class touches the database: the importer builds the id => id map and
+ * hands it over as a callable, and the exporter passes a callable that only
+ * records the ids it is shown.
+ */
+class UserMap
+{
+    /**
+     * Parse the "old_user_code=new_user_code" lines of the mapping box.
+     *
+     * "*" (or "default") is the fallback for every user without a line of
+     * their own. Blank lines and lines starting with # are ignored.
+     *
+     * @param string $text
+     * @return array<string, string> old user_code => new user_code
+     * @throws MigrateException
+     */
+    public static function parseSpec(string $text): array
+    {
+        $spec = [];
+        foreach (preg_split('/\r\n|\r|\n/', $text) ?: [] as $no => $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#') {
+                continue;
+            }
+
+            $parts = explode('=', $line, 2);
+            if (count($parts) !== 2 || trim($parts[0]) === '' || trim($parts[1]) === '') {
+                throw new MigrateException('ユーザー対応表 ' . ($no + 1) . ' 行目が「旧コード=新コード」の形式ではありません。');
+            }
+
+            $old = trim($parts[0]);
+            $spec[strtolower($old) === 'default' ? '*' : $old] = trim($parts[1]);
+        }
+
+        return $spec;
+    }
+
+    /**
+     * Map one user id, keeping its type: an int stays an int, a string a string.
+     *
+     * @param int|string $id
+     * @param callable $map int|string => int|string
+     * @return int|string
+     */
+    public static function mapId($id, callable $map)
+    {
+        $mapped = $map($id);
+
+        return is_int($id) ? intval($mapped) : strval($mapped);
+    }
+
+    /**
+     * Map the user columns of one custom value.
+     *
+     * A multiple column holds an array. When every user maps to the same
+     * person the array would repeat them, so it is made unique (by value, in
+     * first-seen order) and re-indexed.
+     *
+     * @param array<string, mixed> $value decoded value column
+     * @param array<int, string> $userColumns column names that hold user ids
+     * @param callable $map int|string => int|string
+     * @return array<string, mixed>
+     */
+    public static function rewriteValue(array $value, array $userColumns, callable $map): array
+    {
+        foreach ($userColumns as $column) {
+            if (!array_key_exists($column, $value)) {
+                continue;
+            }
+
+            $current = $value[$column];
+            if (is_array($current)) {
+                $seen = [];
+                $result = [];
+                foreach ($current as $id) {
+                    if (!is_int($id) && !is_string($id) || $id === '') {
+                        $result[] = $id;
+                        continue;
+                    }
+                    $mapped = static::mapId($id, $map);
+                    if (isset($seen[strval($mapped)])) {
+                        continue;
+                    }
+                    $seen[strval($mapped)] = true;
+                    $result[] = $mapped;
+                }
+                $value[$column] = $result;
+            } elseif ((is_int($current) || is_string($current)) && $current !== '') {
+                $value[$column] = static::mapId($current, $map);
+            }
+        }
+
+        return $value;
+    }
+
+    /**
+     * rewriteValue() on the JSON text of a value column.
+     *
+     * Text that is not a JSON object is returned as it was. The output keeps
+     * the escaping style of the input, so a revision that stored "山" does
+     * not turn into a literal character and back-and-forth diffs stay quiet.
+     *
+     * @param string|null $json
+     * @param array<int, string> $userColumns
+     * @param callable $map
+     * @return string|null
+     */
+    public static function rewriteValueJson(?string $json, array $userColumns, callable $map): ?string
+    {
+        if ($json === null || $json === '' || empty($userColumns)) {
+            return $json;
+        }
+
+        $value = json_decode($json, true);
+        // an empty object decodes to [] and would be written back as a list
+        if (!is_array($value) || $value === []) {
+            return $json;
+        }
+
+        $flags = 0;
+        if (strpos($json, '\\u') === false) {
+            $flags |= JSON_UNESCAPED_UNICODE;
+        }
+        if (strpos($json, '\\/') === false) {
+            $flags |= JSON_UNESCAPED_SLASHES;
+        }
+
+        $encoded = json_encode(static::rewriteValue($value, $userColumns, $map), $flags);
+
+        return $encoded === false ? $json : $encoded;
+    }
+}

@@ -8,7 +8,7 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 
 | Folder | Name | Description | Status |
 |---|---|---|---|
-| `project-ticket/` | Exment ProjectTicket | Project and ticket management (issues, Gantt chart, wiki, files) / プロジェクト管理・チケット管理（課題・ガントチャート・Wiki・ファイル） | Coming soon / 準備中 |
+| `project-ticket/` | Exment ProjectTicket | Project and ticket management (issues, Gantt chart, wiki, files) / プロジェクト管理・チケット管理（課題・ガントチャート・Wiki・ファイル） | In use on Exment SaaS / Exment SaaS で利用中 |
 
 ## Branches / ブランチ
 

@@ -1,83 +1,88 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Exceedone\Exment\Model\CustomTable;
+use Exceedone\Exment\Model\CustomValue;
+use Exceedone\Exment\Model\NotifyNavbar;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Bells about portal rows go only to people who can open the row, and say
+ * nothing the dashboard could take for markup.
+ *
+ * Exment notifies the creator, the assignees and every user a row names, on
+ * every change and every comment, without asking whether they can still open
+ * the row. Someone taken off a project went on receiving the subject of every
+ * issue they had once opened or been given, and on a comment the comment
+ * itself. The dashboard's notification box prints the subject as HTML, so a
+ * title was also a way to put markup on a colleague's screen.
+ *
+ * Hooked onto NotifyNavbar's creating event (PluginEvent::registerGuards), so
+ * it holds for Exment's own bells and the portal's alike, and for a bell that
+ * a queue worker writes later. E-mails go out from Exment's notify service
+ * directly and cannot be held back from a plugin; only the bell can.
+ */
+class PortalNotify
+{
+    /**
+     * Whether a bell may be written, its subject made safe on the way.
+     *
+     * Fails closed: a bell that cannot be checked is not written. A missing
+     * bell costs a click; a bell to the wrong person cannot be taken back.
+     */
+    public static function allow(NotifyNavbar $bell): bool
+    {
+        try {
+            $row = static::rowOf($bell);
+            if ($row === null) {
+                return true;
+            }
+
+            $bell->notify_subject = PortalDefinition::notifySubject(strval($bell->notify_subject));
+
+            return in_array(intval($bell->target_user_id), PortalMembership::readers($row), true);
+        } catch (\Throwable $e) {
+            Log::error('pm_portal bell check failed: ' . $e->getMessage(), ['exception' => $e]);
+
+            return false;
+        }
+    }
+
+    /**
+     * The portal row a bell is about, or null for a bell about anything else.
+     *
+     * Looked up whoever is asking: a bell is written in the name of whoever
+     * triggered it, and what counts is who receives it.
+     */
+    protected static function rowOf(NotifyNavbar $bell): ?CustomValue
+    {
+        $type = strval($bell->parent_type);
+        $id = $bell->parent_id;
+        if ($type === '' || !is_numeric($id) || !in_array($type, static::portalTables(), true)) {
+            return null;
+        }
+
+        $table = CustomTable::getEloquent($type);
+        $row = $table ? $table->getValueModel()->newQueryWithoutScopes()->find(intval($id)) : null;
+
+        return $row instanceof CustomValue ? $row : null;
+    }
+
+    /**
+     * Every table the portal is built from.
+     *
+     * @return array<int, string>
+     */
+    protected static function portalTables(): array
+    {
+        $names = [];
+        foreach (PortalDefinition::config() as $key => $value) {
+            if (is_string($value) && $value !== '' && substr($key, -6) === '_table') {
+                $names[] = $value;
+            }
+        }
+
+        return $names;
+    }
+}

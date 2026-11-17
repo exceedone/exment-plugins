@@ -1,126 +1,188 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-HR+cPrG4rx8ps2k5fiP2aHajrYv0eP6NCoPFtF58wAZZ+STK5QHe2V8ayve9+rIWNswuCU6XOv9E
-sZW15knd8DUbxUunhAYJWtouoyW2Yl/Scx9gM/kn9+IMJCmJgSizonCfhFK8rZy1e0rziUOMdrmV
-UIT++PVREWKoSPqPNJu7KehILY1TFgzPuPyaV3vLJ8qez1aRWW3sr0PATKdoR4cwuEM5VXsiI+0H
-vjchumg/4fKB6bqCavy8ONlVkrk4aEYk9IEQWC8wy0wkifRZkaQW293ao/aWrgVCDbrNJq5aPERF
-xnU468AYrnRSHiLbWuhyLZ9t61VXyCrmzoLnT8MNkfa9/t+jnHr59IikIEvL7zXmbZH7NsF19z1s
-RoZUHiKLaRYNSIhLSW9QM9Kqu5SohqNYnpOeidFEM9mpP3KC2FjPjjrP4cPb98MG4ox00p80p3kr
-eb/2uvUYJkv/N4HvASRiBGD2CBMqOqAyzfhDGbLXhScpteTfAsbVJgzBzYJsSf0CNB6oslwK5OP4
-swJif2dPKrgWEI27EXGFOuU6VHwvak3+H/XyyNabKzYtc4LF1MLdTqO/m8TH8ozhhG8EDQ1VhTdv
-jo8kJ+gx/Aw23oIoNmhsxYYXCH8ejZ13qRQHqR2cBsc4lmBRAVnXM8v3VedkcT88FrrWDrj7ZLXy
-jm/zW4p/Bo5dgtC2mo1q+Xzdyhi9cCLhtVdoa/uFDX3eddAwfEFp5l2re1/Vre84WqITsHObukrm
-0rOJPPQy2rZY00TcDaCVP1Q3/0l74JH0WeFT8glBIut04st1/424XjUH3kMKWu7k1qyWWm+GYThj
-KYm7SwzHI0rIKzdQBmsU+InJYb9rXgBuXw2TeIghLDk9RRb2cyzG6BhV8SpBkTOaIp9OQdHe0XPQ
-WIyWZr63fNPmI31OzMNzzsvsIaEJGfp7s6IK+FZA0fQiziV4dj61kBJgmkB5V+4va++NtyddHE1i
-dgIdSls0Rw7UX+UCDI/eBAAUVJSp/UgQmpXzBnbOpZQrQV+pbKf8XcHiA5e1AdqI2f0uXxxsm2m0
-j+gmGdYNU8nb2HIgZTjQQhGccXqCnGojvEEoEjCFHnZN8xBZK1D8dZQaryoqoiZAwooNXojZw5ie
-GAz60TxRliQS5MlXesCcvlLciWNq6o2HBKHniPIFnW1z9FIl6bjDvpPQiw3EBMUIPBNJB2i6BnDI
-3VBNPfDxT3QuJtyW9JQUP+ls8n9Kug3MC8O9zSUnIVuUk8y2SRhL8jHpJUnAl6tLclISIzlFpdm+
-87EeLwGn2CqNOVfRhK4T3ci3BgiMjz3T12Q+UmwvEehkOIE/ES99ZUumfSbZekjmVbBl8te0AC6g
-f5y0Eo9kFrVlhVwEXrj4k6n4+WATIQ4gnTXXFTsnlx1CJh/I39xaWNWp2yeBgI30bce20RmJamGE
-MyGd4OQKsVKrBu3FsuupERz//cP6Hy8Y1iXdOGU5/eYA8wf4Ac0TKjHfyzC1cK7QTHVPwzVONtkg
-0x+MaYzfn0oNY7Mftif2qJ65r4fkQ7ikmY8JEvj/7V0tqwcJo6Ca1pzxJIRiOAFUOMzdTrgccXp8
-rUFyTO5H9T0DqDswNP9jnmVv1eyFjwpY/4c9MoZuEjWJANF7ZuGiLVdiUtUAlbW3tfhi/d+dCvCR
-XMcIxsHXsQtN2C+nKW9uBRp1otWe2g0kYm8DwkUi+cCvijxxIGXbNGtiXGgVsUVW952M/62bqNF7
-I9xMURis2zJw5paXr2QbWKGMfHuiAXGxX7RNOj13EgSI6pdAtiHkAltSnqJEtnwuZEeKwtSZyPUv
-f5lO4r5B9gMtB/WT6TxH8DGT/bYkCyOSb828XowPXeuPkshfpWg88U9eNbPaejBvVeCMsqsF70YK
-IUSWB46fHa4EiGXODZJbRfk+2Cg0Ts+Km+UL3VxJlfBU+5wZtnMABwPLYlu31FPCzuso4QWzBQef
-2BgtDBs3iCDKfziIfpWnrhsRCBWC4+6i9wS9pWZdqMW+AUpuCoTlcCeC2XD4IXNObSHVvJWrRXVp
-p/h5x4u0SlMLcp3l6f4T8K2pcodX8nw8oSqIIvYNX6wvv+3FPiEWePXjKQ1STr7D8E5/qmOsf66+
-qxp3cSuFyBrqw3kUKCB1njVvaGQsVO6l3uXPZJus0Ou1g5yPQ5urV42WHke0ux4KNNLqFRbr9/1q
-eCgxRdxg/2O4CORmUVCUKImZ0bGXQVRr9s8A3gLhzrNvSesOwFB/+tZ8K01Ocb4DRHzRMuFj/2qo
-83une7QidJHDfNo/UynC6/LUNguN4RMyGBQJvSf9R7oUGjnu/rTAbxWzCJaCiMD/Z4mcNaB0Yomv
-/i8SI/WQBHP+pD0W/0tZg4Ow6BASemeHa98uBGyf9EcsJp0masqvz38AVRj8nuytnD79Nm+PouvX
-8PFUbpyn/yFzTALhz5z4rWxQ/p83j+UgxChV8PaRdDiV1x0pLMVhDwVI9xnEBqQoQtTVqHEb+vnf
-pMKVu1vC0pUA1AXEmRNbTej63nWhjvyLe0SIARz4bq2X6b9e79XEM4DBHMEJponxwaWE2AUosp/p
-k9WhX4C8qIEvgpdXV82Y3lztrDT108GDDN9uQBpd4Rnhd6u73pfMNr8rz2vpzuDFy0a0o9U3T6ag
-zsabIK1zgD8FopWp3+alRh+8L5it7JVjSFN2ufKLBfHV6612zWj2c/b2tNXAxiJyX/sadVnjMnRd
-T4Ng18EzPdIVFc0xDf9LxFnsKYbxSezC/CsPAt+9mvZzYzhqlw7AZY555tdeDw0CnhrQ39x74EL2
-AS1eVahdxXcdGUz4A/Z7HjiOwHbPDzvEvhveuKjx5U4HlNa7VFCPU6gCaAo+dbsgxH3Yqfpv30CV
-tB5xIDt7fKzJx9MZD1A7j4bTz9/VCiDz87cYjg69YQuXWqwWSRX6NkxWQf0zEABHHz0F4HsWl0ei
-OG3deh0CYxGzxEcYZ1Uc36n7MQwe414N2LtKuVdjS5Q9rxnzLs0q+DbLmFkt6pCmB1QaEPwKVxqx
-/DiGU/+5MtuVBlD5TtsIGNn3Bu9fDMxZx6uOs6tyuWzloJqX6Itfeb8cV+LLCVkv+n3DNej5vsnk
-2Col7HFy6BnF1yKbxToZ1oQakyh6Ubtbod405h5OD0zHYl5vQvy4gUlU6MWSUSuXxrxAL2QKZfbc
-9WW8pBupIFE9KWB26rKoSzErfOzzgqvisIbiqwoF1/Alcjkdvu4sWYPrKY9exDGP/A7tn82D0dW7
-+SRjA1I1bPYGhCEZJBGRAX9UsyjFdi0eJR5bRIIivUWQ21DcnWA52cZhhBK3d5hNTdQd19xHZdFt
-Q0oXqPSR1IXTaO5P3jEWU93Q+Um1SgM7mVXnh52azWajigMLXbtj+IAVEoNmY8et9SyZ/OZzgwC/
-YmTd7hnndUaiCo09fJt+11XhJQjVTLEVShdEerSp/wmkeFBHA7OSvLjwHhvy8OwctDps5qTG2dof
-6YjHhfeKVj8kHcA/6Bb9rcZIhfFhVloG/78xFiYlArhf/Iqbw1bQeLRnxOKzJj/RXlG9BUWF7YIs
-dUxD1w4Uh9BkrNfYs5iRUDw5+taElRgYeoFAZjDFeGf2nMAB+xnObzlQyejAOfr4A7hXg7LUEvxR
-xdKKVF09B9cXX2zt41yX1pJf3AQ1mszqCEc5611JVqMVkjGgfcu0Q/NRMzTb828Ck0wta0yXX5jt
-ZautgWP8vaeml9IDZNHoLTv56m5P+XL+SNZcmwQb+PijyYunpO/H52ptxkITUPb9MDHkJlFJ4dri
-atSQzwVNzpO8lYQbxHJoWgjXgsuEWpUI0nX/AFcNW5O3p5aFbXjeDfo0J1ethDgHyaC2Xf8pYqCl
-cSQuZZ+Wl0xz2TelYd+gvDcQ101QXMg7jXC9iR37h3PtCBXLf8WPC9ruxCUJaBoHLDto0RFhRGTw
-bS5uLUAQ5U8AQfF5B8Ko17g5nh2W0pz6Wa9BlSF8MHOhtje2ek3+GjQH9J8XpJGk38Y9P8eVGXdg
-Ib/3HGPAJAlAKCf3TCUqbezaBBMGyvKJ0+3a0t3uxe2RXLY+DTcjObDeB0TpYamjIyi5p07iL16Z
-5xswjfRPTp6FqHsncSYiX9wGGOka336O5qyQa6X/2tW9PSznl62ZAvyPDV/COPKtw8tmkhxtM7jz
-t7DvEecmX6czBPbHXN9eshQYAibAtXISZFjYEVdMGMxWvEdW+eZqVuJfWksbPdejPeGBpGXovD/u
-VbRL+DXlRNMRweyP5mJLSyvmddHwVhI9QAGxstgtF/2oVZ0HFQGvXp1y7O2tuKtAJSlSqTF9yc2E
-wE3VytStKTqgp12/jAYvycDOrHqf2h1o6GkfzCUf1QE4jKCLyANdWXjAYVwNPuOrxgIoTjm/4+fk
-RjaeMQA/08U5bIDMONVJOOz+sITl1d8I4HLNLm7A0zgsaHORsz3Frg208Elij6vqchy40jQ9uxBw
-JofqlUvUAJ2ix3hVSzHfgUQdP3P2r3dD/XqqEpBCw1twUXAJzIcWcfLz6fqqaGHY5qdcpJ+Q0qxo
-6zzfTmuR4w2DKf4zdqKCLilG39GvTGLwCYKCnw1l03JyWJ50UULPXCNwgtVP2vpxahcb5sVXv1PW
-Ze1E9BYxye44GErhFqPlnYg2pV6r9H4aKq7EO/QPnf9UcgIcUyvpCAnnv6tlXUulBizzMyCBJ9MV
-GD2Y5AsPRbgwhsSBPvc9gnKcooHObexnk2e2+H9zUZhhxqv+hzImWUd5dErz18vC43RIoggxO06L
-kqGkO0O4ihogA9lYEZvEcUtuZe4TBaPeBeEFlSe/duCz+n21lETasiLIqKpR27dpJKiWUmgTt2Vd
-B3PWYIe/OW1UwNwwzl0kCxQ484Nf2KVaPEgBw0ZUxfEtU5HBUeNr2rk1TcycIlSSgBR1hm9U8ysv
-k6O74w9ewv0TWJ0w1LNWbWZsxwWNfr8xmeRsg85+I4R5umtxNNf8Y/ICHTwooXwLn9G6N0cIbewG
-7XGCiCe10p547dM/lrfEwq0GzNemSOwZYCpCY9j7GR7jDy/waS9yfFEjwbPbcJ8tEflVWWNu2vVu
-+aRvnSU8nH8dwWikq+KsiAWJweOoIvHKLM2LfxaXOcpM6/yCSgK4HjWDcB4QhRbmjybb0hhhWr2N
-9OSukOxb85BJcqI4LFHbAlfXb5L+iao+LVyeQC8Oreo2C8FoUuDDSVJK1hxGTPb7flc75MCspvD6
-HRCd2nwzC6zAXtRRJwLa1F/RUCb4I4B/GMOT4Wl+y9Xyk27U8vhGWHn56mltYPEIIkHaEogurIWW
-yb21kS/C1hPRkBEdf7INIvkmZZWgYwsZTdVtcsHrgFqWei6H+9ziWY+2J9mXmRwGfTSHmM/Cl6iQ
-LaTjlAUR0WblAQ5KwGKAUHVRJD7F4tkvf7Y6f6q5fSGHJOWEss0hpKN/OCniRLZIM9XihjypS6GZ
-25kJEwkZ1hFamVEu+SwhZJusdo9zyRJva/sLkfRz3LR1qMe9e1bg46EE5CjO56fUKk50JMz3/yVI
-RKhBsmzwvKUNb5YB120eHjU/258wXhIKyhG7UfbY+uWJ58jB5YlmqfoNU8UwGfh++0OkTq+/4Q4l
-dU4iT+Qt1bsSlowsZid0RFD7GWl6MFxo7NJ41Gjae0IUVEWpW470KL9JzVeJoe4FD6KjigI51OSi
-L2ZbgErV8gJpn51m7URe2jUUWW18qfY27H5QtGhxFt8S8WDm3/jO3KnFS123zNlYieFjCcvQVBFk
-nkTPnMj4hh4mzu4gvOrJS6HXtqpZ17cc2G+pRDr5/rOFOpNmtklSyZTBKlRVqncOBrNP439H65Jw
-LBHZUwNpiwiQ/V9pBQ1fla3zM2Sny7iCFM7/PTS9jiBgDIyTBQV5COpqYC7uqWLYc5ZYztVABbf5
-Nhv5ncuE2upwIzjrcx9mb1ONmz87JfOz02jK1ZrGNlDZchd2s2fd47wrhjaImHLuNGQDGdftKQhd
-3PrITf47w1gpuXPfsanJmS4pq2a3qVJB4rGqRmDhXMInfw3GSHeLNgtDg131aLmtdKYb+vHiqDpY
-PrA+5wvqOZYbwv3kQpNE5v/GJD2uy0sLtkXwIa96UIHcKD7ygf1r6GENwhZzkZX6DEmmSW2OzxN7
-hULY9Q5xrEWbwJOT6MWpj2Qbbg86lty8e3vgjxk424vQymmG0KmSPdwAN527qhlTDWVFBsczV1HV
-1gcPT3q9ZttK6rDZfdG16doL29nz57+DAIIHZLlNV+sMLGZGTjLEhvJ+RGz0iho3wE+5ejMdYE0j
-p8Vl5KTPlWXcucE4LUZiUh0LeJgu7o8LvlqXY0cOcEDh6GVf2h2o/1SW1rn1xRB3fSpJkcNNucC6
-988mK/Kmow6A5O44lo494ATBM+GPqFQ34eWVV4jVE2tcyyFxbC4KQkJId3CIK0gvPmwmLUec+ZFE
-dEyDTF+dAEZJvP5nGpaH5rZ/4jW7TfXJ34JTQx2TeCQsiQbNsZj6m885ypQhjHrL28vFZtw/1jCW
-pKBhLMi3mr5xHvl0wIruCFMz5QiCND3/MWoiXbeSrHa30/gSruEe23TjSCT08/c8+Vhfu1AMVUxk
-7UQigxxmOooviz4Qhzjo97gsow7lP7j37pCWIehQER7mXsXCz5TeYBydm+WW/1AOM2b6BP2Gk422
-8FQJKi7N/00YMokAsGKmXTLNELjjVwU/hAcq9qnEYxTvgkSPEG+0QGczraRQ86xFi1+HcCnsb6SR
-iIydH+l9CAGi+FkiV4z2uDY+6hzh0lztmm8MTrpw/iv8Tb3LkdPMG5/fHL/cgW2uTiAOyGd/Zqrx
-f3+EDLcd0lfDHUeANVP0rhGBE9/8w36Uhxktf2ECDEnDE1Bw656Qq8Oxl8lO3QjqXNE7mgtYVkS7
-K0/LRvNnW+2mxbCsVqeFXpzotIJjeWUKpOv0yqJX+0qz1bBRQFIzbXtVnPQMEr+vdnjHwgC1wwYn
-/O++Vp9rQPdIatD4ErdHV9AEcmPPvC0Li8F9Q8zQfLbr20MMqepScaHgqZFeQ9DxSlo4RivXXCn7
-5Sro6idPy9bx2Pas3vVr7G46dT9XIn7t/VP3Th7dh5Tds9uhAcqDlQVOMaRw6QoKIxQxMA/kyezP
-frBd4CaOQrqAhhFv9aEZkxEAD5Q0T7TmCaaSjAIjU8q7mKtSAnfbpe4lBZyvkVtk7ihpUk6OJYP1
-Az+RakkvcyXyp0UMDYhlvUAI30X8OY1GQRZ4SjCA/EKdgLtD+c/Po/wxxRLTchmW82m/ByALSJ1e
-Sv5LQQU7qazaAIcQuyIL84zqWVRLlJ2FRWveDWz90gTJICb7UFolI/Zads4dTNYmJkqEkK50V8ku
-ujOgOGmi8ZdpWlR6KRruQbH6M7hYnyIKZSWkKNOqlpGCHVZW2UYSku98NEPqTcSTfxBBJbAKKczl
-x2U5DUwLCuSdxFJxS73ITMNgll0arH0DzBmvvFq+r858HWiUY6M9CLl5Qgm8FbhU88VlFLcbLuo5
-GYGWZ8LV/mH/MWMliFzYlYPS8ASNcUB06eChHEC92zhyrIE7J9C59XhLqGcUmhY5n7R8h5Et/+jR
-UAmaOrG+UwrQDNWXXY6XOJQojv5wxXI8xi5uUXh/TXr30nOuEWhBr4HGEy3S7NxIm4hJuRZmUuBK
-1s7k3PT+toNJSwzrsqSPz3tnRbZ403RX8Wjbvwdy/HOtQ0JnkhcHVznA7BV0MDq4Fs9kBGYqJF6M
-WqSOrD1oNExI/fS2Cm2/mLkBGBhuUF+Q4PExUqeMhrY9WDI034+62U36aZ6Nyc55mNWxVbplPQiE
-S0D7pVgrBOSMI+Sf4J1xOCdth/u7TI+fKTvmeDGEwVTNYzJmcCVBwn+M3i9EQr5O2VOKB6xk3gYu
-1D7hAjxERRP/++ZusQEiIL7HsPM82qn57ao91mFxJMNXIuavwSu2xLZX3LpqNt0GNKhqw07NTIWf
-MlyxxAars4iGmzlFTez4QeYuBUD57xVA3Q4m+imsg/wgFfJ2VlSeowDUzcnWUGDZfMxhoBdnNI4M
-SfRmFXsGPBUkLfwTVEWURPYCmywutHUeW7nnC0ZbXhOvqsRiYtkFZdGR2f6zIxtTBqbWzn0StcZa
-QwjB9AoMuxgFhuJHX8Y+L2eS760vXDBngrK1CjSVgMj+p8nofffe8Lj4NJjWzcvOEUeX45R28FV/
-mvyc97Mm/mIVv4AKZ4qxAMXwm+SRGTGDsyc4n+8bAPnaBLPR3PCqZfdA9KFV74Yx+Ko9jKck7Sja
-CL1AM6UNI5mKy1h+PH90bj3AypqvPVM9vK8KsjKw/wUQavovcKcGPbHfC/gUC93ufH3doPMPmO8/
-OMcJz99lYaQNJx5PiLfj8wLwtfja2rismp8UgS1OXvsNwAL5YsIWLuYFqu1DQyKcpusZnk0Z139i
-aPbhX+w4XAK6zQod//N82eGtWSgAvZEjmnOqCwJ5HifUsLJ9IctYh4LmTwkakUt7DBJWrqon/00t
-Ys2XybKr5sJKWsuQ3igherAjribrsj5exwIADv++IwUFBFvV4X0O6Um/gIodrhjn5Ezoq6CiVi+7
-WF1c8ZTHx/2mjMUjj4aOrIM+FSR/WLKzZQ3iDMkPrOZ3Li6yrKf+OWe4POiNVn4sr5Gd9hrKwI47
-tWpCo5X27rkSo8PifvHo26PCUEeoqi0Rm0SnEdEzNB7UiBc3FOlCjObMBEAzwVudAEYRhNkJ2kQI
-AwCdd0OLuJU+BZPBvp21cNtDXnZdTAmzeEVflYbwtwflLrJ56/yYUBlScbFuf/HeYrkSnTOo7qIs
-7eIoiKntmInusQEf8fktslTDAx8wfHhqEqGlkN0AQrV72rRwIqqs+UAeC28RcfP3TxuEnhWQilUb
-P8lyqcQ8gLKASjjpax3AXd5WNC7sITsXge3rpQwgju4QTkWlZ5adCl09gx9TUfgwT5liKI2I4Zqg
-Y4XEYTWEQ4CHWDt8hZ4U1NyrDh9KaA27YRIBfPTmv/E5KSoWoI6x8jRLbMp7N9fl42D+rjM1VNRw
-r05k0VUVr72C+yz4fVWEeXBngL8bhPWnOlochfYmLKknbY3WLx+yu0zE7vLYb3BdoYCTaZF0t2is
-yVOPLTk17tgbiRrydqiVQpBlsVsCiR+P6uIKFXq0dcR35E6RaSQ5Bb8NwjgXrvBfP9NdgdAcR5c9
-i79aKC6i4ojhZ0FP0pFk6MxobsrV7nJJf+/bnhPhxyICuGq5bIBJBSwiKKs8XpgNU8oV1gBCeaWQ
-h5BOXOkrgDz7SAAm+/hSSG==
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Exceedone\Exment\Model\ModelBase;
+
+/**
+ * One call to the AI, and what became of it.
+ *
+ * Written for three reasons: the daily cap counts rows here, the settings
+ * tab's statistics read them, and the backtest compares what was suggested
+ * with what the person finally saved (the "applied" column, filled by the
+ * feedback endpoint or by the batch itself). The raw answers are kept
+ * so a criteria change can be re-scored offline without calling again.
+ *
+ * The row is written before the call is made, as "pending", and finished
+ * afterwards. A request that dies half way - a timeout, a crash, a parse
+ * failure - has still spent an attempt, and the cap has to see it.
+ *
+ * input_hash identifies what was scored. For the button it is the text; for
+ * the batch it also covers the questions, so the batch can tell an issue it
+ * already scored from one whose text or whose project's lists changed since.
+ *
+ * created_user_id is the person who pressed the button; null for the
+ * batch.
+ *
+ * @property mixed $project_id
+ * @property mixed $issue_id
+ * @property mixed $kind
+ * @property mixed $input_hash
+ * @property mixed $model
+ * @property mixed $input_tokens
+ * @property mixed $latency_ms
+ * @property mixed $answers
+ * @property mixed $suggested
+ * @property mixed $applied
+ * @property mixed $status
+ * @property mixed $error
+ * @property mixed $created_user_id
+ * @phpstan-consistent-constructor
+ */
+class AiLog extends ModelBase
+{
+    public const KIND_SUGGEST = 'suggest';
+    public const KIND_BATCH = 'batch';
+    public const KIND_BACKTEST = 'backtest';
+    public const KIND_TEST = 'test';
+
+    public const STATUS_OK = 'ok';
+    public const STATUS_ERROR = 'error';
+    /** Written before the call; a row left in this state never got an answer. */
+    public const STATUS_PENDING = 'pending';
+
+    protected $table = 'pm_portal_ai_logs';
+
+    protected $guarded = ['id'];
+
+    protected $casts = [
+        'answers' => 'json',
+        'suggested' => 'json',
+        'applied' => 'json',
+    ];
+
+    /**
+     * How many calls this project has made today, errors included - a key
+     * that keeps failing still costs attempts.
+     *
+     * @param mixed $project_id
+     * @return int
+     */
+    public static function countToday($project_id): int
+    {
+        return static::where('project_id', intval($project_id))
+            ->where('created_at', '>=', \Carbon\Carbon::today())
+            ->count();
+    }
+
+    /**
+     * Claim one call of today's allowance, as a pending row, or null when
+     * the allowance is spent.
+     *
+     * The row goes in first and is counted afterwards, against the rows
+     * written before it. Checking first and writing afterwards let every
+     * request that arrived together pass the same "299 < 300"; counting by
+     * id after the insert lets exactly the ones that fit through.
+     *
+     * @param mixed $project_id
+     * @param mixed $issue_id
+     * @param string $kind
+     * @param string $hash
+     * @param int $cap calls per project per day; 0 for no limit
+     * @return static|null
+     */
+    public static function reserve($project_id, $issue_id, string $kind, string $hash, int $cap): ?self
+    {
+        $row = new static();
+        $row->project_id = intval($project_id);
+        $row->issue_id = is_nullorempty($issue_id) ? null : intval($issue_id);
+        $row->kind = mb_substr($kind, 0, 16);
+        $row->input_hash = $hash;
+        $row->status = static::STATUS_PENDING;
+        $row->save();
+
+        if ($cap > 0) {
+            $upToMe = static::where('project_id', intval($project_id))
+                ->where('created_at', '>=', \Carbon\Carbon::today())
+                ->where('id', '<=', $row->id)
+                ->count();
+            if ($upToMe > $cap) {
+                $row->delete();
+
+                return null;
+            }
+        }
+
+        return $row;
+    }
+
+    /**
+     * Whether the batch already has an answer for exactly this: the same
+     * issue, the same text and the same questions.
+     *
+     * Only an answered call counts. A failed one is worth trying again; an
+     * answered one would cost the same money for the same answer.
+     *
+     * @param mixed $issue_id
+     * @param string $hash
+     * @return bool
+     */
+    public static function batchSeen($issue_id, string $hash): bool
+    {
+        return static::where('issue_id', intval($issue_id))
+            ->where('kind', static::KIND_BATCH)
+            ->where('input_hash', $hash)
+            ->where('status', static::STATUS_OK)
+            ->exists();
+    }
+
+    /**
+     * The rows the statistics are drawn from: real use only, over a window.
+     *
+     * @param mixed $project_id
+     * @param int $days
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public static function recent($project_id, int $days = 30)
+    {
+        return static::where('project_id', intval($project_id))
+            ->whereIn('kind', [self::KIND_SUGGEST, self::KIND_BATCH])
+            ->where('created_at', '>=', \Carbon\Carbon::today()->subDays($days));
+    }
+
+    /**
+     * Drop every row of one project.
+     *
+     * Project ids are not forever: exment:refreshdata truncates the custom
+     * tables and numbering starts again at 1, so a brand new project would
+     * otherwise inherit an old one's calls - its statistics, and a daily
+     * allowance already spent. Called for a project that was just created
+     * and for one that is being deleted.
+     *
+     * @param int $projectId
+     * @return void
+     */
+    public static function forgetProject(int $projectId): void
+    {
+        if ($projectId <= 0) {
+            return;
+        }
+        static::where('project_id', $projectId)->delete();
+    }
+
+    /**
+     * Drop every row that points at one issue, for the same reason: a new
+     * issue may carry the id of one that is gone, and the batch must not
+     * take the old issue's answer for the new one's.
+     *
+     * @param int $issueId
+     * @return void
+     */
+    public static function forgetIssue(int $issueId): void
+    {
+        if ($issueId <= 0) {
+            return;
+        }
+        static::where('issue_id', $issueId)->delete();
+    }
+}

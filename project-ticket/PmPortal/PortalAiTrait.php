@@ -1,424 +1,492 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * The AI endpoints of a project: what the issue form calls when its button
+ * is pressed, what it reports back after a save, and what the settings tab
+ * reads and tests.
+ *
+ * Permissions are the portal's own: findProject() for access, then the
+ * same create / edit check the save itself will make, so nobody can have
+ * the AI read a text they could not save. What spends the project's daily
+ * allowance or shows its figures - the settings tab's test and statistics -
+ * is the manager's (PortalMembership::canManage). The key never comes this
+ * way - only whether one exists.
+ *
+ * A refusal answers in the shape every portal screen reads: ok false, a
+ * machine code in `error` (and in `reason`, which the form branches on),
+ * and the Japanese sentence to show in `message`.
+ */
+trait PortalAiTrait
+{
+    // ---- payload helpers -------------------------------------------------
+
+    /**
+     * What the issue form needs to decide whether to show the button and
+     * how to label what comes back.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @return array<string, mixed>
+     */
+    protected function aiPayload($project): array
+    {
+        $autofill = new IssueAutofill();
+        $configured = JevClient::configured();
+
+        return [
+            'enabled' => $configured && $autofill->projectFlag($project, 'ai_enabled', false),
+            'configured' => $configured,
+            'min_subject' => 3,
+            'min_description' => IssueAutofill::minDescription(),
+            'threshold_suggest' => IssueAutofill::thresholdSuggest(),
+            'threshold_auto' => IssueAutofill::thresholdAuto(),
+        ];
+    }
+
+    /**
+     * The AI pane of the settings tab: switches, connection and the last
+     * thirty days in numbers.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @return array<string, mixed>
+     */
+    protected function aiStateData($project): array
+    {
+        $autofill = new IssueAutofill();
+
+        return [
+            'configured' => JevClient::configured(),
+            'model' => JevClient::model(),
+            'enabled' => $autofill->projectFlag($project, 'ai_enabled', false),
+            'assign' => $autofill->suggestsAssignee($project),
+            'min_description' => IssueAutofill::minDescription(),
+            'threshold_suggest' => IssueAutofill::thresholdSuggest(),
+            'threshold_auto' => IssueAutofill::thresholdAuto(),
+            'daily_cap' => IssueAutofill::dailyCap(),
+            'today' => AiLog::countToday($project->id),
+            'labels' => $this->aiColumnLabels(),
+            'stats' => $this->aiStats($project, 30),
+        ];
+    }
+
+    /**
+     * Calls, cost and how often a person kept what was suggested.
+     *
+     * "Kept" is counted per column over the rows that have an applied value:
+     * the feedback endpoint writes it when the form is saved, the batch
+     * writes it for itself. A column the AI was not sure about is not
+     * counted - it was never offered. A call that never got an answer - an
+     * error, or one still pending because its request died - counts as an
+     * error.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @param int $days
+     * @return array<string, mixed>
+     */
+    protected function aiStats($project, int $days): array
+    {
+        $rows = AiLog::recent($project->id, $days)->get();
+
+        $calls = 0;
+        $errors = 0;
+        $tokens = 0;
+        $ms = 0;
+        $kept = [];
+        foreach ($rows as $row) {
+            $calls++;
+            if (strval($row->status) !== AiLog::STATUS_OK) {
+                $errors++;
+                continue;
+            }
+            $tokens += intval($row->input_tokens);
+            $ms += intval($row->latency_ms);
+
+            $suggested = is_array($row->suggested) ? $row->suggested : [];
+            $applied = is_array($row->applied) ? $row->applied : null;
+            if ($applied === null) {
+                continue;
+            }
+            foreach ($suggested as $column => $field) {
+                if (!is_array($field) || !boolval(array_get($field, 'ok')) || !array_key_exists($column, $applied)) {
+                    continue;
+                }
+                $n = intval(array_get($kept, $column . '.n', 0)) + 1;
+                $same = intval(array_get($kept, $column . '.kept', 0));
+                if ($this->aiSameValue(array_get($field, 'value'), $applied[$column])) {
+                    $same++;
+                }
+                $kept[$column] = ['n' => $n, 'kept' => $same];
+            }
+        }
+
+        $okCalls = $calls - $errors;
+
+        return [
+            'days' => $days,
+            'calls' => $calls,
+            'errors' => $errors,
+            'avg_ms' => $okCalls > 0 ? intdiv($ms, $okCalls) : 0,
+            'tokens' => $tokens,
+            'cost_usd' => round(JevClient::costUsd($tokens), 4),
+            'kept' => $kept,
+        ];
+    }
+
+    /**
+     * Whether two column values name the same rows, however they are shaped:
+     * "12", 12, ["12"] and [12] are all one value. Anything that is not a
+     * plain value - a nested list in a row written before the feedback was
+     * checked - is ignored rather than allowed to take the statistics down.
+     *
+     * @param mixed $a
+     * @param mixed $b
+     * @return bool
+     */
+    protected function aiSameValue($a, $b): bool
+    {
+        $norm = function ($v) {
+            $out = [];
+            foreach (is_array($v) ? $v : [$v] as $x) {
+                if (is_scalar($x) && !is_bool($x) && strval($x) !== '') {
+                    $out[] = strval($x);
+                }
+            }
+            sort($out);
+
+            return $out;
+        };
+
+        return $norm($a) === $norm($b);
+    }
+
+    /**
+     * What a feedback call may store as "applied": only the columns the AI
+     * suggested on that very call, and only a value shaped like one - an id,
+     * a list of ids, or null for a field saved empty.
+     *
+     * @param mixed $applied as posted
+     * @param array<string, mixed> $suggested the log row's suggested columns
+     * @param array<int, string> $allowed the AI columns of this install
+     * @return array<string, mixed>
+     */
+    protected function aiCleanApplied($applied, array $suggested, array $allowed): array
+    {
+        $clean = [];
+        if (!is_array($applied)) {
+            return $clean;
+        }
+        foreach ($applied as $column => $value) {
+            $column = strval($column);
+            if (!in_array($column, $allowed, true) || !array_key_exists($column, $suggested)) {
+                continue;
+            }
+            if ($value === null) {
+                $clean[$column] = null;
+                continue;
+            }
+            if (is_scalar($value) && !is_bool($value)) {
+                $clean[$column] = mb_substr(strval($value), 0, 64);
+                continue;
+            }
+            if (!is_array($value) || count($value) > 50) {
+                continue;
+            }
+            $list = [];
+            foreach ($value as $item) {
+                if (!is_scalar($item) || is_bool($item)) {
+                    // A nested list is not a column value: drop the column.
+                    continue 2;
+                }
+                $list[] = mb_substr(strval($item), 0, 64);
+            }
+            $clean[$column] = $list;
+        }
+
+        return $clean;
+    }
+
+    /**
+     * A request field as a plain string. A list posted where a text belongs
+     * is not a text.
+     *
+     * @param mixed $value
+     * @return string
+     */
+    protected function aiString($value): string
+    {
+        return is_scalar($value) && !is_bool($value) ? strval($value) : '';
+    }
+
+    // ---- endpoints ---------------------------------------------------------
+
+    /**
+     * POST {id}/ai/suggest - score a subject and description against this
+     * project's lists.
+     *
+     * 'category' is the category the form holds right now, saved or not;
+     * the assignee's category step reads it instead of the stored one.
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return JsonResponse
+     */
+    public function aiSuggest(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+        $autofill = new IssueAutofill();
+
+        // An archived project's issues cannot be saved; a call would be
+        // paid for an answer nobody can keep. Asked first, so the answer
+        // names the reason rather than a bare "no permission" - everybody
+        // past findProject() may see the project is archived anyway.
+        if ($autofill->projectFlag($project, 'archived', false)) {
+            return $this->aiFail(403, 'archived');
+        }
+
+        // The same gate the save will meet: editing that issue
+        // (LightApiController::update asks PortalDefinition::enableEdit,
+        // which also asks the project), or filing a new one under this
+        // project (resolveParent asks the same two questions as
+        // childAddable). Nobody gets the AI to read a text they cannot save
+        // - or to spend a project's allowance they cannot file anything in.
+        $issue = null;
+        $issueId = $request->input('issue_id');
+        if (!is_nullorempty($issueId)) {
+            if (!is_scalar($issueId)) {
+                return PortalDefinition::jsonError(422, 'invalid_params', [
+                    'message' => strval(PortalDefinition::trans('message.invalid_params')),
+                ]);
+            }
+            $issue = $this->findIssue($project, $issueId);
+            if (PortalDefinition::enableEdit($issue, true) !== true) {
+                return PortalDefinition::jsonError(403, 'forbidden');
+            }
+        } elseif (!$this->childAddable($this->issue_table ?? null, $project)) {
+            return PortalDefinition::jsonError(403, 'forbidden');
+        }
+
+        if (!$autofill->projectFlag($project, 'ai_enabled', false)) {
+            return $this->aiFail(403, 'disabled');
+        }
+        if (!JevClient::configured()) {
+            return $this->aiFail(503, 'err_not_configured');
+        }
+
+        // Cut before anything reads them: the text is masked and trimmed
+        // again on the way out, this only bounds the work on a pasted log.
+        $subject = trim(mb_substr($this->aiString($request->input('subject', '')), 0, IssueAutofill::SCAN_MAX_CHARS));
+        $description = mb_substr($this->aiString($request->input('description', '')), 0, IssueAutofill::SCAN_MAX_CHARS);
+        if (mb_strlen($subject) < 3) {
+            return $this->aiFail(422, 'need_text');
+        }
+
+        // A cheap early answer. The cap itself is enforced where the call
+        // is logged, before it is made (AiLog::reserve), so requests that
+        // arrive together cannot all slip under it.
+        if (AiLog::countToday($project->id) >= IssueAutofill::dailyCap()) {
+            return $this->aiFail(429, 'err_daily_cap');
+        }
+
+        $input = ['subject' => $subject, 'description' => $description];
+        if ($request->has('category')) {
+            // Checked against this project's own categories where it is used.
+            $input['category'] = $request->input('category');
+        }
+
+        try {
+            $result = $autofill->suggest($project, $input, $issue, AiLog::KIND_SUGGEST);
+        } catch (JevException $e) {
+            return $this->aiError($e);
+        } catch (\Throwable $e) {
+            return $this->aiCrash($e, 'suggest');
+        }
+
+        return response()->json(['ok' => true] + $result);
+    }
+
+    /**
+     * POST {id}/ai/feedback - what the person finally saved, against what
+     * was suggested. This is the number the settings tab reports.
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return JsonResponse
+     */
+    public function aiFeedback(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+
+        $suggestionId = $request->input('suggestion_id');
+        $log = is_scalar($suggestionId)
+            ? AiLog::where('id', intval($suggestionId))->where('project_id', intval($project->id))->first()
+            : null;
+        if (!isset($log)) {
+            return PortalDefinition::jsonError(404, 'not_found');
+        }
+
+        // Only whoever asked may say what they kept - or the project's
+        // manager. Any other member could otherwise rewrite the figures the
+        // settings tab reports.
+        $me = intval(\Exment::getUserId());
+        if (intval($log->created_user_id) !== $me && !PortalMembership::canManage($project)) {
+            return PortalDefinition::jsonError(403, 'forbidden');
+        }
+
+        $log->applied = $this->aiCleanApplied(
+            $request->input('applied'),
+            is_array($log->suggested) ? $log->suggested : [],
+            (new IssueAutofill())->aiColumns()
+        );
+
+        // A suggestion made while the issue was being written is linked to
+        // the issue once there is one.
+        $issueId = $request->input('issue_id');
+        if (is_scalar($issueId) && !is_nullorempty($issueId) && isset($this->issue_table)) {
+            $issue = $this->issue_table->getValueModel()->find(intval($issueId));
+            if (isset($issue) && intval($issue->parent_id) === intval($project->id)) {
+                $log->issue_id = intval($issue->id);
+            }
+        }
+        $log->save();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * GET {id}/ai/state - the AI pane's numbers, for whoever manages the
+     * project.
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return JsonResponse
+     */
+    public function aiState(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+        if (!PortalMembership::canManage($project)) {
+            return PortalDefinition::jsonError(403, 'forbidden');
+        }
+
+        return response()->json(['ok' => true, 'ai' => $this->aiStateData($project)]);
+    }
+
+    /**
+     * POST {id}/ai/test - one call with a sample report, so the tab can show
+     * the connection works and what an answer looks like. It spends one of
+     * the project's calls for the day, so it is the manager's to press.
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return JsonResponse
+     */
+    public function aiTest(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+        if (!PortalMembership::canManage($project)) {
+            return PortalDefinition::jsonError(403, 'forbidden');
+        }
+        if (!JevClient::configured()) {
+            return $this->aiFail(503, 'err_not_configured');
+        }
+        // A test call costs what a real one does, and counts the same.
+        if (AiLog::countToday($project->id) >= IssueAutofill::dailyCap()) {
+            return $this->aiFail(429, 'err_daily_cap');
+        }
+
+        try {
+            $result = (new IssueAutofill())->suggest($project, [
+                'subject' => strval(PortalDefinition::trans('ai.test_subject')),
+                'description' => strval(PortalDefinition::trans('ai.test_description')),
+            ], null, AiLog::KIND_TEST);
+        } catch (JevException $e) {
+            return $this->aiError($e);
+        } catch (\Throwable $e) {
+            return $this->aiCrash($e, 'test');
+        }
+
+        return response()->json(['ok' => true, 'labels' => $this->aiColumnLabels()] + $result);
+    }
+
+    /**
+     * Issue column name => the label people see, for the test output.
+     *
+     * @return array<string, string>
+     */
+    protected function aiColumnLabels(): array
+    {
+        $out = [];
+        if (isset($this->issue_table)) {
+            foreach ($this->issue_table->custom_columns as $column) {
+                $out[strval($column->column_name)] = strval($column->column_view_name);
+            }
+        }
+
+        return $out;
+    }
+
+    // ---- answers -----------------------------------------------------------
+
+    /**
+     * A refusal the form can show as it is.
+     *
+     * @param int $status
+     * @param string $langKey key under ai; also the code in `error` and `reason`
+     * @return JsonResponse
+     */
+    protected function aiFail(int $status, string $langKey): JsonResponse
+    {
+        $message = PortalDefinition::trans('ai.' . $langKey);
+
+        return PortalDefinition::jsonError($status, $langKey, array_merge(
+            ['reason' => $langKey],
+            PortalDefinition::isUnresolved($message) ? [] : ['message' => strval($message)]
+        ));
+    }
+
+    /**
+     * The remote side did not answer. 503 for all of them: the form's own
+     * save is unaffected, and the message says which kind it was. A spent
+     * daily allowance is the portal's own refusal, and keeps its 429.
+     *
+     * @param JevException $e
+     * @return JsonResponse
+     */
+    protected function aiError(JevException $e): JsonResponse
+    {
+        if ($e->reason === 'daily_cap') {
+            return $this->aiFail(429, 'err_daily_cap');
+        }
+
+        Log::warning('pm_portal ai call failed: ' . $e->getMessage());
+
+        $message = PortalDefinition::trans($e->langKey());
+        if (PortalDefinition::isUnresolved($message)) {
+            $message = PortalDefinition::trans('ai.err_failed');
+        }
+
+        return PortalDefinition::jsonError(503, strval($e->reason), [
+            'message' => strval($message),
+            'reason' => $e->reason,
+        ]);
+    }
+
+    /**
+     * Something this code did not plan for. Logged for the operator; the
+     * person gets a sentence, never the exception's text.
+     *
+     * @param \Throwable $e
+     * @param string $what
+     * @return JsonResponse
+     */
+    protected function aiCrash(\Throwable $e, string $what): JsonResponse
+    {
+        Log::error('pm_portal ai ' . $what . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+
+        return PortalDefinition::jsonError(500, 'server_error');
+    }
+}

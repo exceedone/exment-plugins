@@ -1,84 +1,75 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Exceedone\Exment\Database\ExtendedBlueprint;
+
+return new class extends Migration
+{
+    /**
+     * Every call the portal makes to the AI, with what came back.
+     *
+     * Three readers: the per-project daily cap (count of today's rows), the
+     * statistics block on the project settings tab, and the backtest that
+     * compares "suggested" with "applied" - the values the person finally
+     * saved, written by the feedback endpoint or by the batch itself.
+     *
+     * The raw answers are kept as JSON so a change to the criteria can be
+     * re-scored from stored responses without paying for the calls again.
+     *
+     * issue_id is nullable: the button runs while the issue is still being
+     * written, and the row is linked to the issue only when the save
+     * succeeds. exment:refreshdata renumbers issues from 1, so the batch
+     * command sweeps rows whose issue is gone or newer than the row's last
+     * write (updated_at - the link itself is written after the save).
+     */
+    public function up(): void
+    {
+        $schema = DB::connection()->getSchemaBuilder();
+
+        $schema->blueprintResolver(function ($connection, $table, $callback) {
+            return new ExtendedBlueprint($connection, $table, $callback);
+        });
+
+        if (!\Schema::hasTable('pm_portal_ai_logs')) {
+            $schema->create('pm_portal_ai_logs', function (ExtendedBlueprint $table) {
+                $table->bigIncrements('id');
+                // id on the project custom table
+                $table->unsignedBigInteger('project_id')->index();
+                // id on the issue custom table, null until the issue exists
+                $table->unsignedBigInteger('issue_id')->nullable()->index();
+                // suggest (button) | batch | backtest | test
+                $table->string('kind', 16);
+                // sha1 of subject + description: whether two calls saw the
+                // same text
+                $table->char('input_hash', 40);
+                // the model the remote side says it used; drift shows here
+                $table->string('model', 32)->nullable();
+                $table->unsignedInteger('input_tokens')->default(0);
+                $table->unsignedInteger('latency_ms')->default(0);
+                // raw answers block of the response
+                $table->json('answers')->nullable();
+                // after normalisation: column => {value, label, confidence, ok}
+                $table->json('suggested')->nullable();
+                // what was finally saved for the same columns
+                $table->json('applied')->nullable();
+                // ok | error
+                $table->string('status', 8)->default('ok');
+                $table->string('error', 200)->nullable();
+                $table->timestamps();
+                // ModelBase fills created_user_id on creating; that column is
+                // who pressed the button, null for the batch and the event.
+                $table->timeusers();
+
+                $table->index(['project_id', 'created_at'], 'pm_portal_ai_logs_project_created');
+            });
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        \Schema::dropIfExists('pm_portal_ai_logs');
+    }
+};

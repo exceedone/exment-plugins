@@ -1,158 +1,184 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-QKflei5WCqW=
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
+
+/**
+ * The one place that talks to TypeSafe's System One endpoint.
+ *
+ * The model is pinned on purpose: the jev-latest alias moves with every
+ * release, and a moved alias changes answers while nothing in this code
+ * base changed. The response's own model field is logged so a drift can be
+ * seen in the log table.
+ *
+ * Where the key lives, and why: config('services.typesafe.key'), i.e. the
+ * TYPESAFE_KEY environment variable, wins. The encrypted plugin option is a
+ * fallback for an install whose operator cannot edit .env. The key is never
+ * sent to a browser and never written to a log.
+ */
+class JevClient
+{
+    public const DEFAULT_MODEL = 'jev-1.13.0';
+
+    public const DEFAULT_ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
+
+    /** USD per one million input tokens, from the published price list. */
+    public const USD_PER_MILLION_TOKENS = 0.042;
+
+    public static function configured(): bool
+    {
+        return static::key() !== null;
+    }
+
+    /**
+     * Ask one set of questions about one state.
+     *
+     * @param array<string, mixed>|string $state
+     * @param array<string, array<string, mixed>> $questions
+     * @return array{answers: array<string, mixed>, model: string, usage: array<string, int>, latency_ms: int}
+     * @throws JevException
+     */
+    public function ask($state, array $questions): array
+    {
+        $key = static::key();
+        if ($key === null) {
+            throw new JevException('not_configured', 0);
+        }
+
+        $started = microtime(true);
+        try {
+            $res = Http::withToken($key)
+                ->acceptJson()
+                ->connectTimeout(2)
+                ->timeout(static::timeout())
+                // One retry, only for the two codes TypeSafe documents as
+                // transient. throw=false hands the final response back for
+                // every other status so the reason can be named below.
+                ->retry(2, 300, function ($e) {
+                    $response = is_object($e) && isset($e->response) ? $e->response : null;
+                    $status = is_object($response) && method_exists($response, 'status') ? $response->status() : 0;
+
+                    return in_array($status, [429, 529], true);
+                }, false)
+                ->post(static::endpoint(), [
+                    'model' => static::model(),
+                    'state' => $state,
+                    'questions' => $questions,
+                ]);
+        } catch (ConnectionException $e) {
+            throw new JevException('unreachable', 0, $e);
+        }
+
+        $ms = (int) round((microtime(true) - $started) * 1000);
+        if ($res->status() !== 200) {
+            throw new JevException(static::reason($res->status()), $res->status());
+        }
+
+        $json = $res->json();
+        if (!is_array($json) || !is_array($json['answers'] ?? null)) {
+            throw new JevException('bad_response', 200);
+        }
+
+        $usage = [];
+        foreach ((array) ($json['usage'] ?? []) as $k => $v) {
+            if (is_numeric($v)) {
+                $usage[strval($k)] = intval($v);
+            }
+        }
+
+        return [
+            'answers' => $json['answers'],
+            'model' => strval($json['model'] ?? ''),
+            'usage' => $usage,
+            'latency_ms' => $ms,
+        ];
+    }
+
+    public static function model(): string
+    {
+        $model = config('services.typesafe.model');
+        if (is_nullorempty($model)) {
+            $model = static::pluginOption('ai_model');
+        }
+
+        return is_nullorempty($model) ? self::DEFAULT_MODEL : strval($model);
+    }
+
+    public static function endpoint(): string
+    {
+        $endpoint = config('services.typesafe.endpoint');
+
+        return is_nullorempty($endpoint) ? self::DEFAULT_ENDPOINT : strval($endpoint);
+    }
+
+    /** Seconds the whole call may take; the browser is waiting on it. */
+    public static function timeout(): int
+    {
+        $timeout = intval(config('services.typesafe.timeout', 3));
+
+        return $timeout > 0 ? $timeout : 3;
+    }
+
+    /**
+     * Cost of a call in US dollars, from its input token count.
+     */
+    public static function costUsd(int $inputTokens): float
+    {
+        return $inputTokens * self::USD_PER_MILLION_TOKENS / 1000000;
+    }
+
+    protected static function reason(int $status): string
+    {
+        if ($status === 401 || $status === 403) {
+            return 'unauthorized';
+        }
+        if ($status === 422) {
+            return 'rejected';
+        }
+        if ($status === 429) {
+            return 'rate_limited';
+        }
+        if ($status === 529) {
+            return 'overloaded';
+        }
+
+        return 'bad_response';
+    }
+
+    /**
+     * Environment config first, encrypted plugin option second, never logged.
+     */
+    protected static function key(): ?string
+    {
+        $key = config('services.typesafe.key');
+        if (!is_nullorempty($key)) {
+            return strval($key);
+        }
+
+        $stored = static::pluginOption('ai_api_key');
+        if (is_nullorempty($stored)) {
+            return null;
+        }
+
+        // The settings form saves this field through encpassword, so what
+        // sits in the plugin options is ciphertext. trydecrypt answers null
+        // for anything it cannot decrypt - a value written by hand in plain
+        // text, or one encrypted under an APP_KEY that has since changed -
+        // and that counts as no key at all.
+        $plain = trydecrypt(strval($stored));
+
+        return is_nullorempty($plain) ? null : strval($plain);
+    }
+
+    /**
+     * @return mixed
+     */
+    protected static function pluginOption(string $key)
+    {
+        $plugin = PortalDefinition::plugin();
+
+        return isset($plugin) ? $plugin->getCustomOption($key) : null;
+    }
+}
