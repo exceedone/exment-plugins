@@ -178,7 +178,7 @@
   border-radius:var(--bl-radius-s,4px);}
 .pmportal .bl-list .pp-tgl:hover{color:var(--bl-accent-d);background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));}
 .pmportal .bl-list .pp-tgl .n{font-weight:700;}
-.pmportal .bl-list .pp-tcol{width:58px;white-space:nowrap;padding-right:2px;}
+.pmportal .bl-list .pp-tcol{width:1%;white-space:nowrap;padding-left:4px;padding-right:0;}
 /* 件名サブ (schema 19): second subject line, smaller and muted */
 .pmportal .bl-list td.sub .pp-subsub{font-size:12px;font-weight:400;color:var(--bl-sub);margin-top:2px;line-height:1.35;}
 .pmportal .pp-dsubsub{font-size:14px;color:var(--bl-sub);margin:2px 0 8px;line-height:1.4;}
