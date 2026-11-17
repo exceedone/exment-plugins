@@ -1090,6 +1090,10 @@
 
         var head = document.getElementById('pp-chk-cell');
         if (head) { head.hidden = !BULK_ON; }
+        // tree mode: the ▼/▶ toggles get a column of their own at the left
+        // (snoro 2026-11-18: inside the subject they were hard to read)
+        var tHead = document.getElementById('pp-tcol-head');
+        if (tHead) { tHead.hidden = !TREE_ON; }
 
         var onPage = {};
         if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
@@ -1100,22 +1104,22 @@
             var i = TREE_ON ? item.i : item;
             var parent = i.parent && issueById(i.parent)
                 ? '<span class="parent">' + esc(issueById(i.parent).key) + ' &gt;</span>' : '';
+            var tgl = '';
             if (TREE_ON) {
                 // The "KEY >" prefix is only needed where the parent is not the
                 // row above in the tree: filtered out, or on another page.
                 if (item.depth > 0 && Object.prototype.hasOwnProperty.call(onPage, 'i' + i.parent)) { parent = ''; }
                 var folded = treeFolded(i.id);
-                var tgl = item.n > 0
+                tgl = item.n > 0
                     ? '<a href="javascript:void(0);" role="button" class="pp-tgl" data-tgl="' + esc(i.id) +
                         '" aria-expanded="' + (folded ? 'false' : 'true') + '" title="' +
                         esc(folded ? (L.tree_expand || '開く') : (L.tree_collapse || '閉じる')) + '">' +
                         (folded ? '▶' : '▼') + ' <span class="n">(' + item.n + ')</span></a>'
-                    : '<span class="pp-tgl-sp"></span>';
-                // a child row gets a "└" branch mark (snoro 2026-11-18: which rows
-                // are children was hard to see), see also the pp-tkid row style
+                    : '';
+                // the subject keeps only the indent and, for a child, a "└"
+                // branch mark; the toggle sits in its own column (pp-tcol)
                 parent = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 18) + 'px;">' +
-                    (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '') +
-                    tgl + '</span>' + parent;
+                    (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '') + '</span>' + parent;
             }
             var trCls = (own(SEL, i.id) ? 'sel' : '') +
                 (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
@@ -1124,6 +1128,7 @@
             rows += '<tr data-issue="' + esc(i.id) + '"' + (trCls.trim() ? ' class="' + trCls.trim() + '"' : '') + '>' +
                 (BULK_ON ? '<td class="chk"><input type="checkbox" class="pp-bchk" data-id="' + esc(i.id) + '"' +
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
+                (TREE_ON ? '<td class="pp-tcol">' + tgl + '</td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
                 '<td>' + tag(i.ty) + '</td>' +
                 '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a></td>' +

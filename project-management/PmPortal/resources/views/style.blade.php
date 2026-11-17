@@ -178,6 +178,8 @@
   border-radius:var(--bl-radius-s,4px);}
 .pmportal .bl-list .pp-tgl:hover{color:var(--bl-accent-d);background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));}
 .pmportal .bl-list .pp-tgl .n{font-weight:700;}
+.pmportal .bl-list .pp-tcol{width:58px;white-space:nowrap;padding-right:2px;}
+.pmportal .bl-list .pp-tcol .pp-tgl{margin-right:0;}
 /* tree view: make children obvious - branch mark, tinted row, accent edge; parents bold */
 .pmportal .bl-list .pp-tbr{color:var(--bl-sub);margin-right:4px;font-weight:400;}
 .pmportal .bl-list tr.pp-tkid td{background:color-mix(in srgb, var(--bl-accent) 5%, var(--bl-box));}
