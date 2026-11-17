@@ -1984,6 +1984,8 @@ class PmPortalController extends AdminControllerBase
             'url' => admin_url('data', [$this->issue_table->table_name, $issue->id]),
             'edit_url' => admin_url('data', [$this->issue_table->table_name, $issue->id, 'edit']),
             'subject' => strval(array_get($v, array_get($is, 'subject'), '')),
+            // Schema 19: the second subject line (empty before the upgrade).
+            'sub' => strval(array_get($v, 'subject_sub', '')),
             'ty' => strval(array_get($v, array_get($is, 'type'), '')),
             'st' => strval(array_get($v, array_get($is, 'status'), '')),
             'pr' => strval(array_get($v, array_get($is, 'priority'), '')),

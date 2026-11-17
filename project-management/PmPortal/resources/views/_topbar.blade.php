@@ -537,6 +537,15 @@
             paintToggle(b);
             filterProjects();
         });
+        // double-click a ▼/▶: open all or close all (see the issue list)
+        pjList.addEventListener('dblclick', function (ev) {
+            var b = ev.target.closest('.pp-pjm-tgl');
+            if (!b) { return; }
+            ev.preventDefault();
+            ev.stopPropagation();
+            var a = document.getElementById(pjFold[b.getAttribute('data-tgl')] ? 'pp-pjm-open' : 'pp-pjm-close');
+            if (a) { a.click(); }
+        });
     }
     ['pp-pjm-open', 'pp-pjm-close'].forEach(function (ctlId) {
         var a = document.getElementById(ctlId);

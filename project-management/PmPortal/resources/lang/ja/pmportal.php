@@ -728,6 +728,7 @@ return [
                 'resolution' => '完了理由',
                 'versions' => '発生バージョン',
                 'notified_users' => 'お知らせ先',
+                'subject_sub' => '件名サブ',
             ],
             'project' => [
                 'archived' => 'アーカイブ済み',
@@ -752,6 +753,7 @@ return [
             'resolution' => '課題を完了にした理由を選びます。',
             'versions' => 'この課題が影響するバージョンやマイルストーンを選びます。',
             'notified_users' => '担当者以外で更新を知らせたいユーザーを選びます。',
+            'subject_sub' => '件名の 2 行目（例: ベトナム語の件名）。一覧と詳細で件名の下に小さく表示します。',
         ],
         'related' => [
             'types' => [
@@ -799,6 +801,7 @@ return [
         ],
         'menu' => [
             'root' => 'プロジェクトポータル',
+            'single' => 'プロジェクト管理',
             'portal' => 'ポータル',
             'settings' => 'ポータル設定',
             'master' => 'マスタ',

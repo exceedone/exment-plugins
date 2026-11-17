@@ -63,8 +63,12 @@ class PortalSchema
      * 18: projects get display_order, so an administrator can drag them into
      * order in the project menu (ISS00263). Empty until someone drags; the
      * menu falls back to the name.
+     *
+     * 19: issues get subject_sub, a second subject line (ex1task keeps the
+     * Vietnamese subject there), shown under the subject in the list and
+     * the detail. The sidebar menu is a single entry (menus()).
      */
-    const VERSION = 18;
+    const VERSION = 19;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -99,6 +103,8 @@ class PortalSchema
         'resolution' => 'resolution',
         'versions' => 'versions',
         'notified_users' => 'notified_users',
+        // Schema 19: second subject line (e.g. the subject in Vietnamese).
+        'subject_sub' => 'subject_sub',
     ];
 
     /**
@@ -598,6 +604,11 @@ class PortalSchema
                     'grid_style' => 'avatar',
                     'help' => PortalDefinition::trans('schema.help.notified_users'),
                 ], 22),
+                // Schema 19: the second subject line, placed right under the
+                // subject (same order; Exment then orders by creation).
+                static::column($ic['subject_sub'], 'issue.subject_sub', 'text', [
+                    'help' => PortalDefinition::trans('schema.help.subject_sub'),
+                ], 2),
             ],
         ];
     }
@@ -703,36 +714,21 @@ class PortalSchema
         $root = $prefix . self::MENU_ROOT;
         $master = $prefix . self::MENU_MASTER;
 
-        $menus = [
-            static::menu($root, 'menu.root', 'parent_node', null, 'fa-th-large', '34', ['uri' => '#']),
-            static::menu($prefix . self::MENU_PAGE, 'menu.portal', 'plugin', $root, 'fa-dashboard', '1', [
+        // ISS00256 (snoro 2026-11-18): the sidebar gets a single entry,
+        // "プロジェクト管理", that opens the portal. Settings and the master
+        // lists open from the portal's own top bar (⚙ 設定, administrators
+        // only). The old root / settings / master branch is no longer created,
+        // so a schema upgrade does not bring it back.
+        unset($root, $master);
+
+        return [
+            static::menu($prefix . self::MENU_PAGE, 'menu.single', 'plugin', null, 'fa-tasks', '34', [
                 // Menu::importReplaceJson resolves this through Plugin::getEloquent,
                 // which looks the plugin up by name - a uuid finds nothing and
                 // leaves the menu pointing at no target, so it never renders.
                 'menu_target_name' => PortalSetup::pluginName(),
             ]),
-            static::menu($prefix . self::MENU_SETTINGS, 'menu.settings', 'custom', $root, 'fa-sliders', '2', [
-                'uri' => static::settingsMenuUri(),
-            ]),
-            static::menu($master, 'menu.master', 'parent_node', $root, 'fa-database', '3', ['uri' => '#']),
         ];
-
-        $tables = [
-            ['status_table', 'menu.status', 'fa-flag-o'],
-            ['issue_type_table', 'menu.issue_type', 'fa-bookmark-o'],
-            ['priority_table', 'menu.priority', 'fa-arrows-v'],
-            ['resolution_table', 'menu.resolution', 'fa-check-circle-o'],
-            ['related_table', 'menu.related', 'fa-link'],
-        ];
-        $order = 1;
-        foreach ($tables as list($role, $key, $icon)) {
-            $menus[] = static::menu($n[$role], $key, 'table', $master, $icon, strval($order++), [
-                'menu_target_name' => $n[$role],
-                'uri' => $n[$role],
-            ]);
-        }
-
-        return $menus;
     }
 
     /**
