@@ -85,20 +85,22 @@
 @endphp
 <div class="pmportal" id="pmportal">
 
+    {{-- The project's name and note are already in the portal's own header
+         card below, so Exment's page header would show them twice (snoro
+         2026-11-18). Only on this page; the browser tab title is unchanged. --}}
+    <style>#app > .content-header{display:none;}</style>
+
     {{-- Defines window.ppDateField, used by the panes below and by the
          main script. Included before them so it is there when they run. --}}
     @include(\App\Plugins\PmPortal\PortalDefinition::view('_datepicker'))
 
-    {{-- The project's name comes first, above the portal menu (ISS00271);
-         filled by the script, which finds it by id. --}}
-    <div class="bl-app bl-apphead">
-        <div class="bl-projhead" id="pp-projhead"></div>
-    </div>
-
+    {{-- The portal menu (ダッシュボード / プロジェクト / 最近見た課題) stays at
+         the very top, the project's name right under it (snoro 2026-11-18). --}}
     @include(\App\Plugins\PmPortal\PortalDefinition::view('_topbar'))
 
-    {{-- tabs + screens --}}
+    {{-- project header + tabs + screens; the header is filled by the script --}}
     <div class="bl-app">
+        <div class="bl-projhead" id="pp-projhead"></div>
         <nav class="bl-tabs" id="pp-tabs">
             <a class="bl-tab" data-scr="home"><i class="fa fa-home"></i>{{ $lang['tab_home'] }}</a>
             <a class="bl-tab" data-scr="board"><i class="fa fa-columns"></i>{{ $lang['tab_board'] }}</a>

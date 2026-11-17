@@ -782,9 +782,32 @@
         return found;
     }
 
+    // ISS00255: "完了以外" - every issue except those in the project's final
+    // status: the last status (in the project's order) that counts as done.
+    // With 未対応・処理中・レビュー中・処理済み・完了 that hides only 完了, so
+    // 処理済み (also a done status) stays visible, as asked. Works whatever the
+    // status ids are, since each project has its own.
+    var ST_NOT_DONE = '!done';
+    function finalDoneStatus() {
+        var last = '';
+        (D.statuses || []).forEach(function (s) { if (s.done) { last = s.k; } });
+        return last;
+    }
+    function stMatch(st, want) {
+        if (!want) { return true; }
+        if (want === ST_NOT_DONE) {
+            var fin = finalDoneStatus();
+            return fin ? st !== fin : !isDone(st);
+        }
+        return st === want;
+    }
+
     function renderIssueFilters() {
         var tabs = '<button class="bl-sttab' + (FILTER.st === '' ? ' active' : '') + '" data-st="">' +
             esc(L.f_all) + '<span class="ct">' + D.issues.length + '</span></button>';
+        tabs += '<button class="bl-sttab' + (FILTER.st === ST_NOT_DONE ? ' active' : '') + '" data-st="' + ST_NOT_DONE + '">' +
+            esc(L.f_not_done || '完了以外') + '<span class="ct">' +
+            D.issues.filter(function (i) { return stMatch(i.st, ST_NOT_DONE); }).length + '</span></button>';
         (D.statuses || []).forEach(function (s) {
             var n = D.issues.filter(function (i) { return i.st === s.k; }).length;
             tabs += '<button class="bl-sttab' + (FILTER.st === s.k ? ' active' : '') + '" data-st="' + esc(s.k) + '">' +
@@ -904,7 +927,7 @@
 
         return (D.issues || []).filter(function (i) {
             if (quick && !quick(i)) { return false; }
-            if (FILTER.st && i.st !== FILTER.st) { return false; }
+            if (FILTER.st && !stMatch(i.st, FILTER.st)) { return false; }
             if (FILTER.as && i.as.map(String).indexOf(String(FILTER.as)) < 0) { return false; }
             if (FILTER.ty && i.ty !== FILTER.ty) { return false; }
             if (FILTER.pr && String(i.pr) !== String(FILTER.pr)) { return false; }

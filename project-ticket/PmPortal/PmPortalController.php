@@ -133,6 +133,9 @@ class PmPortalController extends AdminControllerBase
         // One read, used twice: once to resolve a parent id into a name and
         // once to build the cards.
         $rows = $this->project_table->getValueModel()->get();
+        // ISS00257: one query for every project's shares instead of one or
+        // two per project in the permission checks below.
+        $this->project_table->setGridAuthoritable($rows);
         $names = [];
         if ($parentColumn) {
             foreach ($rows as $row) {
@@ -1652,6 +1655,12 @@ class PmPortalController extends AdminControllerBase
             ->where('parent_type', $this->project_table->table_name)
             ->get();
         $issue_ids = $issues->pluck('id')->toArray();
+        // ISS00257: read shares once - all of this project's issues, and every
+        // readable project (each issue's edit check also checks its project) -
+        // instead of one or two queries per row. Whole sets only: Exment keeps
+        // the first preload of a table for the rest of the request.
+        $this->issue_table->setGridAuthoritable($issues);
+        $this->project_table->setGridAuthoritable($this->project_table->getValueModel()->get());
 
         list($status_meta, $status_order) = $this->selectMeta($this->issue_table, array_get($is, 'status'), $project);
         $statuses = [];
@@ -2339,6 +2348,8 @@ class PmPortalController extends AdminControllerBase
             ->where('parent_type', $this->project_table->table_name)
             ->get();
         $ids = $pages->pluck('id')->toArray();
+        // ISS00257: one query for the shares of all of this project's pages.
+        $wiki_table->setGridAuthoritable($pages);
         $stars = Star::counts(Star::TYPE_STAR, $wiki_table->table_name, $ids);
         $my_stars = Star::mine(Star::TYPE_STAR, $wiki_table->table_name, $ids, $me);
         $keeps_history = boolval($wiki_table->getOption('revision_flg', true));

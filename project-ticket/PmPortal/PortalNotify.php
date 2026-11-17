@@ -26,6 +26,13 @@ use Illuminate\Support\Facades\Log;
 class PortalNotify
 {
     /**
+     * Rows already looked up in this request, by "table:id" (see rowOf).
+     *
+     * @var array<string, CustomValue|null>
+     */
+    protected static $rowCache = [];
+
+    /**
      * Whether a bell may be written, its subject made safe on the way.
      *
      * Fails closed: a bell that cannot be checked is not written. A missing
@@ -63,8 +70,14 @@ class PortalNotify
             return null;
         }
 
-        $table = CustomTable::getEloquent($type);
-        $row = $table ? $table->getValueModel()->newQueryWithoutScopes()->find(intval($id)) : null;
+        // ISS00257: Exment writes one bell per recipient, so a save that
+        // notifies sixteen people asked for the same row sixteen times.
+        $key = $type . ':' . intval($id);
+        if (!array_key_exists($key, static::$rowCache)) {
+            $table = CustomTable::getEloquent($type);
+            static::$rowCache[$key] = $table ? $table->getValueModel()->newQueryWithoutScopes()->find(intval($id)) : null;
+        }
+        $row = static::$rowCache[$key];
 
         return $row instanceof CustomValue ? $row : null;
     }
