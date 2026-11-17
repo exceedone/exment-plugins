@@ -144,7 +144,9 @@
 .pp-dash .pp-fd:last-child{border-bottom:0;}
 .pp-dash .pp-fd:hover{background:#f7fafb;}
 .pp-dash .pp-fd .av{flex:none;width:26px;height:26px;border-radius:50%;color:#fff;display:flex;align-items:center;
-    justify-content:center;font-size:12px;font-weight:700;}
+    justify-content:center;font-size:11px;letter-spacing:-.3px;font-weight:700;position:relative;overflow:hidden;}
+/* ISS00254: registered avatar laid over the initial */
+.pp-dash .pp-fd .av .bl-avimg{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;object-fit:cover;background:#fff;}
 .pp-dash .pp-fd .bd{flex:1 1 auto;min-width:0;}
 .pp-dash .pp-fd .ln1{font-size:11.5px;color:var(--d-mute);}
 .pp-dash .pp-fd .ln1 b{color:var(--d-text);}
@@ -302,7 +304,7 @@
                 @php $lastDay = $entry['day']; @endphp
                 @endif
                 <a class="pp-fd" href="{{ $entry['url'] }}">
-                    <span class="av" style="background:{{ $entry['who']['c'] }}">{{ $entry['who']['i'] }}</span>
+                    <span class="av" style="background:{{ $entry['who']['c'] }}">{{ $entry['who']['i'] }}@if(!empty($entry['who']['a']))<img class="bl-avimg" src="{{ $entry['who']['a'] }}" alt="" loading="lazy" onerror="this.remove()">@endif</span>
                     <span class="bd">
                         <span class="ln1"><b>{{ $entry['who']['n'] }}</b>{{ $t('feed_' . $entry['tp']) }} · {{ $entry['at'] }} · {{ $entry['project'] }}</span>
                         <span class="ln2"><span class="key">{{ $entry['key'] }}</span> {{ $entry['label'] }}</span>

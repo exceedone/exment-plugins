@@ -82,6 +82,13 @@
 .pmportal .bl-av{display:inline-flex;width:26px;height:26px;border-radius:50%;color:#fff;align-items:center;
   justify-content:center;font-size:12px;font-weight:700;flex:none;}
 .pmportal .bl-av.lg{width:34px;height:34px;font-size:14px;}
+/* ISS00254: registered avatar laid over the initial (shared by .bl-av and the dashboard feed .av) */
+.pmportal .bl-av,.pp-ta .bl-av,.pp-fd .av{position:relative;overflow:hidden;}
+/* two-letter initials ("SN", "野呂") need a little less size to fit the circle */
+.pmportal .bl-av{font-size:11px;letter-spacing:-.3px;}
+.pmportal .bl-av.lg{font-size:13px;}
+.pp-ta .bl-av{font-size:9px;letter-spacing:-.3px;}
+.bl-avimg{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;object-fit:cover;background:#fff;}
 .pmportal .bl-avname{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
 .pmportal .bl-prio{display:inline-flex;align-items:center;gap:4px;font-weight:700;white-space:nowrap;}
 .pmportal .bl-prio svg{vertical-align:-2px;}

@@ -305,9 +305,14 @@
 
         return MENTIONS;
     }
+    // ISS00254: the avatar the user registered in Exment, laid over the
+    // initial; if the image cannot load it removes itself and the initial shows.
+    function avImg(u) {
+        return u && u.a ? '<img class="bl-avimg" src="' + esc(u.a) + '" alt="" loading="lazy" onerror="this.remove()">' : '';
+    }
     function av(id, lg) {
         var u = user(id);
-        return '<span class="bl-av' + (lg ? ' lg' : '') + '" style="background:' + ppColor(u.c) + '" title="' + esc(u.n) + '">' + esc(u.i) + '</span>';
+        return '<span class="bl-av' + (lg ? ' lg' : '') + '" style="background:' + ppColor(u.c) + '" title="' + esc(u.n) + '">' + esc(u.i) + avImg(u) + '</span>';
     }
     function avname(id) { return '<span class="bl-avname">' + av(id) + esc(user(id).n) + '</span>'; }
     function avlist(ids) { return (ids || []).map(function (i) { return av(i); }).join(''); }
@@ -3585,6 +3590,7 @@
                 a.className = 'bl-av';
                 a.style.background = ppColor(u.c);
                 a.textContent = u.i;
+                if (u.a) { a.insertAdjacentHTML('beforeend', avImg(u)); }
                 b.appendChild(a);
             }
             if (it.key) {
@@ -8474,7 +8480,7 @@
         var roleKey = info ? own(HC_ROLE, info.role) : undefined;
         var role = roleKey ? L[roleKey] : (info ? L.hc_norole : '');
         return '<div class="pp-hc-top">' +
-            '<span class="bl-av lg" style="background:' + ppColor(u.c) + '">' + esc(u.i) + '</span>' +
+            '<span class="bl-av lg" style="background:' + ppColor(u.c) + '">' + esc(u.i) + avImg(u) + '</span>' +
             '<div><div class="pp-hc-nm">' + esc(name) + '</div>' +
             (role ? '<div class="pp-hc-sub">' + esc(role) + '</div>' : '') + '</div></div>' +
             hcRows([

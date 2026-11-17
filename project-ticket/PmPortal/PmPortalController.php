@@ -2933,12 +2933,15 @@ class PmPortalController extends AdminControllerBase
         }
         $palette = ['#16a085', '#3c8dbc', '#e67e22', '#8e44ad', '#2980b9', '#c0392b', '#27ae60', '#d35400', '#7f8c8d', '#1abc9c'];
         $orgs = $this->organisationNames($ids);
+        $avatars = PortalMembership::avatars($ids);
         $out = [];
         foreach (CustomTable::getEloquent(SystemTableName::USER)->getValueModel()->find($ids) as $user) {
             $name = strval($user->getLabel());
             $out[strval($user->id)] = [
                 'n' => $name,
-                'i' => mb_substr(trim($name), 0, 1),
+                'i' => PortalMembership::initials($name),
+                // The avatar the user registered in Exment, if any (ISS00254).
+                'a' => array_get($avatars, strval($user->id), ''),
                 'c' => $palette[abs(crc32($name)) % count($palette)],
                 // Who this is, for the card behind an @mention. Sent with the
                 // page because the card is read on the way past a name: a

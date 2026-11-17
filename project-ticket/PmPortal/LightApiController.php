@@ -1511,13 +1511,16 @@ class LightApiController
         $palette = ['#16a085', '#3c8dbc', '#e67e22', '#8e44ad', '#2980b9', '#c0392b', '#27ae60', '#d35400', '#7f8c8d', '#1abc9c'];
         $table = CustomTable::getEloquent(SystemTableName::USER);
         if (!isset($table)) { return []; }
+        $avatars = PortalMembership::avatars($ids);
         $out = [];
         foreach ($table->getValueModel()->newQuery()->whereIn('id', $ids)->get() as $user) {
             $name = strval($user->getLabel());
             $out[strval($user->id)] = [
                 'n' => $name,
-                'i' => mb_substr(trim($name), 0, 1),
+                'i' => PortalMembership::initials($name),
                 'c' => $palette[abs(crc32($name)) % count($palette)],
+                // The avatar the user registered in Exment, if any (ISS00254).
+                'a' => array_get($avatars, strval($user->id), ''),
             ];
         }
 

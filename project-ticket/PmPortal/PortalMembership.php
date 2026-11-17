@@ -99,6 +99,73 @@ class PortalMembership
     }
 
     /**
+     * Two characters that tell people apart on an avatar without an image:
+     * "Seiji Noro (EX1)" -> "SN", "Bui Thu Huong (TTM)" -> "BH",
+     * "sysadmin" -> "SY", "野呂 誠司" / "野呂誠司" -> "野呂". A trailing
+     * "(EX1)" style company tag is ignored. One letter was not enough to know
+     * who an issue belongs to.
+     */
+    public static function initials(string $name): string
+    {
+        $s = trim(preg_replace('/[(（][^)）]*[)）]/u', '', $name) ?? '');
+        if ($s === '') {
+            $s = trim(preg_replace('/[()（）]/u', '', $name) ?? '');
+        }
+        if ($s === '') {
+            return '?';
+        }
+        $words = preg_split('/[\s\x{3000}]+/u', $s, -1, PREG_SPLIT_NO_EMPTY) ?: [$s];
+        if (preg_match('/^[\p{Latin}\p{N}]/u', $words[0])) {
+            if (count($words) >= 2) {
+                return mb_strtoupper(mb_substr($words[0], 0, 1) . mb_substr(end($words), 0, 1));
+            }
+            return mb_strtoupper(mb_substr($words[0], 0, 2));
+        }
+
+        return mb_substr($words[0], 0, 2);
+    }
+
+    /**
+     * The avatar each of these users registered in Exment, by user id, as the
+     * URL Exment itself shows (LoginUser::display_avatar, served through
+     * Exment's file route, so a private S3 bucket still works). Users without
+     * one are left out and the portal keeps drawing their initial. One query
+     * for the whole set. ISS00254.
+     *
+     * @param array<int, mixed> $ids
+     * @return array<string, string>
+     */
+    public static function avatars(array $ids): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if (empty($ids)) {
+            return [];
+        }
+        $out = [];
+        try {
+            $rows = \Exceedone\Exment\Model\LoginUser::whereIn('base_user_id', $ids)
+                ->whereNotNull('avatar')
+                ->where('avatar', '<>', '')
+                ->get();
+            foreach ($rows as $row) {
+                $key = strval($row->base_user_id);
+                if (isset($out[$key])) {
+                    continue;
+                }
+                $url = strval($row->display_avatar);
+                if ($url !== '') {
+                    $out[$key] = $url;
+                }
+            }
+        } catch (\Throwable $e) {
+            // An avatar is decoration: never let it break the page.
+            \Illuminate\Support\Facades\Log::warning('pm_portal could not read avatars: ' . $e->getMessage());
+        }
+
+        return $out;
+    }
+
+    /**
      * The user ids a user column holds, whatever shape it was stored in: one
      * id, a list of them, or a comma separated string.
      *
