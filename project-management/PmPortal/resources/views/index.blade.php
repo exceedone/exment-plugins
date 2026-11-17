@@ -235,6 +235,7 @@
                 <table class="bl-list">
                     <thead><tr id="pp-issue-head">
                         <th class="chk" id="pp-chk-cell"><input type="checkbox" id="pp-chk-all" aria-label="{{ $lang['bk_selected'] }}"></th>
+                        <th class="pp-tcol" id="pp-tcol-head" hidden></th>
                         <th style="width:26px;"></th>
                         <th data-sort="ty">{{ $lang['col_ty'] }}</th>
                         <th data-sort="key">{{ $lang['col_key'] }}</th>
