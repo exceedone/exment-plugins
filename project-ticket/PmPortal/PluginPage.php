@@ -1,268 +1,343 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-B+Cb81iLWcoczgcIeG==
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Exceedone\Exment\Services\Plugin\PluginPageBase;
+use ExmentAdminCore\Admin\Layout\Content;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Project portal, packaged as a plugin.
+ *
+ * Named PluginPage rather than Plugin because the plugin declares more than
+ * one plugin type: once plugin_type is a list Exment looks for Plugin{Type},
+ * so a file called Plugin.php would simply stop being found.
+ *
+ * PluginPageController::__call hands over route parameters only, so the
+ * request is taken from the container here and the work is forwarded to the
+ * controllers. Anything that is already a Response - every lightapi endpoint
+ * - is returned untouched, which is what keeps the JSON contract identical to
+ * the routes this plugin replaces.
+ */
+class PluginPage extends PluginPageBase
+{
+    /**
+     * Exment builds this class on every boot - ExmentServiceProvider::load()
+     * asks each page plugin for its views - which makes the constructor the
+     * one place a plugin runs in every request and every artisan command.
+     * The model listeners that PluginEvent needs go on there.
+     *
+     * @param \Exceedone\Exment\Model\Plugin $plugin
+     */
+    public function __construct($plugin)
+    {
+        parent::__construct($plugin);
+
+        PluginEvent::registerGuards();
+    }
+
+    /**
+     * The portal renders its own chrome, so the generic plugin header would
+     * only push the layout down.
+     *
+     * @return bool
+     */
+    public function _showHeader()
+    {
+        return false;
+    }
+
+    protected function portal(): PmPortalController
+    {
+        return app(PmPortalController::class);
+    }
+
+    protected function api(): LightApiController
+    {
+        return app(LightApiController::class);
+    }
+
+    /**
+     * Call a lightapi method and make sure the caller gets JSON either way.
+     *
+     * Without this an uncaught throw is rendered by Exment's admin error
+     * page: an HTML body carrying HTTP 200. A JSON client reads that as a
+     * successful call, so a delete that actually failed looked like it had
+     * worked and the row silently stayed. Answering 500 with a JSON body
+     * keeps every response on the contract the client is written against.
+     *
+     * @param array<int, mixed> $args
+     */
+    protected function apiCall(string $method, array $args): JsonResponse
+    {
+        // The lightapi routes carry admin.morph in their middleware_except, an
+        // optimisation that assumes a route touches only the table in its URL.
+        // Permission and history do not hold under it: without the morph map a
+        // row's share stops resolving, so a member is refused on rows that are
+        // theirs, and every revision is written under the raw Class_{suuid}
+        // name instead of the table name, dropping the edit from history, the
+        // activity feed and the burndown. Define it here - the same call the
+        // middleware makes - so every call behaves like the web path it mirrors.
+        \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+
+        try {
+            return call_user_func_array([$this->api(), $method], $args);
+        } catch (\Throwable $e) {
+            Log::error('pm_portal lightapi ' . $method . ' failed: ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            // The message can carry the SQL text, the host, the port and the
+            // database name (a QueryException prints all four), so it is logged
+            // above for the operator but never handed back to the client.
+            return PortalDefinition::jsonError(500, 'server_error');
+        }
+    }
+
+    protected function settingsController(): PortalSettingsController
+    {
+        return app(PortalSettingsController::class);
+    }
+
+    /**
+     * Hand back something PluginPageController::__call will not touch.
+     *
+     * That method wraps any non-Response return value in a fresh Content row,
+     * which would nest the portal's own layout inside a second one - the page
+     * still renders, but the header is lost and the markup is duplicated.
+     * Rendering here turns it into a Response, which __call passes straight
+     * through.
+     *
+     * @param mixed $result
+     * @return mixed
+     */
+    protected function respond($result)
+    {
+        if ($result instanceof \Symfony\Component\HttpFoundation\Response) {
+            return $result;
+        }
+
+        if ($result instanceof Content || $result instanceof \Illuminate\Contracts\Support\Renderable) {
+            return response($result->render());
+        }
+
+        return $result;
+    }
+
+    // ---- portal screens -------------------------------------------------
+
+    public function index()
+    {
+        return $this->respond($this->portal()->index(request(), new Content()));
+    }
+
+    public function setup()
+    {
+        return $this->respond($this->portal()->setup(request(), new Content()));
+    }
+
+    public function postSetup()
+    {
+        return $this->portal()->postSetup(request());
+    }
+
+    public function show($id = null)
+    {
+        return $this->respond($this->portal()->show(request(), new Content(), $id));
+    }
+
+    public function embed($id, $kind)
+    {
+        return $this->respond($this->portal()->embed(request(), $id, $kind));
+    }
+
+    public function issueDetails($id)
+    {
+        return $this->portal()->issueDetails(request(), $id);
+    }
+
+    public function issueDetail($id, $issue_id)
+    {
+        return $this->portal()->issueDetail(request(), $id, $issue_id);
+    }
+
+    public function postComment($id, $issue_id)
+    {
+        return $this->portal()->postComment(request(), $id, $issue_id);
+    }
+
+    public function uploadIssueFile($id, $issue_id)
+    {
+        return $this->portal()->uploadIssueFile(request(), $id, $issue_id);
+    }
+
+    public function updateComment($id, $comment_id)
+    {
+        return $this->portal()->updateComment(request(), $id, $comment_id);
+    }
+
+    public function deleteComment($id, $comment_id)
+    {
+        return $this->portal()->deleteComment(request(), $id, $comment_id);
+    }
+
+    public function toggleStar($id)
+    {
+        return $this->portal()->toggleStar(request(), $id);
+    }
+
+    public function projectData($id)
+    {
+        return $this->portal()->projectData(request(), $id);
+    }
+
+    public function projectStamp($id)
+    {
+        return $this->portal()->projectStamp(request(), $id);
+    }
+
+    public function bulkUpdate($id)
+    {
+        return $this->portal()->bulkUpdate(request(), $id);
+    }
+
+    public function postFormStyle()
+    {
+        return $this->portal()->postFormStyle(request());
+    }
+
+    public function searchIssues()
+    {
+        return $this->portal()->searchIssues(request());
+    }
+
+    public function topbarProjects()
+    {
+        return $this->portal()->topbarProjects(request());
+    }
+
+    public function gitRepo($id)
+    {
+        return $this->portal()->gitRepo(request(), $id);
+    }
+
+    public function postGitRepo($id)
+    {
+        return $this->portal()->postGitRepo(request(), $id);
+    }
+
+    public function gitKeys($id)
+    {
+        return $this->portal()->gitKeys(request(), $id);
+    }
+
+    public function postGitKeyRemove($id)
+    {
+        return $this->portal()->postGitKeyRemove(request(), $id);
+    }
+
+    public function postGitToken($id)
+    {
+        return $this->portal()->postGitToken(request(), $id);
+    }
+
+    public function aiSuggest($id)
+    {
+        return $this->portal()->aiSuggest(request(), $id);
+    }
+
+    public function aiFeedback($id)
+    {
+        return $this->portal()->aiFeedback(request(), $id);
+    }
+
+    public function aiState($id)
+    {
+        return $this->portal()->aiState(request(), $id);
+    }
+
+    public function aiTest($id)
+    {
+        return $this->portal()->aiTest(request(), $id);
+    }
+
+    public function deleteProject($id)
+    {
+        return $this->portal()->deleteProject(request(), $id);
+    }
+
+    // ---- lightapi -------------------------------------------------------
+
+    public function apiSchema($tableKey)
+    {
+        return $this->apiCall('schema', [request(), $tableKey]);
+    }
+
+    public function apiList($tableKey)
+    {
+        return $this->apiCall('list', [request(), $tableKey]);
+    }
+
+    public function apiFind($tableKey, $id)
+    {
+        return $this->apiCall('find', [request(), $tableKey, $id]);
+    }
+
+    public function apiLookup($tableKey)
+    {
+        return $this->apiCall('lookup', [request(), $tableKey]);
+    }
+
+    public function apiEditForm($tableKey, $id)
+    {
+        return $this->apiCall('editForm', [request(), $tableKey, $id]);
+    }
+
+    public function apiCreateForm($tableKey)
+    {
+        return $this->apiCall('createForm', [request(), $tableKey]);
+    }
+
+    public function apiCreate($tableKey)
+    {
+        return $this->apiCall('create', [request(), $tableKey]);
+    }
+
+    public function apiUpdate($tableKey, $id)
+    {
+        return $this->apiCall('update', [request(), $tableKey, $id]);
+    }
+
+    public function apiDestroy($tableKey, $id)
+    {
+        return $this->apiCall('destroy', [request(), $tableKey, $id]);
+    }
+
+    public function apiReorder($tableKey)
+    {
+        return $this->apiCall('reorder', [request(), $tableKey]);
+    }
+
+    public function apiProjectMembers($id)
+    {
+        return $this->apiCall('projectMembers', [request(), $id]);
+    }
+
+    public function apiCard($kind, $id)
+    {
+        return $this->apiCall('card', [request(), $kind, $id]);
+    }
+
+    // ---- settings -------------------------------------------------------
+
+    public function settings()
+    {
+        return $this->respond($this->settingsController()->index(request(), new Content()));
+    }
+
+    public function postUpgrade()
+    {
+        return $this->settingsController()->upgrade(request());
+    }
+}

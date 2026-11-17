@@ -1,65 +1,50 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Exceedone\Exment\Database\ExtendedBlueprint;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * One row per "this user starred / watches this thing". A star is
+     * Backlog's いいね on an issue, a comment or a wiki page; a watch is a
+     * subscription that turns later changes into navbar notifications.
+     */
+    public function up(): void
+    {
+        $schema = DB::connection()->getSchemaBuilder();
+
+        $schema->blueprintResolver(function ($connection, $table, $callback) {
+            return new ExtendedBlueprint($connection, $table, $callback);
+        });
+
+        if (!\Schema::hasTable('exment_stars')) {
+            $schema->create('exment_stars', function (ExtendedBlueprint $table) {
+                $table->bigIncrements('id');
+                // star or watch
+                $table->string('star_type', 10)->default('star');
+                // a table name ("pm_issue", "pm_wiki"...) or "comment"
+                $table->string('target_type', 100);
+                $table->string('target_id', 64);
+                // id on the user table (the custom value, not the login user)
+                $table->unsignedBigInteger('user_id');
+                $table->timestamps();
+                $table->timeusers();
+
+                $table->unique(['star_type', 'target_type', 'target_id', 'user_id'], 'exment_stars_unique');
+                $table->index(['target_type', 'target_id'], 'exment_stars_target_idx');
+                $table->index('user_id', 'exment_stars_user_idx');
+            });
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        \Schema::dropIfExists('exment_stars');
+    }
+};

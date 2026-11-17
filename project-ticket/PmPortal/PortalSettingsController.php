@@ -1,309 +1,413 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-HR+cPvyW4DSrjEWOhDg5zCi3WAhnqCpyXXTD8VH0BQX/UUDs8wbFAYi4kDf/dAr55XraUNTfDtHQ
-eFc0YH/t1wkQKOpQ2P5c/XGddgMI4EIFWiFe+4J6yPhKjSIDshgJRjIRJ4o42AbojHHO87q58pY0
-zgS6Lsspv+VHUCmbt2N0lddTMdCDEnbnNvgQVzmPlMajwfwI306Dzlgp27QR0YIFj3TgHGG3o9aU
-FRGSFrox0o43Pb8+OqAeZDBaXjWz9W2wJJIwGLZUjfWq/RgVf2oXIV3UtxAOQRnCiJ6P1dUPwm/l
-5uGOWgBN5jn6nMM3YlnMedNGliugawwaq3+TXLT8Mqu9ChltVSMtdiMDZdiFzTDGkiIBavdcFdsw
-wYa96WJTiT07/8S4BXTWhH0X/erR+NFKupzyLL1ouk/448NHh8x+JAjViQdJ5iMpbdbIMVTJ5HZ7
-SwWFmtNY2DfDy5B8spvczxlG6tdUjkYpPPAo0e2SCE66/JKE9jbH0uZ4JlaFTGPiRenbkP1gkhmO
-D+C5ZZ2B8g3S66NdrbJW6xjULRIbKzodwz1Ug2Y/Vd9tPAyrlJTt7ZJSc2OXvtRj48ANIuoZRfRq
-gpRek6DH+8a2b/vQvbkal0co6/uI2pXa0wXLaOauG98QLGSjY95034t4VnTs9pdfW/huijdRsvCA
-LRBDgKR3P/+QeTfMnfjvn78Tj3tS4RtNcYO4hQ8oqiwMVVKDxv+hv804X4hZACWYAcd5QmBh1i0x
-actgDrGKEH1tXrGGFtq0A9wiGaZVRuu0Udrh0urDeu1diEFiXBhzAqRXa+ZQpnAbKDaiP/me16qZ
-4bPyqxHW6eUzx9MZH3MrvcdPkba/X/MTCDGCea3XZqJOqiv+AfkUC0lnlU8lyvCmi4SjCuvIQGPH
-N1+eo93gwIn4wBQaQwXoFTDT103A7DfIboqGuCeFvouvpc9BW85WM3JRi4EH2sQgu3bgoLHo6D7f
-C8seUsijjtvIL10nLtBQ7lRZGU6BCxJFitCDKDaI3Xyr/rzQMcdbfGzKtwpWHwr63FJX2ACi+DWG
-86hy+/IhYU/o3+uO56sM+yoTc2ZuVfi+VVVF9fG6VJCgLzr37FFBgvMHwXwpVlSRv9yVBQuMAsbN
-LARTdYoKfWtOg+TVuveWGAHnkq8hTx3cdIjgX3JKYuZ938+AU3rMkS4bFf8GCnY1sQ5p+iqHi+oj
-3sAErMPtg4bXCr6aD+cysK3FYBWGY55Lw/atHikFTkjfw8BPMIO7pkoJmnCb3RIbJtfGLtDAsTPB
-lokAmVf6yWykcDUGYTefJPLqQ1wnBYkN1jJD5iMW6X39OqlxbnMlteXEjAlmgvLIK37E7vUjMsNj
-8nnmgWIku3lx00N/E4zZE2wBV0zKt/geIwONbcBtCRY9vwxWGVkQqFV2Pdpe0Kh0wBaqrIpj6mYG
-KPcAk/H3MUK7epD1WhqzzJyrtW2AN+fEc9/rFlxqXFSXsuFF38yegIe06z91l7fpw2pA09ebUgat
-VJuk6LaGcrWWkTIC8ZWNS/BIx6D6ewg9R9yrAf536/vTFn+xrjQ7ynhHOuJ3KpeampSGP2dEYfig
-lJJuNM9s/6FfJoZ+dUenEIs5EFIYUyZAKVR+JG78QC+WCKO8bnHDc5CmziuKlZD0mYyfSo9lowC6
-zfSFsRyhw0lTptiVi+TtpUkY5EANN5ITtkIBI3iOfnqEcZ/IhmyhBI1Ayi0EeAmMlnMZbN+lAzr/
-oUUYVYMeYVTYgAdpEBSgeureAjxp04xxPWeYB/RhAh0P0grI9dH/wDHT4B3RZEH/Yeg2Ak5GZvgo
-e6wOKqubFpgLpDm1OoXUKKpn+QMF31w2nuvrNQ5WG63BQ3Y7y8YDWNmWNLNNRfsW8g6hQnOlHJUt
-SejlxAHEdrQ9wNpUlhZlKIQlqeFoYdI18p852xFOT7VsLSljcsra6TBIlvEJ0O2DmLR2HwlNRuS5
-UVny1InMgKkJ/m1dz2LrSeXrS4YnrrwhakRv9cVumIkUb+I1Hb9p5B6heDTAfK++v7dIrIOu9fxF
-KuKp1MeQLMzCLUovG5f7/nTOWyVYf2LEzOf7P1logzPXexKMw2OeOlMy7onazi+oSsZVJRe1eSNV
-RuzSqwvc9UPY5QzqtHSIV1Kgl1N5b4tF2qI63H5GkEKRTwVl29pkzx5KIoAtcGL4eS5tTv69B7vq
-XbijYff2Dc1t7mrVw5a5TjbV4d5dWAydh/Z83pdB+/a2nHs9T9rU//rr8znBbQjyry0kLFeg27HP
-W0YikuJsmo+SeUJ1vI9dmWk3CskWk3Zeuz9o4EoVW4uJJmXPz+9a9fSGYaKMJKQHv9zuvtCAdOx1
-K1XRDkC70hsrJEGCzd/ikIpWFjxOskdE3dfJ/yIwtxWiYTo+tKqgQCkILIl/qAZQJI9YKCzitbHd
-zNtPhBAc9hDSOwqh2xlNkKYDtqW9T8WBTGuwS+naJjxgA7Y+jUAGObFK9YrmwyCm0VGZK/9Y7W/W
-19jA+KQ4/Wxm0jmZrcv5uteK8oVW3xGsgghbMHFHQpJO7wYw57oLgs4mxZz8S0+C/ywA3fzs0TU9
-44XewKp9Qg3PFa/wFnNQurrRZ+QiyiNB0bx3fsnhNSHkkB9ilJBejA9C5J8RWSbun9wO9PYbPNF7
-Vee8c+eZM18/nAzqZXw9UB61NOxrOTTL0XC5N4zU+wMlfLzUKnJhane5LqrPhfyhcSWnfrihvOnc
-gfWvcM3hNGKP44hBk/5mCud5FRKDNOF5zaNHtBQ323rY8WRKRgkyXtK/VdcWC88rxfx1GOT80xSE
-ZO5yMspsHUIUtPDxGrxIxizKvyyj5pMPVG4SaTo6KmNG07bPUVIlPvhHlTEc1P4Ky+Oa59VnOqoF
-hYKtAvegSiEnLhDK8htSqPN6RMEJtUMGFlGZLIhYHkw7+sp/h8VpTfDYKnGny2jhq1H2qVdW4+ZJ
-MK7oHSUTCvC/15YVD//QHXSFTxtAxnWRQu/KqV+a1lx0Lv3fTVkewKKMQp7WvHeoAVCcmwRpDwh9
-DYrA2FIaL+J0/2Iz1K+WxqDtfaZUW2rY1GfQllFyaNj/4i5dkEt56VGcXB5s1wujx/sc5hSj/o++
-5Qyx/SCjx4lINT7G94yiXjNAx38YpF00d4qxGZ0q5lFRCb7OkXsSAzGYE05NfE4r9nE+Mp04/qsQ
-XkmjvMcyXKfx+SwrUs1bpuQMwr+iOzKRtOUGGfCatsaNbVo8+bjM0oSk8eQN41oJcet5i9H3XTb7
-CWYckOygBlwJz0+AlVp2utUfySn5hcByGlXAtpB06YSJv4d3AGK5y1l9pNVD5rIH6q1Re8Dhtw7n
-LGP8+V6jdGBH9iHmCTGTW/sSUGGSHLQbZRhidY/aiGFZqeyTk8lZwJh4fq8esJcMTJEJD+Q5U2rQ
-FkTLHY/TgTsefgQ4QAAUOFpMTHqkHxoET5Z/wcPJgwVJbkjWIfeowihyG4z3nwfhaGaQg7ZPIJNX
-9qAAG0SnAPNYiuu+roF07K0587mk/4KnQ7e5iyzPUCqeSF6vH+Ww0JP6KDdaMIhM4BaOgXysq/8q
-EIyOl2r7tCv2JlwdGFOCuygkuGM+UfyFUGH3Qv4aXwHYxF5/7hK7foHIyzLke/no85JxgV8xBCoL
-ZFOJuPVKDaHBR9cV1yJYmJPaenFqYTPfElerEAb1I5t3JOXEC4B2Ti0hmc+Zh6UjM95n2AbtZCZp
-+AGIgMLz5yRMg4IirYfB/H19r4/xnRVwNIsFCY5+2+t1bN61semFzsB4/AXkJzWdYn54wXHx5JWG
-fB1FpYiX6Zi6J3EwnEfC6zmb4HNEX7jL7As0TM2nAZX83BNO0HqsFZZWWbDDzQumJNKScsj4d9Lq
-3M1tvggRvRMEs8bPB8zQSNwM5OIcY8YCXhSlYtsuXLGs4Z9FRP2HBg0ojL1EzAH/lt7niXr7ncbc
-VkSbtcY59blLLqHuwiTBVQ0v50tNHTAWuPNDjtyc6SmxqOk3kXYuOykDMsfbZclYkH+laJZDhPxp
-tu8Olv9aFINp2hS50vplyyG4Av5QG2G49ujxgRu6oIAx5rJdcP8RIAaSgY5Gg57MRbflmaik0fRp
-An36tk8sNgP43vyzTnAGFuAdaunFmQrCb6KKhZsSRXrMNHg9tlSGoNOUph0AkzinzaoI34j0ww6Z
-IfZAlc4jPHnjknWgy9/6ySSRgqNxcTWrB14YcJLqmWluMGcIb5WU5kPTHkRl9+5+Qs1vmQkbJaQc
-9XApM/x1kIATiU4DRPRRBQ4P7v9buRzF+HWfIpx2QSuXyljDqRqeLTX9IORM0uF2LZQgQbSAaqc3
-TzcHQUVyzznFx4XVOMLw4mh8Rh0A7FGPmszMNMe8qmOArNdRHrfHu4nOxiihepwzR4yovdAjBl8z
-POueVLPMXFEAcXstFLED2Yy+l6XNnArYhIjMMhtoMAynDw9E6i1Vhy4SDmMAuVX2X5ymdPsCZFpg
-Xf/srpA5HZwd3WKilUlkoFWBk306RFKvOeprNiMVYZ1XEQZcFy5q3mxTYY+irnBn9hNBsJqIZ16P
-152m6mXbH7+dTD0CQrmPaoyUKCGGfGN92buooHrOmd/eKpBYjJPAxR0n1Bz1kmT+Bo1NVQZkb5vM
-J6+aCRpn8R0SJVJOxdz9fQPYEWIAeAYA0pe7qrrqNYWXYc64ZCpBwIjFsFWLkkjknSxVQyWlNgvT
-bR4s7AoUvs09y1F4msPTh67mW8zDJHHVB7nxmk5TTuffVnajwAcwD1geH6g73o5egbqS7yoodb9O
-MbRvrzOd02w0AFvwl0ZEzqD24moGpNt38xyTSNVSc/eMHZ4x2MB+UyIbKF+gC+nJHncSJt3De+Pw
-rHjZfOJ6yxbtSI32qu0X//cpBLGvTSTRyujNEBKWzXNrjB6E4QLvI8EY+zbTQRNWP8msRujUGcPm
-KVWiJ23Vw/0FHGz3X4sL4A7x4MbmGBEbHobarIQT2l6yT7IMB5X3wNaIRJEPTLh/K1HFmAn6qI7t
-PE2PEZMxAlecqXCZn+NDNG65j8/qSe5Jd/4fYb2SuqI9U3spUvp8b7pP3FcRMoexIR3n386edu/q
-NIAlqKHFGVM0i6lkPBrzbnV/yD/4m8+QB6r5uyaAA+yCGYwtOa7cWKoegCdacfy53xxaC+JEw44u
-Fse9rCIfgxgvBXhjoYC9/pZb5yQGYYjSv2+SkCcKIGGsk8Y4lnkLOaMNDO7b+X60m1W1ntcQauU1
-2/z1LHfRU8gs7e3CuSFj5e/n5T3Ve6H11E0ExOMZELfiQANYZzBiJzT2eqheMGgmQJ2HNDvIAgfQ
-SkdXrJ/PA1hnLE9sC6ipnyo6tmjbaKm7Fd6au3k6tATNAcFB9v1Wn7vka5Y4iUHCL2GX3vGH7xk1
-Ly3HxsHDKnikwvB1ew4OMpxImX/e7gYNyxCO9ofrBu7VxKl7O/rNg/Xbjnetes765/kfwLaugUHI
-+D9vh8SfVxKUsUdS66lov4XthJr7f893YQupJ751y77WMndCWpal7FnhMqetvj5j45pdgFTfhSSE
-3azVmoIr8vqehRA39h8z4FzG5rUWBvMBwx9oUOcRMIhoP2Y51A8PB3gU3OfS2fvWhqbPTD/xc8kz
-BDXk0mhwawIDwyTqU+N/W3+Sx3UI8BXtHO+OOfb8DNHJGmYDdWq+vJAkC8qelZsq1hC2IOaSHEsP
-DQ4v3HCQaePZnQikgJaA13lno65iU0tIpHpHCt3lhW7s4xcRFPZ9Wm/l1Ew5XSQ0j4Rlba0+NHLy
-H7dM58wzZbBNvLjIHRnMX4VykAYDUEYxue/sc5zYvhWnAuhT32Zp2zR8Bzmfn46I2pO8T28D+dGg
-eWFw5Y4qsctPxqTcxHTDUuNIRjTV05uFXmeJKEkV/jY+ELN9Q6rIFUUnjQo5Q/bJGyVZ7/K6ytHj
-RHTG9l4WNUNvMgD2TGlva/SuGDZQ6L7CGhRxrq/Gv0o8cLC0C1UOgjBgmrmBHSIDf4e96xUp8E1P
-9GTjW0PQLTBqW2ETCzYvUm/XvL3Ug8TTU7l+JoZOQOo70L4gdzCBs+2QokJjmiowh91RrYiiR+4o
-B2vIIagaCLQe3SGE9u2JMpI10x+MOerZC4KRqiCCpZUSNBYQvY9A7jNMwGwEyPXDMk4qno9/NtxM
-uNHfpJBtlSADC1VgwRC9vSLt45iJFO9ljZN+iN1scP6MCwrGleME2ORv+TgZpdCsCQqlK2Y7Llvc
-dRkK2YVZk3LI2eS3l1NhozO2op5sSQdUNOFNrzXBUvk83HE6yX2ico+ojc1u+MJW8ULstW0k4W4O
-7a6Ge61pwGhqViMsxUp7y/XqbHDBaJ6oGUbLRtKAffvHhvF2Dh0wKJbLFzZTq1+XDVM5tX4zovY5
-Uo/DVSYNtB1rbslTYBqOg+tllDbMVVERmZlFUW2QQRdzwvZP/nG2Fa0l+wg6E5bX10U0e+UtlEB6
-NUGMpyUbsuau22eIs2rae2GhsMTnwHZX+Xohn+mMieANqyFk6Nzr0uxklLQjIyv16/5uHThx07vj
-8zPaesZ5U8NEvUewJcF/tdkkL11DYGzokxiduy3h06d/kZSP25g7+NEFB2+YL478MK8Q34JsenN4
-PpR1Gn+u0CyK6z9eOp4Dewp536V7GLLlGetZAWsCib2aeBKXCLRJ8R/EP4OGjCbdBG24ukz+DLtQ
-SN6+5+c4e6rahzfw6l8KkVWuYHVpSQwW0DRkpMId4zoIcZXldEDj9ndPvhSN/vtMtItI0desZGZL
-lG+PBdHcmzpsjYTpyS+c0dIxw+JYmzeubpli3t4zFYIoQF7FuLG6bS26MkZiTkGe0hpUGvxmI15K
-WgBi1EQ/70ncS1xmNMBGR9mKAueXEJHsz63eJ+eLEHH9XeJoMmY9xauN/4z4hK7qCH+r6aaSRHpQ
-gDENNSOlfIFISWWJ38RQuZ6QfzaUE0zMP6gGWVxUzYSNjDH3ZwxwpnHPMVCZLYTzde7XCu9qjtII
-KEc2du/Mztdm0jDk3bNdfZZmdU6gcp+Gs8KDxjHlSTd11M+uQg6smLHdog6ucml+Iq8uQVaNyRq7
-oy4wtvqvH1e2YM7ijPlj8zOXyJBXI9b+9bD58fMvlV/wGvvpsyH8M76m+LZg+Xz66mEVUqTZstBZ
-sZ5APeQwrV7NSFMqx8XxVRv230PKDq05dxhOSwdcFlMTBtWhNhFUSbdDqmvM4sDoxPKmpD3rTTYZ
-dQHx/3unMNabyGC+qMPoMMaIKSOp3fW47mFtq0IVnn48TXtu09LFIUqrj1HhLZWJE44ccQDMEBZE
-xkqA3yPOczFdCYjJrrXVsJieWIzVoZ9G7r1XVnomXOE+GLFg6dwtCJFT6UTIbmYQTDB3RzccBDam
-fujJ+4/YEnvN003DCjvxP63281hgJzyoC+k5sOhjS78VqSJWCq9kiaDvfTv+Zk4nYvNzWONnHVzu
-yVeiRvEO5OGHgqsNa3ArAVdIDgbc2H4jHumPbqYt+6ItEwOjjI5raMNpuM8cjPEyp44c29NeSahu
-/z5hFoZVdqMVLwOTi/Qee0SIk8MT/rHbX03aWhrDIY4ITGu8fAAk4NeiMXzdUZZ9DMLbo4K5ZDkb
-DJJbUGpLfHOI8iNCM29GZHSPZ0gHDFwBQPJ4G3doFl5Y+FXiGKfWa4jfJfTnTMHluqFWW8xPW1Ef
-OjpPgB/qpF7QUJXvDbqoEhPjScEv9XNmnA/taYJYR94V/4zusEjtMNn1bj0GJxyEjreGzY2pHAYx
-PpxPyLu0BVP8dkV0mL6Ey0oA8I2CSTwGFr5Xwev/DzqNbNDfW3xp0kAN36pjKBJUCwv1aXAdSzvt
-Wrht8qIkpDTvzLpn0fRr4OjC3L38pgRwpzwhLwEdqHMy4CIx0D9cHLt0Q6HWH/4aYbnOvP9tb8AS
-CTNou3Hci0SrE5pSOZqPZv8XV75DhAFVCZSRhTwsvQ1RQq5xRee/7PEoZaGogQ5jRdVe0/Sdjnde
-CvKeWtcKgNH38jUC/KZNTU3cszduCbn36b/UiNElvIiSAFgVkXooxCW3LzxbEUi1KTjguOQbx4OR
-kquBgzfTeg9nIzw8Mq5NYadPSrascqS9eOYNzOULgCSpdyy6tYlHMbbSb5nWQyMLfYu0ihGQ0bsT
-O2NqoEWbB21D6hav3aUqSlLFJPkZCg0nvmcYMOsGYyMrmCXH1z4jFXa4XSOixMsC42Wn07bp6Onw
-b2NAsl7X6GLAqEv9Tm8+QikGEmKagl1BBsfJa5xi7acCclkFHEoeEzycV4dcjW1tMcMV673iSpRG
-imef+AlAcuhOQhIVElAnWxbl1+6zMdGc+3HT/v43VZIgXBG35z2WQPwKLDUM1AqNz/uaU4HcQMJr
-IRfvxfWXkOFi5nPE/yzbEawy27ZXUUoB9wJvtfmOHoVyWkzzs6prIX7va1oFZSqLZPXCeexbjRSB
-PK45X8ivBE44jkcLwCj1if8sfIoy9wnkhF38YJX0jOz6brKfIEZHthFtJwdS/CodFRd2O9Bj4Z1A
-XfGfzMYKIV5PfMseGG+gQvGjrXD4xGGt293OWFe6aTaNg0eBkc/wf9fISNZULw6XTWEAxtVrEGWV
-kzGNNmPzdYbRm28xj6NoNqAETecVfKvwgC4fj5BUCPq5xSQW0NyOhW/lTbmnly0jggxFZUlknm5i
-hQ6juYUnmQPbJuz6EKMC51im7ckqm2rGomcsbVW4vzMXknYhL3xPvKkwo9YeSn6tH+8YAcJ29fN/
-JCpOwzBlbLYPl//xGm6Q1+kw63E4RioMm+MSupRZotQBJhXYFxrseDJllGFEaa8ethc5WM0TAnXv
-o1jNrZV9UupDLOCL/miiL7fqf026dYQO4A7cUVaj8uqX9Fo0L9ARwlYT14THaXcWFVIlK17sId5W
-z+Pjh2NKRVlNTcswf2s9B6cE49wCQc9P2zARuaW6c9l/GLduRL2lP0gVOdEa4yQ8XZLhvSadTdlc
-QDmxfGfw52yVcRBOX/8A2NrUPCHbLTHnEefP2Wf9RXe28hUqZMBT6usM42J8LJPh/yluGD0mQ/G5
-SMygUa87nKwnfp71Cg4EYeuaEenSwc2++Li3GYhxBAkLV3q6PNpQtdGXCFGvDxgHMGf0bu2qkjW8
-W6SUaktTrhUz+HMSjB5imB4GkDg9oJXbrEQxJf+HzTHxXV4hgWzHeKsU33MdEDMhKyfWv0AmgY37
-tWeMrxkgT6wgVDcRY79nTGw16EgJomMjw6hKJ8qtRISr6Ldk4Hxzef8b+G8gYNNjpH/6DlgIQ9DU
-x6qHyb/NCivPaFyc6I1ws9fRkWMPti2kY7zNUFKiK++bSH4fxJ6JWR32kawvT1k0tI/WyHZN1DOJ
-KFFzqkMJDVj6GBHYH/WiJWLpa2vKh06vtD6gNF0kxHbXPNeHmIWDV9b3KEbTuIZr94Tt+EIXgexj
-sOENbRu2lp2XPqVg6YQ86EutO4Ym8AjKS2xFtfSTGplTYXGaiupL1R15ljE/0gHc+WLnA5QcpyNy
-1QibKa2IEu21DTRgSOJnyTziJU0RhNbrkJ8G+sFvhcWaXeMDHElAKacqSlFG6/HBk6YrMMd2IR6b
-73/L5uHEdsA6VIy+WxH4EdQnwBCqzqJtKTvAX6Bx2nBztpbMEk+P9jfkydmYu8BU6Tm1Jy1sBcnG
-NeiHEsqJE2JBBLUjuyaIkkRiBPI8rvnphDnQkdVpZdwU2+cj059rbWVDyB9uo4F/YNum5N2HKqf3
-5jVZgyCuRCB82ltsKfqz3CMuMVSo6NwQwm7J+pcySQzGQ1U5G85XBtyCWJUFh0PrbTK4WbFoUYz/
-3lrpGAiCj39cSJrjstKh3dMyi0Co3avEpm6Slfd3vHdXJP4XEGMpFNjxVjoIlxk7ESVp1StG7pYW
-Pe/5osuIHlGm7wTunS2kPGa74l/xMH7VoKOzNpXxxevvdY1sqEC6oMpHjPbSDnEotcGHRAw8a8wz
-6K+q31ejLCSTN66XGYJVGdOCD4cflqB2llwTSNmMGIVu25nQzyI7W1k7apgHU20KxJSCM9FgfCeq
-ECQkCebtDLOrufngpI9eo8Y4HHfCteQJXygb/sFjTwxwPjLoQ03XcLWSqgMneuMk7EHZ5dhf2Sfw
-wWQ2qEnIKKzRtWt5piLbf7qXFXH2BAqoFYn3u8BXdce4th9Jn3DqTh9I3xKZO1HFKFjOjvXgBTBO
-XeOLBLY0esThfETq431iQrYYBCLnzAF6mpeDTCCVLcT3u9CEQRwbq7nuwloe0GOSxfzVDrJ4V2ad
-apLyc1qC48ksqld0lAGiZzt6id8v6g2e3xfvDSub5ZjFAj8HO5aJFlpXsNFP+Ylk1EHjz/EZicbM
-/yw69x9JBCNkb32e+Oa1c9fGBWLYVzpJqMRDC9K5UgX21aQP8RAmqdLLRMSX+iCOdF4FEA6lKfG0
-Z3uPWGdTPiho6u31Go4UO+uTQNtef7APc01wCZgsC0xMAMbHMIA2zJGp4sMBQEN/RMB3ZvzGbGxL
-QjLT+7GkYDG5ZlYejpFIXP+fsWmEC/h9oyopFH+6Rpem+fxT2D0l3ZfddIjY1Z9CDmmAqmY53aK0
-VcoG4zzzaK+Gtz5ZkjyOtNiOagFzfnQiNvKR8oSxQQxeaIYt8H/6Ro5CVWoZ1X3JjuFnTmlWx957
-QwNPqxXme4xWxanTB+xoq7TRsSgUx2n38QSBBp2VRkpga9r4C5b8ySL2WQG1sNdfjRS14rM/ZMjF
-5Cu5IY3Xr/r53ObSGGzEGtNTL/WDapxdOyJmysiagCWwXe1Dc3Rchk5OZ3//1BhiATi2edV84hcM
-Zj4xUFmWLxlHYq8qlinx308H4Frps4HtPWNRI87CayW+d2yrwy7VxWooUArS6dOEM1WkdlKvH19+
-uFXw7pDteUtxwC0hzUNajukXR3tfVD/ouy8ENcGA5pdb12D7JT2Tg2ztioElPik1UGQL0rb1pssV
-QbfqccJ6roTGYxbnbY7bzL7JWsitJNeVaHeMojR2DW6s0MVafjC+7D79jby/3egGAQBlhS8SW2uI
-fEJfUp3HWv522xBFYdUmOqvEqD0+r4qnO8ZyWywAdbQKzYyRhAJpTSGonJcy/OLMSuF/eeozmcca
-cRXBGYmr9cgqE1pD3yEHl+QlpXHniDuweSuCs+iCnmfg1nDtE4Kgp7pg23kWlVbRoO/juC5b45m3
-Uux/yE5bjklBjB9X5W5CAEUidj/bCcWGHjgqhWnFpuyoRo7isylGNZGRAot5MJEPfoiUblgHLaH5
-XYozmyjefZkKQ7bCINhtTOv79t6xqaaR8LEM/0nFfFqbeeB7Bf14KNrpQH2i17hYL6W/crAspvdK
-KyN6IoFO7kBua6nGtoUOYmAq9heqQQbUPDRlBsFZs1/n3rmARg6kDMbJdVvomeLEwXeax8LV3NRc
-bFe9SYrl2KE/qaj2RdLFmKa/2muI2rGptU7HLSaqZAqBsW6bzbBnWcRqALvvej+olCqrEyfTSQ/t
-EEzAR/tBmV6JlkScRj6blliFwFftI7mUq+muUoge78/BZsvTt0FCAVouZXcrKdZtBnEDJEzVHvEA
-fRJFCZXM3yFw7LF7eMX8j7Mlbv+9+htEbme/AHymTMsCBPC67FrmK9bNw/JGpDOZ5m7UiPxRIeKS
-2yORAknssj64US+AeujB9N8vKn42emFWutfp9EDSoci90UwdimZvYWy59W7GhWPMa1bE1rR7+sWw
-9ovw9fWOVywi8pvSMzvN6AB0XuwjjryR2gOliGZcEzZ/Gkbb1FY/hJt27gZReziqjsldZaCYOqyJ
-5XZDEBLwoHMVhlwohUM+IiTpMFzprwZerIBKBQxhY44HNRVr2IOl5w5QyriLvIRTbr2aMh8/TC/6
-IyFwPK2JDGDSSu4kJzKIxi/CzxJYCkAc2tf3I6V+OrtKBd2Egjj5eYpjN0kVezmsrGS9TbM/7izQ
-bl6vCl6Sd7Jc1k/OZC5sfnHAVTqxpzYav1xFXPBrI9pqVt2yOpyFfEUZ5wjN56jngKKfeQTtcUES
-lsc8nd3Q3iMSLG24wALfGbFpl0cPnB0DXcN0R6fxL7zZfu679K0sfShSM4TztFKJW0E2vXLKJ6FR
-42ECBP7TQu5sKB43esOseKHJfaxxBVBMIV81yKbZaJg7i1IGvsVlSF7fCqHf8c41MbwGt81r9rtT
-QqqH2ecxf+MANt+tTxgw+0ctI1MZVKQmCHgPOHS+XMEu6VYNKNn81lfzYhZU6JA9ro18L/mIGY3T
-xTSPVS7Wi/o9933ZUwS0+xZXNAJJG5n2Ae7hcUj8eyWGGZw8bhmevlPVMEsqG2prpfEbOJeQxUFb
-H9pEfCzCvXKvejpBH9kS2X0mlPbMGWSYVuujCIUlqCKHYkjiwB/2xaj5fcnTS9u2KCjPuF2FPuUX
-yuRXMyMCv+T7TzkcNTVVCgo3bM7IB6nlaBgs6UFrEDYqVsKWTxnjrBX24lYbYlPCf87NdT3zJOgZ
-GcGPyEhxjDEzHcb7l73iqoAfhh8nxcn//nE0dNNveMNhAnrcoVGfBiYbaqb16Dz/x4SUJn7JAh+L
-JOOiVGd1O3UM8wJc4z5JBSOUHgEz7Yd5Bdhsa0oHzQ0NC374ofQ7cXbyPPoKMMSPvzvxA14tGfyI
-KR8T4ygYV2k9tpSFzQqBAlZ+/5PIBbfmMnKtxoKRCPQo3aEEKop+Q52KuMCQ6q8Xode8S/8mOaHZ
-qsWLRA3xeOAeu4jfeASrOQ46sadMW3fVSTTpyfXvgj9KkXtc9C2YN3IEOpNUAGuHmuUc7GT2ldpb
-fPeY/Xba7ywghEY78cb57DOeDdBHxPRv/4lerW4WH+uXjOGaH74Pjxk/ESKhVe+zSNBCW3//XxNf
-wW4wlREuLrw9hqKbUF/MiIGaSvVndizYXfT42VpmCOLiEHP7E/dshMYEN/1aDgc1HMmBMogDSQ4L
-9mVLi5yYdSfCZA2WDYHOtoOVSLGAhflgMqWL4fLHz8XS5IuBifgBcA3Urch/ihTQ3pedwxAD5xBa
-ZeQM609GIKg7aE7ZHPLXg1pPh50CUTs9XeehLv/DLl/56iHV8j4zrvxjCnI1tNMaYPGk1q44nYDa
-yGBbAAR/iG7LhO15p07m+79eoIzf39WLgTlgjUahSd1I33zNkac2qaHjJJswy04gE+XTrfPON2Vn
-qz+R1Flglt1fkFCLi0PIJmhLedp/cGZOU2tIh2+ItTcInXFAGSkAN0t5GsWiVbJPoSbY2GsYPmRj
-hvm0ckbUGFo5R+87A0UOabCAavuvUP1yjsirLPFnCiQaaaoLu3NoX2y4Wm6/UmyIhWT4/xfhU2cB
-x0L+TDRiDDQTNKPp6cWhLEgCaIEMkCwgeyYdiRytL8Ggc167aOJrBlUghKEbgfr96Rec/sFHtGE0
-QK2WcjpAOq5NK/wEzwVlmFj818LrxRasY8ToRKjNYqtR5y6esR3nDp7HzIIJsBjG52i78dAbrKa+
-W5uaHLFvily+5YBo7c4aWjIsokTcTcFOprWZdCfIGgS6xlsytiFvgfbRnuQo24Yt/jMcbkHrNuBR
-JxC3/tYjEhrEgIK6ZZ8EopsEvSt7mo0GmksrywOA5y+FQ8PHb0d7XhyfTD4EwgWKXR6HQt2CD/p8
-LXemjjivCbEnKl1C9t9BMfW8p164v1GK3wublHpJ5d+CLwQgYm6q0PZhRPy36M1XBY86Bi7d073b
-VRy/mRxkfZHuRXMFM5XM4RPIs9dmE/iYdjPSUgypRhZ14dEMPTl8qH3J4c+vriH8V1DDkwfUApIR
-QGse/5oqwCrSWQWKlwtLYNIr2CIIv3WJ3swq65wEC7/6/CjCmUTIZsSJEimSqGrH4ODZrrv1Vy6N
-cmOjHiK0yCER7KECjtzbtu82rXYZigQdUsVQSFyqBXR/f1e7gIou7BxbHV3I7Wy688Rb5bluZNO9
-ieD+Wn4bkpCEUiQmGQJvZzU7OyGszHZCFSj2tE6hsYPqMWd8HVn7a0ur/EskdiqRL2A7QNMixqJK
-54rhpqyp69rIszvcFLuMLuUdg1qQmpRyQJv9tjGI7qRY+r/jPkfTIExNGW44lCGHWueInIDdzNnZ
-sU1QuwqSZiF+nm/Df5yAv7wC4ucfaF9Oy3GnXRKOtLNmyEMfek48o9QWCZb6Cf1kWoPqk3HDvfe6
-R8+C56HSawergNmPVoQgaeAjhXSKVVuknP9f2iBnjOf42yxSW1JAAQilIEkV4HzUhMjToHpSpHk+
-WNpTTpEBIgOZsSvxUJiVvniQWMcgkvDKQGc2CthZ9H+NqyYQW0R3fGEUSYUmaT5d6VpqpN8i3tUN
-Z2b+v6x+Y2ejbnAz8M+QYAGzPcBASW7ryzhx5dHJURompXqSGHA3WdfVke9n3hQt1hJhuzYq83vd
-1j/T1MyIjiVW5TnOmAZjlmO+G9pSLZtGSnGX+KU8tO2AX3LdYj6523f5rnN91Xf5Q0E+S+UE0S0O
-JWNq5w2vgUKgywXgVMdQYUG+JENZ/7lbDnnoDSdh+jRhmM75AMq2AFGMSlHMlXVdcWj0Rv+pqrJx
-zFPb+WOVZVe3IysXVMCBCIJ72VEzWD+z/NwBXOJI1JHx63lltB9ATAT1RRO55JxtjTZboxkejY8R
-wV8FGGLCAkrkpTSOve8ZkeE7ld1TXKqmoPjWluerAms7JelB49rpbZfwqJuI9owuqJQfiTUIMOoY
-EG63yQgWlcWrNqlfosZncrjJa7in0XKT6HkIxwVjgx3VE8vbsUI7OgraYdntSBxaGa9B1kWsLWzv
-/mV8HCu603rrnnVO9fjlVn1SfgfOJOog+Vdj8bRF9+dgW2EELiy2Sx3zzk62cGxEf6EJE1MSAf22
-wbP64Ta9d9rBE+VWCqNXHkzYfDIl5mEVFVkmOe70WreeSemQQJN5EHRgtjoNb1eP1vmRa8HUyemH
-8hHkf3r6P8uGDA2DaxQfnNIhgx4zMtJKz773/tYIVCeZcs46m5sgv0bdqxaPwzCWLUnNdF2H9J8Y
-D0OsFOlvhLrKM3X6UNs/ALZArojmEDfOo9rnIjmrfe9TsU/CjlvdQIP1GxsGPRYTC/8a0kOwNxtf
-+nUCUxdcGiQNfFgVsNwhCoIjG2rvsDlPCNL/umizeR3bivOqU49PM7G1DoY/CZtJUYSARd5w5e11
-4y3eKEBVvTSAUVw0XB2pBkuIb2eAD+FwvE28ykkmRQXDA1czd8n8czg5vXF9uy9sdyV8ecOwqglW
-zHyipDHkCmDNQX4o3lr/OlTiMvMATryR4vRi+GmUJKqj2HRgId9fhedjLTjltxrpEtpRA/+QdM2N
-Z6Y00uZ1FwgGqOtmn63706y9NjfravnBzkUYMyB17ptHiCl4NF3242MjSFwPIWH5C4IfSAk7PZ69
-auMi8VxW2X6d9/rh7EqMDtWbXv5Ab7qo+Bbp5ywj0eTrZ8H0JIVaPW9773sR5RiE1GRu+0/mxJc8
-W74D3NPg7BxhvyaKUrhpnlrkKT+vn3A2EuTPM5D2YlegHYrhbjU7JfhXNQ0+j/5JjQ6P1CBz1O8I
-qOKfAHrTylbzbThKwDj08Acw1jgdO7sL/gzqrdtAnpusYOVdoozJypU4bR+5xRC7pEDJ0eSZa5yL
-2md6BswTK4j22ZcIuT2DIpFsLrTzCNG//w7cCgiPdsHUzjeSFbyUGxxeGAKOaGmgBYxLOuSrg9jt
-9UxqWh3uXIG8zP87iUjbIsVNzaXvtrCUwfWnK4fVwFfS1qWJV1Xv85VCSFIaej2p/btr66f8cvxF
-bUd3u+sEvQoDTiYcACUDGnjUtYXbOvYrBnuHas7X+ZMm1PsN9Pw2kko4HxXLVRHO6AGYmRVVAaAT
-hbBcL7bAE0sSUAh7BHKx//NVt3yA+BtmIHGIoPXczQERWFCtG5xCD5Z/l5vHJa2miX8zoEmbkCHI
-91R1g5IRZUoCznlZJzQSoHjxfN8Mto04jYowfI1cxpuErV55FjE/+FAnLBUrX0bm+Fgvi3x/E7ai
-OwVldO7CQ9MM6wxCizBGCiNlcahdWBvfsUUlLhzsvBdpwcunj5zyu8Yv9qfWi5cnU3YBqoauQk5h
-b7Mr+enAuSQiR4kGf4hqR0zv7oO5bxbIGs9c2np8SLToA7KnX40013g3oSWghfvQ4KeGRTQK2WgQ
-rIu+V+Gt4UXUuru4FrQiD1f+m5gmp1dgRs7tYscAkUMSNh7RUntvP4HPNegNwg1028aSTfely7ph
-RO1/B3Fjym7IB6wBuyzKDxQUnYCjqP1pCo8heifZ1WDa1HWWxFcOpq0Y7LJt0yriTKhTgN8YLnmX
-M+C2xYHmKtX5lLKZ7NbEt1ATBxg3kcxD96g3+wlj89Q3coC5gIJ8hQLcOlpTHIBSyr9XNmibCBhH
-xkkTajOMl3yeoHkBKjbOXYdU4rtZKdms0PHaTelp7pKdQP2Ds0emwyAoUmLjU42wz4hsHuTvY5V4
-Xl5osW3Es1Y5tAhoy6DvSFnyX1KY70xHtXVE5xh1kDADJn4OG5Lo0iGa90KYGMHN9bQ2Bd5t08U/
-GCokN00ONd4myW8qvjAte/waXEDAHYHiubhMjcLRQO3pDZZht1hTPSQE6A9/dj1jWG7KjEdi7LZc
-YBT96C2lJRVPJVmEdfZeeGu/eU2Lp4DsPt3kxYLw+BtMdojFzy6gmf9sovtPO3XAZBIArBKC62d9
-SsDnLO4HuYyGeplCZsdwpKwkiWSTjjuH1Y/XB6I8AjGb2nFZAbvy4wQtVpZ/LEb6zO9oL4l9rWh6
-HVAtjtHrwfr4YF3D1RLCxzrgQL2LsP+Zl3zwH0Pj8LQHe4k1rrMV4xD2TM41NW1DwzpcyfA6/ksq
-HN5+SIdX4L/Et1pI3cz0PxRkx6JP8rsULtJtQ0nDUkF5KaSG2MBJRs2m3bIDGuvsOHS8V58hx5Jf
-A2YJi9zIkP6bIRU0VHN5eX3qVobQQgCkzI//lqq1GKB8lO8E4FFaeIUb6IbP5h9KaTL2Yuee9tzq
-4djC2wYvz8O0wm/U9KJSzG9b2gbCKPxyzrWiIQgwB1RWJcd5iJwtyyNQj6b+5H82TfaldniwufhA
-TbLsZ6wSQrSIZzWjUwrGngjbVdHYQrw5wg4wZeuwq8GbFpLQ/wLARWvjyfUAB8w8hWb2jozLTqWX
-clLl3v6avNeNkwfMph76SSk9L1w1UYwmwl79RlrXy9y+R8AJ2Z9UdyqoC+vZ/IS2BEMNHhfJnLR+
-xI3jf6L71ofFhSwknnsxAMtNVvjo6XfT0bRasMHzVzdOoJIc4I5T9zsj7pNbhw2vPXLNdeOBHvHu
-P49aVECcv+vd/FXOGwDYXBX12JNh8Lo5kyNPJaAMw2BhmZuk3pjEfF/Owqe71uBEkLPZa4h8rPuc
-skZkwxShBCXBNaswE/zBizPaDjgVeNfnVVs6yDVRiUx+0gW9Q8b19qTsFqv5H188q1J4En7nHlza
-dw7r0sO+7VOtHkK/2iLKtEsHC4b4od43Zf0hSQ8Dpyo3+GAkd5spdwNCs16ASbXrmRCTLZxEHlgU
-vklF0uAZmml6u2ffxE1d08Dpp30nxCp6eMn5oc/gJ5Rqa4uN4l6UvYiGDgG5acmel11IvpHH6vQS
-+f7FIj2yg0G8TqeN3hGsNaf6Oa3pUFVxOUAV0E3cyRJgy5D8KCGC+ZGVyY8o5Q4gh0qapVKckfLE
-yugATQvK8pWUPl0NAO88si1fO+Wizqlk2j2p/uTVodH0k86l24Qw5O8NuXjsBDI2yCrISkKBOIAs
-txOwnlJj/5JDcPVRQZsmezpVXJzwkjViuRO00qggtRWn46OunEdAOvLyxHJVSzbhOlEOvkAyJOyx
-4EhVgZxZ1VYtX3QBau90EG2/dhj1uyVPxH9NhVTcDWHckC1uY4mYuarrfJ1lEuAD1asd1/DViNnU
-qDmYKNVUzFqgHk0u+RIabyqauah4Jg+uqj7yb8ztNnJFpPGZBF+7l0L71X3Qqhn4Nj0E27kJ1HfP
-qbtO37J9jwXWCD4+147vp5SXJhxhjFjyrHYcspRlU/2UKJPehinFjC2NLGeS1sIXgg0MM/tn5wjT
-Bi+EskXv+LyiuuqWLZj+P4B/sHqvcYM9CRyqAw1Pp1Qb6Qp8oJIJpiS2uQ11dbEsMA+nmV9UqWZG
-9X1e+0vdtmgmBgRnPFVud8LBxuU47JzT1WVVsxCe7jHx1YTqtsGrVm/3W1PZOOHx6YtkYRZDb7+3
-DDMPK/N7eWUEyblO7x6fZnwHmLJOG/b4vy8w7y0XfqA86aTV2wDCl1WN8obctydx47u7+NDQQk+h
-i4RUgPZLthpFH+a1G9htz9WW6v4Xd79+jX0+kRAEN0M6YNwBGrvOhGH3SOFFyh148/DKeIz8mitF
-SvZPRn1K8QAlSeTy4s5ho/N+uqx62o+0MnogMBHgAkZyczByhHK26xjzQ7oY0O+OPux4RoVVx5pK
-JEvRdUUnvLEIe+r/Lk+PJB2fk6jNwBxTVOnWWf8vnWdIGId94jaIbU+d8VApNffV6+f+PNstDIlB
-xBiEDuHsb3Pc4IEYGaVmNMRd6BBk0VE9o7mz6gF6oxXkQoqGsWF3xCJUYIY1PNkeGZdZmv6ozVM7
-crIfJ2lhazF38qI2YjxVtrR8+O4hV6zpr6qGQTETk5G5fh9ntV3b5Q6jrfRoKwY0GcCZnZaPDU/0
-HKJYbEawc3IeYSMO2MgfvgNHkjSK1d6GgJ+m7/ttdvBdpuiDIAHndr7Yo3A2Bdudc/t4m9KNjCNh
-Tl5weaFHl3OWPrt9O9yXgeRaujW3/wrrxJJL5Yh1U0oAgx0e3bFFr16C74zFkwxPqv5MWjYBteGe
-sFjGL5wHiYH8L4ZhR2YJT7WlcYr/E/VxMIw2XVNHaZMBnvlOArmfKhFBTfRhUKN5vMUI2zqcOjj1
-1iZY0Mw/hmPT36iBoeNRJcDl7J51R7tK4dhW2BInNHaYnNPYXGmp+UD728O1oqqYYDNryHXJGIxC
-1lo4TN/emMIIvaaFwpIQQwmHZ45SPhLbJASgqqU6XBpP+d6dYD3qNSH8pMc7j0LG76FKcuRvpDi1
-T89YswQNhcNWzauAZeFMUeJICbYa2qHedGXuewj0LbR11VDs0zKO8T/REj0lM5/Ip7xn1+ZPvSXS
-6roETByS67Kt1NE8Sm9eHKa6D6qW7rZvJ1i87I8zzg0bQiGFSINZ3AcaA/77lIOqP2gXeF+WC7vN
-NY2cY2U+jrtjqYXRNOo/fgcWs9ixUM8/h/oetqgw0mGfuzzg7aGngBvOAOIDRshvSzBU48FItCP2
-XA6SQvs/+YFHzL4EYegKt5U6TZavmAVZOCWWTSmPdmZYo/S7mxUS+95tp20cKPlfzy8C7rbNyb6v
-kfzdZxaidczYJVEhHmO3mDKt8hWpf4sFLtnK446szf1Rcagi3YUE9u9nXknicrJFqzGDudwOx9T5
-Uua73UfME9uaLmtMmoGAYEoqaJFxxcjGF+yzvcWBt8QoeJZHzzee/1s8BNJbAPYqt2MqmKeVR3Pd
-HLVOhdU/uLixZ7wtFRuJSJTY4RlP72oxY+Mso5O34ui7sndrvxM8mdOiUg6U6dPBKCD3vV2AWZZP
-2Vf+VU6UUropKwuBsLOs10/R68MZE5ZDlofzVWA/28nvfEqq3jxor2MEx1r1/RfDzrz6ZVw7yZx1
-hL3rO1dqyWhcsdL72gwKtFMMigD/VnZ2Jfo4w6qQ1qrCkOUvo8LWXHx/LOyj10g1edVuctQdABvV
-zPqud0WCH6Mz394vWneKXtuq2Z6wSeSaMpd8eRvVeYutQcMVmfzTJ0zVzl21whz86UHfChi5QIzh
-/qkftQUYB47GiEfSfubwpvwB/TkWrrqAKrbkWYPquJZ5k4TjIpYscNerAshjt9gGSvrBNqHYOTUO
-EUXslpGTjju42RjD/vEyWbhHB4NGr2+M9EetiQsvuEz4bgEnLbuPkRoOFksqWOceYrWHWKqQJCRQ
-DHCRGsZixPUKzzguiHsLp/+3ZLaKHw5et2C5PfgbQcEvS3P1qTwp4IivY7NZG+hGZ7oFudHWuwOm
-jB/NTnbKJZ58owV+W2sTJbtaLHcRdkQLh8CW7N39ll5soiO/epTc9/6CvJPE2g4PdFvnhYIHD8Pb
-pBVkRkKz6+jPkqlKvmq5VatVrMPkOVJut7V/Qrv6JlmfLBlIs7kJ1vS8J6w60aNmMBI095Y44RXK
-WNyhLzJJjT30tnFBUYD+SqJ4iZ8hD3K8gu9HpTXYDtK4q3FwMPU4/8m8/fx+FhWf/+AjKLHJMgQF
-SiXkstM3me5MC25/n89FCHxVBA4D7xdpcLO4JuXXWlRIBtAH8TFOBE8XSCPr+rJcoIzZXZ3851S1
-WrRh85GmdaFclhHAz5iqrTNKkKwzQheNvfN6L62WrPmFGe9kRgT28uaa99+gEOEkxPGS7ByE4DUQ
-KIvNzjN45Qt0RPo+M6VyNRhz2rLYVL6fyCnrfnnGdlpYhk4qq9qhaDsl9Umutg2tOTEt9CjAmbgW
-hE4VJ85Lw34k01aXSKxmOzREHEj3con0E2AJGXOg0JkNzRZqxI9FgnyD1hQGE5fV6hYwPoWYqr7r
-gKY5LvMJRpSKDu92iHX1wP+xmvCp0cBr6d7kApYqKKi1tEy0P6qidv7G6gGRulkerAhfEaYdrPjn
-ofax2JE+7tIiOlge3JXNOwe0tJMCGtvuds9sFeme9INd/up4e2dpVw5HWMZSjaYzhl3orj3nM0D0
-RNbYDR3Cf3gZxizy/+8KVDyBLrfL1UwWuO0YkGMqDT/jQldcEbTXe+2uRiXniHbLd7YHPrpzB2qQ
-m0pRgFJKcdtAK/tJ9r514p3QD9TfaJvEXB1gFa5Rde951C2zGzPeMtaaLVU6uJAuAetlMQndb67y
-d5Kh9CuMrQLI7uPcEnkVCxsASsNwOyiJQc4RXzLE6Ed1c3YRkZdNzDDNWQncsbhpyCn0lYNxNJgS
-+C5h0go0c5RS5X+Ig71m0zw8dcwZos1vnoKQZBiNVv1gO4a2AdNNL7hGnpjbyHHJvmjppVfutpKw
-YiPJE1BW8Y7wIYRSZ60Z5I9z1KbbV0b37C/UfH5vc1wxo7/66WVwh/5z8bOn3/0I/0M83D0CCiKK
-EsL0fQAfgibAFbegVlh4CS8OwHac9GyGf+uxlxGeC5TvbjN6tMSU3sY9qmfzS45/J+MvgPcAO4N4
-3icJRBqVUu3kRvhATW3/aky0sQbJjs22J9JOd597mJTdhmyrP55YPQhLmwAZuYQPKk5GFe8hGUbv
-Y55jdIaE53ti3j9HnorwbIH+/qv2Zhg7EDFPug94ixnXk0nlSmZOPepxxQjti5uQaWUM/edd5fmt
-Kbx59hboj6gdZZFkSybvJcrCzGxdj5eClPqfTIDbckwOC1lx0bVfrFCkQGwmOvC+PNoy2VAsgQeb
-UX3MA897iCYh8nXRtsgsKcH2JsxzJIe4c5ddqLuwpJkE9OZv3TRoWQL+ZoKsj8/gfbMRBc+Tk334
-pfwwzB9kRN66k8bSfYBPthJRpTYIPXoi73W6AGit7ZUyypx5PtmJaMLsE/yqTBCHbR/wMmWcDRuD
-Ql2jpevr1DCUhOTIymZeKsuoM4MkXuqVGtCn3AIsUA7KJGsJkJcLpjCfUwfIWk6URu+eJASjVouu
-wfNnjfOAzsVvXxD+ZpFuKYTOKX+ASbhIlJi/RJQKdIRSgovmz6EOPg6Yp9QXQ0L62ceh4urDGJ3t
-1B8TVShoGKqo/x+4thBBW0OxtmCsFSnrkWeFZtDklGZv4tszNrfOu5hrZooDES9/edA1ZG/W8N4z
-zVQJgaZi9bA2Huvt4100mK2kCwwk2eOi7gd8yqIbcLMonPdTJ8CDehqerrs1I/PDudNAwRBdjRt+
-Q9KtTCN4OlOIQ4bCu+nQPkXmqmrmsd1AXoxbOsMiYz5otSYizeczvQC6pgH+fesbJljObxi+CRiD
-FrOY5ka8qLCCYwIId7PP2xb2yUpM1/JKLhuqDEg0y4PS1kr/KjUNaiWqiGVZS21u9VU92F80lXSO
-vyBXLvgIlRbjqK8dcBOQe3fo9RHrZ9G/cbw2FINfkMlvE2l21v1R6DEDcjX7QRboB1d4bAFsN5bR
-9XQrk+gbJTxncug5JV7zdpa+vMh+hG7cN/gimlK/EbKN3kshsA3bUH21n94mGBz3ZSXM3XdYvHFe
-6BVHJsvoVe+zVw+ISBoGflqoXOgQVXFQ6mgvSGKqZoLo0akxz7g7KOWeMgy6B+RPmMO19B6O0159
-0Y52yHkveUfXFw0Nhu/H8DP8HMjHBRpYr7UuVukUte2YAL4C7rG7/rBG7bIuztNOvfBGby4Ucd1C
-S/XUj4blGQG7XGSFU3bszO3UMoyz5u/Ev54PfcryMHzYoagktc8fOl/NTNzR1iHUa5hNXVbPQUr5
-x2egqenHTD8lzElCwAf9Sex5LP7I/uYalOuPsxGZWtxLWTIub9MNIv0icfMqblSk7b+8ntTEWPYR
-19M4XnfDDkESuey/DCNf4oyjxK6iATV5AoUAGGOCpMdoo4+z/Z5pZFBN8uca5clJ6CzSMg6Sjy39
-QkDfehgcHJVbDbkxj3X/71qdQ4cdh8kiEi12xHtEeA/PLFiKhugDHnnq6jvK/x96J8VezpEu0Ewm
-Bd/G/sWb7ky9R1goKFVoHfA8aoQSkrl84FOEmO7uDkdXxbsfbIP3/u+GJU1TBSs8xV/B0cPuUFb+
-bkJm+ZxTTg0PJnQ2tkIyh0bX0rvZ7j3aJ+J6zK9K0aYiENgYB1DAlIlWZmYkYBWmBaFmtiDQ3orL
-0j8NQyBHGyYFV6YaYTYiAdAPMzkM5jJjJFOD0GDeK15XeRHifc+dhXb1p14EZ1hc6Ftr3U9mE3cj
-5WcTm7XZQCwtu7G9jQSUHLqhqK3X5FC5lnH98UG8PwdfuLIJtO8TVH6kyU9bZIDzVDufJKzcTUO4
-Y79hs3CxMNnCDg42tGxwuno8UjzXg8XFPrCkBA3laKrcCVeKByMbfoSL2owQ77Sxs34bXsQDqULZ
-8fOtXUJeQiTHNHGzaj13RqMQ50pryfCSgykKqqCQGmXl3DRdP8dkXn/1IzF21AVR3wRcbmEINcDt
-vfn+RTbBkrWg+DF8owvdBh2CUSskFxPxeP2pbbJPQ7/feAR1R1przlimpZ15cXUKALxPTkx4fuUG
-SIdDgMOFRMWNV8oMEZDOqitmNj6YnK1r9ALri8Z72rzKO/Qe1ZKCP4N6v7y+hI1hDEd9egCl6ECi
-tYNdB5s3Qmq4BAZhUBtpCsHI
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Exceedone\Exment\Controllers\AdminControllerBase;
+use Exceedone\Exment\Enums\Permission;
+use Exceedone\Exment\Model\CustomTable;
+use ExmentAdminCore\Admin\Layout\Content;
+use Illuminate\Http\Request;
+
+/**
+ * The portal's own settings screen.
+ *
+ * Backlog keeps its per project lists - statuses, issue types - and its space
+ * wide ones - priorities, close reasons - behind a settings page rather than
+ * the raw data grid, because the person who curates them is a project admin,
+ * not somebody comfortable with a custom table editor. This is that page.
+ *
+ * Everything on it is edited through the plugin's own lightapi, so there is
+ * exactly one code path that writes a portal row and exactly one place where
+ * permission is enforced. This controller decides what a user is offered; the
+ * API decides what they are allowed to do, and does not trust this screen.
+ */
+class PortalSettingsController extends AdminControllerBase
+{
+    /** @var array<string, mixed> */
+    protected $def;
+
+    public function __construct()
+    {
+        $this->def = PortalDefinition::config();
+    }
+
+    /**
+     * The settings screen.
+     */
+    public function index(Request $request, Content $content)
+    {
+        if (PortalSetup::needsSetup()) {
+            return redirect(PortalDefinition::url('setup'));
+        }
+
+        // System administrators only, like the setup page and the upgrade
+        // endpoint it carries: the page offers every project's row, every
+        // master list and the schema upgrade. Project managers have the
+        // settings tab of their own project; everyone else is told whom to
+        // ask, on Exment's own error page.
+        if (!static::isSystemAdmin()) {
+            abort(403, strval(PortalDefinition::trans('settings.not_admin')));
+        }
+
+        $this->setPageInfo(
+            PortalDefinition::trans('settings.title'),
+            PortalDefinition::trans('settings.title'),
+            PortalDefinition::trans('settings.lead'),
+            'fa-sliders'
+        );
+
+        $sections = $this->sections();
+        $schema = $this->schemaState();
+
+        // An empty list is normal before the schema upgrade has run - the
+        // upgrade panel is the whole point of the screen at that moment.
+        if (empty($sections) && !$this->projectSection() && !$schema['needed']) {
+            abort(403);
+        }
+
+        return $this->AdminContent($content)->body(view(PortalDefinition::view('settings'), [
+            'sections' => $sections,
+            'projectSection' => $this->projectSection(),
+            'projects' => $this->projects(),
+            'schema' => $schema,
+            'urls' => [
+                'lightapi' => PortalDefinition::url('lightapi'),
+                'upgrade' => PortalDefinition::url('settings', 'upgrade'),
+                'portal' => PortalDefinition::url(),
+            ],
+        ])->render());
+    }
+
+    /**
+     * Run the schema upgrade.
+     *
+     * Restricted to a system administrator: it creates tables, rewrites a
+     * column definition and touches every issue's stored value, which is more
+     * than "may edit the status list" ought to buy.
+     */
+    public function upgrade(Request $request)
+    {
+        // Answered in the portal's own shape rather than by abort(): the
+        // screen shows `message`, and Laravel's own 403 body is English.
+        if (!static::isSystemAdmin()) {
+            return PortalDefinition::jsonError(403, 'forbidden');
+        }
+
+        if (!PortalUpgrade::needed()) {
+            return response()->json([
+                'ok' => true,
+                'message' => PortalDefinition::trans('upgrade.already'),
+                'steps' => [],
+            ]);
+        }
+
+        $result = PortalUpgrade::run($request->boolean('convert', true));
+        if ($result['ok']) {
+            return response()->json($result);
+        }
+
+        // Another run holds the lock: nothing went wrong, it is just not this
+        // request's turn. `message` is already the sentence to show.
+        $busy = !empty($result['busy']);
+
+        return response()->json([
+            'ok' => false,
+            'error' => $busy ? 'upgrade_busy' : 'upgrade_failed',
+            'message' => $result['message'],
+            'steps' => $result['steps'],
+        ], $busy ? 409 : 500);
+    }
+
+    // ---- page data -----------------------------------------------------
+
+    /**
+     * Which master list a user is offered, and whether they may change it.
+     *
+     * A list the install has not got yet - because the schema upgrade has not
+     * run - is left out rather than shown broken.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function sections(): array
+    {
+        $specs = [
+            ['role' => 'status_table', 'kind' => 'status', 'scoped' => true, 'icon' => 'fa-flag-o'],
+            ['role' => 'issue_type_table', 'kind' => 'issue_type', 'scoped' => true, 'icon' => 'fa-bookmark-o'],
+            ['role' => 'priority_table', 'kind' => 'priority', 'scoped' => false, 'icon' => 'fa-arrows-v'],
+            ['role' => 'resolution_table', 'kind' => 'resolution', 'scoped' => false, 'icon' => 'fa-check-circle-o'],
+        ];
+
+        $sections = [];
+        foreach ($specs as $spec) {
+            $name = array_get($this->def, $spec['role']);
+            $table = CustomTable::getEloquent($name);
+            if (!isset($table) || !$table->hasPermission(Permission::AVAILABLE_VIEW_CUSTOM_VALUE)) {
+                continue;
+            }
+
+            $sections[] = [
+                'kind' => $spec['kind'],
+                'table' => $table->table_name,
+                'label' => PortalDefinition::trans('settings.section.' . $spec['kind']),
+                'hint' => PortalDefinition::trans('settings.hint.' . $spec['kind']),
+                'icon' => $spec['icon'],
+                'scoped' => $spec['scoped'],
+                'editable' => $table->hasPermission(Permission::AVAILABLE_ALL_EDIT_CUSTOM_VALUE),
+                'fields' => $this->fields($spec['kind']),
+            ];
+        }
+
+        return $sections;
+    }
+
+    /**
+     * The editable shape of one master list, as the client form needs it.
+     *
+     * @param string $kind
+     * @return array<int, array<string, mixed>>
+     */
+    protected function fields(string $kind): array
+    {
+        $map = (array) array_get($this->def, $kind . '_row', []);
+        $types = [
+            'name' => 'text',
+            'color' => 'color',
+            'order' => 'number',
+            'done' => 'boolean',
+            'template_subject' => 'text',
+            'template_description' => 'textarea',
+        ];
+
+        $fields = [];
+        foreach ($map as $role => $column) {
+            if (!isset($types[$role]) || !is_string($column)) {
+                continue;
+            }
+            $fields[] = [
+                'role' => $role,
+                'name' => $column,
+                'type' => $types[$role],
+                'label' => PortalDefinition::trans('settings.field.' . $role),
+            ];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * The project editor.
+     *
+     * Backlog puts project creation and its settings behind their own screen
+     * rather than a data grid, and so does this. The field list is built from
+     * the columns the install actually has, so a site that has not run the
+     * schema upgrade - or has removed a column - gets a smaller form instead
+     * of a broken one.
+     *
+     * The groups mirror Backlog's own project settings tabs: what the project
+     * is, when it runs, who is on it, which features it uses.
+     *
+     * @return array<string, mixed>|null null when the user may not see projects
+     */
+    protected function projectSection(): ?array
+    {
+        $table = CustomTable::getEloquent(array_get($this->def, 'project_table'));
+        if (!isset($table) || !$table->hasPermission(Permission::AVAILABLE_VIEW_CUSTOM_VALUE)) {
+            return null;
+        }
+
+        $groups = [
+            'basic' => ['name', 'project_code', 'note', 'parent_project', 'status', 'formatting_rule'],
+            'schedule' => ['start_date', 'end_date'],
+            'people' => ['manager', 'members', 'viewers'],
+            'features' => ['use_wiki', 'use_file', 'use_gantt', 'use_git', 'subtasking'],
+            'state' => ['archived'],
+        ];
+
+        $columns = [];
+        foreach ($table->custom_columns_cache as $column) {
+            $columns[$column->column_name] = $column;
+        }
+
+        $out = [];
+        foreach ($groups as $group => $names) {
+            $fields = [];
+            foreach ($names as $name) {
+                if (!isset($columns[$name])) {
+                    continue;
+                }
+                $field = $this->projectField($columns[$name]);
+                if ($field !== null) {
+                    $fields[] = $field;
+                }
+            }
+            if ($fields) {
+                $out[] = [
+                    'key' => $group,
+                    'label' => PortalDefinition::trans('settings.group.' . $group),
+                    'fields' => $fields,
+                ];
+            }
+        }
+
+        if (empty($out)) {
+            return null;
+        }
+
+        return [
+            'table' => $table->table_name,
+            'label' => PortalDefinition::trans('settings.section.project'),
+            'hint' => PortalDefinition::trans('settings.hint.project'),
+            'icon' => 'fa-folder-open-o',
+            'groups' => $out,
+            // The API is the thing that actually decides; this only chooses
+            // whether to draw the controls at all.
+            'editable' => $table->hasPermission(Permission::AVAILABLE_EDIT_CUSTOM_VALUE),
+            'creatable' => $table->enableCreate() === true,
+        ];
+    }
+
+    /**
+     * Describe one project column for the client form.
+     *
+     * @param mixed $column
+     * @return array<string, mixed>|null
+     */
+    protected function projectField($column): ?array
+    {
+        $name = $column->column_name;
+        $type = strval($column->column_type);
+
+        $field = [
+            'name' => $name,
+            'label' => strval($column->column_view_name),
+            'help' => strval($column->getOption('help')),
+            'required' => boolval($column->getOption('required')),
+            'type' => 'text',
+        ];
+
+        switch ($type) {
+            case 'textarea':
+            case 'editor':
+                $field['type'] = 'textarea';
+                break;
+            case 'date':
+                $field['type'] = 'date';
+                break;
+            case 'yesno':
+            case 'boolean':
+                $field['type'] = 'boolean';
+                break;
+            case 'select':
+            case 'select_valtext':
+                $field['type'] = 'select';
+                $field['options'] = $this->selectOptions($column);
+                break;
+            case 'select_table':
+                $field['type'] = 'lookup';
+                $target = $column->select_target_table;
+                if (!isset($target)) {
+                    return null;
+                }
+                $field['lookup'] = $target->table_name;
+                break;
+            case 'user':
+            case 'organization':
+                $field['type'] = 'user';
+                $field['lookup'] = $type === 'user' ? 'user' : 'organization';
+                $field['multiple'] = boolval($column->getOption('multiple_enabled'));
+                break;
+            default:
+                $field['type'] = 'text';
+                break;
+        }
+
+        return $field;
+    }
+
+    /**
+     * Read the fixed choices off a select column.
+     *
+     * @param mixed $column
+     * @return array<int, array<string, string>>
+     */
+    protected function selectOptions($column): array
+    {
+        $raw = strval($column->getOption('select_item_valtext'));
+        $options = [];
+
+        if ($raw !== '') {
+            foreach (preg_split('/\r\n|\r|\n/', $raw) as $line) {
+                $line = trim($line);
+                if ($line === '') {
+                    continue;
+                }
+                $parts = explode(',', $line, 2);
+                $options[] = [
+                    'value' => trim($parts[0]),
+                    'label' => trim($parts[1] ?? $parts[0]),
+                ];
+            }
+
+            return $options;
+        }
+
+        foreach (preg_split('/\r\n|\r|\n/', strval($column->getOption('select_item'))) as $line) {
+            $line = trim($line);
+            if ($line !== '') {
+                $options[] = ['value' => $line, 'label' => $line];
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * Projects the user may see, for the per project lists.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function projects(): array
+    {
+        $table = CustomTable::getEloquent(array_get($this->def, 'project_table'));
+        if (!isset($table)) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($table->getValueModel()->newQuery()->get() as $value) {
+            if ($value->enableAccess() !== true) {
+                continue;
+            }
+            $rows[] = [
+                'id' => $value->id,
+                'name' => strval($value->getLabel()),
+                'type' => $table->table_name,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function schemaState(): array
+    {
+        return [
+            'current' => PortalSetup::schemaVersion(),
+            'target' => PortalSchema::VERSION,
+            'needed' => PortalUpgrade::needed(),
+            'allowed' => static::isSystemAdmin(),
+        ];
+    }
+
+    /**
+     * Whether the signed-in user is an Exment system administrator.
+     */
+    protected static function isSystemAdmin(): bool
+    {
+        $user = \Exment::user();
+
+        return $user !== null && boolval($user->isAdministrator());
+    }
+}

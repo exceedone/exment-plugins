@@ -1,49 +1,45 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-dKbaJFhZNkiz5Em7gdS4fsPsKCm=
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Exceedone\Exment\Services\Plugin\PluginValidatorBase;
+
+/**
+ * Runs PortalRules on every write to a project or an issue.
+ *
+ * Exment calls a validator plugin from CustomTable::validateValue, which sits
+ * on the one path shared by the admin form, a CSV import, the REST API and
+ * this plugin's own lightapi. Putting the rules here rather than in a
+ * controller is what stops the admin grid being a way around them.
+ */
+class PluginValidator extends PluginValidatorBase
+{
+    /**
+     * @return bool false when something is wrong, which makes Exment read messages()
+     */
+    public function validate()
+    {
+        if (!isset($this->custom_table)) {
+            return true;
+        }
+
+        $input = is_array($this->input_value) ? $this->input_value : [];
+        $this->messages = PortalRules::validate($this->custom_table, $input, $this->original_value);
+
+        return empty($this->messages);
+    }
+
+    /**
+     * @param mixed $model
+     * @return array<string, mixed>|true
+     */
+    public function validateDestroy($model)
+    {
+        $reason = PortalRules::validateDestroy($model);
+        if ($reason === null) {
+            return true;
+        }
+
+        return ['status' => false, 'message' => $reason];
+    }
+}

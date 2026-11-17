@@ -1,71 +1,74 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-hjQ6eHCGo6g+tsUqOAjt0esq
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Exceedone\Exment\Database\ExtendedBlueprint;
+
+return new class extends Migration
+{
+    /**
+     * Who issued which credential on which repository.
+     *
+     * The Git server already stores every deploy key and deploy token, so
+     * this table exists for the one thing it does not store: an owner the
+     * portal can trust. Gitea keeps a title, and a title is a label - the
+     * caller supplies it, it can say anything, and authorising a delete
+     * against a string somebody typed is not authorising anything. So the
+     * owner is recorded here, server-side, at the moment of issue.
+     *
+     * The Git server stays the source of truth for what exists; this table
+     * only answers "whose". A credential with no row here - created by hand
+     * in Gitea, or before this table existed - is therefore ownerless, and
+     * only a project administrator may remove it.
+     *
+     * Nothing secret is stored. The token's plaintext is returned once by
+     * the Git server and never written down; what is kept is the id the
+     * server gave it, which is enough to list and to revoke.
+     */
+    public function up(): void
+    {
+        $schema = DB::connection()->getSchemaBuilder();
+
+        $schema->blueprintResolver(function ($connection, $table, $callback) {
+            return new ExtendedBlueprint($connection, $table, $callback);
+        });
+
+        if (!\Schema::hasTable('pm_portal_git_keys')) {
+            $schema->create('pm_portal_git_keys', function (ExtendedBlueprint $table) {
+                $table->bigIncrements('id');
+                // id on pm_portal_git_repos, not the project: credentials
+                // belong to a repository, and a repository outlives the
+                // request row's status changes.
+                $table->unsignedBigInteger('git_repo_id');
+                // The id the Git server gave this credential. Listing and
+                // revoking both go through it.
+                $table->unsignedBigInteger('provider_key_id');
+                // ssh: a public key, token: a password for cloning over HTTP.
+                // One Gitea endpoint returns both and key_type separates them.
+                $table->string('key_type', 10)->default('token');
+                // Kept so a row can still be shown if the Git server is down.
+                $table->string('title', 120)->nullable();
+                $table->timestamps();
+                // timeusers() brings created_user_id and updated_user_id, and
+                // ModelBase fills the first on creating with
+                // \Exment::getUserId() - the user custom value id. That column
+                // IS the owner here; declaring another would duplicate it.
+                $table->timeusers();
+
+                // The Git server never reuses an id within a repository, so
+                // this also stops a double-recorded credential.
+                $table->unique(['git_repo_id', 'provider_key_id'], 'pm_portal_git_keys_repo_key');
+                // Indexed because "which credentials are mine" is the question
+                // the settings tab asks on every load.
+                $table->index('created_user_id');
+            });
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        \Schema::dropIfExists('pm_portal_git_keys');
+    }
+};

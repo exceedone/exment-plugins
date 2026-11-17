@@ -1,190 +1,210 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
+<?php
+
+namespace App\Plugins\PmMigrate;
+
+use Exceedone\Exment\Model\CustomValueAuthoritable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * What the two ends of a migration must agree on: which Exment tables the
+ * portal uses, which of their columns hold user ids, and which columns can be
+ * written to.
+ *
+ * Reads Exment's own metadata tables with plain queries, so it does not depend
+ * on PmPortal's classes being loadable on the machine it runs on.
+ */
+class MigrateSchema
+{
+    /**
+     * The tables the portal needs, by role, with the names the template ships.
+     * PmPortal records the names an install really uses (they gain a prefix
+     * when a table of that name already existed) in its plugin row.
+     */
+    const ROLE_DEFAULTS = [
+        'project_table' => 'project',
+        'issue_table' => 'pm_issue',
+        'wiki_table' => 'pm_wiki',
+        'milestone_table' => 'task_milestone',
+        'category_table' => 'task_category',
+        'status_table' => 'pm_status',
+        'issue_type_table' => 'pm_issue_type',
+        'priority_table' => 'pm_priority',
+        'resolution_table' => 'pm_resolution',
+        'related_table' => 'pm_related_issue',
+    ];
+
+    /** Roles whose rows are exported whole or per project and shared by projects. */
+    const MASTER_ROLES = ['status_table', 'issue_type_table', 'priority_table', 'resolution_table'];
+
+    const COMMENT_TABLE = 'comment';
+    const DOCUMENT_TABLE = 'document';
+    const USER_TABLE = 'user';
+    const ORGANIZATION_TABLE = 'organization';
+
+    const STARS_TABLE = 'exment_stars';
+
+    /** @var array<string, array<string, mixed>> */
+    private static $described = [];
+
+    /**
+     * @return void
+     */
+    public static function forget(): void
+    {
+        static::$described = [];
+    }
+
+    /**
+     * @throws MigrateException when the connection is neither MySQL nor MariaDB
+     */
+    public static function assertSupportedDriver(): void
+    {
+        // Rows are inserted with their own ids and read back as JSON text: both are
+        // done the MySQL way, and the generated index columns are told apart by
+        // Exment's MySQL schema helper. Exment runs a MariaDB install under its own
+        // "mariadb" driver name, with the same SQL.
+        $driver = DB::connection()->getDriverName();
+        if (!in_array($driver, ['mysql', 'mariadb'], true)) {
+            throw new MigrateException("この移行ツールは MySQL / MariaDB にのみ対応しています（現在のドライバー: {$driver}）。");
+        }
+    }
+
+    /**
+     * role => the table_name this install uses.
+     *
+     * @return array<string, string>
+     */
+    public static function roles(): array
+    {
+        $options = json_decode(strval(DB::table('plugins')->where('plugin_name', 'PmPortal')->value('options')), true);
+        $stored = is_array($options) ? ($options['portal_setup']['tables'] ?? []) : [];
+
+        $roles = [];
+        foreach (static::ROLE_DEFAULTS as $role => $default) {
+            $name = is_array($stored) ? ($stored[$role] ?? null) : null;
+            $roles[$role] = is_string($name) && $name !== '' ? $name : $default;
+        }
+
+        return $roles;
+    }
+
+    /**
+     * Everything the migration needs to know about one custom table.
+     *
+     * @param string $tableName
+     * @return array<string, mixed>
+     * @throws MigrateException when the table is not defined here
+     */
+    public static function describe(string $tableName): array
+    {
+        if (isset(static::$described[$tableName])) {
+            return static::$described[$tableName];
+        }
+
+        $table = DB::table('custom_tables')->where('table_name', $tableName)->first();
+        if (!$table) {
+            throw new MigrateException("テーブル「{$tableName}」が見つかりません。PmPortal のセットアップが済んでいるか確認してください。");
+        }
+
+        $physical = 'exm__' . $table->suuid;
+        if (!Schema::hasTable($physical)) {
+            throw new MigrateException("テーブル「{$tableName}」のデータテーブルがありません。");
+        }
+
+        $userTableId = DB::table('custom_tables')->where('table_name', static::USER_TABLE)->value('id');
+        $orgTableId = DB::table('custom_tables')->where('table_name', static::ORGANIZATION_TABLE)->value('id');
+
+        $columns = [];
+        $userColumns = [];
+        $orgColumns = [];
+        $selectColumns = [];
+        foreach (DB::table('custom_columns')->where('custom_table_id', $table->id)->orderBy('id')->get() as $column) {
+            $options = json_decode(strval($column->options), true);
+            $options = is_array($options) ? $options : [];
+            $target = $options['select_target_table'] ?? null;
+            $columns[] = $column->column_name;
+
+            if ($column->column_type === 'user' || ($column->column_type === 'select_table' && static::sameId($target, $userTableId))) {
+                $userColumns[] = $column->column_name;
+            } elseif ($column->column_type === 'organization' || ($column->column_type === 'select_table' && static::sameId($target, $orgTableId))) {
+                $orgColumns[] = $column->column_name;
+            } elseif ($column->column_type === 'select_table' && $target !== null && $target !== '') {
+                $selectColumns[$column->column_name] = intval($target);
+            }
+        }
+
+        // columns that can be written: the generated index columns cannot
+        $dataColumns = [];
+        foreach (Schema::getColumnDefinitions($physical) as $definition) {
+            if (!boolval($definition['virtual'])) {
+                $dataColumns[] = strtolower($definition['column_name']);
+            }
+        }
+
+        return static::$described[$tableName] = [
+            'id' => intval($table->id),
+            'table_name' => $tableName,
+            'suuid' => $table->suuid,
+            'physical' => $physical,
+            'columns' => $columns,
+            'dataColumns' => $dataColumns,
+            'userColumns' => $userColumns,
+            'orgColumns' => $orgColumns,
+            // column_name => id of the table it points to
+            'selectColumns' => $selectColumns,
+        ];
+    }
+
+    /**
+     * Tables that hold the parent side of a one-to-many relation to this one.
+     *
+     * @param int $childTableId
+     * @return array<int, int> parent table ids
+     */
+    public static function parentTableIds(int $childTableId): array
+    {
+        return DB::table('custom_relations')
+            ->where('child_custom_table_id', $childTableId)
+            ->pluck('parent_custom_table_id')
+            ->map(function ($id) {
+                return intval($id);
+            })->all();
+    }
+
+    /**
+     * column id => [table_name, column_name], for every custom column.
+     *
+     * @return array<int, array{0: string, 1: string}>
+     */
+    public static function columnRefs(): array
+    {
+        $refs = [];
+        $rows = DB::table('custom_columns')
+            ->join('custom_tables', 'custom_tables.id', '=', 'custom_columns.custom_table_id')
+            ->get(['custom_columns.id as id', 'custom_tables.table_name as table_name', 'custom_columns.column_name as column_name']);
+        foreach ($rows as $row) {
+            $refs[intval($row->id)] = [$row->table_name, $row->column_name];
+        }
+
+        return $refs;
+    }
+
+    /**
+     * @return string the table of the per-record permissions
+     */
+    public static function authoritableTable(): string
+    {
+        return CustomValueAuthoritable::getTableName();
+    }
+
+    /**
+     * @param mixed $a
+     * @param mixed $b
+     * @return bool
+     */
+    private static function sameId($a, $b): bool
+    {
+        return $a !== null && $a !== '' && $b !== null && strval($a) === strval($b);
+    }
+}

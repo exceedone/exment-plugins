@@ -1,42 +1,40 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-znZqZ/sMD4yoAS5fSj/RVZ2yrQuFhGS9
+<?php
+
+namespace App\Plugins\PmPortal;
+
+/**
+ * A Git failure whose message was written here, and is therefore safe to put
+ * in front of whoever clicked.
+ *
+ * It exists to tell those apart from every other throwable, because the
+ * others carry infrastructure in their text. Measured on this deployment: a
+ * Git server that is down answers
+ *
+ *   cURL error 7: Failed to connect to 127.0.0.1 port 3000 after 2093 ms:
+ *   Could not connect to server (...) for
+ *   http://127.0.0.1:3000/api/v1/repos/pm/demo/keys
+ *
+ * - the API host, its port, the API path and the organisation name, straight
+ * into last_error and from there into the project settings tab of anybody who
+ * can open it. The token is not in it only because it travels as a header.
+ *
+ * So: a driver throws this for anything a user can act on, and
+ * GitProvisioner::publicError() replaces anything else with a generic line
+ * plus a reference it has logged. Catch sites must never print a raw
+ * getMessage().
+ *
+ * The message is the Japanese sentence a person reads; $reason is a short
+ * machine word for the JSON answer's `error`, which a client may branch on
+ * and never shows.
+ */
+class GitError extends \Exception
+{
+    /** @var string */
+    public $reason;
+
+    public function __construct(string $message = '', string $reason = 'git_failed', ?\Throwable $previous = null)
+    {
+        parent::__construct($message, 0, $previous);
+        $this->reason = $reason;
+    }
+}

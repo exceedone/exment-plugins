@@ -1,262 +1,403 @@
-<?php //002cd
-if(extension_loaded('ionCube Loader')){die('The file '.__FILE__." is corrupted.\n");}echo("\nScript error: the ".(($cli=(php_sapi_name()=='cli')) ?'ionCube':'<a href="https://www.ioncube.com">ionCube</a>')." Loader for PHP needs to be installed.\n\nThe ionCube Loader is the industry standard PHP extension for running protected PHP code,\nand can usually be added easily to a PHP installation.\n\nFor Loaders please visit".($cli?":\n\nhttps://get-loader.ioncube.com\n\nFor":' <a href="https://get-loader.ioncube.com">get-loader.ioncube.com</a> and for')." an instructional video please see".($cli?":\n\nhttp://ioncu.be/LV\n\n":' <a href="http://ioncu.be/LV">http://ioncu.be/LV</a> ')."\n\n");exit(199);
-?>
-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
-ZbJ/U1KDRNo2cL+arVyLInC=
+<?php
+
+namespace App\Plugins\PmPortal;
+
+use Illuminate\Support\Facades\Log;
+
+/**
+ * The one place that knows how a requested repository would become a real
+ * one on a Git server.
+ *
+ * The portal itself never talks to a Git server. It records the request
+ * (a GitRepo row, status "pending") and hands it here. What happens next
+ * depends on the deployment:
+ *
+ *  - Nothing configured (the default): the row stays pending. The settings
+ *    screen says so, honestly, and nothing else happens. This is the state
+ *    this plugin ships in - the UI and the data contract exist, the network
+ *    call does not.
+ *
+ *  - A SaaS build sets config('exment.pmportal.git.provisioner') to a class
+ *    with a provision(GitRepo $repo, array $settings): void method. That
+ *    class does the HTTPS call and writes status ready / failed plus
+ *    remote_url back onto the row. Pending rows can also be swept by a
+ *    scheduled command calling provisionPending().
+ *
+ * Where the connection settings live, and why.
+ *
+ * Every one of them belongs to whoever runs the deployment, not to the
+ * customer using the portal - so none of them has an editable field any
+ * more. PluginSetting.php shows a read-only summary and that is all. Three
+ * layers answer, in this order:
+ *
+ *  1. config('exment.pmportal.git.*'). A published config file is compiled
+ *     into "artisan config:cache", so this layer is the only one that
+ *     survives it. A deployment that caches its config and wants the values
+ *     fixed has to use this one.
+ *  2. env(). The names are PMPORTAL_GIT_* , plus GITEA_ORG for the
+ *     organisation, which is the name a deployment declares it under. Note
+ *     the cliff: after "artisan config:cache" Laravel stops reading .env and
+ *     env() answers null for everything, which is why layer 3 exists.
+ *  3. The plugin's custom options, in the plugins table. Nothing writes them
+ *     from a browser now - storage/app/pmportal-dev/git-apply-env.php copies
+ *     .env into them, and it parses .env itself for the same reason. So this
+ *     layer holds the same values as layer 2 by construction, and keeps
+ *     holding them on an installation whose config is cached.
+ *
+ * The token follows the same order and is never part of what a browser is
+ * sent: only its presence, as has_token.
+ */
+class GitProvisioner
+{
+    /**
+     * Keys a provider config consists of.
+     *
+     * What is not here any more, and why it is not a setting at all:
+     *
+     *  - git_private. Every repository this plugin creates is private, full
+     *    stop. A switch that can be turned off is a public source tree one
+     *    click away, and there is no deployment where that is wanted.
+     *  - git_ssh_base. The SSH route is gone with it: a clone is HTTP with a
+     *    per-repository deploy token, and the Git server needs no SSH port
+     *    open at all.
+     */
+    protected const OPTION_KEYS = [
+        'git_provider', 'git_api_url', 'git_namespace', 'git_clone_base',
+    ];
+
+    /**
+     * Environment names per setting, most specific first.
+     *
+     * GITEA_ORG is the name a deployment declares the organisation under -
+     * one customer, one organisation - and PMPORTAL_GIT_NAMESPACE stays
+     * accepted so an installation configured before this does not have to be
+     * touched.
+     */
+    protected const ENV_KEYS = [
+        'provider' => ['PMPORTAL_GIT_PROVIDER'],
+        'api_url' => ['PMPORTAL_GIT_API_URL'],
+        'namespace' => ['GITEA_ORG', 'PMPORTAL_GIT_NAMESPACE'],
+        'clone_base' => ['PMPORTAL_GIT_CLONE_BASE'],
+        // Not one of OPTION_KEYS: token() reads it, so it never reaches
+        // what settings() hands to a browser.
+        'token' => ['PMPORTAL_GIT_API_TOKEN'],
+    ];
+
+    /** @var array<string, string>|null which layer answered, per setting */
+    protected static $sources = null;
+
+    /**
+     * The drivers this plugin ships, by provider.
+     *
+     * A deployment config still wins over this (see provision), which is how
+     * a SaaS build swaps in its own. It is the fallback rather than the only
+     * way because config('exment.pmportal.*') cannot be set at all on an
+     * install that has no published config/exment.php - which is every
+     * self-hosted one.
+     */
+    protected const DRIVERS = [
+        'gitea' => GiteaProvisioner::class,
+    ];
+
+    /** @var array<string, mixed>|null request-local cache of resolved settings */
+    protected static $resolved = null;
+
+    /**
+     * Resolved connection settings, deployment config over plugin options.
+     *
+     * @param bool $withToken include the secret; only the provisioning call
+     *                        itself may ask for it
+     * @return array<string, mixed>
+     */
+    public static function settings(bool $withToken = false): array
+    {
+        if (static::$resolved === null) {
+            $plugin = PortalDefinition::plugin();
+            $out = [];
+            $from = [];
+            foreach (static::OPTION_KEYS as $key) {
+                // "git_provider" -> config('exment.pmportal.git.provider')
+                $short = substr($key, 4);
+                $value = config('exment.pmportal.git.' . $short);
+                $source = 'config';
+                if (is_nullorempty($value)) {
+                    $value = static::fromEnv($short);
+                    $source = 'env';
+                }
+                if (is_nullorempty($value) && isset($plugin)) {
+                    $value = $plugin->getCustomOption($key);
+                    $source = 'db';
+                }
+                $out[$short] = is_nullorempty($value) ? null : strval($value);
+                $from[$short] = isset($out[$short]) ? $source : 'unset';
+            }
+            $out['has_token'] = static::token() !== null;
+            static::$resolved = $out;
+            static::$sources = $from;
+        }
+
+        $settings = static::$resolved;
+        if ($withToken) {
+            $settings['token'] = static::token();
+        }
+
+        return $settings;
+    }
+
+    /**
+     * @return string|null
+     */
+    public static function provider(): ?string
+    {
+        return array_get(static::settings(), 'provider');
+    }
+
+    /**
+     * Whether a real provisioning call could be made at all: a provider, an
+     * endpoint and a token. The settings screen turns this into "connected"
+     * or "ask your administrator".
+     *
+     * @return bool
+     */
+    public static function configured(): bool
+    {
+        $settings = static::settings();
+
+        return !is_nullorempty(array_get($settings, 'provider'))
+            && !is_nullorempty(array_get($settings, 'api_url'))
+            && boolval(array_get($settings, 'has_token'));
+    }
+
+    /**
+     * Try to turn a requested row into a real repository.
+     *
+     * With no driver configured this is a no-op by design and the row stays
+     * pending. A driver that throws marks the row failed and keeps the
+     * message, so the settings screen can show what went wrong instead of a
+     * silent forever-pending.
+     *
+     * @param GitRepo $repo
+     * @return GitRepo the same row, refreshed
+     */
+    public static function provision(GitRepo $repo): GitRepo
+    {
+        $driver = static::driver();
+        if (!isset($driver)) {
+            return $repo;
+        }
+
+        try {
+            $driver->provision($repo, static::settings(true));
+        } catch (\Throwable $e) {
+            $repo->status = GitRepo::STATUS_FAILED;
+            // Not $e->getMessage(): last_error is shown on the project
+            // settings tab, and an exception this plugin did not write
+            // carries the API host and port in its text. See GitError.
+            $repo->last_error = mb_substr(static::publicError($e, $repo->project_id), 0, 1000);
+            $repo->save();
+        }
+
+        return $repo->refresh();
+    }
+
+    /**
+     * Sweep every pending request. Meant for a scheduled command in a build
+     * that ships a real driver, so a request made while the Git server was
+     * down still completes later without anybody clicking again.
+     *
+     * @return int how many rows were looked at
+     */
+    public static function provisionPending(): int
+    {
+        $rows = GitRepo::where('status', GitRepo::STATUS_PENDING)->get();
+        foreach ($rows as $row) {
+            static::provision($row);
+        }
+
+        return count($rows);
+    }
+
+    /**
+     * The driver for the configured provider, or null when this build has
+     * none. Config wins over the shipped table so a deployment can replace
+     * the driver without touching the plugin.
+     *
+     * @return object|null
+     */
+    protected static function driver()
+    {
+        $driver = config('exment.pmportal.git.provisioner');
+        if (is_nullorempty($driver)) {
+            $driver = array_get(static::DRIVERS, strval(static::provider()));
+        }
+
+        return is_string($driver) && $driver !== '' && class_exists($driver)
+            ? app($driver)
+            : null;
+    }
+
+    /**
+     * Which layer answered for each setting: config, env, db, or unset.
+     *
+     * Only for the read-only summary on the plugin screen. It is the one
+     * thing an operator cannot work out by looking: all three layers usually
+     * hold the same value, and which one is in force decides whether
+     * "artisan config:cache" or an edit to the plugins table could change it.
+     *
+     * @return array<string, string>
+     */
+    public static function sources(): array
+    {
+        static::settings();
+
+        return (array) static::$sources;
+    }
+
+    /**
+     * A message about a Git failure that is safe to show, and a log entry
+     * holding the part that is not.
+     *
+     * Anything this plugin wrote (GitError) is passed through. Anything else
+     * is replaced: a connection failure's own text names the API host, its
+     * port and the organisation. What the caller gets instead is one
+     * translated line and a six-character reference that appears in the log
+     * beside the real reason.
+     *
+     * @param \Throwable $e
+     * @param mixed $context project id, repository name - whatever helps in a log
+     * @return string
+     */
+    public static function publicError(\Throwable $e, $context = null): string
+    {
+        if ($e instanceof GitError) {
+            return $e->getMessage();
+        }
+
+        $ref = strtoupper(substr(md5(uniqid('pmportal', true)), 0, 6));
+        Log::error('pm_portal git [' . $ref . '] ' . strval($context) . ': ' . $e->getMessage(), [
+            'exception' => $e,
+        ]);
+
+        return PortalDefinition::trans('git_repo.remote_unavailable', ['ref' => $ref]);
+    }
+
+    /**
+     * The first environment name that answers for one setting.
+     *
+     * @param string $short
+     * @return string|null
+     */
+    protected static function fromEnv(string $short): ?string
+    {
+        foreach (array_get(static::ENV_KEYS, $short, []) as $name) {
+            $value = env($name);
+            if (!is_nullorempty($value)) {
+                return strval($value);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The credentials registered against one repository.
+     *
+     * Credential management is optional for a driver: a provider this plugin
+     * can only create repositories on answers "none" rather than breaking
+     * the settings tab.
+     *
+     * @param GitRepo $repo
+     * @return array<int, array<string, mixed>>
+     */
+    public static function keys(GitRepo $repo): array
+    {
+        $driver = static::driver();
+
+        return isset($driver) && method_exists($driver, 'keys')
+            ? $driver->keys($repo, static::settings(true))
+            : [];
+    }
+
+    /**
+     * Issue a credential that clones this one repository over HTTP.
+     *
+     * The plaintext value is in the returned array and is the only time it
+     * exists: the Git server keeps a hash of it, so it cannot be read back.
+     *
+     * @param GitRepo $repo
+     * @param string $title what the Git server should call it
+     * @param bool $readOnly true to refuse pushes. The default, because a
+     *                        caller that forgot to say should get the
+     *                        credential that cannot overwrite history.
+     * @return array<string, mixed> the credential, including 'token'
+     * @throws GitError
+     */
+    public static function addToken(GitRepo $repo, string $title, bool $readOnly = true): array
+    {
+        $driver = static::driver();
+        if (!isset($driver) || !method_exists($driver, 'addToken')) {
+            throw new GitError(PortalDefinition::trans('git_repo.keys_unsupported'), 'unsupported');
+        }
+
+        return $driver->addToken($repo, $title, $readOnly, static::settings(true));
+    }
+
+    /**
+     * Take one credential off the Git server. A credential the Git server
+     * no longer has counts as taken off: the driver answers without
+     * throwing, so the portal's record of it can go too.
+     *
+     * @param GitRepo $repo
+     * @param int $keyId the id the Git server gave the key
+     * @return void
+     * @throws \Exception
+     */
+    public static function removeKey(GitRepo $repo, int $keyId): void
+    {
+        $driver = static::driver();
+        if (!isset($driver) || !method_exists($driver, 'removeKey')) {
+            throw new GitError(PortalDefinition::trans('git_repo.keys_unsupported'), 'unsupported');
+        }
+
+        $driver->removeKey($repo, $keyId, static::settings(true));
+    }
+
+    /**
+     * The API token, in the same three layers as every other setting:
+     * config, then PMPORTAL_GIT_API_TOKEN, then the plugin option.
+     *
+     * @return string|null
+     */
+    protected static function token(): ?string
+    {
+        $token = config('exment.pmportal.git.token');
+        if (!is_nullorempty($token)) {
+            return strval($token);
+        }
+
+        // The plugin screen tells an operator to put the token in
+        // PMPORTAL_GIT_API_TOKEN; without this layer that advice left the
+        // connection "unset" until the value was also copied into the
+        // plugin options by hand.
+        $token = static::fromEnv('token');
+        if (!is_nullorempty($token)) {
+            return $token;
+        }
+
+        $plugin = PortalDefinition::plugin();
+        $stored = isset($plugin) ? $plugin->getCustomOption('git_api_token') : null;
+        if (is_nullorempty($stored)) {
+            return null;
+        }
+
+        // What sits in the plugin options is ciphertext (git-apply-env.php
+        // encrypts it). trydecrypt answers null for anything it cannot
+        // decrypt - a value written by hand in plain text, or one encrypted
+        // under an APP_KEY that has since changed - and an unusable token is
+        // no token: has_token and configured() must not report a connection
+        // that every call would then refuse.
+        $plain = trydecrypt(strval($stored));
+
+        return is_nullorempty($plain) ? null : strval($plain);
+    }
+}
