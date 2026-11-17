@@ -238,6 +238,7 @@
                         <th style="width:26px;"></th>
                         <th data-sort="ty">{{ $lang['col_ty'] }}</th>
                         <th data-sort="key">{{ $lang['col_key'] }}</th>
+                        <th class="pp-tcol" id="pp-tcol-head" hidden></th>
                         <th data-sort="subject">{{ $lang['col_subject'] }}</th>
                         <th data-sort="as">{{ $lang['col_as'] }}</th>
                         <th data-sort="st">{{ $lang['col_st'] }}</th>

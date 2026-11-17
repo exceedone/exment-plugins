@@ -1092,8 +1092,10 @@
         if (head) { head.hidden = !BULK_ON; }
         // tree mode: the ▼/▶ toggles get a column of their own at the left
         // (snoro 2026-11-18: inside the subject they were hard to read)
+        // tree mode only: a narrow column left of 件名 holds the indent and
+        // the ▼/▶ or └ (snoro 2026-11-18), so the subject cell stays clean
         var tHead = document.getElementById('pp-tcol-head');
-        if (tHead) { tHead.hidden = true; }
+        if (tHead) { tHead.hidden = !TREE_ON; }
 
         var onPage = {};
         if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
@@ -1133,8 +1135,9 @@
                 '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a></td>' +
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
                 // stacked to its right so both lines start at the same place
-                '<td class="sub"><div class="pp-sbox">' + ind + '<div class="pp-stext">' + parent + esc(i.subject) +
-                    (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</div></div></td>' +
+                (TREE_ON ? '<td class="pp-tcol">' + ind + '</td>' : '') +
+                '<td class="sub">' + parent + esc(i.subject) +
+                    (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
                 '<td>' + pill(i.st) + '</td>' +
                 '<td>' + prio(i.pr) + '</td>' +
