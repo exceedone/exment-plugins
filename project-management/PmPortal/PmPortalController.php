@@ -197,18 +197,18 @@ class PmPortalController extends AdminControllerBase
         // Starred projects first, because that is the whole point of starring
         // one. Everything else keeps the order the table gave it, so a child
         // project still follows its parent.
-        $projects = [];
-        foreach ([true, false] as $starred) {
-            foreach ($cards as $card) {
-                if ($card['starred'] !== $starred || ($card['archived'] && !$showArchived)) {
-                    continue;
-                }
-                $projects[] = $card;
-            }
-        }
+        // ISS00263 (snoro 2026-11-18): the same tree as the project menu -
+        // each parent followed by its indented children, in the dragged order
+        // then by name - instead of starred first.
+        $projects = static::projectTreeOrder(array_values(array_filter($cards, function ($card) use ($showArchived) {
+            return !$card['archived'] || $showArchived;
+        })));
+        $reorderUrl = static::topbarIsAdmin() && CustomColumn::getEloquent('display_order', $this->project_table) !== null
+            ? PortalDefinition::url('lightapi/reorder/' . $this->project_table->table_name) : '';
 
         return $this->AdminContent($content)->body(view(PortalDefinition::view('list'), [
             'projects' => $projects,
+            'reorder_url' => $reorderUrl,
             'dashboard' => $dashboard,
             'topbar' => $this->topbarData(null, $cards),
             'project_table' => $this->project_table->table_name,

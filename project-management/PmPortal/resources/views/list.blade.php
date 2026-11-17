@@ -145,6 +145,18 @@
 .pp-dash .pp-fd:hover{background:#f7fafb;}
 .pp-dash .pp-fd .av{flex:none;width:26px;height:26px;border-radius:50%;color:#fff;display:flex;align-items:center;
     justify-content:center;font-size:11px;letter-spacing:-.3px;font-weight:700;position:relative;overflow:hidden;}
+/* project tree on the dashboard (fold, drag) */
+.pp-dash .pp-pj[hidden]{display:none !important;}
+.pp-dash .pp-dtgl-slot{flex:none;width:16px;display:inline-flex;justify-content:center;}
+.pp-dash .pp-dtgl{border:0;background:none;padding:0;color:var(--d-sub,#8a97a3);font-size:10px;cursor:pointer;}
+.pp-dash .pp-dtgl:hover{color:#3d9a80;}
+.pp-dash .pp-pj.kid .pp-pj-name{font-weight:600;}
+.pp-dash .pp-pj[draggable="true"]{cursor:grab;}
+.pp-dash .pp-pj.dragging{opacity:.45;}
+.pp-dash .pp-pj.drop-before{box-shadow:inset 0 3px 0 #4cae93;}
+.pp-dash .pp-pj.drop-after{box-shadow:inset 0 -3px 0 #4cae93;}
+.pp-dash .pp-dfold{font-size:11.5px;font-weight:400;color:var(--d-sub,#8a97a3);margin-left:10px;}
+.pp-dash .pp-dfold a{color:#3d9a80;font-weight:700;cursor:pointer;}
 /* ISS00254: registered avatar laid over the initial */
 .pp-dash .pp-fd .av .bl-avimg{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;object-fit:cover;background:#fff;}
 .pp-dash .pp-fd .bd{flex:1 1 auto;min-width:0;}
@@ -166,6 +178,11 @@
             <section class="pp-panel">
                 <div class="pp-ph">
                     <i class="fa fa-folder-open-o"></i> {{ $t('projects') }}
+                    {{-- fold the project tree (snoro 2026-11-18) --}}
+                    <span class="pp-dfold" id="pp-dfold" hidden>
+                        <a href="javascript:void(0);" id="pp-dfold-open">すべて開く</a> /
+                        <a href="javascript:void(0);" id="pp-dfold-close">すべて閉じる</a>
+                    </span>
                     @if($create['can'] || $archived_count > 0)
                     <span class="pp-ph-right">
                         @if($create['can'])
@@ -185,7 +202,12 @@
                     @endif
                 </div>
                 @forelse($projects as $project)
-                <div class="pp-pj {{ $project['archived'] ? 'arch' : '' }}">
+                <div class="pp-pj {{ $project['archived'] ? 'arch' : '' }} {{ !empty($project['depth']) ? 'kid' : '' }}"
+                     id="pp-dpj-{{ $project['id'] }}"
+                     data-id="{{ $project['id'] }}" data-parent="{{ $project['parent_id'] ?? '' }}" data-depth="{{ intval($project['depth'] ?? 0) }}"
+                     @if(!empty($reorder_url)) draggable="true" title="ドラッグで並べ替え" @endif
+                     @if(!empty($project['depth'])) style="padding-left:{{ 12 + 24 * min(intval($project['depth']), 4) }}px" @endif>
+                    <span class="pp-dtgl-slot"></span>
                     <button type="button" class="pp-star" data-star="{{ $project['id'] }}"
                             data-url="{{ $project['star_url'] }}"
                             aria-pressed="{{ $project['starred'] ? 'true' : 'false' }}"
@@ -204,7 +226,9 @@
                             @if($project['archived'])
                             <span class="pill" style="background:#7f8c8d">{{ PortalDefinition::trans('archived_tag') }}</span>
                             @endif
-                            @if($project['parent'])
+                            @if($project['parent'] && empty($project['depth']))
+                            {{-- nested rows show their parent by position; only an
+                                 orphan whose parent is not listed keeps the hint --}}
                             <span class="pp-pj-up"><i class="fa fa-level-up fa-rotate-90"></i> {{ $project['parent'] }}</span>
                             @endif
                         </div>
@@ -398,6 +422,134 @@
 (function () {
     var root = document.querySelector('.pp-dash');
     if (!root) { return; }
+
+    // ---- project tree: fold (▼/▶, すべて開く・閉じる, double-click) and
+    //      drag & drop order for administrators (snoro 2026-11-18) ----------
+    (function () {
+        var rows = function () { return root.querySelectorAll('.pp-pj[data-id]'); };
+        var KEY = 'pmportal.dpjfold';
+        var fold = {};
+        try {
+            var s = JSON.parse(localStorage.getItem(KEY) || '[]');
+            if (Array.isArray(s)) { s.forEach(function (id) { fold[String(id)] = true; }); }
+        } catch (e) { /* ignore */ }
+        function save() { try { localStorage.setItem(KEY, JSON.stringify(Object.keys(fold))); } catch (e) { /* ignore */ } }
+        function paint(b) {
+            var shut = !!fold[b.getAttribute('data-tgl')];
+            b.textContent = shut ? '▶' : '▼';
+            b.title = shut ? '開く' : '閉じる';
+            b.setAttribute('aria-expanded', shut ? 'false' : 'true');
+        }
+        function apply() {
+            var cut = -1;
+            rows().forEach(function (r) {
+                var d = Number(r.getAttribute('data-depth') || 0);
+                if (cut >= 0 && d > cut) { r.hidden = true; return; }
+                r.hidden = false;
+                cut = (r.getAttribute('data-kids') && fold[r.getAttribute('data-id')]) ? d : -1;
+            });
+        }
+        function build() {
+            var kids = {}, any = false;
+            rows().forEach(function (r) {
+                var p = r.getAttribute('data-parent');
+                if (p && Number(r.getAttribute('data-depth') || 0) > 0) { kids[p] = (kids[p] || 0) + 1; }
+            });
+            rows().forEach(function (r) {
+                var id = r.getAttribute('data-id'), slot = r.querySelector('.pp-dtgl-slot');
+                if (!slot) { return; }
+                slot.textContent = '';
+                if (!kids[id]) { r.removeAttribute('data-kids'); return; }
+                any = true;
+                r.setAttribute('data-kids', String(kids[id]));
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'pp-dtgl';
+                b.setAttribute('data-tgl', id);
+                paint(b);
+                slot.appendChild(b);
+            });
+            var ctl = document.getElementById('pp-dfold');
+            if (ctl) { ctl.hidden = !any; }
+            apply();
+        }
+        function all(close) {
+            fold = {};
+            if (close) { rows().forEach(function (r) { if (r.getAttribute('data-kids')) { fold[r.getAttribute('data-id')] = true; } }); }
+            save();
+            root.querySelectorAll('.pp-dtgl').forEach(paint);
+            apply();
+        }
+        root.addEventListener('click', function (ev) {
+            var b = ev.target.closest('.pp-dtgl');
+            if (!b) { return; }
+            ev.preventDefault();
+            ev.stopPropagation();
+            var id = b.getAttribute('data-tgl');
+            if (fold[id]) { delete fold[id]; } else { fold[id] = true; }
+            save(); paint(b); apply();
+        });
+        root.addEventListener('dblclick', function (ev) {
+            var b = ev.target.closest('.pp-dtgl');
+            if (!b) { return; }
+            ev.preventDefault();
+            ev.stopPropagation();
+            all(!fold[b.getAttribute('data-tgl')]);
+        });
+        var o = document.getElementById('pp-dfold-open'), c = document.getElementById('pp-dfold-close');
+        if (o) { o.addEventListener('click', function (ev) { ev.preventDefault(); all(false); }); }
+        if (c) { c.addEventListener('click', function (ev) { ev.preventDefault(); all(true); }); }
+
+        // drag & drop among siblings; the subtree moves along
+        var reorderUrl = @json($reorder_url ?? '');
+        var drag = null;
+        function subtree(r) {
+            var out = [r], d = Number(r.getAttribute('data-depth') || 0), n = r.nextElementSibling;
+            while (n && n.classList.contains('pp-pj') && Number(n.getAttribute('data-depth') || 0) > d) { out.push(n); n = n.nextElementSibling; }
+            return out;
+        }
+        if (reorderUrl) {
+            rows().forEach(function (r) {
+                r.addEventListener('dragstart', function (ev) {
+                    drag = r; r.classList.add('dragging');
+                    try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', r.getAttribute('data-id')); } catch (e) { /* ignore */ }
+                });
+                r.addEventListener('dragend', function () {
+                    r.classList.remove('dragging');
+                    root.querySelectorAll('.drop-before,.drop-after').forEach(function (x) { x.classList.remove('drop-before', 'drop-after'); });
+                    drag = null;
+                });
+                r.addEventListener('dragover', function (ev) {
+                    if (!drag || drag === r || drag.getAttribute('data-parent') !== r.getAttribute('data-parent')) { return; }
+                    ev.preventDefault();
+                    var box = r.getBoundingClientRect(), after = ev.clientY > box.top + box.height / 2;
+                    r.classList.toggle('drop-after', after);
+                    r.classList.toggle('drop-before', !after);
+                });
+                r.addEventListener('dragleave', function () { r.classList.remove('drop-before', 'drop-after'); });
+                r.addEventListener('drop', function (ev) {
+                    if (!drag || drag === r || drag.getAttribute('data-parent') !== r.getAttribute('data-parent')) { return; }
+                    ev.preventDefault();
+                    var after = r.classList.contains('drop-after');
+                    r.classList.remove('drop-before', 'drop-after');
+                    var moving = subtree(drag), anchor = after ? subtree(r) : [r];
+                    var ref = after ? anchor[anchor.length - 1].nextElementSibling : anchor[0];
+                    var parent = r.parentNode;
+                    moving.forEach(function (m) { parent.insertBefore(m, ref); });
+                    var pid = drag.getAttribute('data-parent'), ids = [];
+                    rows().forEach(function (x) { if (x.getAttribute('data-parent') === pid) { ids.push(Number(x.getAttribute('data-id'))); } });
+                    var token = document.querySelector('meta[name="csrf-token"]');
+                    fetch(reorderUrl, {
+                        method: 'POST', credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token ? token.getAttribute('content') : '', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify({ ids: ids })
+                    }).then(function (res) { if (!res.ok) { throw new Error(res.status); } })
+                      .catch(function () { location.reload(); });
+                });
+            });
+        }
+        build();
+    })();
 
     // ---- tabs ---------------------------------------------------------
     function showTab(name) {

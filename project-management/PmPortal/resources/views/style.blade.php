@@ -182,7 +182,9 @@
 /* 件名サブ (schema 19): second subject line, smaller and muted */
 .pmportal .bl-list td.sub .pp-subsub{font-size:12px;font-weight:400;color:var(--bl-sub);margin-top:2px;line-height:1.35;}
 .pmportal .pp-dsubsub{font-size:14px;color:var(--bl-sub);margin:2px 0 8px;line-height:1.4;}
-.pmportal .bl-list .pp-tcol .pp-tgl{margin-right:0;}
+/* the tree slot at the indent: ▼/▶ + count for a parent, └ for a leaf child */
+.pmportal .bl-list .pp-tind .pp-tgl,.pmportal .bl-list .pp-tind .pp-tbr{display:inline-block;min-width:26px;margin-right:4px;}
+.pmportal .bl-list .pp-tind .pp-tgl .n{font-size:10px;margin-left:2px;}
 /* tree view: make children obvious - branch mark, tinted row, accent edge; parents bold */
 .pmportal .bl-list .pp-tbr{color:var(--bl-sub);margin-right:4px;font-weight:400;}
 .pmportal .bl-list tr.pp-tkid td{background:color-mix(in srgb, var(--bl-accent) 5%, var(--bl-box));}
