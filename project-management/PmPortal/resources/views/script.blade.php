@@ -1104,7 +1104,7 @@
             var i = TREE_ON ? item.i : item;
             var parent = i.parent && issueById(i.parent)
                 ? '<span class="parent">' + esc(issueById(i.parent).key) + ' &gt;</span>' : '';
-            var tgl = '';
+            var tgl = '', ind = '';
             if (TREE_ON) {
                 // The "KEY >" prefix is only needed where the parent is not the
                 // row above in the tree: filtered out, or on another page.
@@ -1118,8 +1118,8 @@
                     : '';
                 // one slot at the indent (snoro 2026-11-18): a parent shows its
                 // ▼/▶ (with the child count) there, a leaf child shows "└"
-                parent = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;">' +
-                    (tgl || (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '')) + '</span>' + parent;
+                ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;">' +
+                    (tgl || (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '')) + '</span>';
             }
             var trCls = (own(SEL, i.id) ? 'sel' : '') +
                 (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
@@ -1131,8 +1131,10 @@
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
                 '<td>' + tag(i.ty) + '</td>' +
                 '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a></td>' +
-                '<td class="sub">' + parent + esc(i.subject) +
-                    (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
+                // indent/toggle in a fixed slot on the left, subject and 件名サブ
+                // stacked to its right so both lines start at the same place
+                '<td class="sub"><div class="pp-sbox">' + ind + '<div class="pp-stext">' + parent + esc(i.subject) +
+                    (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</div></div></td>' +
                 '<td>' + avlist(i.as) + '</td>' +
                 '<td>' + pill(i.st) + '</td>' +
                 '<td>' + prio(i.pr) + '</td>' +
