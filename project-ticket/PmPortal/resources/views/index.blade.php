@@ -89,11 +89,16 @@
          main script. Included before them so it is there when they run. --}}
     @include(\App\Plugins\PmPortal\PortalDefinition::view('_datepicker'))
 
+    {{-- The project's name comes first, above the portal menu (ISS00271);
+         filled by the script, which finds it by id. --}}
+    <div class="bl-app bl-apphead">
+        <div class="bl-projhead" id="pp-projhead"></div>
+    </div>
+
     @include(\App\Plugins\PmPortal\PortalDefinition::view('_topbar'))
 
-    {{-- project header + tabs, filled by the script --}}
+    {{-- tabs + screens --}}
     <div class="bl-app">
-        <div class="bl-projhead" id="pp-projhead"></div>
         <nav class="bl-tabs" id="pp-tabs">
             <a class="bl-tab" data-scr="home"><i class="fa fa-home"></i>{{ $lang['tab_home'] }}</a>
             <a class="bl-tab" data-scr="board"><i class="fa fa-columns"></i>{{ $lang['tab_board'] }}</a>
@@ -290,7 +295,7 @@
 
         {{-- ============ issue detail ============ --}}
         <section class="bl-screen" id="pp-issue">
-            <p style="margin-bottom:8px;"><a class="bl-dback" href="#issues"><i class="fa fa-angle-left"></i> {{ $lang['back'] }}</a></p>
+            <p style="margin-bottom:10px;"><a class="bl-dback" href="#issues"><i class="fa fa-angle-left"></i> {{ $lang['back'] }}</a></p>
             <div class="bl-detail">
                 <div class="bl-card-box"><div class="bl-boxbody" id="pp-d-main"><i class="fa fa-spinner fa-spin"></i></div></div>
                 <div class="bl-card-box">
