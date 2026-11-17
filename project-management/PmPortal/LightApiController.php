@@ -2065,6 +2065,23 @@ class LightApiController
      */
     protected function failed(string $key, \Throwable $e): JsonResponse
     {
+        // ISS00261: Exment's editor column reads every markdown image
+        // "![..](src)" and asks the storage whether src exists; a src such as
+        // "..." becomes the filename ".." and Flysystem throws. Until Exment
+        // itself is fixed, say what to change instead of a bare 500.
+        if ($e instanceof \League\Flysystem\PathTraversalDetected
+            || stripos($e->getMessage(), 'Path traversal detected') !== false) {
+            Log::warning('pm_portal lightapi ' . $key . ': markdown image with an invalid location: ' . $e->getMessage());
+            $message = '本文の画像 ![…](…) の ( ) の中が、画像の場所になっていません。画像の URL にするか、先頭の ! を消して保存してください。';
+
+            return response()->json([
+                'ok' => false,
+                'error' => 'validation',
+                'message' => $message,
+                'fields' => ['description' => [$message]],
+            ], 422);
+        }
+
         Log::error('pm_portal lightapi ' . $key . ': ' . $e->getMessage(), ['exception' => $e]);
 
         return $this->err(500, $key);
