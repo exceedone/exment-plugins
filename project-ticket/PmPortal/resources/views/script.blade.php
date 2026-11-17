@@ -1678,7 +1678,8 @@
         currentIssue = id;
         cmtSetBusy(!!cmtPending[id]);
         var issue = issueById(id);
-        if (issue) { prewarm(issue.edit_url); }
+        // ISS00257: no prewarm of issue.edit_url here - issue edits open in
+        // the native NED form, so that hidden admin-form iframe was never used.
         if (DET[id]) {
             buildDetail(DET[id]);
             // a partial copy (the bulk query hit its ceiling) is shown at once
@@ -1775,8 +1776,11 @@
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a></span></div>' +
             '<div class="bl-dtitle">' + esc(i.subject) + '</div>' +
-            '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">' + pill(i.st) + prio(i.pr) +
-            '<span style="color:var(--bl-sub);">' + esc(L.col_as) + ':</span>' + (i.as || []).map(function (u) { return avname(u); }).join('') + '</div>' +
+            '<div class="bl-dsum">' +
+            '<span class="it"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
+            '<span class="it"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
+            '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') || '—') + '</span>' +
+            '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span></div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
                 : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
@@ -3133,7 +3137,7 @@
                 return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a> ';
             }).join('') + '</p>' : '');
         linkifyIssueRefs(document.getElementById('pp-wbody'));
-        prewarm(page.edit_url);
+        // ISS00257: wiki edits open in the native NED form; no iframe prewarm.
     }
 
     /* ------------------------------------------------ files ------------- */
@@ -9137,7 +9141,7 @@
     setTimeout(function () {
         if (!warmAllowed()) { return; }
         nedPrewarmCreateForm(D.issue_table);
-        if (D.wiki_table) { nedPrewarmCreateForm(D.wiki_table); }
+        // ISS00257: the wiki create form is warmed on hover instead.
     }, 1200);
     // First-click accelerator: warm the edit forms the user is most
     // likely to touch next so the very first 編集 / プロジェクト設定 click
@@ -9156,7 +9160,8 @@
         if (conn && (conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g' || conn.saveData)) { return; }
         // Nothing speculative for a tab nobody is looking at.
         if (document.hidden) { return; }
-        var MAX = 3;
+        // ISS00257: 1 (was 3) - each warm-up is a full framework boot on the server.
+        var MAX = 1;
         var fired = 0;
         function fire(table, id) {
             if (fired >= MAX) { return; }
@@ -9180,7 +9185,8 @@
         // a row nobody has opened. The row named by the address bar still
         // goes first: whoever arrived on a link to it is already looking at
         // it, and the board is not what they asked for.
-        if (D.features && D.features.prefetch && warmAllowed()) { ensureEmbed('board', null, true); }
+        // ISS00257: the board is no longer embedded in advance (the heaviest
+        // server-rendered page); ensureEmbed loads it when its tab is opened.
         if (D.project && D.project.id) { fire(D.project_table, D.project.id); }
         var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 300); };
         idle(function () {
@@ -9198,11 +9204,7 @@
     // Warm the heavy tabs in the background so the first click on them
     // draws immediately. Kicked off after the detail prefetch and the form
     // warm so it never fights them for the network.
-    if (D.features && D.features.prefetch) {
-        // alive(): a pjax swap inside this window would otherwise let this
-        // late timer inject the OLD project's gantt into the new page. The
-        // board is queued far earlier than this, see schedulePrewarmOnLoad().
-        setTimeout(function () { if (warmAllowed()) { ensureEmbed('gantt', null, true); } }, 2400);
-    }
+    // ISS00257: the gantt is no longer embedded in advance either; it loads
+    // when its tab is opened (ensureEmbed).
 })();
 </script>
