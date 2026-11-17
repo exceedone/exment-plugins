@@ -175,6 +175,7 @@ class PmPortalController extends AdminControllerBase
                 'note' => strval(array_get($value->value, array_get($pj, 'note'), '')),
                 'status' => array_get($status_meta, $status_key),
                 'parent' => $parentId === '' ? null : array_get($names, $parentId),
+                'parent_id' => $parentId,
                 'archived' => $archived,
                 'count' => 0,
                 'url' => PortalDefinition::url($value->id),

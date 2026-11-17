@@ -20,6 +20,66 @@ use Illuminate\Http\Request;
 trait PortalTopbarTrait
 {
     /**
+     * ISS00263: projects in tree order - each parent followed by its children
+     * (any depth), siblings by name, archived after the active ones at each
+     * level - with a 'depth' for indenting. A project whose parent is not in
+     * the list (not readable, deleted) or that sits in a loop is treated as
+     * top level, so no row is ever lost.
+     *
+     * @param array<int, array<string, mixed>> $items each with id, name, archived, parent_id
+     * @return array<int, array<string, mixed>>
+     */
+    protected static function projectTreeOrder(array $items): array
+    {
+        $ids = [];
+        foreach ($items as $it) {
+            $ids[strval($it['id'])] = true;
+        }
+        $kids = [];
+        foreach ($items as $it) {
+            $pid = strval(array_get($it, 'parent_id', ''));
+            if ($pid === '' || !isset($ids[$pid]) || $pid === strval($it['id'])) {
+                $pid = '';
+            }
+            $kids[$pid][] = $it;
+        }
+        $cmp = function ($a, $b) {
+            $c = boolval($a['archived']) <=> boolval($b['archived']);
+
+            return $c !== 0 ? $c : strnatcasecmp(strval($a['name']), strval($b['name']));
+        };
+        $out = [];
+        $seen = [];
+        $walk = function ($pid, $depth) use (&$walk, &$kids, &$out, &$seen, $cmp) {
+            $list = $kids[$pid] ?? [];
+            usort($list, $cmp);
+            foreach ($list as $it) {
+                $id = strval($it['id']);
+                if (isset($seen[$id])) {
+                    continue;
+                }
+                $seen[$id] = true;
+                $it['depth'] = $depth;
+                $out[] = $it;
+                $walk($id, $depth + 1);
+            }
+        };
+        $walk('', 0);
+        // Whatever a loop kept out of reach goes to the top level.
+        foreach ($items as $it) {
+            $id = strval($it['id']);
+            if (!isset($seen[$id])) {
+                $seen[$id] = true;
+                $it['depth'] = 0;
+                $out[] = $it;
+                $walk($id, 1);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Whether the signed-in user is a system administrator (ISS00256: only
      * they get the top bar's settings link).
      */
@@ -61,14 +121,12 @@ trait PortalTopbarTrait
                 'starred' => boolval(array_get($card, 'starred', false)),
                 'archived' => boolval(array_get($card, 'archived', false)),
                 'can_add' => boolval(array_get($card, 'can_add', false)),
+                'parent_id' => strval(array_get($card, 'parent_id', '')),
             ];
         }
 
-        // Starred first, archived last; within a band the table order stays
-        // (usort is stable on this PHP), so children still follow parents.
-        usort($projects, function ($a, $b) {
-            return [$a['archived'], !$a['starred']] <=> [$b['archived'], !$b['starred']];
-        });
+        // ISS00263: each parent followed by its children, by name; archived last.
+        $projects = static::projectTreeOrder($projects);
 
         return [
             'projects' => $projects,
@@ -105,6 +163,7 @@ trait PortalTopbarTrait
         $issue_create = isset($this->issue_table) && $this->issue_table->enableCreate(true) === true;
 
         $cards = [];
+        $parentColumn = CustomColumn::getEloquent('parent_project', $this->project_table) !== null ? 'parent_project' : null;
         $projectRows = $this->project_table->getValueModel()->get();
         // ISS00257: read the shares of every project once, instead of one or
         // two queries per project in each permission check below. Always the
@@ -121,6 +180,7 @@ trait PortalTopbarTrait
                 'url' => PortalDefinition::url($value->id),
                 'starred' => false,
                 'archived' => $hasArchived && boolval(array_get($value->value, 'archived')),
+                'parent_id' => $parentColumn ? strval(array_get($value->value, $parentColumn, '')) : '',
                 // The bar's 課題の追加 menu lists only where an issue can be filed.
                 'can_add' => $this->childAddable($this->issue_table ?? null, $value, $issue_create),
             ];
@@ -181,6 +241,7 @@ trait PortalTopbarTrait
                 'key' => strtoupper(strval(array_get($value->value, array_get($pj, 'key'), ''))),
                 'status' => array_get($project_status, strval(array_get($value->value, array_get($pj, 'status'), ''))),
                 'parent' => $parent_id === '' ? null : array_get($names, $parent_id),
+                'parent_id' => $parent_id,
                 'archived' => $has_archived && boolval(array_get($value->value, 'archived')),
                 'url' => PortalDefinition::url($value->id),
                 'star_url' => PortalDefinition::url($value->id, 'star'),
@@ -198,10 +259,7 @@ trait PortalTopbarTrait
 
         // Same order the bar's plain list uses, so the menu does not reshuffle
         // itself the moment the answer lands.
-        $items = array_values($cards);
-        usort($items, function ($a, $b) {
-            return [$a['archived'], !$a['starred']] <=> [$b['archived'], !$b['starred']];
-        });
+        $items = static::projectTreeOrder(array_values($cards));
 
         return response()->json([
             'items' => $items,
