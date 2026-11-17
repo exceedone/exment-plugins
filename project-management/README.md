@@ -1,4 +1,4 @@
-# Exment ProjectTicket
+# Exment Project Management
 
 Project and ticket management for Exment (Backlog-like portal, issues, board, Gantt chart, wiki, files).
 Exment のプロジェクト管理・チケット管理のプラグインです（Backlog に似たポータル・課題・ボード・ガントチャート・Wiki・ファイル）。
