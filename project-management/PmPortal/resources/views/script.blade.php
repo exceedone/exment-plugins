@@ -7670,8 +7670,9 @@
     }
     function nedImagePaste(ev) {
         var input = ev.target;
+        // ISS00245: the issue description and the wiki page body (2026-11-18)
         if (!input || input.tagName !== 'TEXTAREA' || !input.classList.contains('pp-ne-in')
-            || NED.table !== D.issue_table || !NED.canEdit || input.readOnly) { return; }
+            || (NED.table !== D.issue_table && NED.table !== D.wiki_table) || !NED.canEdit || input.readOnly) { return; }
         var field = input.closest('[data-fname]');
         var col = field && nedAiCol(field.dataset.fname);
         if (!col || col.type !== 'richtext' || !ev.clipboardData) { return; }
@@ -8027,6 +8028,25 @@
         var form = NED.el.querySelector('.pp-ne-form');
         if (form) {
             form.addEventListener('paste', nedImagePaste);
+            // ISS00245: an image dropped on the body goes the same way as one
+            // pasted (uploaded, then ![name](url) at the caret).
+            form.addEventListener('dragover', function (ev) {
+                var t = ev.target;
+                if (t && t.tagName === 'TEXTAREA' && t.classList.contains('pp-ne-in')
+                    && ev.dataTransfer && Array.prototype.indexOf.call(ev.dataTransfer.types || [], 'Files') >= 0) {
+                    ev.preventDefault();
+                }
+            });
+            form.addEventListener('drop', function (ev) {
+                var t = ev.target;
+                if (!t || t.tagName !== 'TEXTAREA' || !t.classList.contains('pp-ne-in') || !ev.dataTransfer
+                    || !(ev.dataTransfer.files && ev.dataTransfer.files.length)) { return; }
+                // never let the browser open a dropped file in place of the form
+                ev.preventDefault();
+                var hasImage = Array.prototype.some.call(ev.dataTransfer.files, function (f) { return /^image\//i.test(f.type); });
+                if (!hasImage) { nedShowAlert('本文に入れられるのは画像だけです。ほかのファイルは「ファイル」から添付してください。', false); return; }
+                nedImagePaste({ target: t, clipboardData: ev.dataTransfer, preventDefault: function () {} });
+            });
             form.addEventListener('input', nedUpdateChangeCount);
             form.addEventListener('change', nedUpdateChangeCount);
             // Same two events drive the leave-page guard and the draft, both
