@@ -105,6 +105,11 @@
 .pp-top .pp-pjm-row.arch{background:#f6f7f8;}
 .pp-top .pp-pjm-row.kid .nm{font-weight:600;}
 .pp-top .pp-pjm-row[draggable="true"]{cursor:grab;}
+.pp-top .pp-pjm-tgl{border:0;background:none;padding:0 2px;width:18px;color:var(--bl-sub,#8a97a3);font-size:10px;cursor:pointer;flex:none;}
+.pp-top .pp-pjm-tgl:hover{color:var(--bl-accent-d,#3d9a80);}
+.pp-top .pp-pjm-head .pp-pjm-fold{font-size:11.5px;color:var(--bl-sub,#8a97a3);}
+.pp-top .pp-pjm-head .pp-pjm-fold a{color:var(--bl-accent-d,#3d9a80);font-weight:700;cursor:pointer;}
+.pp-top .pp-pjm-head .pp-pjm-fold a:hover{text-decoration:underline;}
 .pp-top .pp-pjm-row.dragging{opacity:.45;}
 .pp-top .pp-pjm-row.drop-before{box-shadow:inset 0 3px 0 var(--bl-accent,#4cae93);}
 .pp-top .pp-pjm-row.drop-after{box-shadow:inset 0 -3px 0 var(--bl-accent,#4cae93);}
@@ -186,6 +191,11 @@
         <div class="pp-top-menu pp-top-pjmenu" data-projects hidden>
             <div class="pp-pjm-head">
                 <span class="ti">{{ $tt('projects') }}</span>
+                {{-- fold the project tree like the issue tree (snoro 2026-11-18) --}}
+                <span class="pp-pjm-fold" id="pp-pjm-fold" hidden>
+                    <a href="javascript:void(0);" id="pp-pjm-open">すべて開く</a> /
+                    <a href="javascript:void(0);" id="pp-pjm-close">すべて閉じる</a>
+                </span>
                 {{-- Backlog's プロジェクト横断 corner. The portal's own
                      cross-project search is the box in this same bar, so the
                      link puts the cursor in it rather than opening a screen
@@ -460,8 +470,89 @@
                 pjList.appendChild(r);
             });
         }
+        addFoldToggles();
         filterProjects();
     }
+
+    // ---- folding the project tree (▼/▶, すべて開く・すべて閉じる) ----
+    var PJ_FOLD_KEY = 'pmportal.pjfold';
+    var pjFold = {};
+    try {
+        var pjFoldSaved = JSON.parse(localStorage.getItem(PJ_FOLD_KEY) || '[]');
+        if (Array.isArray(pjFoldSaved)) { pjFoldSaved.forEach(function (id) { pjFold[String(id)] = true; }); }
+    } catch (e) { /* ignore */ }
+    function pjFoldSave() {
+        try { localStorage.setItem(PJ_FOLD_KEY, JSON.stringify(Object.keys(pjFold))); } catch (e) { /* ignore */ }
+    }
+    function pjRows() { return pjList ? pjList.querySelectorAll('.pp-pjm-row[data-id]') : []; }
+    function paintToggle(b) {
+        var shut = !!pjFold[b.getAttribute('data-tgl')];
+        b.textContent = (shut ? '▶' : '▼');
+        b.setAttribute('aria-expanded', shut ? 'false' : 'true');
+        b.title = shut ? '開く' : '閉じる';
+    }
+    function addFoldToggles() {
+        var kids = {};
+        pjRows().forEach(function (r) {
+            var pid = r.getAttribute('data-parent');
+            if (pid && Number(r.getAttribute('data-depth') || 0) > 0) { kids[pid] = (kids[pid] || 0) + 1; }
+        });
+        var any = false;
+        pjRows().forEach(function (r) {
+            var id = r.getAttribute('data-id'), n = kids[id];
+            if (!n) { r.removeAttribute('data-kids'); return; }
+            any = true;
+            r.setAttribute('data-kids', String(n));
+            var l1 = r.querySelector('.l1');
+            if (!l1 || l1.querySelector('.pp-pjm-tgl')) { return; }
+            var b = el('button', 'pp-pjm-tgl');
+            b.type = 'button';
+            b.setAttribute('data-tgl', id);
+            paintToggle(b);
+            l1.insertBefore(b, l1.firstChild);
+        });
+        var ctl = document.getElementById('pp-pjm-fold');
+        if (ctl) { ctl.hidden = !any; }
+    }
+    // rows under a folded parent; ignored while a keyword is typed, so a
+    // search still finds a project whose parent is closed
+    function foldHidden() {
+        var hide = {}, cut = -1;
+        pjRows().forEach(function (r) {
+            var d = Number(r.getAttribute('data-depth') || 0);
+            if (cut >= 0 && d > cut) { hide[r.getAttribute('data-id')] = true; return; }
+            cut = (r.getAttribute('data-kids') && pjFold[r.getAttribute('data-id')]) ? d : -1;
+        });
+        return hide;
+    }
+    if (pjList) {
+        pjList.addEventListener('click', function (ev) {
+            var b = ev.target.closest('.pp-pjm-tgl');
+            if (!b) { return; }
+            ev.preventDefault();
+            ev.stopPropagation();
+            var id = b.getAttribute('data-tgl');
+            if (pjFold[id]) { delete pjFold[id]; } else { pjFold[id] = true; }
+            pjFoldSave();
+            paintToggle(b);
+            filterProjects();
+        });
+    }
+    ['pp-pjm-open', 'pp-pjm-close'].forEach(function (ctlId) {
+        var a = document.getElementById(ctlId);
+        if (!a) { return; }
+        a.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            pjFold = {};
+            if (ctlId === 'pp-pjm-close') {
+                pjRows().forEach(function (r) { if (r.getAttribute('data-kids')) { pjFold[r.getAttribute('data-id')] = true; } });
+            }
+            pjFoldSave();
+            if (pjList) { pjList.querySelectorAll('.pp-pjm-tgl').forEach(paintToggle); }
+            filterProjects();
+        });
+    });
 
     // ISS00263: administrators drag a project among its siblings (same parent);
     // its whole subtree moves with it. The new sibling order is saved through
@@ -536,6 +627,9 @@
         var row = el('div', 'pp-pjm-row' + (p.archived ? ' arch' : '') + (String(p.id) === current ? ' cur' : '') + (p.depth ? ' kid' : ''));
         // ISS00263: children sit indented under their parent (server sends tree order + depth)
         if (p.depth) { row.style.paddingLeft = (14 + 22 * Math.min(Number(p.depth) || 0, 4)) + 'px'; }
+        row.setAttribute('data-id', String(p.id));
+        row.setAttribute('data-parent', String(p.parent_id || ''));
+        row.setAttribute('data-depth', String(Number(p.depth) || 0));
         row.setAttribute('data-find', String((p.name || '') + ' ' + (p.key || '')).toLowerCase());
 
         var star = el('button', 'pp-pjm-star');
@@ -615,9 +709,10 @@
         var kw = pjQ.value.trim().toLowerCase();
         if (pjClear) { pjClear.hidden = kw === ''; }
         var shown = 0;
+        var folded = kw === '' ? foldHidden() : {};
         pjList.querySelectorAll('[data-find]').forEach(function (row) {
             var hit = kw === '' || row.getAttribute('data-find').indexOf(kw) >= 0;
-            row.hidden = !hit;
+            row.hidden = !hit || !!folded[row.getAttribute('data-id')];
             if (hit) { shown++; }
         });
         var none = pjList.querySelector('.pp-pjm-nohit');
