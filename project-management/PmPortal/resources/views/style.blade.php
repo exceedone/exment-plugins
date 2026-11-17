@@ -185,6 +185,12 @@
 .pmportal .bl-list td.sub .pp-sbox{display:flex;align-items:flex-start;}
 .pmportal .bl-list td.sub .pp-sbox .pp-tind{flex:none;}
 .pmportal .bl-list td.sub .pp-stext{flex:1 1 auto;min-width:0;}
+/* inline cell edit (double-click) */
+.pmportal .bl-list td[data-ed]{cursor:cell;}
+.pmportal .bl-list td[data-ed]:hover{box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--bl-accent) 45%, transparent);}
+.pmportal .bl-list td .pp-ed-in{width:100%;min-width:110px;font-size:12px;padding:3px 4px;border:1px solid var(--bl-accent);border-radius:4px;background:var(--bl-box);}
+.pmportal .bl-list td.pp-ed-saving{opacity:.5;}
+.pmportal .bl-list td.pp-ed-fail{background:#fde8e6 !important;box-shadow:inset 0 0 0 2px #e74c3c;}
 /* the tree slot at the indent: ▼/▶ + count for a parent, └ for a leaf child */
 .pmportal .bl-list .pp-tind .pp-tgl,.pmportal .bl-list .pp-tind .pp-tbr{display:inline-block;min-width:26px;margin-right:4px;}
 .pmportal .bl-list .pp-tind .pp-tgl .n{font-size:10px;margin-left:2px;}
