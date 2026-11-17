@@ -103,6 +103,7 @@
     border-bottom:1px solid var(--bl-line,#eef2f5);}
 .pp-top .pp-pjm-row:last-child{border-bottom:0;}
 .pp-top .pp-pjm-row.arch{background:#f6f7f8;}
+.pp-top .pp-pjm-row.kid .nm{font-weight:600;}
 .pp-top .pp-pjm-row .mn{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px;}
 .pp-top .pp-pjm-row .l1{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:19px;}
 .pp-top .pp-pjm-row .nm{font-size:13.5px;font-weight:700;}
@@ -201,6 +202,7 @@
                 @forelse($topbar['projects'] as $p)
                 <a class="pp-top-mi {{ $topbar['current'] === $p['id'] ? 'cur' : '' }}" href="{{ $p['url'] }}"
                    data-find="{{ mb_strtolower($p['name'] . ' ' . $p['key']) }}"
+                   @if(!empty($p['depth'])) style="padding-left:{{ 13 + 22 * min(intval($p['depth']), 4) }}px" @endif
                    @if($topbar['current'] === $p['id']) aria-current="true" @endif>
                     <i class="fa {{ $p['starred'] ? 'fa-star st' : 'fa-folder-o' }}"></i>
                     <span class="nm">{{ $p['name'] }}</span>
@@ -456,7 +458,9 @@
 
     function projectRow(p, current) {
         var url = String(p.url || '');
-        var row = el('div', 'pp-pjm-row' + (p.archived ? ' arch' : '') + (String(p.id) === current ? ' cur' : ''));
+        var row = el('div', 'pp-pjm-row' + (p.archived ? ' arch' : '') + (String(p.id) === current ? ' cur' : '') + (p.depth ? ' kid' : ''));
+        // ISS00263: children sit indented under their parent (server sends tree order + depth)
+        if (p.depth) { row.style.paddingLeft = (14 + 22 * Math.min(Number(p.depth) || 0, 4)) + 'px'; }
         row.setAttribute('data-find', String((p.name || '') + ' ' + (p.key || '')).toLowerCase());
 
         var star = el('button', 'pp-pjm-star');
@@ -481,7 +485,9 @@
             l1.appendChild(pill);
         }
         if (p.archived) { l1.appendChild(el('span', 'ar', LANG.archived_tag)); }
-        if (p.parent) {
+        // nested rows already show their parent by position; only a top-level
+        // row whose parent is not listed keeps the "↪ parent" hint
+        if (p.parent && !p.depth) {
             var up = el('span', 'up');
             up.title = LANG.pj_parent;
             up.appendChild(ico('fa fa-level-up fa-rotate-90'));
