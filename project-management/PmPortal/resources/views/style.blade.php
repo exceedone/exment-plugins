@@ -1189,9 +1189,10 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .bl-list tbody tr:has(.bl-due.over) > td:first-child{box-shadow:inset 3px 0 0 var(--bl-red);}
 
 /* ---- issue detail: back button, summary strip under the subject ---- */
-.pmportal .bl-dback{display:inline-flex;align-items:center;gap:6px;background:var(--bl-box);border:1px solid var(--bl-line);
-  border-radius:var(--bl-radius-s);padding:6px 14px;color:var(--bl-ink);font-weight:700;box-shadow:var(--bl-shadow-s);}
-.pmportal .bl-dback:hover{border-color:var(--bl-accent);color:var(--bl-accent-d);background:var(--bl-hover);text-decoration:none;}
+/* 課題一覧へ: filled accent button so it stands out (snoro 2026-11-18) */
+.pmportal .bl-dback{display:inline-flex;align-items:center;gap:6px;background:var(--bl-accent);border:1px solid var(--bl-accent);
+  border-radius:var(--bl-radius-s);padding:7px 16px;color:#fff;font-weight:700;box-shadow:var(--bl-shadow-s);}
+.pmportal .bl-dback:hover,.pmportal .bl-dback:focus{border-color:var(--bl-accent-d);color:#fff;background:var(--bl-accent-d);text-decoration:none;}
 .pmportal .bl-dhead > span:last-child{flex-wrap:wrap;justify-content:flex-end;}
 .pmportal .bl-dsum{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:12px;padding:9px 12px;
   background:var(--bl-box2);border:1px solid var(--bl-line2);border-radius:var(--bl-radius);}
