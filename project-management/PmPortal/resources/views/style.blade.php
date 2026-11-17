@@ -195,7 +195,8 @@
 .pmportal .bl-list .pp-tind .pp-tgl,.pmportal .bl-list .pp-tind .pp-tbr{display:inline-block;min-width:26px;margin-right:4px;}
 .pmportal .bl-list .pp-tind .pp-tgl .n{font-size:10px;margin-left:2px;}
 /* tree view: make children obvious - branch mark, tinted row, accent edge; parents bold */
-.pmportal .bl-list .pp-tbr{color:var(--bl-sub);margin-right:4px;font-weight:400;}
+/* └ branch mark: dark accent, bold and a bit larger so it reads at a glance (snoro 2026-11-18) */
+.pmportal .bl-list .pp-tbr{color:var(--bl-accent-d);margin-right:4px;font-weight:800;font-size:15px;line-height:1;}
 .pmportal .bl-list tr.pp-tkid td{background:color-mix(in srgb, var(--bl-accent) 5%, var(--bl-box));}
 .pmportal .bl-list tr.pp-tkid.pp-td2 td{background:color-mix(in srgb, var(--bl-accent) 9%, var(--bl-box));}
 .pmportal .bl-list tr.pp-tkid.pp-td3 td{background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));}
