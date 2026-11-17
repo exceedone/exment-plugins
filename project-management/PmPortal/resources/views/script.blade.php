@@ -1093,7 +1093,7 @@
         // tree mode: the ▼/▶ toggles get a column of their own at the left
         // (snoro 2026-11-18: inside the subject they were hard to read)
         var tHead = document.getElementById('pp-tcol-head');
-        if (tHead) { tHead.hidden = !TREE_ON; }
+        if (tHead) { tHead.hidden = true; }
 
         var onPage = {};
         if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
@@ -1114,12 +1114,12 @@
                     ? '<a href="javascript:void(0);" role="button" class="pp-tgl" data-tgl="' + esc(i.id) +
                         '" aria-expanded="' + (folded ? 'false' : 'true') + '" title="' +
                         esc(folded ? (L.tree_expand || '開く') : (L.tree_collapse || '閉じる')) + '">' +
-                        (folded ? '▶' : '▼') + ' <span class="n">(' + item.n + ')</span></a>'
+                        (folded ? '▶' : '▼') + '<span class="n">' + item.n + '</span></a>'
                     : '';
-                // the subject keeps only the indent and, for a child, a "└"
-                // branch mark; the toggle sits in its own column (pp-tcol)
-                parent = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 18) + 'px;">' +
-                    (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '') + '</span>' + parent;
+                // one slot at the indent (snoro 2026-11-18): a parent shows its
+                // ▼/▶ (with the child count) there, a leaf child shows "└"
+                parent = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;">' +
+                    (tgl || (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '')) + '</span>' + parent;
             }
             var trCls = (own(SEL, i.id) ? 'sel' : '') +
                 (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
@@ -1128,7 +1128,6 @@
             rows += '<tr data-issue="' + esc(i.id) + '"' + (trCls.trim() ? ' class="' + trCls.trim() + '"' : '') + '>' +
                 (BULK_ON ? '<td class="chk"><input type="checkbox" class="pp-bchk" data-id="' + esc(i.id) + '"' +
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
-                (TREE_ON ? '<td class="pp-tcol">' + tgl + '</td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
                 '<td>' + tag(i.ty) + '</td>' +
                 '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a></td>' +
