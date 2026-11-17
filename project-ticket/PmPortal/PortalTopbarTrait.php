@@ -19,6 +19,21 @@ use Illuminate\Http\Request;
  */
 trait PortalTopbarTrait
 {
+    /**
+     * Whether the signed-in user is a system administrator (ISS00256: only
+     * they get the top bar's settings link).
+     */
+    protected static function topbarIsAdmin(): bool
+    {
+        try {
+            $user = \Exment::user();
+
+            return $user !== null && boolval($user->isAdministrator());
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     /** Rows a search answer carries. */
     protected static $topbar_search_limit = 10;
 
@@ -65,6 +80,9 @@ trait PortalTopbarTrait
             // Backlog offers プロジェクトの追加 only to who may actually add;
             // the entry links to the dashboard, whose modal does the work.
             'can_create' => isset($this->project_table) && $this->project_table->enableCreate(true) === true,
+            // ISS00256: the portal settings open from the top bar, for
+            // administrators only (the sidebar keeps a single entry).
+            'settings_url' => static::topbarIsAdmin() ? PortalDefinition::url('settings') : '',
         ];
     }
 
@@ -87,7 +105,12 @@ trait PortalTopbarTrait
         $issue_create = isset($this->issue_table) && $this->issue_table->enableCreate(true) === true;
 
         $cards = [];
-        foreach ($this->project_table->getValueModel()->get() as $value) {
+        $projectRows = $this->project_table->getValueModel()->get();
+        // ISS00257: read the shares of every project once, instead of one or
+        // two queries per project in each permission check below. Always the
+        // whole readable set: Exment keeps the first preload for the request.
+        $this->project_table->setGridAuthoritable($projectRows);
+        foreach ($projectRows as $value) {
             if (!$this->project_table->hasPermissionData($value)) {
                 continue;
             }
@@ -137,6 +160,8 @@ trait PortalTopbarTrait
         // One read, used twice - the same shape the dashboard builds its
         // cards from, so both screens name a parent project the same way.
         $rows = $this->project_table->getValueModel()->get();
+        // ISS00257: one query for every project's shares (see topbarCards).
+        $this->project_table->setGridAuthoritable($rows);
         $names = [];
         if ($parent_column) {
             foreach ($rows as $row) {
