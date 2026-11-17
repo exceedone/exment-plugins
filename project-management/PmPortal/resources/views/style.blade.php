@@ -167,6 +167,17 @@
 /* The actions sit together on the right; margin-left:auto used to live on
    each link, so a second one landed in the middle of the row. */
 .pmportal .bl-fright{margin-left:auto;display:flex;gap:14px;align-items:center;}
+/* Tree view of the issue list. */
+.pmportal .bl-treebtn{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);background:var(--bl-box);
+  color:var(--bl-sub);font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;white-space:nowrap;}
+.pmportal .bl-treebtn.active{border-color:var(--bl-accent);color:var(--bl-accent-d);
+  background:color-mix(in srgb, var(--bl-accent) 10%, var(--bl-box));}
+.pmportal .bl-list .pp-tind{display:inline-block;white-space:nowrap;}
+.pmportal .bl-list .pp-tgl,.pmportal .bl-list .pp-tgl-sp{display:inline-block;min-width:16px;margin-right:6px;}
+.pmportal .bl-list .pp-tgl{color:var(--bl-sub);font-size:11px;text-decoration:none;cursor:pointer;padding:2px 3px;
+  border-radius:var(--bl-radius-s,4px);}
+.pmportal .bl-list .pp-tgl:hover{color:var(--bl-accent-d);background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));}
+.pmportal .bl-list .pp-tgl .n{font-weight:700;}
 .pmportal .bl-fmine{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);background:var(--bl-box);
   color:var(--bl-sub);font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;white-space:nowrap;}
 .pmportal .bl-fmine:hover{border-color:var(--bl-accent);color:var(--bl-accent-d);}

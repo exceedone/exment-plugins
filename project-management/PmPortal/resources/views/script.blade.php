@@ -505,6 +505,96 @@
     var SAVED_KEY = userKey('sf');
     var SAVED_MAX = 20;
 
+    // Tree view of the issue list (ISS00253). Off unless the user turns it
+    // on, so the flat list is what everyone keeps seeing by default. Both the
+    // switch and the folded parents are per person and per project.
+    var TREE_KEY = userKey('tr');
+    var TREE_FOLD_KEY = userKey('tc');
+    var TREE_ON = false;
+    var TREE_FOLD = {};
+    try {
+        TREE_ON = localStorage.getItem(TREE_KEY) === '1';
+        var savedFold = JSON.parse(localStorage.getItem(TREE_FOLD_KEY) || '[]');
+        if (Array.isArray(savedFold)) {
+            savedFold.forEach(function (id) {
+                if (typeof id === 'string' || typeof id === 'number') { TREE_FOLD['i' + id] = true; }
+            });
+        }
+    } catch (e) { /* ignore */ }
+    function treeFolded(id) { return Object.prototype.hasOwnProperty.call(TREE_FOLD, 'i' + id); }
+    function treeSave() {
+        try {
+            if (TREE_ON) { localStorage.setItem(TREE_KEY, '1'); } else { localStorage.removeItem(TREE_KEY); }
+            // Only ids that still exist, so the list cannot grow for ever.
+            var ids = Object.keys(TREE_FOLD).map(function (k) { return k.slice(1); })
+                .filter(function (id) { return !!issueById(id); });
+            if (ids.length) { localStorage.setItem(TREE_FOLD_KEY, JSON.stringify(ids)); }
+            else { localStorage.removeItem(TREE_FOLD_KEY); }
+        } catch (e) { /* ignore */ }
+    }
+    // The given (already filtered and sorted) list, re-ordered so children
+    // sit under their parent. Returns [{i, depth, n}] where n is the number
+    // of direct children placed under the row. A child whose parent is not in
+    // the list (filtered out, or the id does not exist) is a top-level row;
+    // rows caught in a parent cycle are put at top level too, so nothing is
+    // ever dropped and nothing can loop. Siblings keep the order of the list
+    // they came in, which is the current sort. Unless `full`, the rows under
+    // a folded parent are left out.
+    function treeRows(list, full) {
+        var has = Object.prototype.hasOwnProperty;
+        var ids = {}, kids = {}, roots = [];
+        list.forEach(function (i) { ids['i' + i.id] = true; });
+        list.forEach(function (i) {
+            var p = (i.parent === null || i.parent === undefined) ? '' : String(i.parent);
+            if (p !== '' && p !== String(i.id) && has.call(ids, 'i' + p)) {
+                (kids['i' + p] = kids['i' + p] || []).push(i);
+            } else {
+                roots.push(i);
+            }
+        });
+        var out = [], seen = {};
+        var walk = function (root) {
+            var stack = [{ i: root, depth: 0, up: null }];
+            while (stack.length) {
+                var cur = stack.pop();
+                var k = 'i' + cur.i.id;
+                if (has.call(seen, k)) { continue; }
+                seen[k] = true;
+                var entry = { i: cur.i, depth: cur.depth, n: 0 };
+                if (cur.up) { cur.up.n++; }
+                out.push(entry);
+                var ch = has.call(kids, k) ? kids[k] : [];
+                for (var c = ch.length - 1; c >= 0; c--) {
+                    stack.push({ i: ch[c], depth: cur.depth + 1, up: entry });
+                }
+            }
+        };
+        roots.forEach(walk);
+        // Whatever is left has a parent chain that never reaches a root: a cycle.
+        list.forEach(function (i) { if (!has.call(seen, 'i' + i.id)) { walk(i); } });
+        if (full) { return out; }
+
+        var vis = [], hide = -1;
+        out.forEach(function (e) {
+            if (hide >= 0 && e.depth > hide) { return; }
+            hide = (e.n > 0 && treeFolded(e.i.id)) ? e.depth : -1;
+            vis.push(e);
+        });
+
+        return vis;
+    }
+    function syncTreeControls(parents) {
+        var btn = document.getElementById('pp-tree-btn');
+        if (btn) {
+            btn.classList.toggle('active', TREE_ON);
+            btn.setAttribute('aria-pressed', TREE_ON ? 'true' : 'false');
+        }
+        ['pp-tree-open', 'pp-tree-close'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) { el.hidden = !TREE_ON || !parents; }
+        });
+    }
+
     // Whether the tick column and the bulk bar exist at all. Table level, so
     // a reader is not offered a control that could only ever be refused; the
     // server still checks every row on its own when the edit is applied.
@@ -942,7 +1032,16 @@
         renderIssueFilters();
         renderSortHead();
 
-        var all = filteredIssues();
+        var matched = filteredIssues();
+        // Tree mode pages over the rows that are actually listed (folded
+        // children are not), so the dom stays as bounded as in the flat list.
+        var parents = 0;
+        var all = matched;
+        if (TREE_ON) {
+            all = treeRows(matched, false);
+            all.forEach(function (e) { if (e.n > 0) { parents++; } });
+        }
+        syncTreeControls(parents);
         var total = all.length;
         var size = PAGE.size > 0 ? PAGE.size : total;
         var pages = size > 0 ? Math.max(1, Math.ceil(total / size)) : 1;
@@ -956,11 +1055,29 @@
         var head = document.getElementById('pp-chk-cell');
         if (head) { head.hidden = !BULK_ON; }
 
+        var onPage = {};
+        if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
+
         var rows = '', shown = 0;
-        page.forEach(function (i) {
+        page.forEach(function (item) {
             shown++;
+            var i = TREE_ON ? item.i : item;
             var parent = i.parent && issueById(i.parent)
                 ? '<span class="parent">' + esc(issueById(i.parent).key) + ' &gt;</span>' : '';
+            if (TREE_ON) {
+                // The "KEY >" prefix is only needed where the parent is not the
+                // row above in the tree: filtered out, or on another page.
+                if (item.depth > 0 && Object.prototype.hasOwnProperty.call(onPage, 'i' + i.parent)) { parent = ''; }
+                var folded = treeFolded(i.id);
+                var tgl = item.n > 0
+                    ? '<a href="javascript:void(0);" role="button" class="pp-tgl" data-tgl="' + esc(i.id) +
+                        '" aria-expanded="' + (folded ? 'false' : 'true') + '" title="' +
+                        esc(folded ? (L.tree_expand || '開く') : (L.tree_collapse || '閉じる')) + '">' +
+                        (folded ? '▶' : '▼') + ' <span class="n">(' + item.n + ')</span></a>'
+                    : '<span class="pp-tgl-sp"></span>';
+                parent = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 18) + 'px;">' +
+                    tgl + '</span>' + parent;
+            }
             var ms = own(D.milestones, i.ms);
             rows += '<tr data-issue="' + esc(i.id) + '"' + (own(SEL, i.id) ? ' class="sel"' : '') + '>' +
                 (BULK_ON ? '<td class="chk"><input type="checkbox" class="pp-bchk" data-id="' + esc(i.id) + '"' +
@@ -980,14 +1097,16 @@
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });
         document.getElementById('pp-issue-rows').innerHTML = rows;
-        renderPager(total, from, shown, pages);
+        renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
     }
 
-    function renderPager(total, from, shown, pages) {
+    // `matched` is how many issues pass the filters; in tree mode `total` is
+    // the listed rows, which is fewer while parents are folded.
+    function renderPager(total, from, shown, pages, matched) {
         // Two different facts, and the reader wants both: where this page sits
         // inside the filtered list, and how much of the project that list is.
-        var count = fmt(L.cnt_line, total, D.issues.length);
+        var count = fmt(L.cnt_line, typeof matched === 'number' ? matched : total, D.issues.length);
         document.getElementById('pp-issue-count').textContent = (total === 0 || pages <= 1)
             ? count
             : String(L.pg_range).replace(':from', from + 1).replace(':to', from + shown)
@@ -2469,6 +2588,8 @@
     // grid's own, filters included - what the user is actually looking at.
     function issueNav(current) {
         var list = filteredIssues();
+        // In tree mode the grid's order is the tree's, folded rows included.
+        if (TREE_ON) { list = treeRows(list, true).map(function (e) { return e.i; }); }
         var at = -1;
         list.forEach(function (row, index) { if (String(row.id) === String(current.id)) { at = index; } });
         if (at < 0 || list.length < 2) { return ''; }
@@ -9004,6 +9125,51 @@
         clearSelection();
         renderIssues();
         filterToUrl();
+    });
+
+    /* ---- tree view ---- */
+    // Folding changes which rows are listed, so the ticks go, the same as on
+    // any other change of the list: a bulk edit must not reach a hidden row.
+    function treeRerender(firstPage) {
+        if (firstPage) { PAGE.no = 1; }
+        treeSave();
+        clearSelection();
+        renderIssues();
+    }
+    (function () {
+        var treeBtn = document.getElementById('pp-tree-btn');
+        var treeOpen = document.getElementById('pp-tree-open');
+        var treeClose = document.getElementById('pp-tree-close');
+        if (treeBtn) {
+            treeBtn.addEventListener('click', function () {
+                TREE_ON = !TREE_ON;
+                treeRerender(true);
+            });
+        }
+        if (treeOpen) {
+            treeOpen.addEventListener('click', function () {
+                TREE_FOLD = {};
+                treeRerender(true);
+            });
+        }
+        if (treeClose) {
+            treeClose.addEventListener('click', function () {
+                treeRows(filteredIssues(), true).forEach(function (e) {
+                    if (e.n > 0) { TREE_FOLD['i' + e.i.id] = true; }
+                });
+                treeRerender(true);
+            });
+        }
+    })();
+    document.getElementById('pp-issue-rows').addEventListener('click', function (ev) {
+        var tgl = ev.target.closest('.pp-tgl');
+        if (!tgl) { return; }
+        // Not a way into the issue: the row's own click must not see this.
+        ev.preventDefault();
+        ev.stopPropagation();
+        var id = tgl.getAttribute('data-tgl');
+        if (treeFolded(id)) { delete TREE_FOLD['i' + id]; } else { TREE_FOLD['i' + id] = true; }
+        treeRerender(false);
     });
 
     /* ---- ticking rows ---- */
