@@ -1131,7 +1131,7 @@
                 (BULK_ON ? '<td class="chk"><input type="checkbox" class="pp-bchk" data-id="' + esc(i.id) + '"' +
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
-                '<td>' + tag(i.ty) + '</td>' +
+                '<td' + edAttr('ty') + '>' + tag(i.ty) + '</td>' +
                 '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a></td>' +
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
                 // stacked to its right so both lines start at the same place
@@ -1139,12 +1139,12 @@
                 '<td class="sub">' + parent + esc(i.subject) +
                     (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
-                '<td>' + pill(i.st) + '</td>' +
-                '<td>' + prio(i.pr) + '</td>' +
-                '<td style="white-space:nowrap;">' + esc(ms ? ms.l : '') + '</td>' +
-                '<td style="white-space:nowrap;">' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + '</td>' +
-                '<td style="white-space:nowrap;">' + esc(d2(i.sd)) + '</td>' +
-                '<td>' + dueCell(i) + '</td>' +
+                '<td' + edAttr('st') + '>' + pill(i.st) + '</td>' +
+                '<td' + edAttr('pr') + '>' + prio(i.pr) + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('ms') + '>' + esc(ms ? ms.l : '') + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + '</td>' +
+                '<td' + edAttr('dd') + '>' + dueCell(i) + '</td>' +
                 '<td>' + pbar(i.pg) + '</td>' +
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });
@@ -8978,7 +8978,17 @@
         // The tick column is a control of its own; a click there selects the
         // row rather than leaving the list for it.
         if (row && !ev.target.closest('a[href]') && !ev.target.closest('.chk')) {
-            location.hash = issueHash(row.getAttribute('data-issue'));
+            // an open inline editor is clicked into, not navigated away from
+            if (ev.target.closest('.pp-ed-in')) { return; }
+            var hash = issueHash(row.getAttribute('data-issue'));
+            // On an editable cell the click waits a moment: a double-click
+            // there edits the cell instead of opening the issue (edCell).
+            if (BULK_ON && ev.target.closest('td[data-ed]')) {
+                clearTimeout(ED_NAV_TIMER);
+                ED_NAV_TIMER = setTimeout(function () { location.hash = hash; }, 280);
+                return;
+            }
+            location.hash = hash;
         }
     });
     document.getElementById('pp-cmt-submit').addEventListener('click', function () { postComment(); });
@@ -9225,6 +9235,116 @@
         if (treeFolded(id)) { delete TREE_FOLD['i' + id]; } else { TREE_FOLD['i' + id] = true; }
         treeRerender(false);
     });
+    // ---- inline cell edit, like Exment's Excel-style grid (snoro 2026-11-18) ----
+    // Double-click a status / type / priority / milestone / category / start
+    // / due cell: it turns into a picker (dates use the portal's calendar).
+    // Saved through the bulk-edit endpoint for this one issue, so the same
+    // server checks apply (permission per row, values of this project);
+    // Esc or clicking away cancels, a refused save flashes red.
+    var ED_NAV_TIMER = null;
+    function edAttr(f) { return BULK_ON ? ' data-ed="' + f + '" title="ダブルクリックで編集"' : ''; }
+    var ED_SRC = { st: 'pp-bk-st', ty: 'pp-bk-ty', pr: 'pp-bk-pr', ms: 'pp-bk-ms', cat: 'pp-f-cat' };
+    function edOptions(field) {
+        var src = document.getElementById(ED_SRC[field]), out = [];
+        if (!src) { return out; }
+        Array.prototype.forEach.call(src.options, function (o) {
+            if (o.value === '' || o.value === '__none__') { return; }
+            out.push([o.value, o.textContent]);
+        });
+        return out;
+    }
+    function edCurrent(i, f) {
+        if (f === 'cat') { return String((i.cat || [])[0] || ''); }
+        return String(i[f] == null ? '' : i[f]);
+    }
+    function edFail(td, msg) {
+        td.classList.remove('pp-ed-saving');
+        td.classList.add('pp-ed-fail');
+        toast(msg || L.bk_fail, true);
+        setTimeout(function () { if (alive()) { renderIssues(); } }, 800);
+    }
+    function edSave(td, id, f, v) {
+        var set = {};
+        if (f === 'cat') { set.cat = v ? [v] : ''; } else { set[f] = v; }
+        td.classList.add('pp-ed-saving');
+        $.ajax({
+            url: D.urls.bulk, type: 'POST', dataType: 'json',
+            data: { ids: [id], set: set },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!alive()) { return; }
+            if (!res || !res.ok || !res.updated) {
+                var why = res && Array.isArray(res.failed) && res.failed[0] ? res.failed[0].message : null;
+                edFail(td, why || (res && res.denied ? (L.bk_denied ? String(L.bk_denied).replace(':count', 1) : null) : null));
+                return;
+            }
+            refreshData(true);
+        }).fail(function (xhr) {
+            if (alive()) { edFail(td, xhrErr(xhr, L.bk_fail)); }
+        });
+    }
+    function edCell(td) {
+        var tr = td.closest('tr[data-issue]');
+        var id = tr && tr.getAttribute('data-issue');
+        var i = id && issueById(id);
+        if (!i || td.querySelector('.pp-ed-in')) { return; }
+        var f = td.getAttribute('data-ed'), cur = edCurrent(i, f), done = false;
+        function commit(v) {
+            if (done) { return; }
+            done = true;
+            if (String(v) === cur) { renderIssues(); return; }
+            edSave(td, id, f, v);
+        }
+        function cancel() { if (!done) { done = true; renderIssues(); } }
+        td.textContent = '';
+        if (f === 'sd' || f === 'dd') {
+            var inp = document.createElement('input');
+            inp.className = 'pp-ed-in';
+            inp.value = cur;
+            td.appendChild(inp);
+            if (window.ppDateField) { window.ppDateField(inp, 'date'); }
+            inp.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); commit(inp.value.trim()); }
+                else if (e.key === 'Escape') { cancel(); }
+            });
+            inp.addEventListener('change', function () { commit(inp.value.trim()); });
+            if (window.jQuery) { jQuery(inp).on('dp.change', function () { commit(inp.value.trim()); }); }
+            inp.addEventListener('blur', function () {
+                setTimeout(function () {
+                    if (!done && !document.querySelector('.bootstrap-datetimepicker-widget')) { cancel(); }
+                }, 200);
+            });
+            inp.focus();
+            return;
+        }
+        var sel = document.createElement('select');
+        sel.className = 'pp-ed-in';
+        var opts = edOptions(f);
+        if (f === 'ms' || f === 'cat') { opts.unshift(['', '（なし）']); }
+        if (cur !== '' && !opts.some(function (o) { return o[0] === cur; })) { opts.unshift([cur, cur]); }
+        opts.forEach(function (o) {
+            var op = document.createElement('option');
+            op.value = o[0];
+            op.textContent = o[1];
+            if (o[0] === cur) { op.selected = true; }
+            sel.appendChild(op);
+        });
+        td.appendChild(sel);
+        sel.addEventListener('change', function () { commit(sel.value); });
+        sel.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cancel(); } });
+        sel.addEventListener('blur', function () { setTimeout(function () { if (!done) { cancel(); } }, 150); });
+        sel.focus();
+    }
+    document.getElementById('pp-issue-rows').addEventListener('dblclick', function (ev) {
+        if (!BULK_ON) { return; }
+        var td = ev.target.closest('td[data-ed]');
+        if (!td || ev.target.closest('.pp-tgl')) { return; }
+        clearTimeout(ED_NAV_TIMER);
+        ev.preventDefault();
+        ev.stopPropagation();
+        edCell(td);
+    });
+
     // Double-click a ▼/▶: everything opens or closes (snoro 2026-11-18). The
     // two clicks before it have put this parent back as it was, so an open
     // one closes all and a closed one opens all.

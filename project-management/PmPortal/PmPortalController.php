@@ -1510,6 +1510,27 @@ class PmPortalController extends AdminControllerBase
             $out[$column] = $value === '' ? null : $value;
         }
 
+        // start / due date (inline cell edit, snoro 2026-11-18): YYYY-MM-DD or
+        // empty to clear
+        foreach (['sd' => 'start', 'dd' => 'due'] as $key => $role) {
+            if (!array_key_exists($key, $set)) {
+                continue;
+            }
+            $column = array_get($is, $role);
+            $value = trim(strval($set[$key]));
+            $value = str_replace('/', '-', $value);
+            if (is_nullorempty($column) || ($value !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value))) {
+                return [[], PortalDefinition::trans('message.invalid_params')];
+            }
+            if ($value !== '') {
+                list($y, $m, $d) = array_map('intval', explode('-', $value));
+                if (!checkdate($m, $d, $y)) {
+                    return [[], PortalDefinition::trans('message.invalid_params')];
+                }
+            }
+            $out[$column] = $value === '' ? null : $value;
+        }
+
         if (array_key_exists('cat', $set)) {
             $column = array_get($is, 'category');
             $values = collect((array) $set['cat'])->map(function ($v) {
