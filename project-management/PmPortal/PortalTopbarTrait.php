@@ -353,6 +353,10 @@ trait PortalTopbarTrait
             ->whereIn('parent_id', array_map('intval', array_keys($cards)))
             ->where(function ($query) use ($subject_key, $like, $id_hit) {
                 $query->where($subject_key, 'LIKE', $like);
+                // schema 19: the second subject line is searched too
+                if (CustomColumn::getEloquent('subject_sub', $this->issue_table) !== null) {
+                    $query->orWhere($this->dashboardQueryKey('subject_sub'), 'LIKE', $like);
+                }
                 if ($id_hit !== null) {
                     $query->orWhere('id', $id_hit);
                 }

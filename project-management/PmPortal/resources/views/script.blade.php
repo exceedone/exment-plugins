@@ -1059,7 +1059,7 @@
             if (FILTER.pr && String(i.pr) !== String(FILTER.pr)) { return false; }
             if (FILTER.ms && i.ms !== FILTER.ms) { return false; }
             if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
-            if (kw && (i.key + ' ' + i.subject).toLowerCase().indexOf(kw) < 0) { return false; }
+            if (kw && (i.key + ' ' + i.subject + ' ' + (i.sub || '')).toLowerCase().indexOf(kw) < 0) { return false; }
 
             return true;
         }).sort(sortCmp());
@@ -1132,7 +1132,8 @@
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
                 '<td>' + tag(i.ty) + '</td>' +
                 '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a></td>' +
-                '<td class="sub">' + parent + esc(i.subject) + '</td>' +
+                '<td class="sub">' + parent + esc(i.subject) +
+                    (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
                 '<td>' + pill(i.st) + '</td>' +
                 '<td>' + prio(i.pr) + '</td>' +
@@ -1970,6 +1971,7 @@
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a></span></div>' +
             '<div class="bl-dtitle">' + esc(i.subject) + '</div>' +
+            (i.sub ? '<div class="pp-dsubsub">' + esc(i.sub) + '</div>' : '') +
             '<div class="bl-dsum">' +
             '<span class="it"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
@@ -9218,6 +9220,17 @@
         var id = tgl.getAttribute('data-tgl');
         if (treeFolded(id)) { delete TREE_FOLD['i' + id]; } else { TREE_FOLD['i' + id] = true; }
         treeRerender(false);
+    });
+    // Double-click a ▼/▶: everything opens or closes (snoro 2026-11-18). The
+    // two clicks before it have put this parent back as it was, so an open
+    // one closes all and a closed one opens all.
+    document.getElementById('pp-issue-rows').addEventListener('dblclick', function (ev) {
+        var tgl = ev.target.closest('.pp-tgl');
+        if (!tgl) { return; }
+        ev.preventDefault();
+        ev.stopPropagation();
+        var btn = document.getElementById(treeFolded(tgl.getAttribute('data-tgl')) ? 'pp-tree-open' : 'pp-tree-close');
+        if (btn) { btn.click(); }
     });
 
     /* ---- ticking rows ---- */
