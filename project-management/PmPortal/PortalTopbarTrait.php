@@ -43,10 +43,29 @@ trait PortalTopbarTrait
             }
             $kids[$pid][] = $it;
         }
+        // archived last; then the dragged order (display_order) where set -
+        // ordered projects before the ones nobody has placed yet; then name.
         $cmp = function ($a, $b) {
             $c = boolval($a['archived']) <=> boolval($b['archived']);
+            if ($c !== 0) {
+                return $c;
+            }
+            $oa = strval(array_get($a, 'order', ''));
+            $ob = strval(array_get($b, 'order', ''));
+            if ($oa !== '' || $ob !== '') {
+                if ($oa === '') {
+                    return 1;
+                }
+                if ($ob === '') {
+                    return -1;
+                }
+                $c = intval($oa) <=> intval($ob);
+                if ($c !== 0) {
+                    return $c;
+                }
+            }
 
-            return $c !== 0 ? $c : strnatcasecmp(strval($a['name']), strval($b['name']));
+            return strnatcasecmp(strval($a['name']), strval($b['name']));
         };
         $out = [];
         $seen = [];
@@ -122,6 +141,7 @@ trait PortalTopbarTrait
                 'archived' => boolval(array_get($card, 'archived', false)),
                 'can_add' => boolval(array_get($card, 'can_add', false)),
                 'parent_id' => strval(array_get($card, 'parent_id', '')),
+                'order' => strval(array_get($card, 'order', '')),
             ];
         }
 
@@ -181,6 +201,7 @@ trait PortalTopbarTrait
                 'starred' => false,
                 'archived' => $hasArchived && boolval(array_get($value->value, 'archived')),
                 'parent_id' => $parentColumn ? strval(array_get($value->value, $parentColumn, '')) : '',
+                'order' => strval(array_get($value->value, 'display_order', '')),
                 // The bar's 課題の追加 menu lists only where an issue can be filed.
                 'can_add' => $this->childAddable($this->issue_table ?? null, $value, $issue_create),
             ];
@@ -242,6 +263,7 @@ trait PortalTopbarTrait
                 'status' => array_get($project_status, strval(array_get($value->value, array_get($pj, 'status'), ''))),
                 'parent' => $parent_id === '' ? null : array_get($names, $parent_id),
                 'parent_id' => $parent_id,
+                'order' => strval(array_get($value->value, 'display_order', '')),
                 'archived' => $has_archived && boolval(array_get($value->value, 'archived')),
                 'url' => PortalDefinition::url($value->id),
                 'star_url' => PortalDefinition::url($value->id, 'star'),
@@ -261,9 +283,14 @@ trait PortalTopbarTrait
         // itself the moment the answer lands.
         $items = static::projectTreeOrder(array_values($cards));
 
+        // ISS00263: administrators may drag projects into order; only when the
+        // project table has display_order (schema 18).
+        $can_reorder = static::topbarIsAdmin() && CustomColumn::getEloquent('display_order', $this->project_table) !== null;
+
         return response()->json([
             'items' => $items,
             'table' => $this->project_table->table_name,
+            'reorder_url' => $can_reorder ? PortalDefinition::url('lightapi/reorder/' . $this->project_table->table_name) : '',
         ]);
     }
 

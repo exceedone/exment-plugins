@@ -104,6 +104,10 @@
 .pp-top .pp-pjm-row:last-child{border-bottom:0;}
 .pp-top .pp-pjm-row.arch{background:#f6f7f8;}
 .pp-top .pp-pjm-row.kid .nm{font-weight:600;}
+.pp-top .pp-pjm-row[draggable="true"]{cursor:grab;}
+.pp-top .pp-pjm-row.dragging{opacity:.45;}
+.pp-top .pp-pjm-row.drop-before{box-shadow:inset 0 3px 0 var(--bl-accent,#4cae93);}
+.pp-top .pp-pjm-row.drop-after{box-shadow:inset 0 -3px 0 var(--bl-accent,#4cae93);}
 .pp-top .pp-pjm-row .mn{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px;}
 .pp-top .pp-pjm-row .l1{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:19px;}
 .pp-top .pp-pjm-row .nm{font-size:13.5px;font-weight:700;}
@@ -416,6 +420,7 @@
         }).then(function (json) {
             pjState.done = true;
             pjState.table = String((json && json.table) || '');
+            pjState.reorderUrl = String((json && json.reorder_url) || '');
             paintProjects((json && Array.isArray(json.items)) ? json.items : []);
         }).catch(function () {
             // Leave the plain list alone - it links to the same projects.
@@ -450,10 +455,80 @@
             pjList.appendChild(none);
         } else {
             items.forEach(function (p) {
-                pjList.appendChild(projectRow(p, current));
+                var r = projectRow(p, current);
+                if (pjState.reorderUrl) { makeDraggable(r, p); }
+                pjList.appendChild(r);
             });
         }
         filterProjects();
+    }
+
+    // ISS00263: administrators drag a project among its siblings (same parent);
+    // its whole subtree moves with it. The new sibling order is saved through
+    // lightapi/reorder (display_order 10, 20, 30...). On failure the menu is
+    // reloaded so it never shows an order that was not saved.
+    var drag = null;
+    function subtree(row) {
+        var rows = [row], d = Number(row.getAttribute('data-depth') || 0), n = row.nextElementSibling;
+        while (n && Number(n.getAttribute('data-depth') || 0) > d) { rows.push(n); n = n.nextElementSibling; }
+        return rows;
+    }
+    function makeDraggable(row, p) {
+        row.setAttribute('draggable', 'true');
+        row.setAttribute('data-id', String(p.id));
+        row.setAttribute('data-parent', String(p.parent_id || ''));
+        row.setAttribute('data-depth', String(Number(p.depth) || 0));
+        row.title = LANG.pj_drag || 'ドラッグで並べ替え';
+        row.addEventListener('dragstart', function (ev) {
+            drag = row;
+            row.classList.add('dragging');
+            try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', String(p.id)); } catch (e) { /* ignore */ }
+        });
+        row.addEventListener('dragend', function () {
+            row.classList.remove('dragging');
+            pjList.querySelectorAll('.drop-before,.drop-after').forEach(function (x) { x.classList.remove('drop-before', 'drop-after'); });
+            drag = null;
+        });
+        row.addEventListener('dragover', function (ev) {
+            if (!drag || drag === row || drag.getAttribute('data-parent') !== row.getAttribute('data-parent')) { return; }
+            ev.preventDefault();
+            var box = row.getBoundingClientRect(), after = ev.clientY > box.top + box.height / 2;
+            row.classList.toggle('drop-after', after);
+            row.classList.toggle('drop-before', !after);
+        });
+        row.addEventListener('dragleave', function () { row.classList.remove('drop-before', 'drop-after'); });
+        row.addEventListener('drop', function (ev) {
+            if (!drag || drag === row || drag.getAttribute('data-parent') !== row.getAttribute('data-parent')) { return; }
+            ev.preventDefault();
+            var after = row.classList.contains('drop-after');
+            row.classList.remove('drop-before', 'drop-after');
+            var moving = subtree(drag), anchor = after ? subtree(row) : [row];
+            var ref = after ? anchor[anchor.length - 1].nextElementSibling : anchor[0];
+            moving.forEach(function (m) { pjList.insertBefore(m, ref); });
+            saveOrder(drag.getAttribute('data-parent'));
+        });
+    }
+    function saveOrder(parentId) {
+        var ids = [];
+        pjList.querySelectorAll('.pp-pjm-row[data-id]').forEach(function (r) {
+            if (r.getAttribute('data-parent') === parentId) { ids.push(Number(r.getAttribute('data-id'))); }
+        });
+        var token = document.querySelector('meta[name="csrf-token"]');
+        fetch(pjState.reorderUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token ? token.getAttribute('content') : '',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ ids: ids })
+        }).then(function (r) {
+            if (!r.ok) { throw new Error(r.status); }
+        }).catch(function () {
+            pjState.done = false;
+            loadProjects();
+        });
     }
 
     function projectRow(p, current) {

@@ -178,6 +178,14 @@
   border-radius:var(--bl-radius-s,4px);}
 .pmportal .bl-list .pp-tgl:hover{color:var(--bl-accent-d);background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));}
 .pmportal .bl-list .pp-tgl .n{font-weight:700;}
+/* tree view: make children obvious - branch mark, tinted row, accent edge; parents bold */
+.pmportal .bl-list .pp-tbr{color:var(--bl-sub);margin-right:4px;font-weight:400;}
+.pmportal .bl-list tr.pp-tkid td{background:color-mix(in srgb, var(--bl-accent) 5%, var(--bl-box));}
+.pmportal .bl-list tr.pp-tkid.pp-td2 td{background:color-mix(in srgb, var(--bl-accent) 9%, var(--bl-box));}
+.pmportal .bl-list tr.pp-tkid.pp-td3 td{background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));}
+.pmportal .bl-list tr.pp-tkid td:first-child{box-shadow:inset 3px 0 0 color-mix(in srgb, var(--bl-accent) 55%, transparent);}
+.pmportal .bl-list tr.pp-tkid:hover td{background:var(--bl-hover,#f2f8f5);}
+.pmportal .bl-list tr.pp-tpar td.sub{font-weight:700;}
 .pmportal .bl-fmine{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);background:var(--bl-box);
   color:var(--bl-sub);font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;white-space:nowrap;}
 .pmportal .bl-fmine:hover{border-color:var(--bl-accent);color:var(--bl-accent-d);}

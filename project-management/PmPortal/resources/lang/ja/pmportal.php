@@ -739,6 +739,7 @@ return [
                 'formatting_rule' => '記法',
                 'ai_enabled' => 'AI 自動入力を使う',
                 'ai_assign' => '担当者も自動入力する',
+                'display_order' => '表示の順番',
             ],
         ],
         'help' => [
