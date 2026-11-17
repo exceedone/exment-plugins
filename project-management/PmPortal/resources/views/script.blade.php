@@ -512,8 +512,12 @@
     var TREE_FOLD_KEY = userKey('tc');
     var TREE_ON = false;
     var TREE_FOLD = {};
+    // the tree switch also follows the person to the next project unless this
+    // project has its own setting (snoro 2026-11-18)
+    var TREE_LAST_KEY = 'pmportal.trlast.u' + String(D.me || 0);
     try {
-        TREE_ON = localStorage.getItem(TREE_KEY) === '1';
+        var treeOwn = localStorage.getItem(TREE_KEY);
+        TREE_ON = (treeOwn !== null ? treeOwn : localStorage.getItem(TREE_LAST_KEY)) === '1';
         var savedFold = JSON.parse(localStorage.getItem(TREE_FOLD_KEY) || '[]');
         if (Array.isArray(savedFold)) {
             savedFold.forEach(function (id) {
@@ -657,6 +661,25 @@
         clearSelection();
         renderIssues();
         filterToUrl();
+        rememberLastFilter();
+    }
+    // The last filter and sort used anywhere, per person, across projects
+    // (snoro 2026-11-18: moving to another project reset the filters). A
+    // project with its own saved default ("次回もこの条件で開く") keeps that.
+    var FILTER_LAST_KEY = 'pmportal.flast.u' + String(D.me || 0);
+    function rememberLastFilter() {
+        try { localStorage.setItem(FILTER_LAST_KEY, JSON.stringify({ f: FILTER, s: SORT })); } catch (e) { /* ignore */ }
+    }
+    // Only what means the same in every project is carried over: status ids,
+    // types, milestones and categories are per project, so a value from
+    // another project is kept only if this project has it too.
+    function carriedFilterValue(k, v) {
+        if (k === 'st') { return (v === '!done' || own(ST, v)) ? v : ''; }
+        if (k === 'ty') { return own(D.types, v) ? v : ''; }
+        if (k === 'ms') { return own(D.milestones, v) ? v : ''; }
+        if (k === 'cat') { return own(D.categories, v) ? v : ''; }
+        if (k === 'pr') { return own(D.priorities, v) ? v : ''; }
+        return v;
     }
     try {
         var saved = JSON.parse(localStorage.getItem(FILTER_KEY) || 'null');
@@ -667,6 +690,14 @@
                 var v = own(saved, k);
                 if (typeof v === 'string' || typeof v === 'number') { FILTER[k] = String(v); }
             });
+        } else {
+            var last = JSON.parse(localStorage.getItem(FILTER_LAST_KEY) || 'null');
+            if (last && typeof last === 'object' && last.f && typeof last.f === 'object') {
+                FILTER_FIELDS.forEach(function (k) {
+                    var v = own(last.f, k);
+                    if (typeof v === 'string' || typeof v === 'number') { FILTER[k] = carriedFilterValue(k, String(v)); }
+                });
+            }
         }
     } catch (e) { /* ignore */ }
 
@@ -764,6 +795,11 @@
     }
     try {
         var savedSort = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+        // no default of this project's own: the last sort used anywhere
+        if (!savedSort) {
+            var lastSort = JSON.parse(localStorage.getItem(FILTER_LAST_KEY) || 'null');
+            savedSort = lastSort && lastSort.s && typeof lastSort.s === 'object' ? lastSort.s : null;
+        }
         // Checked against the live table rather than trusted: a column that
         // existed when this was saved may be gone from the project now.
         if (savedSort && own(SORT_COLS, savedSort.by)) {
@@ -1075,11 +1111,17 @@
                         esc(folded ? (L.tree_expand || '開く') : (L.tree_collapse || '閉じる')) + '">' +
                         (folded ? '▶' : '▼') + ' <span class="n">(' + item.n + ')</span></a>'
                     : '<span class="pp-tgl-sp"></span>';
+                // a child row gets a "└" branch mark (snoro 2026-11-18: which rows
+                // are children was hard to see), see also the pp-tkid row style
                 parent = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 18) + 'px;">' +
+                    (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '') +
                     tgl + '</span>' + parent;
             }
+            var trCls = (own(SEL, i.id) ? 'sel' : '') +
+                (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
+                (TREE_ON && item.n > 0 ? ' pp-tpar' : '');
             var ms = own(D.milestones, i.ms);
-            rows += '<tr data-issue="' + esc(i.id) + '"' + (own(SEL, i.id) ? ' class="sel"' : '') + '>' +
+            rows += '<tr data-issue="' + esc(i.id) + '"' + (trCls.trim() ? ' class="' + trCls.trim() + '"' : '') + '>' +
                 (BULK_ON ? '<td class="chk"><input type="checkbox" class="pp-bchk" data-id="' + esc(i.id) + '"' +
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
@@ -9143,6 +9185,7 @@
         if (treeBtn) {
             treeBtn.addEventListener('click', function () {
                 TREE_ON = !TREE_ON;
+                try { localStorage.setItem(TREE_LAST_KEY, TREE_ON ? '1' : '0'); } catch (e) { /* ignore */ }
                 treeRerender(true);
             });
         }

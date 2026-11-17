@@ -59,8 +59,12 @@ class PortalSchema
      * (EVENT_TABLE_ROLES), the priority and resolution tables follow the
      * install prefix like every other table, and the AI back-fill batch is
      * taken off Exment's hourly scheduler (BATCH_HOUR_OFF).
+     *
+     * 18: projects get display_order, so an administrator can drag them into
+     * order in the project menu (ISS00263). Empty until someone drags; the
+     * menu falls back to the name.
      */
-    const VERSION = 17;
+    const VERSION = 18;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -120,6 +124,8 @@ class PortalSchema
         // whether it fills in the assignee too.
         'ai_enabled' => 'ai_enabled',
         'ai_assign' => 'ai_assign',
+        // Schema 18: the order an administrator dragged the projects into.
+        'display_order' => 'display_order',
     ];
 
     /** Menu node names, prefixed per install the same way tables are. */
@@ -635,6 +641,12 @@ class PortalSchema
             'default' => '1',
             'help' => PortalDefinition::trans('schema.help.ai_assign'),
         ], 39);
+
+        // Schema 18: drag order in the project menu (ISS00263). Indexed so the
+        // menu can sort on it without reading the JSON.
+        $columns[] = static::column($pc['display_order'], 'project.display_order', 'integer', [
+            'index_enabled' => '1',
+        ], 40);
 
         return ['table_name' => $n['project_table'], 'custom_columns' => $columns];
     }
