@@ -187,6 +187,11 @@
                     <select id="pp-f-ms"><option value="">{{ $lang['f_ms'] }}: {{ $lang['f_all'] }}</option></select>
                     <select id="pp-f-cat"><option value="">{{ $lang['f_cat'] }}: {{ $lang['f_all'] }}</option></select>
                     <span class="bl-fright">
+                        {{-- Tree view (ISS00253): off by default; the two
+                             fold links only show while it is on. --}}
+                        <button type="button" class="bl-treebtn" id="pp-tree-btn" aria-pressed="false"><i class="fa fa-sitemap"></i> {{ $lang['tree_view'] ?? 'ツリー表示' }}</button>
+                        <a class="sv" href="javascript:void(0);" id="pp-tree-open" hidden>{{ $lang['tree_open_all'] ?? 'すべて開く' }}</a>
+                        <a class="sv" href="javascript:void(0);" id="pp-tree-close" hidden>{{ $lang['tree_close_all'] ?? 'すべて閉じる' }}</a>
                         {{-- One named condition per row, plus the "open the
                              list like this next time" switch the single slot
                              used to be on its own. --}}
