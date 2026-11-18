@@ -1,81 +1,101 @@
 # Exment Official Plugins / Exment 公式プラグイン
 
+**[English](#english)** | **[日本語](#japanese)**
+
+---
+
+<a id="english"></a>
+
+## What this is
+
 Official plugins for [Exment](https://github.com/exceedone/exment), made, tested and supported by Exceed One.
 
-[Exment](https://github.com/exceedone/exment) の **公式プラグイン** を置くリポジトリです。エクシード・ワンが作り、テストし、サポートします。
+## Plugins
 
-## Plugins / プラグイン
-
-| Folder | Name | Description | Status |
+| Folder | Name | What it does | Status |
 |---|---|---|---|
-| [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification) / プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知） | In use on Exment SaaS / Exment SaaS で利用中 |
+| [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification) | In use on Exment SaaS |
 
-## Requirements / 動作環境
+Exment Plugin Project Management is a set of two Exment plugins:
 
-- Exment 7.0 or later (PHP 8.2) / Exment 7.0 以降（PHP 8.2）
-
-## Where to get / 入手先
-
-The plugins are provided in two ways. / プラグインは 2 つの所から入手できます。
-
-| | GitHub (this repository) / GitHub（このリポジトリ） | Exment Plugin Market / Exment プラグインマーケット |
+| Folder | Plugin | What it does |
 |---|---|---|
-| URL | https://github.com/exceedone/exment-plugins | https://exments.com |
-| What you get / 入手できるもの | Source code / ソースコード | A zip made for your Exment / 自分の Exment 用の zip |
-| PHP files / PHP のファイル | As is (readable) / そのまま（読める） | Encoded with ionCube for your domain; works only there / ionCube で、自分のドメイン専用に暗号化（そのドメインでだけ動く） |
-| For / 向いている人 | On-premises and rental servers, developers / オンプレ・レンタルサーバー・開発者 | Exment SaaS (`*.exments.com`) / Exment SaaS |
-| How to install / 入れ方 | Below / 下の「入れ方」 | In Exment: **Admin → Plugin market → Install** / Exment の **管理 → プラグインマーケット → インストール** |
+| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal | The project and ticket portal |
+| [`project-management/PmMigrate/`](project-management/PmMigrate/) | PmMigrate | Moves a project to another Exment |
 
-- The same versions are published to both. A new version is released on GitHub first, then uploaded to the market.
-  どちらも同じ版を出します。新しい版は、まず GitHub に出してから、マーケットに上げます。
-- An encoded zip from the market does not run on other servers. To run a plugin on your own server, use the source from GitHub.
-  マーケットの暗号化された zip は、ほかのサーバーでは動きません。自分のサーバーで動かすときは、GitHub のソースを使ってください。
+Details are in the [README of the set](project-management/README.md).
 
-## Install / 入れ方
+## Requirements
 
-1. Zip the contents of a plugin folder, with `config.json` at the top of the zip (for example `PmPortal/`).
-   プラグインのフォルダ（例: `PmPortal/`）の中身を zip にします。`config.json` が zip のいちばん上に来るようにします。
+- Exment 7.0 or later (PHP 8.2)
+
+## Install
+
+The plugins are provided in two ways. Choose by where your Exment runs.
+
+| Your Exment | Get the plugin from | How to install |
+|---|---|---|
+| Exment SaaS (`*.exments.com`) | Exment Plugin Market (https://exments.com) | [A. Exment SaaS](#a-exment-saas) |
+| Your own server (on-premises, rental server), or you are a developer | GitHub (this repository, https://github.com/exceedone/exment-plugins) | [B. Your own server](#b-your-own-server) |
+
+### A. Exment SaaS
+
+In Exment, open **Admin → Plugin market → Install**.
+
+### B. Your own server
+
+1. Zip the contents of a plugin folder (for example `PmPortal/`), with `config.json` at the top of the zip.
 2. In Exment, open **Admin → Plugins → Upload** and choose the zip.
-   Exment の **管理 → プラグイン → アップロード** で zip を選びます。
 3. Follow the plugin's own README (for example the first-time setup of the project portal).
-   そのあとは、各プラグインの README に従います（例: プロジェクトポータルの初期設定）。
 
-On Exment SaaS (`*.exments.com`), install the plugins from **Admin → Plugin market** instead.
-Exment SaaS（`*.exments.com`）では、**管理 → プラグインマーケット** から入れます。
+### GitHub and the market: what is different
 
-## Branches / ブランチ
+| | GitHub (this repository) | Exment Plugin Market |
+|---|---|---|
+| What you get | Source code | A zip made for your Exment |
+| PHP files | As is (readable) | Encoded with ionCube for your domain; works only there |
 
-| Branch | Use / 用途 |
-|---|---|
-| `main` | The latest release / 最新の版 |
-| `feature/*` | Work in progress, merged into `main` by pull request / 作業中。プルリクエストで `main` に入れる |
+- An encoded zip from the market does not run on other servers. To run a plugin on your own server, use the source from GitHub.
+- The same versions are published to both. A new version is released on GitHub first, then uploaded to the market.
 
-## Plugin categories / プラグインの区分
+## Plugin categories
 
-| | Official / 公式 | Certified / 認定 (planned / 予定) | Other / そのほか |
+| | Official | Certified (planned) | Other |
 |---|---|---|---|
-| Made by / 作る人 | Exceed One | Partners / パートナー | Anyone / だれでも |
-| Server-side code on Exment SaaS / SaaS でのサーバー側の処理 | Allowed / 使える | Allowed after review / 審査のあと使える | Not allowed / 使えない |
-| On-premises, rental servers / オンプレ・レンタルサーバー | Allowed / 使える | Allowed / 使える | Allowed / 使える |
+| Made by | Exceed One | Partners | Anyone |
+| Server-side code on Exment SaaS | Allowed | Allowed after review | Not allowed |
+| On-premises, rental servers | Allowed | Allowed | Allowed |
 
-## Contributing / 貢献
+## Security
 
-Issues and pull requests are welcome. Please report security problems privately through [GitHub security advisories](https://github.com/exceedone/exment-plugins/security/advisories/new), not in public issues.
+Please report security problems privately through [GitHub security advisories](https://github.com/exceedone/exment-plugins/security/advisories/new), not in public issues.
 
-Issue・プルリクエストを歓迎します。セキュリティの問題は、公開の Issue ではなく [GitHub のセキュリティアドバイザリー](https://github.com/exceedone/exment-plugins/security/advisories/new) から非公開で知らせてください。
+## License
 
-## CI / 自動チェック
+[GPL-3.0](LICENSE), the same as Exment.
+
+## For developers
+
+Issues and pull requests are welcome.
+
+### Branches
+
+| Branch | Use |
+|---|---|
+| `main` | The latest release |
+| `feature/*` | Work in progress, merged into `main` by pull request |
+
+### CI
 
 GitHub Actions (`.github/workflows/ci.yml`) checks every plugin folder (a folder with `Plugin.php`) on each pull request and on `main`.
-PR を出すと、GitHub Actions がすべてのプラグイン（`Plugin.php` があるフォルダ）をチェックします。
 
-| Job | What / 内容 |
+| Job | What it checks |
 |---|---|
-| `check` | PHP syntax with `php -l` on PHP 8.2 and 8.3, and `config.json` (`plugin_name`, `uuid`, `version`, `plugin_type`; unique `uuid` and `plugin_name`) / PHP の文法と `config.json` |
-| `php-cs-fixer` | Same coding style as Exment (`.php-cs-fixer.dist.php`) / Exment と同じ書き方 |
-| `phpstan` | Static analysis against Exment 7 (`.github/ci/phpstan.neon`). Errors listed in `.github/ci/phpstan-baseline.neon` are known; only new errors fail / Exment 7 に対する静的解析。baseline にある既知のもの以外の、新しい誤りだけで失敗します |
+| `check` | PHP syntax with `php -l` on PHP 8.2 and 8.3, and `config.json` (`plugin_name`, `uuid`, `version`, `plugin_type`; unique `uuid` and `plugin_name`) |
+| `php-cs-fixer` | Same coding style as Exment (`.php-cs-fixer.dist.php`) |
+| `phpstan` | Static analysis against Exment 7 (`.github/ci/phpstan.neon`). Errors listed in `.github/ci/phpstan-baseline.neon` are known; only new errors fail |
 
-Run on your PC / 手元で動かす:
+### Run the checks on your PC
 
 ```
 php .github/ci/check-config.php
@@ -83,9 +103,109 @@ php php-cs-fixer.phar fix --dry-run --diff --config=.php-cs-fixer.dist.php
 cd .github/ci && composer update --ignore-platform-req='ext-*' && vendor/bin/phpstan analyse -c phpstan.neon
 ```
 
-Fix the style automatically: `php php-cs-fixer.phar fix --config=.php-cs-fixer.dist.php`. If you fixed known errors or must accept new ones, refresh the baseline: `vendor/bin/phpstan analyse -c phpstan.neon --generate-baseline phpstan-baseline.neon`.
-書き方は `fix` で自動で直せます。既知の誤りを直したときや、やむを得ず残すときは、baseline を作り直してください。
+- Fix the style automatically: `php php-cs-fixer.phar fix --config=.php-cs-fixer.dist.php`
+- If you fixed known errors or must accept new ones, refresh the baseline: `vendor/bin/phpstan analyse -c phpstan.neon --generate-baseline phpstan-baseline.neon`
 
-## License / ライセンス
+---
 
-[GPL-3.0](LICENSE), the same as Exment. / Exment と同じ GPL-3.0 です。
+<a id="japanese"></a>
+
+## このリポジトリについて
+
+[Exment](https://github.com/exceedone/exment) の **公式プラグイン** を置くリポジトリです。エクシード・ワンが作り、テストし、サポートします。
+
+## プラグイン
+
+| フォルダ | 名前 | できること | 状態 |
+|---|---|---|---|
+| [`project-management/`](project-management/) | Exment Plugin Project Management | プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知） | Exment SaaS で利用中 |
+
+Exment Plugin Project Management は、2 つの Exment プラグインでできています。
+
+| フォルダ | プラグイン | できること |
+|---|---|---|
+| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal | プロジェクトとチケットのポータル |
+| [`project-management/PmMigrate/`](project-management/PmMigrate/) | PmMigrate | プロジェクトを別の Exment に移す |
+
+くわしくは [このセットの README](project-management/README.md) を見てください。
+
+## 動作環境
+
+- Exment 7.0 以降（PHP 8.2）
+
+## 入れ方
+
+プラグインは 2 つの所から入手できます。Exment をどこで動かしているかで選びます。
+
+| 使っている Exment | 入手先 | 入れ方 |
+|---|---|---|
+| Exment SaaS（`*.exments.com`） | Exment プラグインマーケット（https://exments.com） | [A. Exment SaaS の場合](#a-exment-saas-の場合) |
+| 自分のサーバー（オンプレ・レンタルサーバー）、または開発者 | GitHub（このリポジトリ、https://github.com/exceedone/exment-plugins） | [B. 自分のサーバーの場合](#b-自分のサーバーの場合) |
+
+### A. Exment SaaS の場合
+
+Exment の **管理 → プラグインマーケット → インストール** から入れます。
+
+### B. 自分のサーバーの場合
+
+1. プラグインのフォルダ（例: `PmPortal/`）の中身を zip にします。`config.json` が zip のいちばん上に来るようにします。
+2. Exment の **管理 → プラグイン → アップロード** で zip を選びます。
+3. そのあとは、各プラグインの README に従います（例: プロジェクトポータルの初期設定）。
+
+### GitHub とマーケットの違い
+
+| | GitHub（このリポジトリ） | Exment プラグインマーケット |
+|---|---|---|
+| 入手できるもの | ソースコード | 自分の Exment 用の zip |
+| PHP のファイル | そのまま（読める） | ionCube で、自分のドメイン専用に暗号化（そのドメインでだけ動く） |
+
+- マーケットの暗号化された zip は、ほかのサーバーでは動きません。自分のサーバーで動かすときは、GitHub のソースを使ってください。
+- どちらも同じ版を出します。新しい版は、まず GitHub に出してから、マーケットに上げます。
+
+## プラグインの区分
+
+| | 公式 | 認定（予定） | そのほか |
+|---|---|---|---|
+| 作る人 | エクシード・ワン | パートナー | だれでも |
+| Exment SaaS でのサーバー側の処理 | 使える | 審査のあと使える | 使えない |
+| オンプレ・レンタルサーバー | 使える | 使える | 使える |
+
+## セキュリティの問題
+
+セキュリティの問題は、公開の Issue ではなく [GitHub のセキュリティアドバイザリー](https://github.com/exceedone/exment-plugins/security/advisories/new) から非公開で知らせてください。
+
+## ライセンス
+
+Exment と同じ [GPL-3.0](LICENSE) です。
+
+## 開発する人へ
+
+Issue・プルリクエストを歓迎します。
+
+### ブランチ
+
+| ブランチ | 用途 |
+|---|---|
+| `main` | 最新の版 |
+| `feature/*` | 作業中。プルリクエストで `main` に入れる |
+
+### 自動チェック（CI）
+
+GitHub Actions（`.github/workflows/ci.yml`）が、プルリクエストのたびと `main` で、すべてのプラグイン（`Plugin.php` があるフォルダ）をチェックします。
+
+| ジョブ | 内容 |
+|---|---|
+| `check` | PHP の文法（PHP 8.2 と 8.3 の `php -l`）と `config.json`（`plugin_name`・`uuid`・`version`・`plugin_type` があること、`uuid` と `plugin_name` が重ならないこと） |
+| `php-cs-fixer` | Exment と同じ書き方（`.php-cs-fixer.dist.php`） |
+| `phpstan` | Exment 7 に対する静的解析（`.github/ci/phpstan.neon`）。`.github/ci/phpstan-baseline.neon` にある誤りは既知のものです。新しい誤りだけで失敗します |
+
+### 手元でチェックを動かす
+
+```
+php .github/ci/check-config.php
+php php-cs-fixer.phar fix --dry-run --diff --config=.php-cs-fixer.dist.php
+cd .github/ci && composer update --ignore-platform-req='ext-*' && vendor/bin/phpstan analyse -c phpstan.neon
+```
+
+- 書き方を自動で直す: `php php-cs-fixer.phar fix --config=.php-cs-fixer.dist.php`
+- 既知の誤りを直したときや、やむを得ず新しい誤りを残すときは、baseline を作り直します: `vendor/bin/phpstan analyse -c phpstan.neon --generate-baseline phpstan-baseline.neon`
