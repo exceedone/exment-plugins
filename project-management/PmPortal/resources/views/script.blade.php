@@ -2193,8 +2193,9 @@ window.PmPortalBoot = function () {
         });
         document.getElementById('pp-notify-chips').innerHTML = people.map(function (u) {
             var on = keepNotify && keepNotify.indexOf(String(u)) >= 0;
-            return '<span class="bl-chip' + (on ? '' : ' off') + ' pp-notify" data-user="' + esc(u) + '">' + esc(user(u).n) + '</span>';
-        }).join(' ');
+            return '<span class="bl-chip has-av' + (on ? '' : ' off') + ' pp-notify" role="button" tabindex="0" data-user="' + esc(u) + '">' + av(u) + esc(user(u).n) + '</span>';
+        }).join('');
+        ppNotifyCount();
         var dockav = document.getElementById('pp-dockav');
         if (dockav) { dockav.innerHTML = av(D.me); }
         cmtSetBusy(cmtBusy);
@@ -2228,19 +2229,54 @@ window.PmPortalBoot = function () {
     // Column names live in the def map, not in this file: an install that
     // renamed one overrides the map instead of patching code.
     function qeCol(key) { return own(D.issue_cols, key) || ''; }
-    function qeRow(label, node) {
+    // One field of the dock: its label over its widget. `size` names how
+    // much room the field is worth (see .bl-qe in the stylesheet) - a date is
+    // ten characters wherever it is shown, and a field that stretches to the
+    // width of the card says nothing about what goes in it. `unit` is the
+    // quiet suffix after the label ("h", "%").
+    function qeRow(label, node, size, unit) {
+        var multi = !!(node.dataset && node.dataset.qeMulti);
         var row = document.createElement('div');
-        row.className = 'row';
+        row.className = 'row' + (size ? ' ' + size : '');
         var k = document.createElement('span');
         k.className = 'k';
         k.textContent = label;
+        if (unit) {
+            var u = document.createElement('span');
+            u.className = 'u';
+            u.textContent = unit;
+            k.appendChild(u);
+        }
+        if (multi) {
+            // How many are switched on, so a long list says so at a glance.
+            var n = document.createElement('span');
+            n.className = 'bl-qe-n';
+            n.hidden = true;
+            k.appendChild(n);
+        }
         var v = document.createElement('span');
         v.className = 'v';
         v.appendChild(node);
         row.appendChild(k);
         row.appendChild(v);
+        if (multi) { qeChipsCount(node); }
 
         return row;
+    }
+    function qeChipsCount(box) {
+        var row = box.closest ? box.closest('.row') : null;
+        var n = row ? row.querySelector('.k .bl-qe-n') : null;
+        if (!n) { return; }
+        var c = box.querySelectorAll('.bl-chip:not(.off)').length;
+        n.textContent = c ? String(c) : '';
+        n.hidden = !c;
+    }
+    function ppNotifyCount() {
+        var n = document.getElementById('pp-notify-n');
+        if (!n) { return; }
+        var c = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
+        n.textContent = c ? String(c) : '';
+        n.hidden = !c;
     }
     function qeSelect(name, options, value, blank) {
         var sel = document.createElement('select');
@@ -2289,12 +2325,14 @@ window.PmPortalBoot = function () {
     // are short enough to show whole.
     //
     // labelOf names a value the options do not carry, for the chip it gets.
-    function qeChips(name, options, values, labelOf) {
+    // people: the values are user ids, and each chip carries that face.
+    function qeChips(name, options, values, labelOf, people) {
         var box = document.createElement('div');
         box.className = 'bl-qe-chips';
         box.dataset.qe = name;
         box.dataset.qeMulti = '1';
         box._qeLabel = labelOf || qeUnlisted;
+        box._qePeople = !!people;
         options.forEach(function (o) { qeChip(box, String(o[0]), o[1], false); });
         if (!options.length) {
             var em = document.createElement('span');
@@ -2312,10 +2350,17 @@ window.PmPortalBoot = function () {
         chip.className = 'bl-chip off' + (extra ? ' pp-qe-extra' : '');
         chip.dataset.val = val;
         chip.textContent = label;
+        chip.setAttribute('role', 'button');
+        chip.tabIndex = 0;
+        if (box._qePeople) {
+            chip.classList.add('has-av');
+            chip.insertAdjacentHTML('afterbegin', av(val));
+        }
         if (extra && L.qe_extra) { chip.title = L.qe_extra; }
         chip.addEventListener('click', function () {
             chip.classList.toggle('off');
             QE.touched[box.dataset.qe] = true;
+            qeChipsCount(box);
             qeMark();
         });
         box.appendChild(chip);
@@ -2340,6 +2385,7 @@ window.PmPortalBoot = function () {
         });
         var em = box.querySelector('.em');
         if (em) { em.hidden = !!box.querySelector('.bl-chip'); }
+        qeChipsCount(box);
     }
     function renderQuickEdit(i, res) {
         var box = document.getElementById('pp-cmt-fields');
@@ -2388,7 +2434,7 @@ window.PmPortalBoot = function () {
         var st = document.createElement('select');
         st.id = 'pp-cmt-status';
         st.className = 'bl-qe-in';
-        box.appendChild(qeRow(L.st_change, st));
+        box.appendChild(qeRow(L.st_change, st, 'w-st'));
         if (!res.editable) {
             if (editbox) { editbox.hidden = true; }
 
@@ -2405,20 +2451,23 @@ window.PmPortalBoot = function () {
         var cats = Object.keys(D.categories || {}).map(function (k) { return [k, String(D.categories[k])]; })
             .sort(function (a, b) { return cmpText(a[1], b[1]); });
 
-        box.appendChild(qeRow(L.col_pr, qeSelect('pr', prios, QE.base.pr, L.empty)));
+        // Laid out by what each field holds: the three pickers share a line,
+        // the two chip lists take a line each, and the dates and the hours -
+        // short values, every one - sit side by side on the last.
+        box.appendChild(qeRow(L.col_pr, qeSelect('pr', prios, QE.base.pr, L.empty), 'w-sel'));
+        box.appendChild(qeRow(L.col_ms, qeSelect('ms', miles, QE.base.ms, L.empty), 'w-sel'));
         box.appendChild(qeRow(L.col_as, qeChips('as', people, QE.base.as, function (v) {
             // Not a member, but a person the payload knows by name.
             var u = own(D.users, v);
             return u ? String(u.n) : qeUnlisted(v);
-        })));
-        box.appendChild(qeRow(L.col_ms, qeSelect('ms', miles, QE.base.ms, L.empty)));
-        box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat)));
-        box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd)));
-        box.appendChild(qeRow(L.col_dd, qeInput('dd', 'date', QE.base.dd)));
-        box.appendChild(qeRow(L.col_dt, qeInput('dt', 'time', QE.base.dt)));
-        box.appendChild(qeRow(L.lbl_eh_only, qeInput('eh', 'number', QE.base.eh, { min: '0', step: '0.5' })));
-        box.appendChild(qeRow(L.lbl_ah_only, qeInput('ah', 'number', QE.base.ah, { min: '0', step: '0.5' })));
-        box.appendChild(qeRow(L.lbl_pg, qeInput('pg', 'number', QE.base.pg, { min: '0', max: '100', step: '1' })));
+        }, true), 'w-full'));
+        box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat), 'w-full'));
+        box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd), 'w-date'));
+        box.appendChild(qeRow(L.col_dd, qeInput('dd', 'date', QE.base.dd), 'w-date'));
+        box.appendChild(qeRow(L.col_dt, qeInput('dt', 'time', QE.base.dt), 'w-time'));
+        box.appendChild(qeRow(L.lbl_eh_only, qeInput('eh', 'number', QE.base.eh, { min: '0', step: '0.5' }), 'w-num', 'h'));
+        box.appendChild(qeRow(L.lbl_ah_only, qeInput('ah', 'number', QE.base.ah, { min: '0', step: '0.5' }), 'w-num', 'h'));
+        box.appendChild(qeRow(L.lbl_pg, qeInput('pg', 'number', QE.base.pg, { min: '0', max: '100', step: '1' }), 'w-num', '%'));
         if (carry) { qeApplyCarry(carry); }
         qeMark();
     }
@@ -2478,6 +2527,7 @@ window.PmPortalBoot = function () {
         var st = document.getElementById('pp-cmt-status');
         if (st) { st.value = ''; }
         document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
+        ppNotifyCount();
         qeMark();
     }
     // What the widgets hold now, in the same shape QE.base is kept in, so the
@@ -2607,6 +2657,20 @@ window.PmPortalBoot = function () {
         }
     }
     window.ppDockOpen = ppDockOpen;
+    // The chips are not buttons, but they are pressed like one: reachable
+    // with Tab, switched with Enter or Space. Ctrl+Enter stays the form's.
+    (function () {
+        var sheet = document.getElementById('pp-docksheet');
+        if (!sheet) { return; }
+        sheet.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Enter' && ev.key !== ' ') { return; }
+            if (ev.ctrlKey || ev.metaKey || ev.altKey) { return; }
+            var t = ev.target;
+            if (!t || !t.classList || !t.classList.contains('bl-chip')) { return; }
+            ev.preventDefault();
+            t.click();
+        });
+    }());
     function ppDockIsOpen() {
         var sheet = document.getElementById('pp-docksheet');
         return !!(sheet && !sheet.hidden);
@@ -9391,7 +9455,7 @@ window.PmPortalBoot = function () {
             return;
         }
         var chip = ev.target.closest('.pp-notify');
-        if (chip) { chip.classList.toggle('off'); return; }
+        if (chip) { chip.classList.toggle('off'); ppNotifyCount(); return; }
         var nextBtn = ev.target.closest('.pp-next-status');
         if (nextBtn) { postComment(nextBtn.dataset.next); return; }
         var quote = ev.target.closest('.pp-quote');

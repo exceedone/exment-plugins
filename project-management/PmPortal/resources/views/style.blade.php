@@ -472,15 +472,80 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 .pmportal .pp-hc-rows .v{flex:1;min-width:0;word-break:break-word;}
 .pmportal .pp-hc-msg{color:var(--bl-sub);}
 .pmportal .pp-hc-key{font-weight:700;color:#2b6cb0;font-size:11px;}
-.pmportal .bl-qe-in{width:100%;border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:4px 6px;font-size:12px;
-  background:var(--bl-box);color:var(--bl-ink);}
-.pmportal .bl-qe-in:focus{border-color:var(--bl-accent);outline:none;}
-.pmportal .bl-qe-chips{display:flex;flex-wrap:wrap;gap:4px;}
-.pmportal .bl-qe-num{max-width:100px;}
+.pmportal .bl-qe-in{width:100%;height:30px;border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:4px 8px;
+  font-size:13px;line-height:20px;background:var(--bl-box);color:var(--bl-ink);box-sizing:border-box;
+  font-variant-numeric:tabular-nums;transition:border-color .12s,box-shadow .12s;}
+.pmportal .bl-qe-in:hover{border-color:color-mix(in srgb, var(--bl-accent) 45%, var(--bl-line));}
+.pmportal .bl-qe-in:focus{border-color:var(--bl-accent);outline:none;box-shadow:var(--bl-focus,0 0 0 3px rgba(76,174,147,.18));}
+.pmportal .bl-qe-in:disabled{background:var(--bl-box2);color:var(--bl-faint);}
+.pmportal select.bl-qe-in{padding-right:4px;text-overflow:ellipsis;cursor:pointer;}
+.pmportal .bl-qe-in::placeholder{color:var(--bl-faint);opacity:.8;}
+.pmportal .bl-qe-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.pmportal .bl-qe-num{text-align:right;}
+/* ---- dock fields: each as wide as what it holds (snoro 2026-11-19) ----
+   The fields used to be label | value rows, every value stretched across the
+   card: a ten-character date in a thousand-pixel box, and a card that had to
+   be scrolled. Now each is a label over its widget at a width of its own and
+   they wrap like words - three pickers on a line, the two chip lists a line
+   each, the dates and the hours side by side on the last. */
+.pmportal .bl-qe{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 12px;}
+.pmportal .bl-qe > .row{display:flex;flex-direction:column;gap:3px;min-width:0;flex:0 0 auto;}
+.pmportal .bl-qe > .row > .k{display:flex;align-items:center;gap:5px;min-height:17px;font-size:11.5px;line-height:1.45;
+  font-weight:600;color:var(--bl-sub);white-space:nowrap;}
+.pmportal .bl-qe > .row > .k .u{font-weight:400;color:var(--bl-faint);}
+.pmportal .bl-qe > .row > .v{display:block;min-width:0;}
+.pmportal .bl-qe > .row.w-st{flex:1 1 190px;max-width:300px;}
+.pmportal .bl-qe > .row.w-sel{flex:1 1 140px;max-width:260px;}
+.pmportal .bl-qe > .row.w-full{flex:1 1 100%;}
+.pmportal .bl-qe > .row.w-date{width:120px;}
+.pmportal .bl-qe > .row.w-time{width:98px;}
+.pmportal .bl-qe > .row.w-num{width:72px;}
+.pmportal .bl-qe .bl-qe-chips .em{font-size:12px;line-height:24px;}
+/* how many chips are switched on */
+.pmportal .bl-qe-n{display:inline-block;min-width:16px;padding:0 5px;border-radius:9px;background:var(--bl-accent);color:#fff;
+  font-size:10.5px;font-weight:700;line-height:16px;text-align:center;font-variant-numeric:tabular-nums;}
+.pmportal .bl-qe-n[hidden]{display:none;}
+.pmportal .bl-boxhead .bl-qe-n{margin-left:7px;vertical-align:1px;}
+/* ---- dock chips: who is picked reads at a glance ---- */
+.pmportal .bl-dockbody .bl-chip{gap:5px;padding:2px 10px;font-size:12px;font-weight:600;line-height:18px;border-radius:13px;
+  background:var(--bl-box);border:1px solid var(--bl-line);color:var(--bl-sub);white-space:nowrap;user-select:none;
+  transition:background .12s,border-color .12s,color .12s;}
+.pmportal .bl-dockbody .bl-chip.has-av{padding-left:3px;}
+.pmportal .bl-dockbody .bl-chip .bl-av{width:18px;height:18px;margin:0;font-size:9px;transition:opacity .12s,filter .12s;}
+.pmportal .bl-dockbody .bl-chip.off .bl-av{opacity:.5;filter:grayscale(.7);}
+.pmportal .bl-dockbody .bl-chip:hover{background:var(--bl-hover);border-color:color-mix(in srgb, var(--bl-accent) 55%, var(--bl-line));color:var(--bl-ink);}
+.pmportal .bl-dockbody .bl-chip:hover .bl-av{opacity:1;filter:none;}
+.pmportal .bl-dockbody .bl-chip:not(.off){background:color-mix(in srgb, var(--bl-accent) 14%, var(--bl-box));
+  border-color:var(--bl-accent);color:var(--bl-accent-d,#2c6e5b);}
+.pmportal .bl-dockbody .bl-chip:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
+.pmportal #pp-notify-chips{display:flex;flex-wrap:wrap;gap:5px;}
+/* ---- dock cards: quieter heads, the room goes to the fields ---- */
+.pmportal .bl-dockbody .bl-card-box>.bl-boxhead{display:flex;align-items:center;flex-wrap:wrap;gap:2px 0;padding:7px 12px;font-size:13px;}
+.pmportal .bl-dockbody .bl-card-box>.bl-boxbody{padding:10px 12px 12px;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail{margin:0 0 0 auto;padding-left:12px;white-space:nowrap;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail input{margin:0 2px 0 0;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail .fa{margin-right:0;}
+/* The comment and who hears of it stand side by side once there is room for
+   both; the huge grow on the comment means the people card only ever takes
+   what it asked for there, and the whole line when it wraps under. */
+.pmportal .bl-dockmain{flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:0 12px;}
+.pmportal .bl-dockmain > .bl-card-box{flex:999 1 560px;min-width:0;}
+.pmportal .bl-dockmain > .bl-card-box + .bl-card-box{flex:1 1 380px;}
+/* The fields need about 700px to sit in three lines and are given no more:
+   on a wide screen the rest is the comment's. */
+.pmportal .bl-dockside{flex:3 1 380px;max-width:720px;}
+@media (max-width:480px){
+  .pmportal .bl-qe{gap:10px 8px;}
+  .pmportal .bl-qe > .row.w-st,.pmportal .bl-qe > .row.w-sel{max-width:none;}
+  .pmportal .bl-qe > .row.w-date{flex:1 1 120px;}
+  .pmportal .bl-qe > .row.w-time{width:98px;}
+  .pmportal .bl-qe > .row.w-num{width:58px;}
+  .pmportal .bl-qe > .row.w-num .bl-qe-in{padding:4px 4px 4px 6px;}
+}
 @media (max-width:1000px){
   .pmportal .bl-dockbody{display:block;}
   .pmportal .bl-dockmain{display:block;}
-  .pmportal .bl-dockside{display:block;}
+  .pmportal .bl-dockside{display:block;max-width:none;}
 }
 
 /* ---- type-ahead: @ people, # issues, ~ files ---- */

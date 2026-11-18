@@ -400,17 +400,18 @@
                              not with the fields being changed. One value, so no
                              label column: the card head already names it. --}}
                         <div class="bl-card-box">
-                            <div class="bl-boxhead"><i class="fa fa-bell-o"></i>{{ $lang['notify_to'] }}</div>
+                            <div class="bl-boxhead"><i class="fa fa-bell-o"></i>{{ $lang['notify_to'] }}<span class="bl-qe-n" id="pp-notify-n" hidden></span>
+                                <label class="pp-notify-mail" title="{{ $lang['notify_mail_hint'] }}"><input type="checkbox" id="pp-notify-mail"> <i class="fa fa-envelope-o"></i> {{ $lang['notify_mail'] }}</label>
+                            </div>
                             <div class="bl-boxbody">
                                 <div id="pp-notify-chips"></div>
-                                <label class="pp-notify-mail" title="{{ $lang['notify_mail_hint'] }}"><input type="checkbox" id="pp-notify-mail"> <i class="fa fa-envelope-o"></i> {{ $lang['notify_mail'] }}</label>
                             </div>
                         </div>
                         </div>
                         <div class="bl-dockside">
                             <div class="bl-card-box" id="pp-d-editbox">
                                 <div class="bl-boxhead"><i class="fa fa-sliders"></i>{{ $lang['dock_edit'] }}</div>
-                                <div class="bl-boxbody bl-rows" id="pp-cmt-fields"></div>
+                                <div class="bl-boxbody bl-qe" id="pp-cmt-fields"></div>
                             </div>
                         </div>
                     </div>
