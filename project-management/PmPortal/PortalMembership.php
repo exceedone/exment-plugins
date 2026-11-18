@@ -97,19 +97,24 @@ class PortalMembership
      * organization (System::org_joined_type_custom_value), so this answers
      * the same as the access check it stands in for.
      *
+     * $evenIfOff counts the teams' people while organizations are switched
+     * off, by their own membership. Only for working out what a save
+     * changed: someone a team brought keeps shares under the project as a
+     * person, and those have to go with the team even then.
+     *
      * @param array<string, mixed>|null $value a project row's value
      * @return array<int, string> user id => role
      */
-    public static function roles(?array $value): array
+    public static function roles(?array $value, bool $evenIfOff = false): array
     {
         $direct = static::userRoles($value);
-        $orgRoles = static::orgRoles($value);
+        $orgRoles = static::orgRoles($value, $evenIfOff);
         if (empty($orgRoles)) {
             return $direct;
         }
 
         $roles = [];
-        foreach (static::orgUsers(array_keys($orgRoles)) as $orgId => $userIds) {
+        foreach (static::orgUsers(array_keys($orgRoles), $evenIfOff) as $orgId => $userIds) {
             foreach ($userIds as $userId) {
                 $roles[$userId] = static::stronger($roles[$userId] ?? null, $orgRoles[$orgId]);
             }
@@ -149,14 +154,19 @@ class PortalMembership
     /**
      * The organizations the organization columns name, and in which role.
      * One named in both keeps the stronger. Empty on an install without the
-     * columns (schema 21) or with organizations switched off.
+     * columns (schema 21), and - unless $evenIfOff - with organizations
+     * switched off, as nobody reaches a project through one then.
+     *
+     * $evenIfOff is for working out what a save changed: a team taken off
+     * while organizations are off still has its share on the project row,
+     * which would come back to life the day they are switched on again.
      *
      * @param array<string, mixed>|null $value a project row's value
      * @return array<int, string> organization id => role
      */
-    public static function orgRoles(?array $value): array
+    public static function orgRoles(?array $value, bool $evenIfOff = false): array
     {
-        if (!System::organization_available()) {
+        if (!$evenIfOff && !System::organization_available()) {
             return [];
         }
         $pj = (array) array_get(PortalDefinition::config(), 'project', []);
@@ -182,13 +192,17 @@ class PortalMembership
      * Remembered for READERS_TTL seconds, like readers(); projectSaved()
      * forgets it.
      *
+     * $evenIfOff answers while organizations are switched off too, by each
+     * team's own members (there is no hierarchy to follow then).
+     *
      * @param array<int, mixed> $orgIds
      * @return array<int, array<int, int>> organization id => user ids
      */
-    public static function orgUsers(array $orgIds): array
+    public static function orgUsers(array $orgIds, bool $evenIfOff = false): array
     {
         $orgIds = static::ids($orgIds);
-        if (empty($orgIds) || !System::organization_available()) {
+        $available = System::organization_available();
+        if (empty($orgIds) || (!$available && !$evenIfOff)) {
             return [];
         }
         $orgTable = CustomTable::getEloquent(SystemTableName::ORGANIZATION);
@@ -196,7 +210,9 @@ class PortalMembership
             return [];
         }
 
-        $enum = JoinedOrgFilterType::getEnum(System::org_joined_type_custom_value(), JoinedOrgFilterType::ONLY_JOIN);
+        $enum = $available
+            ? JoinedOrgFilterType::getEnum(System::org_joined_type_custom_value(), JoinedOrgFilterType::ONLY_JOIN)
+            : JoinedOrgFilterType::ONLY_JOIN;
         $key = strval($enum) . ':' . implode(',', $orgIds);
         $now = microtime(true);
         if (isset(static::$orgUsers[$key]) && $now - static::$orgUsers[$key][0] < self::READERS_TTL) {
@@ -206,10 +222,16 @@ class PortalMembership
         $withUsers = ['users' => function ($query) {
             return $query->withoutGlobalScope(CustomValueModelScope::class);
         }];
+        // Past the permission scope, as Exment's own organization tree reads
+        // them, but not past the trash: a deleted team reaches nobody, and
+        // its rows on the membership pivot stay until it is purged.
+        $orgQuery = function () use ($orgTable) {
+            return $orgTable->getValueModel()->newQuery()->withoutGlobalScope(CustomValueModelScope::class);
+        };
         $out = [];
         if ($enum == JoinedOrgFilterType::ONLY_JOIN) {
             // The default: a share on an organization reaches its own members.
-            $rows = $orgTable->getValueModel()->newQueryWithoutScopes()->with($withUsers)->whereIn('id', $orgIds)->get();
+            $rows = $orgQuery()->with($withUsers)->whereIn('id', $orgIds)->get();
             foreach ($rows as $org) {
                 foreach ($org->users as $user) {
                     $out[intval($org->id)][] = intval($user->id);
@@ -220,7 +242,7 @@ class PortalMembership
             // which organizations count as theirs - the same answer its access
             // check works from - for everyone who belongs to any organization.
             $userIds = [];
-            foreach ($orgTable->getValueModel()->newQueryWithoutScopes()->with($withUsers)->get() as $org) {
+            foreach ($orgQuery()->with($withUsers)->get() as $org) {
                 foreach ($org->users as $user) {
                     $userIds[intval($user->id)] = true;
                 }
@@ -554,8 +576,22 @@ class PortalMembership
         // People, with whoever the organizations bring counted in, and the
         // organizations themselves: an organization's share sits on the
         // project row only, so taking one off is that row's business.
-        $changes = static::changes(static::roles($before), static::roles($after));
-        $orgChanges = static::changes(static::orgRoles($before), static::orgRoles($after));
+        $changes = static::changes(static::roles($before, true), static::roles($after, true));
+        $orgChanges = static::changes(static::orgRoles($before, true), static::orgRoles($after, true));
+        static::apply($project, $changes, $orgChanges);
+    }
+
+    /**
+     * Carry out what changes() worked out for one project: the people's
+     * shares on the project and under it, the teams' shares on the project
+     * row, and - once committed - the Git tokens of whoever lost access.
+     *
+     * @param array{removed: array<int, int>, demoted: array<int, int>, editors: array<int, int>} $changes people
+     * @param array{removed: array<int, int>, demoted: array<int, int>, editors: array<int, int>}|null $orgChanges organizations
+     */
+    protected static function apply(CustomValue $project, array $changes, ?array $orgChanges = null): void
+    {
+        $orgChanges = $orgChanges ?? ['removed' => [], 'demoted' => [], 'editors' => []];
         $none = function (array $c) {
             return empty($c['removed']) && empty($c['demoted']) && empty($c['editors']);
         };
@@ -590,6 +626,104 @@ class PortalMembership
                 }
             });
         }
+    }
+
+    /**
+     * Who each project that names a team had before this request started
+     * changing users or organizations; null while nothing is pending.
+     *
+     * @var array<int, array<int, string>>|null project id => roles()
+     */
+    protected static $teamsBefore = null;
+
+    /**
+     * A user or an organization is about to be saved, deleted or restored.
+     *
+     * Someone taken out of a team on the organization screen - or the team
+     * itself deleted - leaves every project that names the team, but no
+     * project is saved, so projectSaved() never sees it: the shares they
+     * picked up under the project as a person (the issues they opened or were
+     * given) would stay for good. So the people of every project that names a
+     * team are noted now, before anything changes, and compared once the
+     * request is over, when the membership pivot has been written as well.
+     *
+     * Once per request; later saves in the same request are covered by the
+     * same comparison. A change that never saves a user or an organization -
+     * the hierarchy setting, a sync that writes the pivot alone - is not seen
+     * here.
+     */
+    public static function teamsChanging(): void
+    {
+        if (static::$teamsBefore !== null) {
+            return;
+        }
+        static::$teamsBefore = [];
+        foreach (static::teamProjects() as $project) {
+            static::$teamsBefore[intval($project->id)] = static::roles((array) $project->value);
+        }
+        if (empty(static::$teamsBefore)) {
+            return;
+        }
+
+        app()->terminating(function () {
+            try {
+                static::teamsChanged();
+            } catch (\Throwable $e) {
+                \Log::error('pm_portal could not bring project shares in line with team changes: ' . $e->getMessage(), [
+                    'exception' => $e,
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Compare each project noted by teamsChanging() with who it has now, and
+     * revoke or restore the way a project save would.
+     */
+    public static function teamsChanged(): void
+    {
+        $before = static::$teamsBefore ?? [];
+        static::$teamsBefore = null;
+        if (empty($before)) {
+            return;
+        }
+        // What was read before the change must not answer for after it.
+        static::$orgUsers = [];
+        System::clearRequestSession();
+
+        $projectTable = CustomTable::getEloquent(array_get(PortalDefinition::config(), 'project_table'));
+        if (!$projectTable) {
+            return;
+        }
+        $projects = $projectTable->getValueModel()->newQueryWithoutScopes()->whereIn('id', array_keys($before))->get();
+        foreach ($projects as $project) {
+            static::apply($project, static::changes($before[intval($project->id)], static::roles((array) $project->value)));
+        }
+    }
+
+    /**
+     * The projects that name a team in either organization column.
+     *
+     * @return \Illuminate\Support\Collection<int, CustomValue>
+     */
+    protected static function teamProjects()
+    {
+        $def = PortalDefinition::config();
+        $projectTable = CustomTable::getEloquent(array_get($def, 'project_table'));
+        if (!$projectTable || !System::organization_available()) {
+            return collect();
+        }
+        $columns = array_filter([
+            CustomColumn::getEloquent(array_get($def, 'project.member_orgs'), $projectTable),
+            CustomColumn::getEloquent(array_get($def, 'project.viewer_orgs'), $projectTable),
+        ]);
+        if (empty($columns)) {
+            return collect();
+        }
+
+        return $projectTable->getValueModel()->newQueryWithoutScopes()->get()->filter(function ($project) {
+            return !empty(static::orgRoles((array) $project->value));
+        })->values();
     }
 
     /**
@@ -790,54 +924,77 @@ class PortalMembership
         $issueTable = CustomTable::getEloquent($issueName);
         $assignees = $issueTable ? CustomColumn::getEloquent(array_get($def, 'issue.assignees'), $issueTable) : null;
 
+        // One query per table for what the new writers opened, rather than
+        // one per writer: a team of hundreds joins in a single save. The
+        // assignee lookup stays per writer - it searches inside a JSON list -
+        // and only runs on the issue table.
         foreach ($owned as $tableName => $ids) {
-            foreach ($editors as $userId) {
-                $rows = (clone $ids)->where('created_user_id', $userId)->pluck('id')->all();
-                if ($tableName === $issueName && $assignees) {
-                    $rows = array_merge($rows, (clone $ids)->whereInArrayString($assignees->getQueryKey(), $userId)->pluck('id')->all());
+            $rowsByUser = [];
+            foreach (array_chunk($editors, 500) as $chunk) {
+                $created = (clone $ids)->addSelect('created_user_id')->whereIn('created_user_id', $chunk)->get();
+                foreach ($created as $row) {
+                    $rowsByUser[intval($row->created_user_id)][] = intval($row->id);
                 }
-                static::grantEdit($tableName, $rows, $userId);
             }
+            if ($tableName === $issueName && $assignees) {
+                foreach ($editors as $userId) {
+                    foreach ((clone $ids)->whereInArrayString($assignees->getQueryKey(), $userId)->pluck('id') as $id) {
+                        $rowsByUser[intval($userId)][] = intval($id);
+                    }
+                }
+            }
+            static::grantEditMany($tableName, $rowsByUser);
         }
     }
 
     /**
-     * @param array<int, mixed> $rowIds
+     * Give each user an edit share on their rows, skipping the ones they
+     * already hold: one read of those shares, one batch of inserts.
+     *
+     * @param array<int, array<int, int>> $rowsByUser user id => row ids
      */
-    protected static function grantEdit(string $tableName, array $rowIds, int $userId): void
+    protected static function grantEditMany(string $tableName, array $rowsByUser): void
     {
-        $rowIds = array_values(array_unique(array_map(function ($id) {
-            return intval($id);
-        }, $rowIds)));
-        if (empty($rowIds)) {
+        $rowsByUser = array_filter(array_map(function ($rowIds) {
+            return array_values(array_unique(array_map('intval', $rowIds)));
+        }, $rowsByUser));
+        if (empty($rowsByUser)) {
             return;
         }
 
-        $held = static::shares($tableName)
-            ->whereIn('parent_id', $rowIds)
-            ->where('authoritable_type', Permission::CUSTOM_VALUE_EDIT)
-            ->where('authoritable_target_id', $userId)
-            ->pluck('parent_id')
-            ->map(function ($id) {
-                return intval($id);
-            })
-            ->all();
+        $held = [];
+        $allRows = array_values(array_unique(array_merge(...array_values($rowsByUser))));
+        foreach (array_chunk($allRows, 500) as $chunk) {
+            $shares = static::shares($tableName)
+                ->whereIn('parent_id', $chunk)
+                ->where('authoritable_type', Permission::CUSTOM_VALUE_EDIT)
+                ->whereIn('authoritable_target_id', array_keys($rowsByUser))
+                ->get(['parent_id', 'authoritable_target_id']);
+            foreach ($shares as $share) {
+                $held[intval($share->authoritable_target_id) . ':' . intval($share->parent_id)] = true;
+            }
+        }
 
         $now = now();
         $by = \Exment::getUserId();
         $insert = [];
-        foreach (array_diff($rowIds, $held) as $rowId) {
-            $insert[] = [
-                'parent_id' => $rowId,
-                'parent_type' => $tableName,
-                'authoritable_type' => Permission::CUSTOM_VALUE_EDIT,
-                'authoritable_user_org_type' => SystemTableName::USER,
-                'authoritable_target_id' => $userId,
-                'created_at' => $now,
-                'updated_at' => $now,
-                'created_user_id' => $by,
-                'updated_user_id' => $by,
-            ];
+        foreach ($rowsByUser as $userId => $rowIds) {
+            foreach ($rowIds as $rowId) {
+                if (isset($held[$userId . ':' . $rowId])) {
+                    continue;
+                }
+                $insert[] = [
+                    'parent_id' => $rowId,
+                    'parent_type' => $tableName,
+                    'authoritable_type' => Permission::CUSTOM_VALUE_EDIT,
+                    'authoritable_user_org_type' => SystemTableName::USER,
+                    'authoritable_target_id' => $userId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                    'created_user_id' => $by,
+                    'updated_user_id' => $by,
+                ];
+            }
         }
         foreach (array_chunk($insert, 500) as $chunk) {
             CustomValueAuthoritable::insert($chunk);
