@@ -2496,6 +2496,9 @@ window.PmPortalBoot = function () {
                 return;
             }
             out[name] = String(el.value == null ? '' : el.value);
+            // The due time leaves as HH:MM, and 00:00 (where the picker's
+            // spinner starts) as no time at all.
+            if (name === 'dt') { out[name] = qeRowValue('dt', out[name]) || ''; }
         });
 
         return out;
@@ -3911,7 +3914,9 @@ window.PmPortalBoot = function () {
         }
         if (key === 'dt') {
             var hm = /^(\d{1,2}):(\d{2})/.exec(String(v == null ? '' : v));
-            return hm ? ('0' + hm[1]).slice(-2) + ':' + hm[2] : '';
+            var t = hm ? ('0' + hm[1]).slice(-2) + ':' + hm[2] : '';
+            // 00:00 is no time (the picker starts there): see clearMidnightDueTime.
+            return t === '00:00' ? '' : t;
         }
         if (key === 'pg') {
             return (v === null || v === undefined || v === '' || !isFinite(Number(v))) ? null : Number(v);

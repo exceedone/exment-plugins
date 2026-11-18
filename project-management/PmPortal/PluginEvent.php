@@ -62,7 +62,32 @@ class PluginEvent extends PluginEventBase
             return;
         }
 
+        static::clearMidnightDueTime($model);
         static::check($model);
+    }
+
+    /**
+     * A due time of 00:00 is stored as no time (ISS00299, snoro 2026-11-19).
+     *
+     * The time picker starts its spinner at 00:00:00, so a click that only
+     * meant to open it writes midnight - and midnight would make the issue
+     * overdue from the first minute of its due date. Nobody means "due at
+     * the very start of the day"; an empty time is the whole day.
+     */
+    protected static function clearMidnightDueTime(CustomValue $model): void
+    {
+        $def = PortalDefinition::config();
+        if ($model->custom_table->table_name !== strval(array_get($def, 'issue_table'))) {
+            return;
+        }
+        $column = strval(array_get($def, 'issue_extra.due_time', 'due_time'));
+        $value = (array) $model->getAttribute('value');
+        if (!array_key_exists($column, $value)) {
+            return;
+        }
+        if (preg_match('/^0{1,2}:00(:00)?$/', trim(strval($value[$column])))) {
+            $model->setValue([$column => null]);
+        }
     }
 
     /**
