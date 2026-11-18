@@ -233,6 +233,8 @@ trait PortalProjectTrait
             'manager' => $has(array_get($pj, 'manager')),
             'members' => $has(array_get($pj, 'members')),
             'viewers' => $has(array_get($pj, 'viewers')),
+            'member_orgs' => $has(array_get($pj, 'member_orgs')),
+            'viewer_orgs' => $has(array_get($pj, 'viewer_orgs')),
             'parent' => $has('parent_project'),
             'archived' => $has('archived'),
             'formatting_rule' => $has('formatting_rule'),
