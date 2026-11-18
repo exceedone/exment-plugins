@@ -107,14 +107,14 @@ trait PortalRankingTrait
         });
         $rank = 0;
         $last = null;
-        foreach ($rows as $n => &$row) {
-            if ($row['score'] !== $last) {
+        $count = count($rows);
+        for ($n = 0; $n < $count; $n++) {
+            if ($rows[$n]['score'] !== $last) {
                 $rank = $n + 1;
-                $last = $row['score'];
+                $last = $rows[$n]['score'];
             }
-            $row['rank'] = $rank;
+            $rows[$n]['rank'] = $rank;
         }
-        unset($row);
 
         $me = intval(\Exment::getUserId());
         $mine = null;
