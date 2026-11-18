@@ -100,6 +100,13 @@
 .pmportal .bl-star{color:#c3ccd4;cursor:pointer;white-space:nowrap;}
 .pmportal .bl-star.on{color:#f2b01e;}
 .pmportal .bl-star:hover{color:#f2b01e;}
+/* ★ on the issue detail: a labelled button beside ウォッチ (注目). */
+.pmportal .pp-star-d .fa{color:#c3ccd4;}
+.pmportal .pp-star-d:hover .fa{color:#f2b01e;}
+.pmportal .pp-star-d.on{border-color:#f2b01e !important;background:color-mix(in srgb, #f2b01e 12%, var(--bl-box)) !important;}
+.pmportal .pp-star-d.on .fa{color:#f2b01e;}
+.pmportal .pp-star-d .ct{font-weight:700;}
+@media (max-width:480px){.pmportal .pp-star-d .lb{display:none;}}
 .pmportal .bl-pbar{background:#e9eef2;border-radius:var(--bl-radius-s,4px);height:8px;min-width:70px;position:relative;overflow:hidden;}
 .pmportal .bl-pbar>i{position:absolute;left:0;top:0;bottom:0;background:var(--bl-accent);border-radius:var(--bl-radius-s,4px);}
 .pmportal .bl-mention{background:#e8f4ff;color:#2b6cb0;border-radius:3px;padding:0 4px;font-weight:700;}

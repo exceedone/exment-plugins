@@ -365,6 +365,11 @@ return [
     'watch' => 'ウォッチ',
     'unwatch' => 'ウォッチ中',
     'star' => 'スター',
+    // ★ is 注目度 (snoro 2026-11-19): the detail button and every ★'s tooltip
+    'star_label' => '注目',
+    'star_on' => '注目中',
+    'star_on_tip' => 'この課題に注目する（注目度として数えます。誰が付けたかは表示されません）',
+    'star_off_tip' => '注目を外す',
     'edit' => '編集',
     'to_next' => '%s にする',
     'notify_to' => 'お知らせしたい人',
