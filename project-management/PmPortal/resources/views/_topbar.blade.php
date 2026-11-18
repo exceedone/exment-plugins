@@ -547,6 +547,33 @@
             if (a) { a.click(); }
         });
     }
+    // Switching project keeps the screen: on a project's 課題 (list or one
+    // issue) the next project opens on its 課題 too, and the same for the
+    // other tabs every project has. Only the plain project links are
+    // changed - the launch links and the gear name their own screen.
+    function keptScreen() {
+        if (!document.querySelector('.bl-tab[data-scr]')) { return ''; }
+        var path = String(location.hash || '').slice(1).split('?')[0];
+        if (path === 'issues' || /^issue-/.test(path)) { return 'issues'; }
+        if (/^wiki-/.test(path)) { return 'wiki'; }
+        return ['board', 'gantt', 'burndown', 'wiki', 'files'].indexOf(path) >= 0 ? path : '';
+    }
+    function keepScreenOnLink(ev) {
+        var a = ev.target.closest('a[href]');
+        if (!a || !pjList || !pjList.contains(a) || a.closest('.lc') || a.classList.contains('pp-pjm-gear')) { return; }
+        var base = a.getAttribute('data-base');
+        if (base === null) {
+            base = a.getAttribute('href') || '';
+            if (base === '' || base.indexOf('#') >= 0 || base.indexOf('javascript:') === 0) { return; }
+            a.setAttribute('data-base', base);
+        }
+        var screen = keptScreen();
+        a.setAttribute('href', screen ? base + '#' + screen : base);
+    }
+    if (pjList) {
+        pjList.addEventListener('click', keepScreenOnLink, true);
+        pjList.addEventListener('auxclick', keepScreenOnLink, true);
+    }
     ['pp-pjm-open', 'pp-pjm-close'].forEach(function (ctlId) {
         var a = document.getElementById(ctlId);
         if (!a) { return; }
