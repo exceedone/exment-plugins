@@ -1,0 +1,34 @@
+# PHPStan for the plugins in this repository, checked against Exment 7.
+# Run from .github/ci after "composer install":  vendor/bin/phpstan analyse -c phpstan.neon
+# phpstan-baseline.neon lists the errors that already existed (mostly Laravel magic that
+# PHPStan cannot follow without a booted app). CI fails only on NEW errors.
+# To refresh it:  vendor/bin/phpstan analyse -c phpstan.neon --generate-baseline phpstan-baseline.neon
+includes:
+    - phpstan-baseline.neon
+parameters:
+    level: 1
+    paths:
+        - ../..
+    excludePaths:
+        analyseAndScan:
+            - ../../.github
+            - ../../vendor (?)
+            - ../../*.blade.php
+    bootstrapFiles:
+        - bootstrap.php
+    # The baseline may list files that a branch does not have yet.
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # Eloquent models: static calls like Model::where() are resolved by Laravel at run time
+        # (no Larastan here, because it needs a booted Laravel application).
+        -
+            identifier: staticMethod.notFound
+            message: '#^Call to an undefined static method .+::(where|whereIn|whereKey|whereNull|whereNotNull|query|create|find|findOrFail|firstOrCreate|updateOrCreate|insert|select|orderBy|count|with|destroy|max|min|pluck|exists|whereHas|withTrashed|on|lockForUpdate)\(\)\.$#'
+        # Facades (Exment::getUserId(), DB::table() ...) forward static calls at run time.
+        -
+            identifier: staticMethod.notFound
+            message: '#^Call to an undefined static method \S*Facade::#'
+        # Exment adds getColumnDefinitions() to the schema builder.
+        -
+            identifier: staticMethod.notFound
+            message: '#::getColumnDefinitions\(\)\.$#'

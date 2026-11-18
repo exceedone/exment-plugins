@@ -47,6 +47,28 @@ Issues and pull requests are welcome. Please report security problems privately 
 
 Issue・プルリクエストを歓迎します。セキュリティの問題は、公開の Issue ではなく [GitHub のセキュリティアドバイザリー](https://github.com/exceedone/exment-plugins/security/advisories/new) から非公開で知らせてください。
 
+## CI / 自動チェック
+
+GitHub Actions (`.github/workflows/ci.yml`) checks every plugin folder (a folder with `Plugin.php`) on each pull request and on `main`.
+PR を出すと、GitHub Actions がすべてのプラグイン（`Plugin.php` があるフォルダ）をチェックします。
+
+| Job | What / 内容 |
+|---|---|
+| `check` | PHP syntax with `php -l` on PHP 8.2 and 8.3, and `config.json` (`plugin_name`, `uuid`, `version`, `plugin_type`; unique `uuid` and `plugin_name`) / PHP の文法と `config.json` |
+| `php-cs-fixer` | Same coding style as Exment (`.php-cs-fixer.dist.php`) / Exment と同じ書き方 |
+| `phpstan` | Static analysis against Exment 7 (`.github/ci/phpstan.neon`). Errors listed in `.github/ci/phpstan-baseline.neon` are known; only new errors fail / Exment 7 に対する静的解析。baseline にある既知のもの以外の、新しい誤りだけで失敗します |
+
+Run on your PC / 手元で動かす:
+
+```
+php .github/ci/check-config.php
+php php-cs-fixer.phar fix --dry-run --diff --config=.php-cs-fixer.dist.php
+cd .github/ci && composer update --ignore-platform-req='ext-*' && vendor/bin/phpstan analyse -c phpstan.neon
+```
+
+Fix the style automatically: `php php-cs-fixer.phar fix --config=.php-cs-fixer.dist.php`. If you fixed known errors or must accept new ones, refresh the baseline: `vendor/bin/phpstan analyse -c phpstan.neon --generate-baseline phpstan-baseline.neon`.
+書き方は `fix` で自動で直せます。既知の誤りを直したときや、やむを得ず残すときは、baseline を作り直してください。
+
 ## License / ライセンス
 
 [GPL-3.0](LICENSE), the same as Exment. / Exment と同じ GPL-3.0 です。
