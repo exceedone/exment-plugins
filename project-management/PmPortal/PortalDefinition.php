@@ -452,7 +452,7 @@ class PortalDefinition
                 'manager' => 'manager',
                 'members' => 'members',
                 'viewers' => 'viewers',
-                // Schema 21 (ISS00333): organizations on the project, as
+                // Schema 23 (ISS00333): organizations on the project, as
                 // members (edit) and as viewers (read).
                 'member_orgs' => 'member_orgs',
                 'viewer_orgs' => 'viewer_orgs',
