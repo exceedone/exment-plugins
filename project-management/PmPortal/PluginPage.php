@@ -177,6 +177,21 @@ class PluginPage extends PluginPageBase
         return $this->portal()->asset(request(), $name);
     }
 
+    public function issueMoveTargets($id, $issue_id)
+    {
+        return $this->portal()->issueMoveTargets(request(), $id, $issue_id);
+    }
+
+    public function moveIssue($id, $issue_id)
+    {
+        return $this->portal()->moveIssue(request(), $id, $issue_id);
+    }
+
+    public function deleteIssue($id, $issue_id)
+    {
+        return $this->portal()->deleteIssue(request(), $id, $issue_id);
+    }
+
     public function projectReadAll($id)
     {
         return $this->portal()->projectReadAll(request(), $id);

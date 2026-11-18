@@ -1256,13 +1256,20 @@ body.pp-ib-open{overflow:hidden;}
 }
 
 /* Unread (read receipts): a row with something the reader has not seen yet -
-   a light tint, a dot before the subject and the subject in bold, like an
-   unread mail. */
+   a light tint, a bar on the row's left edge and the subject in bold, like an
+   unread mail. The bar is drawn inside the first cell, so the subjects of read
+   and unread rows start at the same place (a dot before the subject pushed it
+   right - snoro 2026-11-19). */
 .pmportal .bl-list tbody tr.pp-unread{background:color-mix(in srgb, #2f80ed 6%, var(--bl-box));}
 .pmportal .bl-list tbody tr.pp-unread.sel{background:color-mix(in srgb, var(--bl-accent) 10%, color-mix(in srgb, #2f80ed 6%, var(--bl-box)));}
 .pmportal .bl-list tbody tr.pp-unread td.sub{font-weight:700;}
-.pmportal .bl-list tbody tr.pp-unread td.sub::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
-  background:#2f80ed;margin-right:6px;vertical-align:middle;}
+.pmportal .bl-list tbody tr.pp-unread > td:first-child{box-shadow:inset 3px 0 0 #2f80ed;}
+/* Move an issue to another project: the panel under the detail head. */
+.pmportal .pp-move{margin:8px 0 4px;}
+.pmportal .pp-move-in{padding:10px 12px;border:1px solid var(--bl-line);border-radius:6px;background:var(--bl-box);font-size:13px;}
+.pmportal .pp-move-in .pp-move-sel{max-width:100%;margin:0 6px;padding:4px 6px;}
+.pmportal .pp-move-note{margin-top:6px;color:var(--bl-sub);font-size:12px;}
+.pmportal .pp-issuedel{color:#c0392b;}
 /* Who opened the issue, on the detail's summary line. */
 .pmportal .pp-reads .pp-reads-v{display:inline-flex;align-items:center;gap:2px;flex-wrap:wrap;}
 .pmportal .pp-reads .pp-reads-v.none{color:var(--bl-faint);font-size:12px;}

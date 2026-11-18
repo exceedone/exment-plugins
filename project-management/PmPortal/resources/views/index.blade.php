@@ -67,6 +67,8 @@
         'ne_parent_set', 'ne_mine', 'ne_as_help', 'ne_qa_open', 'ne_qa_ph', 'ne_qa_add',
         'ne_qa_done', 'ne_qa_fail',
         'ned_stale', 'ned_stale_by', 'ned_stale_reload', 'ned_stale_force', 'ned_reloaded',
+        'issue_move', 'move_title', 'move_pick', 'move_note', 'move_do', 'move_cancel', 'move_loading',
+        'move_none', 'move_fail', 'issue_delete', 'issue_del_ask', 'issue_del_fail',
     ])->mapWithKeys(function ($key) {
         return [$key => \App\Plugins\PmPortal\PortalDefinition::trans($key)];
     })->toArray();

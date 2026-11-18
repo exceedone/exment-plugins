@@ -738,7 +738,9 @@
     // back out of localStorage, not out of the server's escaping.
     (function () {
         var entries = [];
-        try { entries = JSON.parse(localStorage.getItem('pp_recent') || '[]'); } catch (e) { entries = []; }
+        // Kept per person by the issue screen (recentPush in script.blade.php).
+        var recentKey = @json('pp_recent.u' . intval(\Exment::getUserId()));
+        try { entries = JSON.parse(localStorage.getItem(recentKey) || '[]'); } catch (e) { entries = []; }
         if (!Array.isArray(entries) || !entries.length) { return; }
         var body = root.querySelector('[data-body="recent"]');
         var count = document.getElementById('pp-recent-count');
