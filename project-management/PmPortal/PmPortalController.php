@@ -590,6 +590,9 @@ class PmPortalController extends AdminControllerBase
         $comment_ids = $comment_rows->pluck('id')->toArray();
         $comment_stars = Star::counts(Star::TYPE_STAR, 'comment', $comment_ids);
         $my_comment_stars = Star::mine(Star::TYPE_STAR, 'comment', $comment_ids, $me);
+        // Reactions (ISS00259), one query for the comments and one for the issues.
+        $comment_reactions = Star::reactions('comment', $comment_ids);
+        $issue_reactions = Star::reactions($issue_name, $ids);
         $comments = [];
         foreach ($comment_rows as $comment) {
             $comments[intval($comment->parent_id)][] = $comment;
@@ -664,6 +667,7 @@ class PmPortalController extends AdminControllerBase
                     'text' => strval(array_get($comment->value, 'comment_detail', '')),
                     'star' => intval(array_get($comment_stars, strval($comment->id), 0)),
                     'my_star' => in_array(strval($comment->id), $my_comment_stars),
+                    'rx' => (object) ($comment_reactions[strval($comment->id)] ?? []),
                     'del' => !$archived && intval($comment->created_user_id) == intval($me),
                 ];
             }
@@ -733,6 +737,7 @@ class PmPortalController extends AdminControllerBase
                 })->values()->all(),
                 'files' => $files,
                 'reads' => $reads,
+                'reactions' => (object) ($issue_reactions[strval($issue->id)] ?? []),
             ];
             if ($partial) {
                 $out[strval($issue->id)]['partial'] = true;
@@ -1802,7 +1807,12 @@ class PmPortalController extends AdminControllerBase
             $this->def['wiki_table'],
             'comment',
         ]);
-        if (!in_array($star_type, $allowed_types) || !in_array($target_type, $allowed_targets)) {
+        // Reactions (ISS00259) go on an issue or a comment only.
+        $reaction = Star::isReaction($star_type);
+        if ($reaction && !in_array($target_type, [$this->issue_table->table_name, 'comment'], true)) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        if ((!$reaction && !in_array($star_type, $allowed_types)) || !in_array($target_type, $allowed_targets)) {
             return $this->messageError(400, 'invalid_params');
         }
         $target_id = $request->get('target_id');
@@ -1815,7 +1825,12 @@ class PmPortalController extends AdminControllerBase
         // answer adds only how many marks the target still carries, on a
         // target they could read when they marked it.
         if ($target_id !== '' && !empty(Star::mine($star_type, $target_type, [$target_id], $me))) {
-            return response()->json(['ok' => true] + Star::toggle($star_type, $target_type, $target_id, $me));
+            $result = Star::toggle($star_type, $target_type, $target_id, $me);
+            if ($reaction) {
+                $result['users'] = Star::userIds($star_type, $target_type, $target_id);
+            }
+
+            return response()->json(['ok' => true] + $result);
         }
 
         // Putting one on needs the target to be readable here.
@@ -1833,6 +1848,10 @@ class PmPortalController extends AdminControllerBase
         }
 
         $result = Star::toggle($star_type, $target_type, $target_id, $me);
+        if ($reaction) {
+            // Who is on it now, so the chip's names are right without a reload.
+            $result['users'] = Star::userIds($star_type, $target_type, $target_id);
+        }
 
         return response()->json(['ok' => true] + $result);
     }

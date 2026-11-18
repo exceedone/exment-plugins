@@ -386,6 +386,54 @@ window.PmPortalBoot = function () {
             '" data-star-type="' + esc(type) + '" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' +
             '<i class="fa ' + (on ? 'fa-star' : 'fa-star-o') + '"></i><span class="ct">' + (count ? ' ' + esc(count) : '') + '</span></span>';
     }
+    /* ------------------------------------------------ reactions -------- */
+    // ISS00259: Facebook's reactions plus the ones Slack and Teams use at
+    // work. A person may put several kinds on one thing; each chip turns
+    // the reader's own on and off. RXS holds what each bar shows, so a bar
+    // can be drawn again after a click without the whole detail.
+    var RX = [
+        ['like', '\uD83D\uDC4D'], ['heart', '\u2764\uFE0F'], ['haha', '\uD83D\uDE06'], ['wow', '\uD83D\uDE2E'],
+        ['sad', '\uD83D\uDE22'], ['angry', '\uD83D\uDE20'], ['thanks', '\uD83D\uDE4F'], ['clap', '\uD83D\uDC4F'],
+        ['party', '\uD83C\uDF89'], ['eyes', '\uD83D\uDC40'], ['ok', '\u2705']
+    ];
+    var RXS = {};
+    function rxBar(targetType, targetId, rx) {
+        var key = targetType + ':' + targetId;
+        RXS[key] = rx && typeof rx === 'object' ? rx : {};
+        var chips = RX.filter(function (k) { return (RXS[key][k[0]] || []).length > 0; }).map(function (k) {
+            var us = RXS[key][k[0]];
+            var mine = us.map(String).indexOf(String(D.me)) >= 0;
+            var names = us.map(function (u) { return user(u).n; }).join('\u3001');
+            return '<span class="pp-rx' + (mine ? ' on' : '') + '" data-rx="' + k[0] + '" title="' + esc(L['rx_' + k[0]] + ': ' + names) + '">' +
+                k[1] + '<span class="n">' + us.length + '</span></span>';
+        }).join('');
+        return '<span class="pp-rxbar" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' + chips +
+            '<span class="pp-rxadd" title="' + esc(L.rx_add) + '"><i class="fa fa-smile-o"></i>+</span>' +
+            '<span class="pp-rxpick" hidden>' + RX.map(function (k) {
+                return '<span class="pp-rxopt" data-rx="' + k[0] + '" title="' + esc(L['rx_' + k[0]]) + '">' + k[1] + '</span>';
+            }).join('') + '</span></span>';
+    }
+    function rxToggle(bar, kind) {
+        if (!bar || bar.dataset.busy === '1') { return; }
+        var tt = bar.dataset.targetType, tid = bar.dataset.targetId;
+        bar.dataset.busy = '1';
+        $.ajax({
+            url: D.urls.base + '/star', type: 'POST', dataType: 'json',
+            data: { star_type: 'r:' + kind, target_type: tt, target_id: tid },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            bar.dataset.busy = '';
+            if (!res || !res.ok) { toast(errText(null, res, L.rx_fail), true); return; }
+            var rx = $.extend({}, RXS[tt + ':' + tid] || {});
+            if (res.users && res.users.length) { rx[kind] = res.users; } else { delete rx[kind]; }
+            var tmp = document.createElement('span');
+            tmp.innerHTML = rxBar(tt, tid, rx);
+            if (bar.parentNode) { bar.parentNode.replaceChild(tmp.firstChild, bar); }
+        }).fail(function (xhr) {
+            bar.dataset.busy = '';
+            toast(xhrErr(xhr, L.rx_fail), true);
+        });
+    }
     function issueById(id) {
         var found = null;
         (D.issues || []).forEach(function (i) { if (String(i.id) === String(id)) { found = i; } });
@@ -2106,7 +2154,8 @@ window.PmPortalBoot = function () {
             '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span></div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
-                : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>';
+                : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>' +
+            '<div class="pp-rxrow">' + rxBar(D.issue_table, i.id, res.reactions) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
         linkifyIssueRefs(document.querySelector('#pp-d-main .bl-desc'));
         // The quote button carries the description as words, not markup, and
@@ -2730,7 +2779,7 @@ window.PmPortalBoot = function () {
                 // address of a comment is public to everyone who can read it.
                 var mine = !!e.del;
                 body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' +
-                    '<div class="act">' + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
+                    '<div class="act">' + rxBar('comment', e.cid, e.rx) + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
                     '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
                     '<span class="cmenu"><a href="javascript:void(0);" class="pp-cmenu" title="' + esc(L.cmt_menu) + '"><i class="fa fa-ellipsis-h"></i></a>' +
                     '<span class="m" hidden>' +
@@ -9418,6 +9467,23 @@ window.PmPortalBoot = function () {
             if (m !== wanted) { m.hidden = true; }
         });
         if (cmenuBtn) { wanted.hidden = !wanted.hidden; return; }
+        var rxAdd = ev.target.closest('.pp-rxadd');
+        if (rxAdd) {
+            ev.stopPropagation();
+            var pick = rxAdd.parentNode.querySelector('.pp-rxpick');
+            document.querySelectorAll('.pp-rxpick').forEach(function (p) { if (p !== pick) { p.hidden = true; } });
+            if (pick) { pick.hidden = !pick.hidden; }
+            return;
+        }
+        var rxEl = ev.target.closest('.pp-rx, .pp-rxopt');
+        if (rxEl) {
+            ev.stopPropagation();
+            rxToggle(rxEl.closest('.pp-rxbar'), rxEl.getAttribute('data-rx'));
+            return;
+        }
+        if (!ev.target.closest('.pp-rxbar')) {
+            document.querySelectorAll('.pp-rxpick').forEach(function (p) { p.hidden = true; });
+        }
         var star = ev.target.closest('.pp-star');
         if (star) {
             ev.stopPropagation();
