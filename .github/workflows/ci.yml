@@ -1,0 +1,102 @@
+name: ci
+
+# Checks for every plugin in this repository (any folder that has Plugin.php).
+# - check:        PHP syntax (php -l) on PHP 8.2 / 8.3, and config.json of each plugin
+# - php-cs-fixer: same coding style as exceedone/exment
+# - phpstan:      static analysis against Exment 7 (only NEW errors fail; see .github/ci/phpstan.neon)
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Same pinned version as exceedone/exment. When bumping, update both values.
+env:
+  PHP_CS_FIXER_VERSION: 3.94.2
+  PHP_CS_FIXER_SHA256: aaafc3a53b877c6741ddccac0a783f0fb73fff5f84fba5870d5dd306ee22dde0
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Exment SaaS runs PHP 8.2 and the market encodes plugins with the ionCube encoder for 8.2.
+        php: ["8.2", "8.3"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+
+      - name: PHP syntax (php -l)
+        run: |
+          php -v
+          status=0
+          while IFS= read -r -d '' f; do
+            out=$(php -l "$f" 2>&1) || { echo "$out"; status=1; }
+          done < <(find . -name '*.php' -not -path './.git/*' -not -path './.github/*' -print0)
+          exit $status
+
+      - name: config.json of each plugin
+        run: php .github/ci/check-config.php
+
+  php-cs-fixer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: none
+
+      - name: Prepare
+        run: |
+          wget -q "https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/releases/download/v${PHP_CS_FIXER_VERSION}/php-cs-fixer.phar" -O php-cs-fixer.phar
+          echo "${PHP_CS_FIXER_SHA256}  php-cs-fixer.phar" | sha256sum -c -
+
+      - name: Execute php-cs-fixer
+        run: php php-cs-fixer.phar fix --dry-run -v --diff --config=.php-cs-fixer.dist.php
+
+  phpstan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: .github/ci/vendor
+          key: phpstan-vendor-${{ hashFiles('.github/ci/composer.json') }}-${{ github.run_id }}
+          restore-keys: phpstan-vendor-${{ hashFiles('.github/ci/composer.json') }}-
+
+      - name: Install Exment (for the analysis only)
+        working-directory: .github/ci
+        run: composer update --no-interaction --no-progress --prefer-dist --ignore-platform-req='ext-*'
+
+      - name: Execute PHPStan
+        working-directory: .github/ci
+        run: |
+          composer show exceedone/exment | grep -E '^versions'
+          if [ -z "$(find ../.. -name '*.php' -not -path '../../.git/*' -not -path '../../.github/*' -not -name '*.blade.php' -print -quit)" ]; then
+            echo "No plugin PHP files yet. Skip."
+            exit 0
+          fi
+          php -d memory_limit=2G vendor/bin/phpstan analyse -c phpstan.neon --no-progress

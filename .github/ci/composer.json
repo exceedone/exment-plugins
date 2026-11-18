@@ -1,0 +1,22 @@
+{
+    "name": "exceedone/exment-plugins-ci",
+    "description": "Only for CI: installs Exment so that PHPStan can check the plugins against it.",
+    "type": "project",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": "^8.2",
+        "exceedone/exment": "^7.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.1"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": false,
+            "kylekatarnls/update-helper": false
+        },
+        "platform-check": false
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
+}
