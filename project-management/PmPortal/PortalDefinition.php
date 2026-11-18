@@ -113,6 +113,56 @@ class PortalDefinition
     }
 
     /**
+     * The portal's script and stylesheet, served as files of their own so the
+     * browser keeps them between pages instead of reading half a megabyte of
+     * inline code on every one. Both are written as blade views (script.blade
+     * .php, style.blade.php) but hold nothing per request: the text the script
+     * needs comes from a JSON block on the page.
+     */
+    const ASSETS = [
+        'script' => ['file' => 'script.blade.php', 'tag' => 'script', 'type' => 'application/javascript; charset=utf-8'],
+        'style' => ['file' => 'style.blade.php', 'tag' => 'style', 'type' => 'text/css; charset=utf-8'],
+    ];
+
+    /**
+     * The asset's code, without the <script> / <style> tags around it.
+     */
+    public static function assetBody(string $name): ?string
+    {
+        $def = static::ASSETS[$name] ?? null;
+        if ($def === null) {
+            return null;
+        }
+        $text = @file_get_contents(__DIR__ . '/resources/views/' . $def['file']);
+        if ($text === false) {
+            return null;
+        }
+        $text = trim($text);
+        $open = '<' . $def['tag'] . '>';
+        $close = '</' . $def['tag'] . '>';
+        if (strpos($text, $open) === 0) {
+            $text = substr($text, strlen($open));
+        }
+        if (substr($text, -strlen($close)) === $close) {
+            $text = substr($text, 0, -strlen($close));
+        }
+
+        return $text;
+    }
+
+    /**
+     * Address of an asset, carrying a hash of its content: a new version of
+     * the file is a new address, so a year-long browser cache is safe.
+     */
+    public static function assetUrl(string $name): string
+    {
+        $file = __DIR__ . '/resources/views/' . (static::ASSETS[$name]['file'] ?? '');
+        $version = is_file($file) ? substr(md5((string) filemtime($file) . ':' . filesize($file) . ':' . md5_file($file)), 0, 12) : '0';
+
+        return static::url('asset', $name) . '?v=' . $version;
+    }
+
+    /**
      * The namespace Exment registers the plugin's views and lang files under,
      * "exment_" plus the snake case of its name (PluginPageTrait).
      *

@@ -923,6 +923,31 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * The portal's script or stylesheet (PortalDefinition::ASSETS). The
+     * address carries the content hash, so the answer may be kept for a year.
+     */
+    public function asset(Request $request, $name)
+    {
+        $name = strval($name);
+        $body = PortalDefinition::assetBody($name);
+        if ($body === null) {
+            abort(404);
+        }
+        $etag = '"' . md5($body) . '"';
+        $headers = [
+            'Content-Type' => PortalDefinition::ASSETS[$name]['type'],
+            'Cache-Control' => 'private, max-age=31536000, immutable',
+            'ETag' => $etag,
+            'X-Content-Type-Options' => 'nosniff',
+        ];
+        if (trim(strval($request->header('If-None-Match'))) === $etag) {
+            return response('', 304, $headers);
+        }
+
+        return response($body, 200, $headers);
+    }
+
+    /**
      * "Mark all read": every issue of the project the user can see.
      */
     public function projectReadAll(Request $request, $id)

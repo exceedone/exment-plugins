@@ -1293,4 +1293,78 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-mailbox-foot{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:12px;}
 .pmportal .pp-mailbox-err{margin-right:auto;color:var(--bl-red);font-size:12px;}
 
+/* ==== compact layout (snoro 2026-11-18) ===============================
+   The header, the tabs and the filter block took a third of the screen
+   before the first issue. Everything here is an override of the rules
+   above, kept in one place so it can be read (or dropped) as a unit. */
+/* ---- project header: one line ---- */
+.pmportal .bl-projhead{flex-wrap:wrap;gap:6px 12px;padding:7px 14px;margin-bottom:8px;}
+.pmportal .bl-projicon{width:30px;height:30px;font-size:14px;border-radius:var(--bl-radius,6px);}
+/* min(): on a phone a 300px basis is wider than the card and would drop the
+   name under the icon instead of beside it. */
+.pmportal .bl-projinfo{flex:1 1 min(300px,calc(100% - 42px));display:flex;flex-wrap:wrap;align-items:center;gap:2px 14px;}
+.pmportal .bl-projttl{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;}
+.pmportal .bl-projname{font-size:17px;line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pmportal .bl-projkey{flex:none;margin-left:0;vertical-align:0;padding:0 7px;font-size:11.5px;}
+.pmportal .bl-projttl .bl-pill{flex:none;}
+.pmportal .bl-projmeta{flex:1 1 440px;min-width:0;display:flex;align-items:center;gap:2px 14px;margin-top:0;white-space:nowrap;overflow:hidden;flex-wrap:wrap;}
+.pmportal .bl-projmeta i{margin:0 4px 0 0;}
+.pmportal .bl-projmeta .mi{flex:none;}
+/* The note keeps to what is left of the line; a click opens it in place. */
+.pmportal .bl-projnote{flex:1 1 170px;min-width:0;display:flex;align-items:baseline;color:inherit;text-decoration:none;
+  border-radius:var(--bl-radius-s,4px);}
+.pmportal .bl-projnote .tx{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pmportal .bl-projnote::after{content:'';flex:none;width:5px;height:5px;margin:0 2px 0 7px;border:solid currentColor;
+  border-width:0 1.5px 1.5px 0;transform:translateY(-3px) rotate(45deg);opacity:.7;}
+.pmportal .bl-projnote:hover,.pmportal .bl-projnote:focus{color:var(--bl-ink);text-decoration:none;}
+.pmportal .bl-projnote:focus-visible{outline:2px solid var(--bl-accent);outline-offset:-2px;}
+.pmportal .bl-projhead.note-open .bl-projmeta{flex-basis:100%;flex-wrap:wrap;white-space:normal;overflow:visible;}
+.pmportal .bl-projhead.note-open .bl-projnote{flex-basis:100%;}
+.pmportal .bl-projhead.note-open .bl-projnote .tx{white-space:pre-line;overflow:visible;line-height:1.55;}
+.pmportal .bl-projhead.note-open .bl-projnote::after{transform:translateY(1px) rotate(-135deg);}
+.pmportal .bl-projside{flex:0 1 auto;min-width:0;max-width:100%;margin-left:auto;display:flex;align-items:center;gap:10px;}
+.pmportal .bl-projhead .bl-avatars{flex:0 1 auto;min-width:0;margin-left:0;padding-left:6px;flex-wrap:wrap;row-gap:3px;}
+.pmportal .bl-projhead .bl-av{width:24px;height:24px;}
+.pmportal .bl-projhead .pp-freshat{flex:none;margin-left:0;}
+/* flex:none + nowrap: squeezed by a long note, 更新 used to stand one glyph per line */
+.pmportal .bl-projhead .pp-refresh{flex:none;white-space:nowrap;padding:4px 10px;font-size:12px;}
+@media (max-width:760px){
+  .pmportal .bl-projhead{gap:6px 10px;padding:8px 10px;}
+  .pmportal .bl-projicon{width:30px;height:30px;font-size:14px;}
+  .pmportal .bl-projinfo{flex:1 1 calc(100% - 42px);}
+  .pmportal .bl-projname{font-size:16px;}
+  .pmportal .bl-projmeta{margin-top:0;line-height:1.5;flex-wrap:wrap;}
+  .pmportal .bl-projmeta i,.pmportal .bl-projmeta i:not(:first-child){margin:0 4px 0 0;}
+  .pmportal .bl-projnote{flex-basis:100%;}
+}
+/* ---- screen tabs ---- */
+.pmportal .bl-tabs{margin-bottom:8px;}
+.pmportal .bl-tab{padding:8px 13px;}
+.pmportal .bl-addissue{padding:5px 14px;}
+/* ---- issue toolbar: status tabs and quick chips share one wrapping row ---- */
+.pmportal .bl-toolbar{padding:8px 12px;margin-bottom:8px;}
+.pmportal .bl-pillrow{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-bottom:7px;}
+.pmportal .bl-pillrow .bl-sttabs,.pmportal .bl-pillrow .bl-qchips{display:contents;}
+/* a hairline where the status cut ends and the shortcuts begin */
+.pmportal .bl-pillrow .bl-qchips::before{content:'';flex:none;width:1px;height:16px;background:var(--bl-line);margin:0 5px;}
+.pmportal .bl-sttab,.pmportal .bl-qchip{padding:2px 10px;line-height:1.5;white-space:nowrap;}
+.pmportal .bl-qchip{color:var(--bl-sub);background:var(--bl-box2);border-color:var(--bl-line2);}
+.pmportal .bl-qchip i{margin-right:4px;opacity:.8;}
+.pmportal .bl-sttab .ct,.pmportal .bl-qchip .ct{font-variant-numeric:tabular-nums;}
+.pmportal .bl-filters{gap:6px;}
+.pmportal .bl-filters select,.pmportal .bl-filters input{padding:4px 8px;}
+.pmportal .bl-filters .bl-treebtn{padding:4px 10px;}
+/* ---- issue list: tighter rows, quieter header, calmer secondary text ---- */
+.pmportal .bl-list th{padding:7px 10px;font-size:11.5px;color:var(--bl-faint);letter-spacing:.03em;}
+.pmportal .bl-list th.sorted{color:var(--bl-accent-d);}
+.pmportal .bl-list td{padding:7px 10px;line-height:1.4;}
+.pmportal .bl-list td.sub{color:var(--bl-ink);}
+.pmportal .bl-list td.sub .pp-subsub{margin-top:1px;color:var(--bl-faint);}
+.pmportal .bl-list a.bl-key{font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pmportal .bl-list td.up{font-size:11.5px;font-variant-numeric:tabular-nums;}
+.pmportal .bl-tablewrap{box-shadow:var(--bl-shadow-s);}
+@media (min-width:761px) and (min-height:560px){
+  .pmportal .bl-tablewrap{max-height:calc(100vh - 70px);}
+}
+
 </style>

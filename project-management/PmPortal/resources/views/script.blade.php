@@ -16,7 +16,7 @@
     function alive() { return document.getElementById('pmportal') === root; }
 
     var D = JSON.parse(document.getElementById('pmportal-data').textContent);
-    var L = @json($lang);
+    var L = JSON.parse(document.getElementById('pmportal-lang').textContent);
     var CSRF = $('meta[name="csrf-token"]').attr('content');
 
     /* ------------------------------------------------ request queue ----- */
@@ -395,20 +395,25 @@
         });
         document.getElementById('pp-projhead').innerHTML =
             '<div class="bl-projicon"><i class="fa fa-folder-open"></i></div>' +
-            '<div class="bl-projinfo"><span class="bl-projname">' + esc(p.name) + '</span>' +
+            // One line: name, then dates / manager / note beside it. The note
+            // is cut to what fits and opens in place on a click (snoro 2026-11-18:
+            // the header took a third of the screen).
+            '<div class="bl-projinfo"><span class="bl-projttl"><span class="bl-projname">' + esc(p.name) + '</span>' +
             (p.key ? '<span class="bl-projkey">' + esc(p.key) + '</span>' : '') +
-            (p.status ? '<span class="bl-pill" style="background:' + ppColor(p.status.c) + ';margin-left:8px;">' + esc(p.status.l) + '</span>' : '') +
-            '<div class="bl-projmeta"><i class="fa fa-calendar" style="margin-left:0;"></i>' +
-            esc(p.start || '—') + ' 〜 ' + esc(p.end || '—') +
-            '<i class="fa fa-user"></i>' + esc(L.role_pm) + ': ' + esc(user(p.manager).n) +
-            (p.note ? '<i class="fa fa-info-circle"></i>' + esc(p.note) : '') + '</div></div>' +
-            '<div class="bl-avatars">' + avlist(people) + '</div>' +
+            (p.status ? '<span class="bl-pill" style="background:' + ppColor(p.status.c) + ';">' + esc(p.status.l) + '</span>' : '') +
+            '</span><div class="bl-projmeta"><span class="mi"><i class="fa fa-calendar"></i>' +
+            esc(p.start || '—') + ' 〜 ' + esc(p.end || '—') + '</span>' +
+            '<span class="mi"><i class="fa fa-user"></i>' + esc(L.role_pm) + ': ' + esc(user(p.manager).n) + '</span>' +
+            (p.note ? '<a class="bl-projnote" href="javascript:void(0);" aria-expanded="false" title="' + esc(p.note) + '">' +
+                '<i class="fa fa-info-circle"></i><span class="tx">' + esc(p.note) + '</span></a>' : '') + '</div></div>' +
+            // avatars, fetched-at and the refresh button wrap as one group
+            '<div class="bl-projside"><div class="bl-avatars">' + avlist(people) + '</div>' +
             // A check that finds nothing changed is silent, which reads exactly
             // like a check that never ran. The time the data on screen was
             // fetched is what tells the two apart.
             '<span class="pp-freshat">' + esc(String(L.rf_at).replace(':time', String(D.now || ''))) + '</span>' +
             '<a class="bl-btn-sub pp-refresh" href="javascript:void(0);" title="' + esc(L.rf_button) + '">' +
-            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a>';
+            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a></div>';
     }
 
     /* ------------------------------------------------ home -------------- */
@@ -9637,6 +9642,8 @@
     /* ---- staying current ---- */
     document.getElementById('pp-projhead').addEventListener('click', function (ev) {
         if (ev.target.closest('.pp-refresh')) { refreshData(false); }
+        var note = ev.target.closest('.bl-projnote');
+        if (note) { note.setAttribute('aria-expanded', this.classList.toggle('note-open') ? 'true' : 'false'); }
     });
     // Coming back to the tab is the moment the page is most likely to be out
     // of date and the moment the reader is least likely to be mid-sentence.

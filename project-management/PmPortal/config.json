@@ -17,6 +17,7 @@
         { "method": "post", "uri": "settings/upgrade", "function": "postUpgrade" },
         { "method": "post", "uri": "form-style", "function": "postFormStyle" },
 
+        { "method": "get", "uri": "asset/{name}", "function": "asset", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
         { "method": "get", "uri": "lightapi/table/{tableKey}/schema", "function": "apiSchema", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
         { "method": "get", "uri": "lightapi/data/{tableKey}", "function": "apiList", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
         { "method": "post", "uri": "lightapi/data/{tableKey}", "function": "apiCreate", "middleware_except": ["admin.morph", "admin.bootstrap"] },

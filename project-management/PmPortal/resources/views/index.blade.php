@@ -178,9 +178,13 @@
         {{-- ============ issues ============ --}}
         <section class="bl-screen" id="pp-issues">
             <div class="bl-toolbar">
-                <div class="bl-sttabs" id="pp-sttabs"></div>
-                {{-- The dashboard's own cuts, on the project's list. --}}
-                <div class="bl-qchips" id="pp-qchips"></div>
+                {{-- Status tabs and the quick chips flow as one wrapping
+                     row (compact layout, snoro 2026-11-18). --}}
+                <div class="bl-pillrow">
+                    <div class="bl-sttabs" id="pp-sttabs"></div>
+                    {{-- The dashboard's own cuts, on the project's list. --}}
+                    <div class="bl-qchips" id="pp-qchips"></div>
+                </div>
                 <div class="bl-filters">
                     <input id="pp-f-kw" placeholder="{{ $lang['f_kw'] }}" style="width:160px;">
                     <select id="pp-f-as"><option value="">{{ $lang['f_as'] }}: {{ $lang['f_all'] }}</option></select>
@@ -564,5 +568,9 @@
 </div>
 
 <script type="application/json" id="pmportal-data">@json($payload)</script>
-@include(\App\Plugins\PmPortal\PortalDefinition::view('style'))
-@include(\App\Plugins\PmPortal\PortalDefinition::view('script'), ['lang' => $lang])
+<script type="application/json" id="pmportal-lang">@json($lang)</script>
+{{-- The script and the stylesheet are files of their own (PortalDefinition::
+     ASSETS): the browser keeps them across pages and versions them by content,
+     instead of reading ~600 KB of inline code on every page. --}}
+<link rel="stylesheet" href="{{ \App\Plugins\PmPortal\PortalDefinition::assetUrl('style') }}">
+<script src="{{ \App\Plugins\PmPortal\PortalDefinition::assetUrl('script') }}"></script>
