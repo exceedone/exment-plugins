@@ -89,7 +89,7 @@ Issues and pull requests are welcome.
 
 GitHub Actions (`.github/workflows/ci.yml`) checks every plugin folder (a folder with `Plugin.php`) on each pull request and on `main`.
 
-**A pull request can be merged into `main` only after all four checks below pass** (`check (8.2)`, `check (8.3)`, `php-cs-fixer`, `phpstan`). Direct pushes and force pushes to `main` are not allowed.
+**A pull request can be merged into `main` only after all four checks below pass** (`check (8.2)`, `check (8.3)`, `php-cs-fixer`, `phpstan`). Direct pushes and force pushes to `main` are not allowed (only administrators can bypass this in an emergency).
 
 | Job | What it checks |
 |---|---|
@@ -195,7 +195,7 @@ Issue・プルリクエストを歓迎します。
 
 GitHub Actions（`.github/workflows/ci.yml`）が、プルリクエストのたびと `main` で、すべてのプラグイン（`Plugin.php` があるフォルダ）をチェックします。
 
-**下の 4 つのチェック（`check (8.2)`・`check (8.3)`・`php-cs-fixer`・`phpstan`）が全部通らないと、プルリクエストを `main` にマージできません。** `main` への直接の push と force push もできません。
+**下の 4 つのチェック（`check (8.2)`・`check (8.3)`・`php-cs-fixer`・`phpstan`）が全部通らないと、プルリクエストを `main` にマージできません。** `main` への直接の push と force push もできません（緊急のときだけ、管理者は例外にできます）。
 
 | ジョブ | 内容 |
 |---|---|
