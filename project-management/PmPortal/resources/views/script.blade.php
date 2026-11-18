@@ -408,7 +408,8 @@ window.PmPortalBoot = function () {
                 k[1] + '<span class="n">' + us.length + '</span></span>';
         }).join('');
         return '<span class="pp-rxbar" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' + chips +
-            '<span class="pp-rxadd" title="' + esc(L.rx_add) + '"><i class="fa fa-smile-o"></i>+</span>' +
+            // A word beside the face: the bare "☺+" was missed (snoro 2026-11-19).
+            '<span class="pp-rxadd" title="' + esc(L.rx_add) + '"><i class="fa fa-smile-o"></i> ' + esc(L.rx_add) + '</span>' +
             '<span class="pp-rxpick" hidden>' + RX.map(function (k) {
                 return '<span class="pp-rxopt" data-rx="' + k[0] + '" title="' + esc(L['rx_' + k[0]]) + '">' + k[1] + '</span>';
             }).join('') + '</span></span>';
