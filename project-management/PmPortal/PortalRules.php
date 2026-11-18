@@ -421,7 +421,7 @@ class PortalRules
         if ($current && $current->exists && !PortalMembership::canManage($current)) {
             $column = strval(array_key_first($input));
             $people = [];
-            foreach (['manager', 'members', 'viewers'] as $key) {
+            foreach (['manager', 'members', 'viewers', 'member_orgs', 'viewer_orgs'] as $key) {
                 $people[] = static::column($def, 'project.' . $key, '');
             }
             $message = in_array($column, $people, true) ? 'rules.people_manager_only' : 'rules.project_manager_only';

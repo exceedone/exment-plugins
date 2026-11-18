@@ -1246,8 +1246,9 @@ class LightApiController
      * GET lightapi/project/{id}/members
      *
      * The roster the 参加ユーザー pane shows: every user the project's
-     * manager / members / viewers columns name, each carrying the strongest
-     * of those roles, plus the organizations those users belong to (the
+     * manager / members / viewers columns name or its member / viewer
+     * organizations bring, each carrying the strongest of those roles; the
+     * organizations the project names, plus the ones those users belong to (the
      * "teams" of the Backlog screen this mirrors). Read-only, and gated on
      * seeing the project row - the same columns sit on the record itself.
      */
@@ -1262,20 +1263,33 @@ class LightApiController
         $access = $row->enableAccess();
         if ($access !== true) { return $this->err(403, 'forbidden', $access); }
 
-        // Weakest role first, so a user named in two columns keeps the stronger.
-        $pj = (array) array_get($def, 'project', []);
-        $roleOf = [];
-        foreach ([['viewers', 'viewer'], ['members', 'member'], ['manager', 'manager']] as [$key, $role]) {
-            $column = array_get($pj, $key);
-            if (is_nullorempty($column)) { continue; }
-            $raw = array_get($row->value, $column);
-            foreach (is_array($raw) ? $raw : (is_nullorempty($raw) ? [] : [$raw]) as $uid) {
-                if (is_numeric($uid)) { $roleOf[intval($uid)] = $role; }
-            }
-        }
+        // Everyone the project names and everyone its organizations bring,
+        // each with the strongest role they reach it by (ISS00333).
+        $roleOf = PortalMembership::roles((array) $row->value);
 
         $users = [];
         $teams = [];
+        $rank = ['viewer' => 0, 'member' => 1, 'manager' => 2];
+        // The organizations the project names itself come first, with the
+        // role their column gives - even one that has nobody in it yet.
+        $orgRoles = PortalMembership::orgRoles((array) $row->value);
+        if (!empty($orgRoles)) {
+            try {
+                $orgTable = CustomTable::getEloquent(SystemTableName::ORGANIZATION);
+                $named = $orgTable ? $orgTable->getValueModel()->newQuery()->whereIn('id', array_keys($orgRoles))->get() : collect();
+                foreach ($named as $org) {
+                    $teams[$org->id] = [
+                        'id' => intval($org->id),
+                        'name' => (string) $org->getLabel(),
+                        'role' => $orgRoles[intval($org->id)],
+                        'since' => optional($org->created_at)->format('Y/m/d'),
+                        'named' => true,
+                    ];
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('pm_portal member org lookup failed: ' . $e->getMessage());
+            }
+        }
         $userTable = CustomTable::getEloquent(SystemTableName::USER);
         if ($userTable && !empty($roleOf)) {
             $userRows = $userTable->getValueModel()->newQuery()
@@ -1284,7 +1298,6 @@ class LightApiController
             // Organizations arrive via the org->user many-to-many pivot: one
             // query over the pivot, one over the organization rows.
             $orgNames = [];
-            $rank = ['viewer' => 0, 'member' => 1, 'manager' => 2];
             try {
                 $orgTable = CustomTable::getEloquent(SystemTableName::ORGANIZATION);
                 $relation = $orgTable
@@ -1302,7 +1315,9 @@ class LightApiController
                         if (!$org || $role === null) { continue; }
                         $orgNames[intval($link->child_id)][] = (string) $org->getLabel();
                         $known = array_get($teams, $link->parent_id);
-                        if (!$known || $rank[$role] > $rank[$known['role']]) {
+                        // A team the project names keeps the role it was
+                        // given; the others show their strongest member's.
+                        if (!$known || (empty($known['named']) && $rank[$role] > $rank[$known['role']])) {
                             $teams[$link->parent_id] = [
                                 'id' => intval($link->parent_id),
                                 'name' => (string) $org->getLabel(),
@@ -1437,25 +1452,17 @@ class LightApiController
 
     /**
      * Strongest of the roles the project names this user in, or null when it
-     * names them in none. Read off the project row already in hand, so this
-     * costs no query at all.
+     * names them in none - by name or through an organization the project
+     * names. A project without organizations is read off the row in hand, at
+     * no query; organizations cost one lookup, remembered for a few seconds.
      *
      * @param \Exceedone\Exment\Model\CustomValue $project
      */
     protected function projectRoleOf($project, int $userId): ?string
     {
-        $pj = (array) array_get(PortalDefinition::config(), 'project', []);
-        $role = null;
-        foreach ([['viewers', 'viewer'], ['members', 'member'], ['manager', 'manager']] as [$key, $name]) {
-            $column = array_get($pj, $key);
-            if (is_nullorempty($column)) { continue; }
-            $raw = array_get($project->value, $column);
-            foreach (is_array($raw) ? $raw : (is_nullorempty($raw) ? [] : [$raw]) as $uid) {
-                if (is_numeric($uid) && intval($uid) === $userId) { $role = $name; }
-            }
-        }
-
-        return $role;
+        // Organizations included (ISS00333). Without organization columns
+        // filled in this reads the row alone, with no query.
+        return PortalMembership::roles((array) $project->value)[$userId] ?? null;
     }
 
     /**

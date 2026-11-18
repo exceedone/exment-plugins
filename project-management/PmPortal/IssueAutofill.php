@@ -1518,6 +1518,13 @@ class IssueAutofill
         foreach ((array) array_get($project->value, array_get($pj, 'members'), []) as $id) {
             $ids[] = intval($id);
         }
+        // Then the people member organizations bring (ISS00333), after the
+        // ones named, so a project without organizations picks as before.
+        foreach (PortalMembership::roles((array) $project->value) as $id => $role) {
+            if (in_array($role, PortalMembership::EDITORS, true)) {
+                $ids[] = intval($id);
+            }
+        }
 
         return array_values(array_unique(array_filter($ids, function ($id) {
             return $id > 0;

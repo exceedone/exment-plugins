@@ -4,11 +4,14 @@ namespace App\Plugins\PmPortal;
 
 use Exceedone\Exment\Enums\ColumnType;
 use Exceedone\Exment\Enums\MenuType;
+use Exceedone\Exment\Enums\MultisettingType;
 use Exceedone\Exment\Enums\Permission;
 use Exceedone\Exment\Enums\PluginType;
 use Exceedone\Exment\Enums\RoleType;
+use Exceedone\Exment\Enums\ShareTrigger;
 use Exceedone\Exment\Enums\ViewKindType;
 use Exceedone\Exment\Model\CustomColumn;
+use Exceedone\Exment\Model\CustomColumnMulti;
 use Exceedone\Exment\Model\CustomTable;
 use Exceedone\Exment\Model\CustomView;
 use Exceedone\Exment\Model\Menu;
@@ -339,6 +342,13 @@ class PortalUpgrade
             $optioned = static::applyTableOptions($names);
             if ($optioned > 0) {
                 $steps[] = PortalDefinition::trans('upgrade.step_table_options', ['count' => $optioned]);
+            }
+
+            // Schema 23: the organization columns become share columns.
+            // Idempotent, so no version gate.
+            $shared = static::syncShareSettings($names);
+            if ($shared > 0) {
+                $steps[] = PortalDefinition::trans('upgrade.step_share_settings', ['count' => $shared]);
             }
 
             // Schema 8 is where the per project switches became something a
@@ -1461,6 +1471,60 @@ class PortalUpgrade
         }
 
         return $changed;
+    }
+
+    /**
+     * Make each column of PortalSchema::shareSettings() a share column, the
+     * way Exment's own table settings screen would.
+     *
+     * Not through the template: its import deletes every share setting the
+     * table has before it writes the ones it brings, which would take the
+     * members and viewers settings - and any an administrator added - with
+     * it. Here a setting is only added, and only when the table has none for
+     * that column; one an administrator changed or removed by hand after
+     * this added it comes back only if the column has no setting at all.
+     *
+     * @param array<string, string> $names
+     * @return int settings added
+     */
+    protected static function syncShareSettings(array $names): int
+    {
+        $added = 0;
+        foreach (PortalSchema::shareSettings($names) as $setting) {
+            $table = CustomTable::getEloquent($setting['table']);
+            $column = $table ? CustomColumn::getEloquent($setting['column'], $table) : null;
+            if (!$column) {
+                continue;
+            }
+
+            $has = CustomColumnMulti::where('custom_table_id', $table->id)
+                ->where('multisetting_type', MultisettingType::SHARE_SETTINGS)
+                ->get()
+                ->contains(function ($multi) use ($column) {
+                    return intval($multi->share_column_id) === intval($column->id);
+                });
+            if ($has) {
+                continue;
+            }
+
+            $multi = new CustomColumnMulti();
+            $multi->custom_table_id = $table->id;
+            $multi->multisetting_type = MultisettingType::SHARE_SETTINGS;
+            $multi->priority = CustomColumnMulti::where('custom_table_id', $table->id)
+                ->where('multisetting_type', MultisettingType::SHARE_SETTINGS)
+                ->max('priority') + 1;
+            $multi->share_column_id = $column->id;
+            $multi->share_trigger_type = ShareTrigger::CREATE . ',' . ShareTrigger::UPDATE;
+            $multi->share_permission = $setting['permission'];
+            $multi->save();
+            $added++;
+        }
+
+        if ($added > 0) {
+            System::clearCache();
+        }
+
+        return $added;
     }
 
     /**

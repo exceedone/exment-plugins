@@ -3,6 +3,7 @@
 namespace App\Plugins\PmPortal;
 
 use Exceedone\Exment\Enums\PluginEventTrigger;
+use Exceedone\Exment\Enums\SystemTableName;
 use Exceedone\Exment\Model\CustomValue;
 use Exceedone\Exment\Model\NotifyNavbar;
 use Exceedone\Exment\Services\Plugin\PluginEventBase;
@@ -143,6 +144,21 @@ class PluginEvent extends PluginEventBase
             $model = $data[0] ?? null;
             if ($model instanceof CustomValue && static::restoring($model)) {
                 static::check($model);
+            }
+        });
+
+        // Someone joining or leaving a team, or a team deleted or restored,
+        // changes who is on every project that names the team, without any
+        // project being saved. See PortalMembership::teamsChanging().
+        Event::listen(['eloquent.saving: *', 'eloquent.deleting: *', 'eloquent.restoring: *'], function ($eventName, array $data) {
+            $model = $data[0] ?? null;
+            if (!$model instanceof CustomValue) {
+                return;
+            }
+            $table = $model->custom_table;
+            $name = $table ? $table->table_name : null;
+            if ($name === SystemTableName::USER || $name === SystemTableName::ORGANIZATION) {
+                PortalMembership::teamsChanging();
             }
         });
 

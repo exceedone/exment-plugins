@@ -218,7 +218,7 @@ class PortalSettingsController extends AdminControllerBase
         $groups = [
             'basic' => ['name', 'project_code', 'note', 'parent_project', 'status', 'formatting_rule'],
             'schedule' => ['start_date', 'end_date'],
-            'people' => ['manager', 'members', 'viewers'],
+            'people' => ['manager', 'members', 'viewers', 'member_orgs', 'viewer_orgs'],
             'features' => ['use_wiki', 'use_file', 'use_gantt', 'use_git', 'subtasking'],
             'state' => ['archived'],
         ];
