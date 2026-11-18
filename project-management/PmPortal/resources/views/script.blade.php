@@ -2147,19 +2147,25 @@ window.PmPortalBoot = function () {
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
                 '<i class="fa fa-arrow-right"></i> ' + fmt(esc(L.to_next), esc(next.l)) + '</button>' : '') +
-            (res.description ? '<a class="bl-btn-sub pp-quote pp-dquote"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
-            (CAN_ADD_ISSUE ? '<a class="bl-btn-sub pp-issuecopy"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
+            // What is used every day stays a button; what is used now and
+            // then waits in one menu, so the row is one line and the
+            // delete button is not a neighbour of the edit button.
             // With no children yet the 子課題 box stays away; its one button
             // waits up here instead of costing a box of its own.
             (res.editable && CAN_ADD_ISSUE && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
-            '<a class="bl-btn-sub pp-mailbtn"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
             starDetailBtn(i.id, local.star, local.my_star) +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
-            (res.movable ? '<a class="bl-btn-sub pp-issuemove"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
-            (res.deletable ? '<a class="bl-btn-sub pp-issuedel"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
-            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a></span></div>' +
+            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
+            '<span class="pp-more"><a class="bl-btn-sub pp-morebtn" href="javascript:void(0);" role="button" aria-haspopup="true" aria-expanded="false">' +
+                '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) + '</a><span class="m" hidden>' +
+            (res.description ? '<a class="pp-quote pp-dquote" href="javascript:void(0);"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
+            (CAN_ADD_ISSUE ? '<a class="pp-issuecopy" href="javascript:void(0);"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
+            '<a class="pp-mailbtn" href="javascript:void(0);"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
+            (res.movable ? '<a class="pp-issuemove" href="javascript:void(0);"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
+            (res.deletable ? '<a class="pp-issuedel" href="javascript:void(0);"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
+            '</span></span></span></div>' +
             '<div class="pp-move" hidden></div>' +
             '<div class="bl-dtitle">' + esc(i.subject) + '</div>' +
             (i.sub ? '<div class="pp-dsubsub">' + esc(i.sub) + '</div>' : '') +
@@ -2169,7 +2175,7 @@ window.PmPortalBoot = function () {
             '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') || '—') + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
-            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '</a></div>' +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
                 : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>' +
             '<div class="pp-rxrow">' + rxBar(D.issue_table, i.id, res.reactions) + '</div>';
@@ -2811,6 +2817,53 @@ window.PmPortalBoot = function () {
             if (localStorage.getItem('pmportal.fold.' + card.id) === '1') { card.classList.add('bl-collapsed'); }
         } catch (e) { /* ignore */ }
     });
+    // The boxes about the issue stand beside its text on a wide screen
+    // (.pp-two in the stylesheet) - but only while there is a box to show
+    // and the text itself is on screen: with every box hidden the column
+    // would be an empty strip, and the inline editor (which hides the main
+    // card) wants the whole width. Each box is shown and hidden through its
+    // style by whoever draws it, so that is what is watched.
+    function ppSideFit() {
+        var side = document.getElementById('pp-d-side');
+        var main = document.getElementById('pp-d-main');
+        var mainCard = main ? main.closest('.bl-card-box') : null;
+        if (!side || !mainCard || !side.parentNode) { return; }
+        var any = Array.prototype.some.call(side.children, function (c) { return c.style.display !== 'none'; });
+        var two = any && mainCard.style.display !== 'none';
+        if (side.hidden === any) { side.hidden = !any; }
+        if (side.parentNode.classList.contains('pp-two') !== two) { side.parentNode.classList.toggle('pp-two', two); }
+    }
+    (function () {
+        var side = document.getElementById('pp-d-side');
+        var main = document.getElementById('pp-d-main');
+        var mainCard = main ? main.closest('.bl-card-box') : null;
+        if (!side || !mainCard) { return; }
+        ppSideFit();
+        if (!window.MutationObserver) { return; }
+        var mo = new MutationObserver(ppSideFit);
+        [mainCard].concat(Array.prototype.slice.call(side.children)).forEach(function (el) {
+            mo.observe(el, { attributes: true, attributeFilter: ['style'] });
+        });
+    })();
+    // The issue's menu also closes on a click outside the portal (the admin
+    // sidebar, the header) and on Escape; clicks inside are the root
+    // listener's business.
+    function ppMoreClose() {
+        Array.prototype.forEach.call(root.querySelectorAll('.pp-more'), function (w) {
+            var m = w.querySelector('.m');
+            var b = w.querySelector('.pp-morebtn');
+            if (m) { m.hidden = true; }
+            if (b) { b.setAttribute('aria-expanded', 'false'); }
+        });
+    }
+    document.addEventListener('click', function onPpMoreDoc(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpMoreDoc); return; }
+        if (!root.contains(ev.target)) { ppMoreClose(); }
+    });
+    document.addEventListener('keydown', function onPpMoreKey(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onPpMoreKey); return; }
+        if (ev.key === 'Escape') { ppMoreClose(); }
+    });
     // Both pinned things, measured once per frame.
     function ppPinFit() {
         var top = ppStickTop();
@@ -2824,7 +2877,7 @@ window.PmPortalBoot = function () {
         bar.innerHTML = '<a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' +
             '<span class="bl-key">' + esc(i.key) + '</span>' +
             '<span class="t" role="button" tabindex="0" title="' + esc(i.subject) + '">' + esc(i.subject) + '</span>' + pill(i.st) +
-            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '</a>';
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>';
         ppDbarFit();
     }
     // The title takes you back up to the whole head of the issue. Scrolled
@@ -2939,6 +2992,15 @@ window.PmPortalBoot = function () {
         // refresh, a comment posted or deleted. Each open editor is put back
         // on its comment afterwards, text and caret as they were.
         var editing = cmtEditsOpen();
+        // How many comments there are, on the box's head and on the links
+        // that lead down to it: whether the trip is worth making.
+        var cmtN = res.timeline === null ? 0
+            : (res.timeline || []).filter(function (e) { return e.tp === 'cmt'; }).length;
+        var tlSum = document.getElementById('pp-d-tlsum');
+        if (tlSum) { tlSum.textContent = cmtN ? String(cmtN) : ''; }
+        Array.prototype.forEach.call(root.querySelectorAll('#pp-issue .pp-tocmt .n'), function (n) {
+            n.textContent = cmtN ? String(cmtN) : '';
+        });
         if (res.timeline === null) { box.innerHTML = skel(4); return; }
         var rows = (res.timeline || []).filter(function (e) { return TLF !== 'cmt' || e.tp === 'cmt'; });
         box.innerHTML = rows.map(function (e) {
@@ -3701,6 +3763,10 @@ window.PmPortalBoot = function () {
     var currentWiki = null;
     function renderWiki(selectId) {
         var wiki = D.wiki || { enabled: false, pages: [] };
+        // With no page to show, the article card is an empty frame: it steps
+        // aside (.pp-wempty) until there is something to put in it.
+        var wgrid = document.querySelector('#pp-wiki .bl-wiki');
+        if (wgrid) { wgrid.classList.toggle('pp-wempty', !wiki.enabled || !wiki.pages.length); }
         if (!wiki.enabled) {
             document.getElementById('pp-wtree').innerHTML = '<div style="color:var(--bl-faint);white-space:normal;">' + esc(L.wiki_none) + '</div>';
             document.getElementById('pp-whead').innerHTML = '';
@@ -9681,6 +9747,20 @@ window.PmPortalBoot = function () {
             if (m !== wanted) { m.hidden = true; }
         });
         if (cmenuBtn) { wanted.hidden = !wanted.hidden; return; }
+        // The issue's own menu (その他) works the same way. The delete entry
+        // asks a second time in place, so the first click on it must leave
+        // the menu open for the question to be read.
+        var moreBtn = ev.target.closest('.pp-morebtn');
+        var moreKeep = moreBtn || ev.target.closest('.pp-more .pp-issuedel');
+        Array.prototype.forEach.call(root.querySelectorAll('.pp-more'), function (w) {
+            var m = w.querySelector('.m');
+            var b = w.querySelector('.pp-morebtn');
+            if (!m || !b) { return; }
+            if (moreBtn === b) { m.hidden = !m.hidden; }
+            else if (!(moreKeep && w.contains(moreKeep))) { m.hidden = true; }
+            b.setAttribute('aria-expanded', m.hidden ? 'false' : 'true');
+        });
+        if (moreBtn) { return; }
         var rxAdd = ev.target.closest('.pp-rxadd');
         if (rxAdd) {
             ev.stopPropagation();

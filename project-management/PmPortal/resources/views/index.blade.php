@@ -21,7 +21,7 @@
         'col_ty', 'col_key', 'col_subject', 'col_as', 'col_st', 'col_pr', 'col_ms', 'col_cat',
         'col_sd', 'col_dd', 'col_dt', 'col_rc', 'rc_daily', 'rc_weekdays', 'rc_weekly', 'rc_monthly', 'rc_yearly', 'col_pg', 'col_up', 'cnt_line', 'overdue_d', 'left_d',
         'back', 'box_props', 'box_children', 'box_timeline', 'added',
-        'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments',
+        'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments', 'issue_more',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
         'lbl_eh', 'lbl_pg', 'lbl_parent', 'lbl_watch', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
         'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
@@ -319,25 +319,30 @@
             <div class="pp-dbar" id="pp-dbar" hidden></div>
             <div class="bl-detail">
                 <div class="bl-card-box"><div class="bl-boxbody" id="pp-d-main"><i class="fa fa-spinner fa-spin"></i></div></div>
-                <div class="bl-card-box" id="pp-d-propbox">
-                    <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sliders"></i>{{ $lang['box_props'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
-                    <div class="bl-boxbody bl-rows bl-props" id="pp-d-props"></div>
-                </div>
-                <div class="bl-card-box" id="pp-d-childbox" style="display:none;">
-                    <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sitemap"></i>{{ $lang['box_children'] }}<span class="bl-childsum" id="pp-d-childsum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
-                    <div class="bl-boxbody bl-rows bl-children" id="pp-d-children"></div>
-                </div>
-                <div class="bl-card-box" id="pp-d-filebox" style="display:none;">
-                    <div class="bl-boxhead" data-collapse="1"><i class="fa fa-paperclip"></i>{{ $lang['box_files'] }}<span class="bl-childsum" id="pp-d-filesum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
-                    <div class="bl-boxbody bl-rows bl-dfiles" id="pp-d-files"></div>
-                </div>
-                <div class="bl-card-box" id="pp-d-relbox" style="display:none;">
-                    <div class="bl-boxhead" data-collapse="1"><i class="fa fa-link"></i>{{ $lang['box_related'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
-                    <div class="bl-boxbody bl-rows bl-related" id="pp-d-related"></div>
+                {{-- The boxes about the issue rather than its text. On a wide
+                     screen they stand beside the description (see .pp-two), so
+                     the comments follow the description directly. --}}
+                <div class="bl-dside" id="pp-d-side">
+                    <div class="bl-card-box" id="pp-d-propbox">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sliders"></i>{{ $lang['box_props'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-props" id="pp-d-props"></div>
+                    </div>
+                    <div class="bl-card-box" id="pp-d-childbox" style="display:none;">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sitemap"></i>{{ $lang['box_children'] }}<span class="bl-childsum" id="pp-d-childsum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-children" id="pp-d-children"></div>
+                    </div>
+                    <div class="bl-card-box" id="pp-d-filebox" style="display:none;">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-paperclip"></i>{{ $lang['box_files'] }}<span class="bl-childsum" id="pp-d-filesum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-dfiles" id="pp-d-files"></div>
+                    </div>
+                    <div class="bl-card-box" id="pp-d-relbox" style="display:none;">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-link"></i>{{ $lang['box_related'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-related" id="pp-d-related"></div>
+                    </div>
                 </div>
                 <div class="bl-card-box" id="pp-d-tlbox">
                     <div class="bl-boxhead" style="display:flex;align-items:center;gap:10px;">
-                        <span><i class="fa fa-comments-o"></i>{{ $lang['box_timeline'] }}</span>
+                        <span><i class="fa fa-comments-o"></i>{{ $lang['box_timeline'] }}<span class="bl-childsum" id="pp-d-tlsum"></span></span>
                         <button type="button" class="bl-tlexpand" id="pp-tl-expand" style="margin-left:auto;" hidden>{{ $lang['tl_expand'] }}</button>
                         <span class="bl-tlfilter" id="pp-tl-filter">
                             <button type="button" data-tl="all">{{ $lang['tl_all'] }}</button><button type="button" data-tl="cmt">{{ $lang['tl_cmt'] }}</button>
