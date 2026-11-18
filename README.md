@@ -8,25 +8,44 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 
 | Folder | Name | Description | Status |
 |---|---|---|---|
-| `project-management/` | Exment Project Management | Project and ticket management (issues, Gantt chart, wiki, files) / プロジェクト管理・チケット管理（課題・ガントチャート・Wiki・ファイル） | In use on Exment SaaS / Exment SaaS で利用中 |
+| [`project-management/`](project-management/) | Exment Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification) / プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知） | In use on Exment SaaS / Exment SaaS で利用中 |
+
+## Requirements / 動作環境
+
+- Exment 7.0 or later (PHP 8.2) / Exment 7.0 以降（PHP 8.2）
+
+## Install / 入れ方
+
+1. Zip the contents of a plugin folder, with `config.json` at the top of the zip (for example `PmPortal/`).
+   プラグインのフォルダ（例: `PmPortal/`）の中身を zip にします。`config.json` が zip のいちばん上に来るようにします。
+2. In Exment, open **Admin → Plugins → Upload** and choose the zip.
+   Exment の **管理 → プラグイン → アップロード** で zip を選びます。
+3. Follow the plugin's own README (for example the first-time setup of the project portal).
+   そのあとは、各プラグインの README に従います（例: プロジェクトポータルの初期設定）。
+
+On Exment SaaS (`*.exments.com`), install the plugins from **Admin → Plugin market** instead.
+Exment SaaS（`*.exments.com`）では、**管理 → プラグインマーケット** から入れます。
 
 ## Branches / ブランチ
 
-The branches follow Exment. / ブランチは Exment に合わせます。
-
-| Branch | Exment |
+| Branch | Use / 用途 |
 |---|---|
-| `7.1` | Exment 7.1 |
-| `main` | Exment master (next) |
+| `main` | The latest release / 最新の版 |
+| `feature/*` | Work in progress, merged into `main` by pull request / 作業中。プルリクエストで `main` に入れる |
 
 ## Plugin categories / プラグインの区分
 
-| | Official / 公式 | Certified / 認定 (planned) | Other / そのほか |
+| | Official / 公式 | Certified / 認定 (planned / 予定) | Other / そのほか |
 |---|---|---|---|
 | Made by / 作る人 | Exceed One | Partners / パートナー | Anyone / だれでも |
-| Signed / 署名 | Yes | Yes (after review) | No |
-| Server-side code on Exment SaaS / SaaS でのサーバー側の処理 | Allowed / 使える | Allowed / 使える | Not allowed / 使えない |
-| On-premises, rental servers / オンプレ・レンタルサーバー | Allowed | Allowed | Allowed |
+| Server-side code on Exment SaaS / SaaS でのサーバー側の処理 | Allowed / 使える | Allowed after review / 審査のあと使える | Not allowed / 使えない |
+| On-premises, rental servers / オンプレ・レンタルサーバー | Allowed / 使える | Allowed / 使える | Allowed / 使える |
+
+## Contributing / 貢献
+
+Issues and pull requests are welcome. Please report security problems privately through [GitHub security advisories](https://github.com/exceedone/exment-plugins/security/advisories/new), not in public issues.
+
+Issue・プルリクエストを歓迎します。セキュリティの問題は、公開の Issue ではなく [GitHub のセキュリティアドバイザリー](https://github.com/exceedone/exment-plugins/security/advisories/new) から非公開で知らせてください。
 
 ## License / ライセンス
 
