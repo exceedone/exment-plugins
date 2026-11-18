@@ -21,7 +21,7 @@
         'col_ty', 'col_key', 'col_subject', 'col_as', 'col_st', 'col_pr', 'col_ms', 'col_cat',
         'col_sd', 'col_dd', 'col_dt', 'col_rc', 'rc_daily', 'rc_weekdays', 'rc_weekly', 'rc_monthly', 'rc_yearly', 'col_pg', 'col_up', 'cnt_line', 'overdue_d', 'left_d',
         'back', 'box_props', 'box_children', 'box_timeline', 'added',
-        'box_related', 'children_done', 'rel_add', 'rel_none',
+        'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
         'lbl_eh', 'lbl_pg', 'lbl_parent', 'lbl_watch', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
         'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
