@@ -320,6 +320,8 @@
     }
 
     var LANG = @json($topbarLang);
+    // The issue screen keeps 最近見た per person under this key (recentPush).
+    var RECENT_KEY = @json('pp_recent.u' . intval(\Exment::getUserId()));
 
     function span(cls, text) {
         var s = document.createElement('span');
@@ -398,7 +400,7 @@
     // of localStorage go through textContent, never through markup.
     function fillRecent(menu) {
         var entries = [];
-        try { entries = JSON.parse(localStorage.getItem('pp_recent') || '[]'); } catch (e) { entries = []; }
+        try { entries = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { entries = []; }
         if (!Array.isArray(entries)) { entries = []; }
         menu.textContent = '';
         var shown = 0;

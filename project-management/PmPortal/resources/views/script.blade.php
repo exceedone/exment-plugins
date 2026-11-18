@@ -2079,7 +2079,10 @@ window.PmPortalBoot = function () {
             '<a class="bl-btn-sub pp-mailbtn"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
+            (res.movable ? '<a class="bl-btn-sub pp-issuemove"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
+            (res.deletable ? '<a class="bl-btn-sub pp-issuedel"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a></span></div>' +
+            '<div class="pp-move" hidden></div>' +
             '<div class="bl-dtitle">' + esc(i.subject) + '</div>' +
             (i.sub ? '<div class="pp-dsubsub">' + esc(i.sub) + '</div>' : '') +
             '<div class="bl-dsum">' +
@@ -4479,6 +4482,109 @@ window.PmPortalBoot = function () {
             });
         });
     }
+    /* ------------------------------------- move / delete an issue ------ */
+    // Move: a small panel under the detail head lists the projects the
+    // issue may go to (asked of the server when opened - it knows who may
+    // add issues where). The server converts status and type to the new
+    // project's and takes off what does not travel; the page then goes to
+    // the issue in its new project.
+    function issueMoveClose() {
+        var box = document.querySelector('#pp-d-main .pp-move');
+        if (box) { box.hidden = true; box.innerHTML = ''; }
+    }
+    function issueMoveOpen(issueId) {
+        var box = document.querySelector('#pp-d-main .pp-move');
+        if (!box) { return; }
+        if (!box.hidden) { issueMoveClose(); return; }
+        box.hidden = false;
+        box.innerHTML = '<div class="pp-move-in">' + esc(L.move_loading) + '</div>';
+        $.ajax({
+            url: D.urls.base + '/issue/' + encodeURIComponent(issueId) + '/move',
+            dataType: 'json', cache: false
+        }).done(function (res) {
+            if (String(currentIssue) !== String(issueId) || box.hidden) { return; }
+            var list = (res && res.projects) || [];
+            if (!list.length) {
+                box.innerHTML = '<div class="pp-move-in">' + esc(L.move_none) +
+                    ' <a class="bl-btn-sub pp-move-cancel">' + esc(L.move_cancel) + '</a></div>';
+                return;
+            }
+            box.innerHTML = '<div class="pp-move-in"><b>' + esc(L.move_title) + '</b> ' +
+                '<select class="pp-move-sel"><option value="">' + esc(L.move_pick) + '</option>' +
+                list.map(function (p) {
+                    return '<option value="' + esc(p.id) + '">' + esc(p.name) + (p.key ? ' (' + esc(p.key) + ')' : '') + '</option>';
+                }).join('') + '</select> ' +
+                '<button type="button" class="bl-btn-main pp-move-do">' + esc(L.move_do) + '</button> ' +
+                '<a class="bl-btn-sub pp-move-cancel">' + esc(L.move_cancel) + '</a>' +
+                '<div class="pp-move-note">' + esc(L.move_note) + '</div></div>';
+        }).fail(function (xhr) {
+            if (String(currentIssue) !== String(issueId)) { return; }
+            issueMoveClose();
+            toast(xhrErr(xhr, L.move_fail), true);
+        });
+    }
+    function issueMoveRun(issueId, btn) {
+        var sel = document.querySelector('#pp-d-main .pp-move-sel');
+        if (!sel || !sel.value || btn.disabled) { return; }
+        btn.disabled = true;
+        $.ajax({
+            url: D.urls.base + '/issue/' + encodeURIComponent(issueId) + '/move',
+            type: 'POST', dataType: 'json',
+            data: { project: sel.value },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!res || !res.ok || !res.url) {
+                btn.disabled = false;
+                toast(errText(null, res, L.move_fail), true);
+                return;
+            }
+            if (res.message) { toast(res.message); }
+            // Another project's page: a full load, which also leaves this
+            // project's list without the issue.
+            setTimeout(function () { location.href = res.url; }, 400);
+        }).fail(function (xhr) {
+            btn.disabled = false;
+            toast(xhrErr(xhr, L.move_fail), true);
+        });
+    }
+    // Delete arms itself like a comment's: the second click within a few
+    // seconds is the confirmation. Shown to the project's manager.
+    function issueDelete(issueId, link) {
+        if (link.dataset.busy === '1') { return; }
+        var lb = link.querySelector('.lb') || link;
+        if (link.dataset.armed !== '1') {
+            link.dataset.armed = '1';
+            lb.textContent = L.issue_del_ask;
+            setTimeout(function () {
+                if (!link.parentNode) { return; }
+                link.dataset.armed = '';
+                lb.textContent = L.issue_delete;
+            }, 4000);
+            return;
+        }
+        link.dataset.busy = '1';
+        $.ajax({
+            url: D.urls.base + '/issue/' + encodeURIComponent(issueId) + '/delete',
+            type: 'POST', dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!res || !res.ok) {
+                link.dataset.busy = '';
+                toast(errText(null, res, L.issue_del_fail), true);
+                return;
+            }
+            if (res.message) { toast(res.message); }
+            // Back to the list, drawn again without the issue.
+            setTimeout(function () {
+                history.replaceState(null, '', location.pathname + location.search + '#issues');
+                location.reload();
+            }, 400);
+        }).fail(function (xhr) {
+            link.dataset.busy = '';
+            toast(xhrErr(xhr, L.issue_del_fail), true);
+        });
+    }
+
     // Delete asks by arming itself rather than by opening a dialog: the
     // second click within a few seconds is the confirmation.
     function cmtDelete(link) {
@@ -9297,6 +9403,14 @@ window.PmPortalBoot = function () {
         if (mailBtn) { mailOpen(currentIssue); return; }
         var issueCopy = ev.target.closest('.pp-issuecopy');
         if (issueCopy) { openNcreate(D.issue_table, issuePrefill('copy'), 'copy' + currentIssue); return; }
+        var issueMove = ev.target.closest('.pp-issuemove');
+        if (issueMove) { issueMoveOpen(currentIssue); return; }
+        var moveCancel = ev.target.closest('.pp-move-cancel');
+        if (moveCancel) { issueMoveClose(); return; }
+        var moveDo = ev.target.closest('.pp-move-do');
+        if (moveDo) { issueMoveRun(currentIssue, moveDo); return; }
+        var issueDel = ev.target.closest('.pp-issuedel');
+        if (issueDel) { issueDelete(currentIssue, issueDel); return; }
         var wikiNode = ev.target.closest('[data-wiki]');
         if (wikiNode) {
             ev.preventDefault();

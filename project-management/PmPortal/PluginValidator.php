@@ -23,6 +23,12 @@ class PluginValidator extends PluginValidatorBase
             return true;
         }
 
+        // A move to another project is checked by the saving event, against
+        // the new project - here the model still names the old one.
+        if (PortalRules::moveRequested($this->custom_table, $this->original_value)) {
+            return true;
+        }
+
         $input = is_array($this->input_value) ? $this->input_value : [];
         $this->messages = PortalRules::validate($this->custom_table, $input, $this->original_value);
 

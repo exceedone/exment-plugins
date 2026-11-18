@@ -719,6 +719,10 @@ class PmPortalController extends AdminControllerBase
                     strval(array_get($issue->value, array_get($this->def['issue'], 'description'), ''))
                 ),
                 'editable' => !$archived && $issue->enableEdit(true) === true,
+                // Moving needs edit rights on the issue; the server lists the
+                // projects it may go to when the button is pressed.
+                'movable' => !$archived && PortalDefinition::enableEdit($issue, true) === true,
+                'deletable' => !$archived && (PortalMembership::canManage($project) || PortalDefinition::enableDelete($issue, true) === true),
                 'watch' => [
                     'count' => intval(array_get($watch_counts, strval($issue->id), 0)),
                     'on' => in_array(strval($issue->id), $my_watches),
@@ -892,6 +896,236 @@ class PmPortalController extends AdminControllerBase
         // Answer with the refreshed detail so the screen patches itself -
         // a reload would cost another framework boot for data we already have.
         return $this->issueDetailResponse($project, $issue->id);
+    }
+
+    /**
+     * The projects this issue may move to: every other project the caller
+     * can add issues to that is not archived. GET {id}/issue/{issue_id}/move.
+     */
+    public function issueMoveTargets(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+        if (PortalDefinition::enableEdit($issue, true) !== true) {
+            return $this->messageError(403, 'no_permission');
+        }
+
+        $key_column = array_get($this->def['project'], 'key');
+        $name_column = array_get($this->def['project'], 'name', 'name');
+        $targets = [];
+        foreach ($this->project_table->getValueModel()->get() as $row) {
+            if (intval($row->id) === intval($project->id) || $this->projectIsArchived($row)
+                || PortalDefinition::enableEdit($row, true) !== true) {
+                continue;
+            }
+            $targets[] = [
+                'id' => intval($row->id),
+                'name' => strval(array_get($row->value, $name_column, '')),
+                'key' => strval(array_get($row->value, $key_column, '')),
+            ];
+        }
+        usort($targets, function ($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
+
+        return response()->json(['ok' => true, 'projects' => $targets]);
+    }
+
+    /**
+     * Move an issue to another project, as Backlog does. POST
+     * {id}/issue/{issue_id}/move with project=<id>.
+     *
+     * The issue keeps its id, key, comments, files and history. The lists it
+     * picks from belong to a project, so its status and type become the new
+     * project's ones of the same name (or the new project's first one); its
+     * category, milestone, versions and parent issue are the old project's
+     * and are taken off; assignees and people to notify who are not on the
+     * new project are taken off. PortalRules checks the result when it is
+     * saved, like any other write.
+     */
+    public function moveIssue(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+        if (PortalDefinition::enableEdit($issue, true) !== true) {
+            return $this->messageError(403, 'no_permission');
+        }
+
+        $to = $request->get('project');
+        if (!is_scalar($to) || !is_numeric($to)) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        if (intval($to) === intval($project->id)) {
+            return $this->messageError(400, 'move_same');
+        }
+        $target = $this->project_table->getValueModel()->find(intval($to));
+        if (!isset($target) || $target->enableAccess() !== true) {
+            return $this->messageError(404, 'move_no_target');
+        }
+        if ($this->projectIsArchived($target)) {
+            return $this->messageError(403, 'archived');
+        }
+
+        $is = (array) $this->def['issue'];
+        $extra = (array) array_get($this->def, 'issue_extra', []);
+        $changes = [];
+
+        // Status and type: the new project's list item with the same label.
+        foreach ([array_get($is, 'status'), array_get($is, 'type')] as $column) {
+            if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
+                continue;
+            }
+            $now = strval(array_get($issue->value, $column, ''));
+            list($old_meta) = $this->selectMeta($this->issue_table, $column, $project->id);
+            list($new_meta, $new_order) = $this->selectMeta($this->issue_table, $column, $target->id);
+            $label = strval(array_get($old_meta, $now . '.l', ''));
+            $pick = null;
+            foreach ($new_order as $key) {
+                if ($label !== '' && strval(array_get($new_meta, $key . '.l')) === $label) {
+                    $pick = $key;
+                    break;
+                }
+            }
+            if ($pick === null && $now !== '' && array_key_exists($now, $new_meta)) {
+                // a list the whole space shares
+                $pick = $now;
+            }
+            if ($pick === null) {
+                $pick = $new_order[0] ?? null;
+            }
+            $changes[$column] = $pick;
+        }
+
+        // The old project's own lists, and the parent issue, do not travel.
+        foreach ([array_get($is, 'category'), array_get($is, 'milestone'), array_get($extra, 'versions'), array_get($is, 'parent')] as $column) {
+            if (!is_nullorempty($column) && CustomColumn::getEloquent($column, $this->issue_table) !== null
+                && !is_nullorempty(array_get($issue->value, $column))) {
+                $changes[$column] = null;
+            }
+        }
+
+        // People who are not on the new project.
+        $roles = PortalMembership::roles((array) $target->value);
+        if (!empty($roles)) {
+            foreach ([[array_get($is, 'assignees'), PortalMembership::EDITORS], [array_get($extra, 'notified_users'), null]] as [$column, $allowed]) {
+                if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
+                    continue;
+                }
+                $ids = PortalMembership::ids(array_get($issue->value, $column));
+                $keep = array_values(array_filter($ids, function ($uid) use ($roles, $allowed) {
+                    $role = $roles[$uid] ?? null;
+                    return $role !== null && ($allowed === null || in_array($role, $allowed, true));
+                }));
+                if (count($keep) !== count($ids)) {
+                    $changes[$column] = array_map('strval', $keep);
+                }
+            }
+        }
+
+        try {
+            \DB::transaction(function () use ($issue, $target, $changes) {
+                $issue->setValue($changes);
+                $issue->parent_id = $target->id;
+                $issue->parent_type = $this->project_table->table_name;
+                $issue->save();
+            });
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (\Throwable $e) {
+            Log::error('PmPortal issue move failed: ' . $e->getMessage());
+
+            return $this->messageError(500, 'move_failed');
+        }
+
+        return response()->json([
+            'ok' => true,
+            'url' => $this->issueUrl($target, $issue->id),
+            'message' => strval(PortalDefinition::trans('message.moved', [
+                'name' => strval(array_get($target->value, array_get($this->def['project'], 'name', 'name'), '')),
+            ])),
+        ]);
+    }
+
+    /**
+     * Whether the caller may delete this issue: the project's manager (and
+     * whoever manages every project), or whoever Exment itself lets delete
+     * it. Nobody while the project is archived.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     */
+    protected function canDeleteIssue($project, $issue): bool
+    {
+        if ($this->projectIsArchived($project)) {
+            return false;
+        }
+
+        return PortalMembership::canManage($project) || PortalDefinition::enableDelete($issue, true) === true;
+    }
+
+    /**
+     * Delete an issue. POST {id}/issue/{issue_id}/delete.
+     *
+     * Its links to other issues and its stars and watches go with it. The
+     * issue itself is soft deleted, so an administrator can bring it back
+     * from Exment's trash. An issue with sub-issues is refused, as in
+     * Backlog: take the sub-issues off first.
+     */
+    public function deleteIssue(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+        if (!$this->canDeleteIssue($project, $issue)) {
+            return $this->messageError(403, 'delete_issue_manager_only');
+        }
+        $reason = PortalRules::validateDestroy($issue);
+        if ($reason !== null) {
+            return PortalDefinition::jsonError(409, 'in_use', ['message' => $reason]);
+        }
+
+        $related_table = CustomTable::getEloquent(array_get($this->def, 'related_table'));
+        $rel = (array) array_get($this->def, 'related_row', []);
+        try {
+            \DB::transaction(function () use ($issue, $related_table, $rel) {
+                if (isset($related_table)) {
+                    $from = $this->columnOf($related_table, strval(array_get($rel, 'from')));
+                    $to = $this->columnOf($related_table, strval(array_get($rel, 'to')));
+                    if (isset($from) && isset($to)) {
+                        $links = $related_table->getValueModel()->newQueryWithoutScopes()
+                            ->whereNull('deleted_at')
+                            ->where(function ($query) use ($from, $to, $issue) {
+                                $query->where($from->getQueryKey(), strval($issue->id))
+                                    ->orWhere($to->getQueryKey(), strval($issue->id));
+                            })
+                            ->get();
+                        foreach ($links as $link) {
+                            Star::purge($related_table->table_name, $link->id);
+                            $link->delete();
+                        }
+                    }
+                }
+                Star::purge($this->issue_table->table_name, $issue->id);
+                $issue->delete();
+            });
+        } catch (\Throwable $e) {
+            Log::error('PmPortal issue delete failed: ' . $e->getMessage());
+
+            return $this->messageError(500, 'delete_failed');
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => strval(PortalDefinition::trans('message.issue_deleted')),
+        ]);
     }
 
     /**
