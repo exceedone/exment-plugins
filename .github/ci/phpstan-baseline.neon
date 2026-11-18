@@ -1,0 +1,109 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:getExmentCurrentVersion\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: ../../project-management/PmMigrate/Exporter.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: ../../project-management/PmMigrate/Exporter.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:getExmentCurrentVersion\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: ../../project-management/PmMigrate/Importer.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: ../../project-management/PmMigrate/Importer.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:user\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: ../../project-management/PmMigrate/Plugin.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:getUserId\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: ../../project-management/PmPortal/GitKey.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:getUserId\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: ../../project-management/PmPortal/LightApiController.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Model\\CustomColumn\:\:selectTargetTable\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: ../../project-management/PmPortal/LightApiController.php
+
+		-
+			message: '#^Variable \$this on left side of \?\? is never defined\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: ../../project-management/PmPortal/PluginEvent.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:getUserId\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 21
+			path: ../../project-management/PmPortal/PmPortalController.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:user\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 3
+			path: ../../project-management/PmPortal/PmPortalController.php
+
+		-
+			message: '#^Call to static method user\(\) on an unknown class Admin\.$#'
+			identifier: class.notFound
+			count: 4
+			path: ../../project-management/PmPortal/PmPortalController.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:getUserId\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: ../../project-management/PmPortal/PortalDefinition.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:getUserId\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: ../../project-management/PmPortal/PortalMembership.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:user\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: ../../project-management/PmPortal/PortalMembership.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:user\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 3
+			path: ../../project-management/PmPortal/PortalRules.php
+
+		-
+			message: '#^Call to an undefined static method Exceedone\\Exment\\Facades\\ExmentFacade\:\:user\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: ../../project-management/PmPortal/PortalSettingsController.php
+
+		-
+			message: '#^Static call to instance method Exceedone\\Exment\\Model\\Menu\:\:where\(\)\.$#'
+			identifier: method.staticCall
+			count: 2
+			path: ../../project-management/PmPortal/PortalUpgrade.php
