@@ -1,0 +1,15 @@
+{
+    "plugin_name": "PmMigrate",
+    "uuid": "fdeb23ba-b1fa-4af1-b67a-5fb910df82cd",
+    "plugin_view_name": "PM データ移行",
+    "description": "プロジェクトポータル(PmPortal)のプロジェクト単位のデータを、コメント・変更履歴・添付ファイルごと別の Exment へ移行します。",
+    "author": "TTM",
+    "version": "1.0.1",
+    "plugin_type": "page",
+    "uri": "pm_migrate",
+    "route": [
+        { "method": "get", "uri": "", "function": "index" },
+        { "method": "post", "uri": "export", "function": "postExport" },
+        { "method": "post", "uri": "import", "function": "postImport" }
+    ]
+}

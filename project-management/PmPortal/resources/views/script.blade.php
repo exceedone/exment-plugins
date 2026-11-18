@@ -1,0 +1,9832 @@
+<script>
+(function () {
+    'use strict';
+    var root = document.getElementById('pmportal');
+    if (!root || root.dataset.ppBound) { return; }
+    root.dataset.ppBound = '1';
+
+    // Exment swaps admin pages through pjax, which replaces #pmportal but
+    // leaves everything this run bound to window/document alive, closures
+    // and all. A leftover route() from the previous project cannot resolve
+    // the new project's issue keys, so it would bounce every #issue-KEY
+    // click straight back to #issues - which is exactly what a portal that
+    // has been navigated between projects used to do. Every handler and
+    // timer that outlives the root therefore opens with this check and
+    // retires itself the moment its page is gone.
+    function alive() { return document.getElementById('pmportal') === root; }
+
+    var D = JSON.parse(document.getElementById('pmportal-data').textContent);
+    var L = @json($lang);
+    var CSRF = $('meta[name="csrf-token"]').attr('content');
+
+    /* ------------------------------------------------ request queue ----- */
+    // One request at a time, on purpose. Every call below boots the whole
+    // framework on the server, and PHP serialises one user's requests on the
+    // session lock anyway, so firing six at once does not make them arrive
+    // sooner - it makes all six slower and leaves the one the user is really
+    // waiting for at the back of the line. Opening this page used to do
+    // exactly that: ten requests, six of them in flight together.
+    //
+    // Two lanes. Whatever the user is waiting for runs first; speculative
+    // work (form prewarms, background embeds) waits for a quiet gap and
+    // stands aside the moment real work appears. Published on window so the
+    // settings pane and the top bar queue into the same line, and built once
+    // per document so a pjax swap does not start a second queue beside it.
+    if (!window.ppQueue) {
+        window.ppQueue = (function () {
+            var hi = [];
+            var lo = [];
+            var runHi = 0;
+            var runLo = 0;
+            var gap = null;
+            var GAP_MS = 700;
+
+            function start(job) {
+                job.started = true;
+                if (job.low) { runLo++; } else { runHi++; }
+                var done = function () {
+                    if (job.low) { runLo--; } else { runHi--; }
+                    pump();
+                };
+                var p;
+                try { p = job.task(); }
+                catch (e) { job.reject(e); done(); return; }
+                Promise.resolve(p).then(
+                    function (v) { job.resolve(v); done(); },
+                    function (e) { job.reject(e); done(); }
+                );
+            }
+            // One of the user's requests at a time, and one background one at
+            // a time. Counted separately on purpose: strict single file would
+            // mean a background request the server is slow to answer holds up
+            // the click that comes after it, which is the opposite of what
+            // this is for. Two in flight is the worst case, not the norm.
+            function pump() {
+                if (hi.length && !runHi) {
+                    if (gap) { clearTimeout(gap); gap = null; }
+                    start(hi.shift());
+                }
+                // Speculative work waits for a clear line: nothing of the
+                // user's running or queued, plus a moment of quiet after it.
+                if (!lo.length || gap || runLo || runHi || hi.length) { return; }
+                gap = setTimeout(function () {
+                    gap = null;
+                    if (runLo || runHi || hi.length) { pump(); return; }
+                    var bg = lo.shift();
+                    if (bg) { start(bg); }
+                }, GAP_MS);
+            }
+            function queue(task, low) {
+                var job = { task: task, started: false, low: !!low };
+                var p = new Promise(function (resolve, reject) {
+                    job.resolve = resolve;
+                    job.reject = reject;
+                });
+                // Carried on the promise so a click can promote the very job
+                // a prewarm queued a moment earlier instead of waiting it out.
+                p.ppJob = job;
+                (low ? lo : hi).push(job);
+                pump();
+                return p;
+            }
+            queue.promote = function (p) {
+                var job = p && p.ppJob;
+                if (!job || job.started) { return p; }
+                var i = lo.indexOf(job);
+                if (i >= 0) { lo.splice(i, 1); job.low = false; hi.push(job); pump(); }
+                return p;
+            };
+            // A pjax swap replaced the page: nothing the old one wanted to
+            // warm up is worth a request now.
+            queue.dropLow = function () {
+                lo.splice(0, lo.length).forEach(function (job) {
+                    job.reject(new Error('pp-queue-dropped'));
+                });
+            };
+            queue.waiting = function () { return hi.length + lo.length + runHi + runLo; };
+
+            return queue;
+        })();
+    }
+    var ppQueue = window.ppQueue;
+
+    /* ------------------------------------------------ page title -------- */
+    // Every screen here shares one URL path and differs only by the hash, so
+    // the title is the only thing a bookmark, a history entry or a crowded tab
+    // strip has to tell them apart by. Left alone, all of them are saved under
+    // the project's name and become indistinguishable the moment there are two.
+    // Captured once so whatever Exment put there stays as the suffix.
+    var BASE_TITLE = document.title;
+    function setTitle(lead) {
+        document.title = lead ? lead + ' | ' + BASE_TITLE : BASE_TITLE;
+    }
+
+    /* ---- form styles (only affects the framed admin form) ------------- */
+    // A form style applies inside the framed admin form only: it reshapes
+    // the .box / .form-group markup the admin ships with, and touches none
+    // of the portal's own screens.
+    var CUR_FORM_STYLE = (D.form_styles && D.form_style && D.form_styles[D.form_style])
+        ? D.form_style
+        : (D.form_styles ? Object.keys(D.form_styles)[0] : 'card');
+    function applyFormStyle(id, save) {
+        if (!D.form_styles || !D.form_styles[id]) { return; }
+        CUR_FORM_STYLE = id;
+        if (FM && FM.el) {
+            [FM.frame, FM.warm].forEach(function (frame) {
+                if (!frame || !frame.dataset.ready) { return; }
+                try { themeFrame(frame.contentDocument); } catch (e) { /* ignore */ }
+            });
+        }
+        renderFormStyleMenu();
+        renderFormStyleBadge();
+        if (save) {
+            $.ajax({ url: D.urls.form_style, type: 'POST', data: { style: id }, headers: { 'X-CSRF-TOKEN': CSRF } })
+                .done(function () { toast(L.form_style_saved); });
+        }
+    }
+    function renderFormStyleMenu() {
+        var menu = FM.el && FM.el.querySelector('.pp-fm-style-menu');
+        if (!menu) { return; }
+        menu.innerHTML = Object.keys(D.form_styles || {}).map(function (id) {
+            var style = D.form_styles[id];
+            return '<a class="pp-fm-style-item' + (id === CUR_FORM_STYLE ? ' on' : '') + '" data-style="' + esc(id) + '">' +
+                '<span class="ic pp-fm-style-swatch pp-fm-style-swatch-' + esc(id) + '"></span>' +
+                '<span><span class="lbl">' + esc(style.label || id) + '</span>' +
+                (style.description ? '<span class="desc">' + esc(style.description) + '</span>' : '') +
+                '</span>' + (id === CUR_FORM_STYLE ? '<i class="fa fa-check"></i>' : '') + '</a>';
+        }).join('');
+    }
+    function renderFormStyleBadge() {
+        var badge = FM.el && FM.el.querySelector('.pp-fm-style-label');
+        if (!badge) { return; }
+        var style = (D.form_styles || {})[CUR_FORM_STYLE] || {};
+        badge.textContent = style.label || CUR_FORM_STYLE;
+    }
+
+    var ST = {};
+    (D.statuses || []).forEach(function (s) { ST[s.k] = s; });
+    var ARROWS = {
+        dd: 'M6 0l4 5H8v2H4V5H2zM6 6l4 5H8v3H4v-3H2z',
+        up: 'M6 1l5 6H8v6H4V7H1z',
+        right: 'M13 7l-6 5V9H1V5h6V2z',
+        down: 'M6 13L1 7h3V1h4v6h3z'
+    };
+    var FEED_IC = {
+        add: { i: 'fa-plus', c: '#4caf93' }, chg: { i: 'fa-pencil', c: '#4488c5' },
+        cmt: { i: 'fa-comment', c: '#eda62a' }, file: { i: 'fa-paperclip', c: '#7f95a8' },
+        wiki: { i: 'fa-book', c: '#8e44ad' }, wiki_add: { i: 'fa-book', c: '#8e44ad' }
+    };
+
+    /* ------------------------------------------------ tiny helpers ------ */
+    function esc(s) {
+        // The apostrophe is escaped in hex rather than the usual &#39;.
+        // Exment's pjax layer runs the fragment through a decoder that turns
+        // every DECIMAL numeric entity back into its character before the
+        // browser sees it, and it does not skip script bodies - so a literal
+        // '&#39;' here came back as ''', which is a syntax error that killed
+        // this whole file and left the portal blank after a pjax navigation.
+        // The hex form escapes the same character and the decoder ignores it.
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' }[c];
+        });
+    }
+    // Colours from the status / type / priority master tables are dropped into
+    // style attributes. Escaping is not enough on its own: a value like
+    // "#fff;position:fixed;inset:0" never closes the attribute yet still paints
+    // a full-screen overlay, so only a plain hex colour is let through and
+    // anything else becomes a neutral grey. Colours are also checked on save;
+    // this is the render-time backstop that holds even for a row saved another
+    // way.
+    function ppColor(v, fallback) {
+        return /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(String(v == null ? '' : v)) ? String(v) : (fallback || '#95a5a6');
+    }
+    // An entry of a map that is keyed by data. A status, a sort column or a
+    // user id arrives from the payload, the address bar or a stored filter,
+    // and "constructor" or "__proto__" would otherwise answer with whatever
+    // Object.prototype keeps under that name - truthy, and nothing like the
+    // entry the caller went on to read from.
+    function own(map, key) {
+        return (map && Object.prototype.hasOwnProperty.call(map, key)) ? map[key] : undefined;
+    }
+
+    /* ------------------------------------------------ error wording ---- */
+    // What a person reads when a request fails. The portal's own refusals
+    // carry the sentence to show in `message`, beside a machine code in
+    // `error` that is only ever branched on: the codes are English, and so is
+    // whatever a proxy, the framework's own error page or the browser's
+    // exception has to say. So, in this order: the portal's sentence, one
+    // picked by the HTTP status (0 = no answer at all), the caller's own
+    // fallback, the catch-all.
+    function errText(status, body, fallback) {
+        if (body && typeof body === 'object' && body.ok === false
+            && typeof body.message === 'string' && body.message.trim() !== '') {
+            return body.message;
+        }
+        var http = (L && L.http) || {};
+        var said = http.messages || {};
+        var known = typeof status === 'number' && isFinite(status);
+        var key = known ? own(http.status, String(status)) : undefined;
+        if (!key && known && status >= 500) { key = 'server'; }
+        var text = key ? own(said, key) : '';
+        if (typeof text === 'string' && text !== '') { return text; }
+
+        return fallback || own(said, 'other') || '';
+    }
+    // The body of a failed jQuery request, when it was JSON. Read only to
+    // find the portal's own sentence in it: the raw text is never shown.
+    function xhrBody(xhr) {
+        if (!xhr) { return null; }
+        if (xhr.responseJSON && typeof xhr.responseJSON === 'object') { return xhr.responseJSON; }
+        try {
+            var parsed = JSON.parse(String(xhr.responseText || ''));
+            return (parsed && typeof parsed === 'object') ? parsed : null;
+        } catch (e) { return null; }
+    }
+    function xhrErr(xhr, fallback) {
+        return errText(xhr && typeof xhr.status === 'number' ? xhr.status : null, xhrBody(xhr), fallback);
+    }
+    // A fetch answer as one pair, whatever came back: the status, and the
+    // body when it was JSON - null for a proxy's html page. ppNoAnswer is the
+    // same pair for a request that got no answer at all (status 0), so a
+    // failure is worded from the pair alone and never from the browser's
+    // own English exception text.
+    function ppJson(r) {
+        return r.json().then(function (body) {
+            return { status: r.status, body: body };
+        }, function () {
+            return { status: r.status, body: null };
+        });
+    }
+    function ppNoAnswer() { return { status: 0, body: null }; }
+    function fmt(tpl) {
+        var args = Array.prototype.slice.call(arguments, 1), i = 0;
+        return String(tpl).replace(/%s/g, function () { return args[i++]; });
+    }
+    // An SVG tooltip, built without ever writing the tag name as one literal.
+    // Exment's pjax layer picks the page title out of the response by string
+    // search, and older builds close it at the LAST </title> in the body, so a
+    // second one anywhere - even inside this script - makes the pjax fragment
+    // swallow the whole admin layout and render it twice. Assembling the tag
+    // at runtime keeps the native tooltip and leaves that scan alone, which is
+    // what lets the portal work on an install that has not been patched.
+    var SVG_TIP = 'title';
+    function svgTip(text) {
+        return '<' + SVG_TIP + '>' + esc(text) + '</' + SVG_TIP + '>';
+    }
+    function user(id) { return own(D.users, id) || { n: '?', i: '?', c: '#95a5a6' }; }
+    function reEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    // Who can be written with an @. The autocomplete inserts the display name
+    // as it stands - "@鈴木 課長" - so a character class can never match one:
+    // the names are matched literally instead, longest first so "@鈴木 課長"
+    // wins over a colleague who is just "@鈴木". Rebuilt only when the set of
+    // people changes, since this runs once per comment on a long timeline.
+    var MENTIONS = { key: null, re: null, by: {} };
+    function mentions() {
+        var ids = Object.keys(D.users || {});
+        var key = ids.join(',');
+        if (MENTIONS.key === key) { return MENTIONS; }
+        var by = {}, names = [];
+        ids.forEach(function (id) {
+            var name = String(user(id).n || '').trim();
+            if (!name || name === '?') { return; }
+            // The text being scanned has already been escaped, so the name
+            // has to be matched in the shape it now has on the page.
+            var shown = esc(name);
+            if (by[shown] === undefined) { by[shown] = id; names.push(shown); }
+        });
+        names.sort(function (a, b) { return b.length - a.length; });
+        MENTIONS = {
+            key: key,
+            by: by,
+            // The leading guard keeps the @ in an address out of it: the
+            // "@example" in "someone@example.com" is not a mention.
+            re: names.length ? new RegExp('(^|[^\\w@.])@(' + names.map(reEsc).join('|') + ')', 'g') : null
+        };
+
+        return MENTIONS;
+    }
+    // ISS00254: the avatar the user registered in Exment, laid over the
+    // initial; if the image cannot load it removes itself and the initial shows.
+    function avImg(u) {
+        return u && u.a ? '<img class="bl-avimg" src="' + esc(u.a) + '" alt="" loading="lazy" onerror="this.remove()">' : '';
+    }
+    function av(id, lg) {
+        var u = user(id);
+        return '<span class="bl-av' + (lg ? ' lg' : '') + '" style="background:' + ppColor(u.c) + '" title="' + esc(u.n) + '">' + esc(u.i) + avImg(u) + '</span>';
+    }
+    function avname(id) { return '<span class="bl-avname">' + av(id) + esc(user(id).n) + '</span>'; }
+    function avlist(ids) { return (ids || []).map(function (i) { return av(i); }).join(''); }
+    function pill(st) {
+        var s = own(ST, st);
+        return '<span class="bl-pill" style="background:' + ppColor(s ? s.c : '#95a5a6') + '">' + esc(s ? s.l : st) + '</span>';
+    }
+    function tag(ty) {
+        var t = own(D.types, ty);
+        return t ? '<span class="bl-tag" style="background:' + ppColor(t.c) + '">' + esc(t.l) + '</span>' : '';
+    }
+    function prio(p, iconOnly) {
+        var o = own(D.priorities, p);
+        if (!o) { return ''; }
+        return '<span class="bl-prio" style="color:' + ppColor(o.c) + '" title="' + esc(o.l) + '">' +
+            '<svg width="14" height="14" viewBox="0 0 14 14"><path fill="currentColor" d="' + (own(ARROWS, o.arrow) || ARROWS.right) + '"/></svg>' +
+            (iconOnly ? '' : esc(o.l)) + '</span>';
+    }
+    function isDone(st) { var s = own(ST, st); return !!(s && s.done); }
+    function d2(s) { return s ? String(s).replace(/^\d\d\d\d-/, '').replace('-', '/') : '—'; }
+    // An hour count: the server sends a number or null, so 0 is a real
+    // answer and shows as 0, and only a missing value reads as a dash.
+    function hours(v) { return (v == null || v === '' ? '—' : String(v)) + ' h'; }
+    function daysTo(s) {
+        if (!s) { return null; }
+        return Math.round((new Date(s + 'T00:00:00') - new Date(D.today + 'T00:00:00')) / 86400000);
+    }
+    function dueCell(iss) {
+        if (!iss.dd) { return '<span class="bl-due">—</span>'; }
+        var days = daysTo(iss.dd);
+        if (!isDone(iss.st) && days < 0) {
+            return '<span class="bl-due over"><span class="bl-due-part"><i class="fa fa-exclamation-circle"></i> ' + esc(d2(iss.dd)) + '</span> ' +
+                '<span class="bl-due-part">(' + esc(fmt(L.overdue_d, -days)) + ')</span></span>';
+        }
+        if (!isDone(iss.st) && days <= 3) {
+            return '<span class="bl-due soon"><span class="bl-due-part"><i class="fa fa-clock-o"></i> ' + esc(d2(iss.dd)) + '</span> ' +
+                '<span class="bl-due-part">(' + esc(fmt(L.left_d, days)) + ')</span></span>';
+        }
+        return '<span class="bl-due">' + esc(d2(iss.dd)) + '</span>';
+    }
+    function pbar(pg) {
+        if (pg === null || pg === undefined || pg === '') { return '—'; }
+        // A number, not whatever arrived: it is written into a style and
+        // into the cell, and only a number belongs in either.
+        var n = Number(pg);
+        if (!isFinite(n)) { return '—'; }
+        return '<span class="bl-pbar" style="display:inline-block;width:70px;vertical-align:middle;"><i style="width:' + Math.max(0, Math.min(100, n)) + '%"></i></span>' +
+            ' <small style="color:var(--bl-sub);">' + n + '%</small>';
+    }
+    function starBtn(type, targetType, targetId, count, on, extraCls) {
+        return '<span class="bl-star pp-star' + (on ? ' on' : '') + (extraCls ? ' ' + extraCls : '') +
+            '" data-star-type="' + esc(type) + '" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' +
+            '<i class="fa ' + (on ? 'fa-star' : 'fa-star-o') + '"></i><span class="ct">' + (count ? ' ' + esc(count) : '') + '</span></span>';
+    }
+    function issueById(id) {
+        var found = null;
+        (D.issues || []).forEach(function (i) { if (String(i.id) === String(id)) { found = i; } });
+        return found;
+    }
+    var toastTimer = null;
+    function toast(message, danger) {
+        var el = document.getElementById('pp-toast');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'pp-toast';
+            document.body.appendChild(el);
+        }
+        el.className = danger ? 'danger' : '';
+        el.textContent = message;
+        el.style.display = 'block';
+        if (toastTimer) { clearTimeout(toastTimer); }
+        toastTimer = setTimeout(function () { el.style.display = 'none'; }, 2600);
+    }
+
+    /* ------------------------------------------------ project head ------ */
+    function renderHead() {
+        var p = D.project;
+        var people = [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, i, a) {
+            return v && a.indexOf(v) === i;
+        });
+        document.getElementById('pp-projhead').innerHTML =
+            '<div class="bl-projicon"><i class="fa fa-folder-open"></i></div>' +
+            '<div class="bl-projinfo"><span class="bl-projname">' + esc(p.name) + '</span>' +
+            (p.key ? '<span class="bl-projkey">' + esc(p.key) + '</span>' : '') +
+            (p.status ? '<span class="bl-pill" style="background:' + ppColor(p.status.c) + ';margin-left:8px;">' + esc(p.status.l) + '</span>' : '') +
+            '<div class="bl-projmeta"><i class="fa fa-calendar" style="margin-left:0;"></i>' +
+            esc(p.start || '—') + ' 〜 ' + esc(p.end || '—') +
+            '<i class="fa fa-user"></i>' + esc(L.role_pm) + ': ' + esc(user(p.manager).n) +
+            (p.note ? '<i class="fa fa-info-circle"></i>' + esc(p.note) : '') + '</div></div>' +
+            '<div class="bl-avatars">' + avlist(people) + '</div>' +
+            // A check that finds nothing changed is silent, which reads exactly
+            // like a check that never ran. The time the data on screen was
+            // fetched is what tells the two apart.
+            '<span class="pp-freshat">' + esc(String(L.rf_at).replace(':time', String(D.now || ''))) + '</span>' +
+            '<a class="bl-btn-sub pp-refresh" href="javascript:void(0);" title="' + esc(L.rf_button) + '">' +
+            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a>';
+    }
+
+    /* ------------------------------------------------ home -------------- */
+    function renderHome() {
+        var open = (D.issues || []).filter(function (i) { return !isDone(i.st); });
+        var overdue = open.filter(function (i) { return i.dd && daysTo(i.dd) < 0; });
+        var soon = open.filter(function (i) { return i.dd && daysTo(i.dd) >= 0 && daysTo(i.dd) <= 3; });
+        document.getElementById('pp-stats').innerHTML =
+            '<div class="bl-stat"><div class="n">' + D.issues.length + '</div><div class="l"><i class="fa fa-tasks"></i>' + L.stat_all + '</div></div>' +
+            '<div class="bl-stat"><div class="n">' + open.length + '</div><div class="l"><i class="fa fa-folder-open-o"></i>' + L.stat_open + '</div></div>' +
+            '<div class="bl-stat' + (overdue.length ? ' warn' : '') + '"><div class="n">' + overdue.length + '</div><div class="l"><i class="fa fa-exclamation-circle"></i>' + L.stat_overdue + '</div></div>' +
+            '<div class="bl-stat"><div class="n">' + soon.length + '</div><div class="l"><i class="fa fa-clock-o"></i>' + L.stat_soon + '</div></div>';
+
+        var stack = '', leg = '';
+        (D.statuses || []).forEach(function (s) {
+            var n = D.issues.filter(function (i) { return i.st === s.k; }).length;
+            if (n) { stack += '<i style="flex:' + n + ';background:' + ppColor(s.c) + '" title="' + esc(s.l) + ' ' + n + '"></i>'; }
+            leg += '<span><span class="sw" style="background:' + ppColor(s.c) + '"></span>' + esc(s.l) + ' <b>' + n + '</b>' + L.unit_cnt + '</span>';
+        });
+        document.getElementById('pp-stack').innerHTML = stack;
+        document.getElementById('pp-leg').innerHTML = leg;
+
+        var ms = '';
+        Object.keys(D.milestones || {}).forEach(function (k) {
+            var m = D.milestones[k];
+            var all = D.issues.filter(function (i) { return i.ms === k; });
+            if (!all.length) { return; }
+            var done = all.filter(function (i) { return isDone(i.st); });
+            var pct = Math.round(done.length * 100 / all.length);
+            var left = m.due ? daysTo(m.due) : null;
+            ms += '<div class="row"><span class="nm"><i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:6px;"></i>' + esc(m.l) + '</span>' +
+                '<span class="bl-pbar"><i style="width:' + pct + '%"></i></span>' +
+                '<span class="cnt">' + done.length + '/' + all.length + esc(L.unit_cnt) +
+                (left !== null ? esc(L.sep_dot + fmt(L.ms_left, left)) : '') + '</span></div>';
+        });
+        document.getElementById('pp-ms').innerHTML = ms || ('<div style="color:var(--bl-faint);">' + esc(L.empty) + '</div>');
+
+        var p = D.project;
+        var members = '<div class="bl-member">' + avname(p.manager) + '<span class="role">' + L.role_pm + '</span></div>';
+        (p.members || []).forEach(function (u) {
+            if (u === p.manager) { return; }
+            members += '<div class="bl-member">' + avname(u) + '<span class="role">' + L.role_member + '</span></div>';
+        });
+        (p.viewers || []).forEach(function (u) {
+            members += '<div class="bl-member">' + avname(u) + '<span class="role">' + L.role_viewer + '</span></div>';
+        });
+        document.getElementById('pp-members').innerHTML = members;
+
+        document.getElementById('pp-feed').innerHTML = (D.feed || []).map(function (f) {
+            var ic = own(FEED_IC, f.tp) || FEED_IC.chg;
+            var link;
+            if (f.kind === 'issue') {
+                link = '<a class="bl-issuelink" href="#issue-' + esc(f.id) + '">' + esc(f.key) + ' ' + esc(f.label) + '</a>';
+            } else if (f.kind === 'wiki') {
+                link = '<a class="bl-issuelink pp-wikilink" href="#wiki" data-wiki="' + esc(f.id) + '">' + esc(f.label) + '</a>';
+            } else if (f.kind === 'file') {
+                link = '<a class="bl-issuelink" href="#files">' + esc(f.label) + '</a>';
+            } else {
+                link = esc(f.label);
+            }
+            var verb = own({ add: L.feed_add, chg: L.feed_chg, cmt: L.feed_cmt, file: L.feed_file, wiki: L.feed_wiki, wiki_add: L.feed_wiki_add }, f.tp) || L.feed_chg;
+            if (f.kind === 'project') { verb = L.feed_project; }
+            return '<div class="item"><span class="ic" style="background:' + ppColor(ic.c) + '"><i class="fa ' + ic.i + '"></i></span>' +
+                '<div><div class="tx"><span class="who">' + esc(user(f.by).n) + '</span> ' + fmt(esc(verb), link) +
+                (f.extra ? '<span class="ex">' + esc(f.extra) + '</span>' : '') + '</div>' +
+                '<div class="tm"><i class="fa fa-clock-o"></i> ' + esc(f.at) + '</div></div></div>';
+        }).join('') || ('<div style="color:var(--bl-faint);">' + esc(L.empty) + '</div>');
+    }
+
+    /* ------------------------------------------------ issues ------------ */
+    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', q: '' };
+    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'kw'];
+    // These were per browser, so a shared machine handed the next person the
+    // last one's filters and saved conditions. They are per person now. What
+    // is still under the old key is taken over once, by whoever opens the
+    // project first, and the old key goes - a filter is not worth the
+    // surprise of losing every saved condition on the day this shipped.
+    function userKey(kind) {
+        var key = 'pmportal.' + kind + '.u' + String(D.me || 0) + '.' + D.project.id;
+        try {
+            var legacy = 'pmportal.' + kind + '.' + D.project.id;
+            var old = localStorage.getItem(legacy);
+            if (old !== null) {
+                if (localStorage.getItem(key) === null) { localStorage.setItem(key, old); }
+                localStorage.removeItem(legacy);
+            }
+        } catch (e) { /* storage unavailable: nothing to carry over */ }
+
+        return key;
+    }
+    var FILTER_KEY = userKey('f');
+    var SORT_KEY = userKey('s');
+    var PAGE_KEY = userKey('ps');
+    var SAVED_KEY = userKey('sf');
+    var SAVED_MAX = 20;
+
+    // Tree view of the issue list (ISS00253). Off unless the user turns it
+    // on, so the flat list is what everyone keeps seeing by default. Both the
+    // switch and the folded parents are per person and per project.
+    var TREE_KEY = userKey('tr');
+    var TREE_FOLD_KEY = userKey('tc');
+    var TREE_ON = false;
+    var TREE_FOLD = {};
+    // the tree switch also follows the person to the next project unless this
+    // project has its own setting (snoro 2026-11-18)
+    var TREE_LAST_KEY = 'pmportal.trlast.u' + String(D.me || 0);
+    try {
+        var treeOwn = localStorage.getItem(TREE_KEY);
+        TREE_ON = (treeOwn !== null ? treeOwn : localStorage.getItem(TREE_LAST_KEY)) === '1';
+        var savedFold = JSON.parse(localStorage.getItem(TREE_FOLD_KEY) || '[]');
+        if (Array.isArray(savedFold)) {
+            savedFold.forEach(function (id) {
+                if (typeof id === 'string' || typeof id === 'number') { TREE_FOLD['i' + id] = true; }
+            });
+        }
+    } catch (e) { /* ignore */ }
+    function treeFolded(id) { return Object.prototype.hasOwnProperty.call(TREE_FOLD, 'i' + id); }
+    function treeSave() {
+        try {
+            if (TREE_ON) { localStorage.setItem(TREE_KEY, '1'); } else { localStorage.removeItem(TREE_KEY); }
+            // Only ids that still exist, so the list cannot grow for ever.
+            var ids = Object.keys(TREE_FOLD).map(function (k) { return k.slice(1); })
+                .filter(function (id) { return !!issueById(id); });
+            if (ids.length) { localStorage.setItem(TREE_FOLD_KEY, JSON.stringify(ids)); }
+            else { localStorage.removeItem(TREE_FOLD_KEY); }
+        } catch (e) { /* ignore */ }
+    }
+    // The given (already filtered and sorted) list, re-ordered so children
+    // sit under their parent. Returns [{i, depth, n}] where n is the number
+    // of direct children placed under the row. A child whose parent is not in
+    // the list (filtered out, or the id does not exist) is a top-level row;
+    // rows caught in a parent cycle are put at top level too, so nothing is
+    // ever dropped and nothing can loop. Siblings keep the order of the list
+    // they came in, which is the current sort. Unless `full`, the rows under
+    // a folded parent are left out.
+    function treeRows(list, full) {
+        var has = Object.prototype.hasOwnProperty;
+        var ids = {}, kids = {}, roots = [];
+        list.forEach(function (i) { ids['i' + i.id] = true; });
+        list.forEach(function (i) {
+            var p = (i.parent === null || i.parent === undefined) ? '' : String(i.parent);
+            if (p !== '' && p !== String(i.id) && has.call(ids, 'i' + p)) {
+                (kids['i' + p] = kids['i' + p] || []).push(i);
+            } else {
+                roots.push(i);
+            }
+        });
+        var out = [], seen = {};
+        var walk = function (root) {
+            var stack = [{ i: root, depth: 0, up: null }];
+            while (stack.length) {
+                var cur = stack.pop();
+                var k = 'i' + cur.i.id;
+                if (has.call(seen, k)) { continue; }
+                seen[k] = true;
+                var entry = { i: cur.i, depth: cur.depth, n: 0 };
+                if (cur.up) { cur.up.n++; }
+                out.push(entry);
+                var ch = has.call(kids, k) ? kids[k] : [];
+                for (var c = ch.length - 1; c >= 0; c--) {
+                    stack.push({ i: ch[c], depth: cur.depth + 1, up: entry });
+                }
+            }
+        };
+        roots.forEach(walk);
+        // Whatever is left has a parent chain that never reaches a root: a cycle.
+        list.forEach(function (i) { if (!has.call(seen, 'i' + i.id)) { walk(i); } });
+        if (full) { return out; }
+
+        var vis = [], hide = -1;
+        out.forEach(function (e) {
+            if (hide >= 0 && e.depth > hide) { return; }
+            hide = (e.n > 0 && treeFolded(e.i.id)) ? e.depth : -1;
+            vis.push(e);
+        });
+
+        return vis;
+    }
+    function syncTreeControls(parents) {
+        var btn = document.getElementById('pp-tree-btn');
+        if (btn) {
+            btn.classList.toggle('active', TREE_ON);
+            btn.setAttribute('aria-pressed', TREE_ON ? 'true' : 'false');
+        }
+        ['pp-tree-open', 'pp-tree-close'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) { el.hidden = !TREE_ON || !parents; }
+        });
+    }
+
+    // Whether the tick column and the bulk bar exist at all. Table level, so
+    // a reader is not offered a control that could only ever be refused; the
+    // server still checks every row on its own when the edit is applied.
+    var BULK_ON = !!(D.can && D.can.issue_edit);
+
+    // Whether this user may file an issue here at all - the issue table's
+    // create rule and the project's own, the same pair the save checks.
+    // Every way into the create form (課題の追加, the a key, #new, 複製,
+    // 子課題の追加) is offered only when it is true.
+    var CAN_ADD_ISSUE = !!(D.can && D.can.issue_create);
+
+    var QCHIPS = [
+        { k: 'mine', l: 'f_mine', i: 'fa-user-o', t: function (i) {
+            return !!D.me && i.as.map(String).indexOf(String(D.me)) >= 0;
+        } },
+        { k: 'overdue', l: 'q_overdue', i: 'fa-exclamation-circle', warn: true, t: function (i) {
+            return !isDone(i.st) && !!i.dd && daysTo(i.dd) < 0;
+        } },
+        { k: 'soon', l: 'q_soon', i: 'fa-clock-o', t: function (i) {
+            if (isDone(i.st) || !i.dd) { return false; }
+            var d = daysTo(i.dd);
+            return d >= 0 && d <= 1;
+        } },
+        { k: 'created', l: 'q_created', i: 'fa-pencil', t: function (i) {
+            return !!D.me && String(i.by) === String(D.me);
+        } },
+        { k: 'watch', l: 'q_watch', i: 'fa-eye', t: function (i) { return !!i.my_watch; } },
+        { k: 'unread', l: 'q_unread', i: 'fa-envelope', t: function (i) { return !!i.unread; } }
+    ];
+    function qchipTest(key) {
+        for (var n = 0; n < QCHIPS.length; n++) {
+            if (QCHIPS[n].k === key) { return QCHIPS[n].t; }
+        }
+
+        return null;
+    }
+
+    // Paging. The whole project is in memory either way, so this is about the
+    // dom and about the reader: three thousand rows is three thousand nodes
+    // the browser lays out on every keystroke, and a list nobody can get to
+    // the bottom of.
+    var PAGE_SIZES = [20, 50, 100, 0];
+    var PAGE = { size: 50, no: 1 };
+    try {
+        var savedSize = parseInt(localStorage.getItem(PAGE_KEY), 10);
+        if (PAGE_SIZES.indexOf(savedSize) >= 0) { PAGE.size = savedSize; }
+    } catch (e) { /* ignore */ }
+
+    // Ticked rows, by id. Cleared whenever the list underneath changes: a
+    // selection that survived a filter change would apply an edit to rows the
+    // user can no longer see, which is the one thing a bulk edit must never
+    // do.
+    var SEL = {};
+    function selIds() { return Object.keys(SEL); }
+    function clearSelection() { SEL = {}; }
+
+    // Every filter, sort or page-size change goes through here, so the page
+    // number and the selection can never be left describing the old list.
+    function afterFilterChange() {
+        PAGE.no = 1;
+        clearSelection();
+        renderIssues();
+        filterToUrl();
+        rememberLastFilter();
+    }
+    // The last filter and sort used anywhere, per person, across projects
+    // (snoro 2026-11-18: moving to another project reset the filters). A
+    // project with its own saved default ("次回もこの条件で開く") keeps that.
+    var FILTER_LAST_KEY = 'pmportal.flast.u' + String(D.me || 0);
+    function rememberLastFilter() {
+        try { localStorage.setItem(FILTER_LAST_KEY, JSON.stringify({ f: FILTER, s: SORT })); } catch (e) { /* ignore */ }
+    }
+    // Only what means the same in every project is carried over: status ids,
+    // types, milestones and categories are per project, so a value from
+    // another project is kept only if this project has it too.
+    function carriedFilterValue(k, v) {
+        if (k === 'st') { return (v === '!done' || own(ST, v)) ? v : ''; }
+        if (k === 'ty') { return own(D.types, v) ? v : ''; }
+        if (k === 'ms') { return own(D.milestones, v) ? v : ''; }
+        if (k === 'cat') { return own(D.categories, v) ? v : ''; }
+        if (k === 'pr') { return own(D.priorities, v) ? v : ''; }
+        return v;
+    }
+    try {
+        var saved = JSON.parse(localStorage.getItem(FILTER_KEY) || 'null');
+        // Field by field, and only the fields a filter has: what comes back
+        // out of storage is whatever was put there.
+        if (saved && typeof saved === 'object') {
+            FILTER_FIELDS.forEach(function (k) {
+                var v = own(saved, k);
+                if (typeof v === 'string' || typeof v === 'number') { FILTER[k] = String(v); }
+            });
+        } else {
+            var last = JSON.parse(localStorage.getItem(FILTER_LAST_KEY) || 'null');
+            if (last && typeof last === 'object' && last.f && typeof last.f === 'object') {
+                FILTER_FIELDS.forEach(function (k) {
+                    var v = own(last.f, k);
+                    if (typeof v === 'string' || typeof v === 'number') { FILTER[k] = carriedFilterValue(k, String(v)); }
+                });
+            }
+        }
+    } catch (e) { /* ignore */ }
+
+    // The order was fixed in code - due date, ascending - and the caret drawn
+    // beside that header was a picture of a sort the table could not do. Every
+    // column is live now. The default is the old order, so a link taken before
+    // this still opens the list the way its sender saw it.
+    var SORT_DEF = { by: 'dd', dir: 'asc' };
+    var SORT = { by: SORT_DEF.by, dir: SORT_DEF.dir };
+
+    // A japanese list sorted with < compares code points, which puts 送 before
+    // 開 and reads as no order at all. Intl does the collation the reader
+    // expects; the fallback is only there for a browser that has none.
+    var COLL = (window.Intl && Intl.Collator) ? new Intl.Collator('ja') : null;
+    function cmpText(a, b) {
+        if (COLL) { return COLL.compare(a, b); }
+        return a < b ? -1 : (a > b ? 1 : 0);
+    }
+
+    // Where an option sits in the project's own list. JSON hands a map with
+    // numeric keys back renumbered into ascending order, so a row-backed
+    // status or priority cannot be read off the key order - the server sends
+    // the ordinal with each entry instead.
+    function metaRank(map, key) {
+        var o = own(map, key);
+        return (o && typeof o.o === 'number') ? o.o : Infinity;
+    }
+    function metaKeys(map) {
+        return Object.keys(map || {}).sort(function (a, b) {
+            var x = metaRank(map, a), y = metaRank(map, b);
+            return x === y ? cmpText(String(a), String(b)) : (x < y ? -1 : 1);
+        });
+    }
+    var ST_RANK = {};
+    (D.statuses || []).forEach(function (s, n) { ST_RANK[s.k] = n; });
+
+    // A milestone has no ordinal of its own; it is due on a date, and the ones
+    // with no date belong after the ones that have one. \uffff sorts above any
+    // digit, so one string says both without a second comparison.
+    function msSortKey(id) {
+        var m = own(D.milestones, id);
+        if (!m) { return ''; }
+        return (m.due || '\uffff') + '\u0000' + String(m.l || '');
+    }
+
+    // What a cell is worth when the table is sorted on its column, and whether
+    // that value is text a reader would want collated.
+    var SORT_COLS = {
+        ty: { t: false, v: function (i) { return metaRank(D.types, i.ty); } },
+        // The key is <project>-<row id> everywhere in this project, so the id
+        // is the same order without the string parsing.
+        key: { t: false, v: function (i) { return Number(i.id); } },
+        subject: { t: true, v: function (i) { return String(i.subject || ''); } },
+        as: { t: true, v: function (i) { return (i.as && i.as.length) ? String(user(i.as[0]).n) : ''; } },
+        st: { t: false, v: function (i) { var r = own(ST_RANK, i.st); return r == null ? Infinity : r; } },
+        pr: { t: false, v: function (i) { return metaRank(D.priorities, i.pr); } },
+        ms: { t: true, v: function (i) { return msSortKey(i.ms); } },
+        cat: { t: true, v: function (i) { return (i.cat && i.cat.length) ? String(own(D.categories, i.cat[0]) || '') : ''; } },
+        sd: { t: false, v: function (i) { return i.sd || ''; } },
+        dd: { t: false, v: function (i) { return i.dd || ''; } },
+        pg: { t: false, v: function (i) { return (i.pg === null || i.pg === undefined) ? null : Number(i.pg); } },
+        up: { t: false, v: function (i) { return String(i.up || ''); } }
+    };
+    function sortBlank(v) {
+        if (v === '' || v === null || v === undefined) { return true; }
+        return typeof v === 'number' && !isFinite(v);
+    }
+    function sortCmp() {
+        var col = own(SORT_COLS, SORT.by) || SORT_COLS[SORT_DEF.by];
+        var sign = SORT.dir === 'desc' ? -1 : 1;
+        return function (a, b) {
+            var x = col.v(a), y = col.v(b);
+            // An empty cell has no place in either order, so it goes last
+            // whichever way the arrow points: a descending sort that opened
+            // with forty blank rows would bury the answer being looked for.
+            var ex = sortBlank(x), ey = sortBlank(y);
+            if (ex !== ey) { return ex ? 1 : -1; }
+            if (!ex) {
+                if (col.t) {
+                    var c = cmpText(String(x), String(y));
+                    if (c !== 0) { return c * sign; }
+                } else if (typeof x === 'number' || typeof y === 'number') {
+                    if (Number(x) !== Number(y)) { return (Number(x) < Number(y) ? -1 : 1) * sign; }
+                } else if (x !== y) {
+                    return (x < y ? -1 : 1) * sign;
+                }
+            }
+            // Equal in the sorted column: the id decides, so the order is the
+            // same on every render and rows do not swap under the cursor.
+            return a.id - b.id;
+        };
+    }
+    function sortActive() {
+        return SORT.by !== SORT_DEF.by || SORT.dir !== SORT_DEF.dir;
+    }
+    try {
+        var savedSort = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+        // no default of this project's own: the last sort used anywhere
+        if (!savedSort) {
+            var lastSort = JSON.parse(localStorage.getItem(FILTER_LAST_KEY) || 'null');
+            savedSort = lastSort && lastSort.s && typeof lastSort.s === 'object' ? lastSort.s : null;
+        }
+        // Checked against the live table rather than trusted: a column that
+        // existed when this was saved may be gone from the project now.
+        if (savedSort && own(SORT_COLS, savedSort.by)) {
+            SORT.by = savedSort.by;
+            SORT.dir = savedSort.dir === 'desc' ? 'desc' : 'asc';
+        }
+    } catch (e) { /* ignore */ }
+
+    // The filter used to live only in localStorage. That made a filtered list
+    // impossible to send to anyone - the link they got showed them something
+    // else entirely - impossible to bookmark twice for the same project, and
+    // invisible: a filter set last week came back today with an almost empty
+    // list and nothing in the URL to explain it. It now rides in the hash as
+    //   #issues?st=<status>&as=<user>&ty=<type>&pr=<priority>&ms=<milestone>
+    //          &cat=<cat>&kw=<text>&so=<column>&sd=<asc|desc>
+    // with localStorage kept on as the personal default for a bare #issues.
+    // so/sd are written only while the sort differs from the default, so an
+    // ordinary link is as short as it was before the table could sort.
+    function filterToQuery() {
+        var parts = FILTER_FIELDS.filter(function (k) {
+            return FILTER[k] !== '' && FILTER[k] != null;
+        }).map(function (k) {
+            return k + '=' + encodeURIComponent(FILTER[k]);
+        });
+        // The sort rides along, and is left out while it matches the default
+        // so an ordinary link stays as short as it was before it could sort.
+        if (sortActive()) {
+            parts.push('so=' + encodeURIComponent(SORT.by));
+            parts.push('sd=' + (SORT.dir === 'desc' ? 'desc' : 'asc'));
+        }
+        // Page one is the same list with or without the parameter, so a link
+        // to the top of a list stays as plain as it ever was.
+        if (PAGE.no > 1) { parts.push('p=' + PAGE.no); }
+
+        return parts.join('&');
+    }
+    // A field the query does not mention is off, not unmentioned - otherwise a
+    // shared link would silently inherit whatever the recipient had set.
+    function filterFromQuery(q) {
+        FILTER_FIELDS.forEach(function (k) {
+            FILTER[k] = Object.prototype.hasOwnProperty.call(q, k) ? String(q[k]) : '';
+        });
+        var by = String(q.so || '');
+        // Looked up as the table's own column only: a name off the address
+        // bar such as "toString" is truthy on any object and has no value
+        // reader, which used to take the list and the detail screen down.
+        if (own(SORT_COLS, by)) {
+            SORT.by = by;
+            SORT.dir = String(q.sd || '') === 'desc' ? 'desc' : 'asc';
+        } else {
+            SORT.by = SORT_DEF.by;
+            SORT.dir = SORT_DEF.dir;
+        }
+        var page = parseInt(q.p, 10);
+        PAGE.no = (page > 1) ? page : 1;
+        // A link describes a different list from the one on screen, so
+        // whatever was ticked here belongs to neither.
+        clearSelection();
+    }
+    // replaceState, not pushState: the list filters as you type, and a history
+    // entry per keystroke would bury the back button.
+    function filterToUrl() {
+        if (!history.replaceState) { return; }
+        if (parseHash().path !== 'issues') { return; }
+        var q = filterToQuery();
+        history.replaceState(null, '', '#issues' + (q ? '?' + q : ''));
+    }
+
+    // #issue-4821 said nothing about what it pointed at, and 4821 is the global
+    // row id, so the link also died the moment a project was exported and
+    // re-imported somewhere else. The key the rest of the UI already shows -
+    // ITSM-4821 - says both project and ticket. The numeric form still resolves
+    // so bookmarks taken before this keep working.
+    //
+    // A project with no key of its own makes issueKey() fall back to '#-<id>',
+    // and a '#' inside a fragment truncates the URL - stay numeric there.
+    function keyRef(i) {
+        var key = i && i.key ? String(i.key) : '';
+        return (key && key.indexOf('#') < 0) ? key : String(i ? i.id : '');
+    }
+    function issueHash(id) {
+        var i = issueById(id);
+        return 'issue-' + (i ? keyRef(i) : String(id));
+    }
+    // Returns the row id, or null when the reference names nothing this project
+    // is carrying - a stale bookmark, or a link from a different project.
+    function resolveIssueRef(ref) {
+        if (/^\d+$/.test(ref)) { return String(ref); }
+        var want = String(ref).toUpperCase();
+        var found = null;
+        (D.issues || []).forEach(function (i) {
+            if (String(i.key).toUpperCase() === want) { found = i; }
+        });
+        return found ? String(found.id) : null;
+    }
+
+    // The number at the end of a key - "292" out of "PORTAL-292". Written on
+    // its own after a '#' by anyone who is not looking at the key itself.
+    function issueByKeyNum(num) {
+        var want = '-' + String(num);
+        var found = null;
+        (D.issues || []).forEach(function (i) {
+            if (String(i.key || '').slice(-want.length) === want) { found = i; }
+        });
+
+        return found;
+    }
+
+    // ISS00255: "完了以外" - every issue except those in the project's final
+    // status: the last status (in the project's order) that counts as done.
+    // With 未対応・処理中・レビュー中・処理済み・完了 that hides only 完了, so
+    // 処理済み (also a done status) stays visible, as asked. Works whatever the
+    // status ids are, since each project has its own.
+    var ST_NOT_DONE = '!done';
+    function finalDoneStatus() {
+        var last = '';
+        (D.statuses || []).forEach(function (s) { if (s.done) { last = s.k; } });
+        return last;
+    }
+    function stMatch(st, want) {
+        if (!want) { return true; }
+        if (want === ST_NOT_DONE) {
+            var fin = finalDoneStatus();
+            return fin ? st !== fin : !isDone(st);
+        }
+        return st === want;
+    }
+
+    function renderIssueFilters() {
+        var tabs = '<button class="bl-sttab' + (FILTER.st === '' ? ' active' : '') + '" data-st="">' +
+            esc(L.f_all) + '<span class="ct">' + D.issues.length + '</span></button>';
+        tabs += '<button class="bl-sttab' + (FILTER.st === ST_NOT_DONE ? ' active' : '') + '" data-st="' + ST_NOT_DONE + '">' +
+            esc(L.f_not_done || '完了以外') + '<span class="ct">' +
+            D.issues.filter(function (i) { return stMatch(i.st, ST_NOT_DONE); }).length + '</span></button>';
+        (D.statuses || []).forEach(function (s) {
+            var n = D.issues.filter(function (i) { return i.st === s.k; }).length;
+            tabs += '<button class="bl-sttab' + (FILTER.st === s.k ? ' active' : '') + '" data-st="' + esc(s.k) + '">' +
+                '<span class="dot" style="background:' + ppColor(s.c) + '"></span>' + esc(s.l) + '<span class="ct">' + n + '</span></button>';
+        });
+        document.getElementById('pp-sttabs').innerHTML = tabs;
+
+        var chips = '';
+        QCHIPS.forEach(function (c) {
+            // Counted over the whole project, like the status tabs above -
+            // a count that moved with the other filters would make the row
+            // read as a running total rather than as a set of shortcuts.
+            var n = (D.issues || []).filter(c.t).length;
+            var on = FILTER.q === c.k;
+            chips += '<button type="button" class="bl-qchip' + (c.warn ? ' warn' : '') + (on ? ' active' : '') +
+                '" data-q="' + c.k + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+                '<i class="fa ' + c.i + '"></i>' + esc(L[c.l]) + '<span class="ct">' + n + '</span></button>';
+        });
+        document.getElementById('pp-qchips').innerHTML = chips;
+
+        var selAs = document.getElementById('pp-f-as');
+        if (selAs.options.length <= 1) {
+            // Every dropdown here used to be built straight off Object.keys,
+            // which on a row-backed install is row-id order - arbitrary to
+            // whoever reads it. Each list is now put in the order it is meant
+            // to be read in: people and categories by name, types and
+            // priorities by the project's own option order, milestones by when
+            // they are due.
+            Object.keys(D.users || {}).sort(function (a, b) {
+                return cmpText(user(a).n, user(b).n);
+            }).forEach(function (u) { selAs.add(new Option(user(u).n, u)); });
+            // An admin reading a project they are not a member of is in no
+            // user list, and 自分の課題 would then set a value this dropdown
+            // has no option for - which silently resets it to すべて and leaves
+            // the two controls describing different lists.
+            var meStr = String(D.me || '');
+            if (meStr && !(D.users || {})[meStr]) { selAs.add(new Option(L.f_mine, meStr)); }
+
+            metaKeys(D.types).forEach(function (t) { document.getElementById('pp-f-ty').add(new Option(D.types[t].l, t)); });
+            metaKeys(D.priorities).forEach(function (p) { document.getElementById('pp-f-pr').add(new Option(D.priorities[p].l, p)); });
+            Object.keys(D.milestones || {}).sort(function (a, b) {
+                return cmpText(msSortKey(a), msSortKey(b));
+            }).forEach(function (m) { document.getElementById('pp-f-ms').add(new Option(D.milestones[m].l, m)); });
+            Object.keys(D.categories || {}).sort(function (a, b) {
+                return cmpText(String(D.categories[a]), String(D.categories[b]));
+            }).forEach(function (c) { document.getElementById('pp-f-cat').add(new Option(D.categories[c], c)); });
+        }
+        syncFilterControls();
+    }
+
+    // Which column carries the arrow, and what a click on each one will do.
+    function renderSortHead() {
+        var head = document.getElementById('pp-issue-head');
+        if (!head) { return; }
+        head.querySelectorAll('th[data-sort]').forEach(function (th) {
+            // The label is stashed on the first pass: the arrow is drawn
+            // inside the cell, so reading the text back later would pick it up
+            // too and the header would grow an arrow per render.
+            var name = th.getAttribute('data-name');
+            if (name === null) {
+                name = th.textContent.trim();
+                th.setAttribute('data-name', name);
+                th.setAttribute('role', 'button');
+                th.setAttribute('tabindex', '0');
+            }
+            var on = th.getAttribute('data-sort') === SORT.by;
+            var next = (on && SORT.dir === 'asc') ? 'desc' : 'asc';
+            th.className = on ? 'sorted' : '';
+            th.setAttribute('aria-sort', on ? (SORT.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+            th.title = String(next === 'desc' ? L.sort_desc : L.sort_asc).replace(':name', name);
+            th.innerHTML = esc(name) +
+                '<i class="fa ar ' + (on && SORT.dir === 'desc' ? 'fa-caret-down' : 'fa-caret-up') + '"></i>';
+        });
+    }
+    // Push FILTER back into the controls. This has to run on every render now,
+    // not only the first: a filter can arrive from the URL long after the
+    // controls exist. Each value is written only when it really differs -
+    // assigning an identical string to a focused input moves the caret in some
+    // browsers, and this runs while the user is typing in the keyword box.
+    function setVal(id, v) {
+        var el = document.getElementById(id);
+        if (el && el.value !== v) { el.value = v; }
+    }
+    function syncFilterControls() {
+        setVal('pp-f-kw', FILTER.kw);
+        setVal('pp-f-as', FILTER.as);
+        setVal('pp-f-ty', FILTER.ty);
+        setVal('pp-f-pr', FILTER.pr);
+        setVal('pp-f-ms', FILTER.ms);
+        setVal('pp-f-cat', FILTER.cat);
+        setVal('pp-jump', FILTER.kw);
+        setVal('pp-pg-size', String(PAGE.size));
+        // Offered only when there is something to clear, so the row does not
+        // carry a permanently dead link.
+        var clear = document.getElementById('pp-f-clear');
+        if (clear) { clear.hidden = !anyFilter(); }
+    }
+    function anyFilter() {
+        if (sortActive()) { return true; }
+        for (var n = 0; n < FILTER_FIELDS.length; n++) {
+            var v = FILTER[FILTER_FIELDS[n]];
+            if (v !== '' && v != null) { return true; }
+        }
+
+        return false;
+    }
+
+    // The list exactly as the grid shows it - same sort, same filters. The
+    // detail screen walks this, so "the next issue" means the next row the
+    // user can see, not the next id in the table.
+    function filteredIssues() {
+        // Filtered first, sorted after. This runs on every keystroke in the
+        // keyword box, and on a big project sorting three thousand rows to
+        // then throw all but thirty of them away was the whole cost of typing.
+        var kw = FILTER.kw ? FILTER.kw.toLowerCase() : '';
+        var quick = FILTER.q ? qchipTest(FILTER.q) : null;
+
+        return (D.issues || []).filter(function (i) {
+            if (quick && !quick(i)) { return false; }
+            if (FILTER.st && !stMatch(i.st, FILTER.st)) { return false; }
+            if (FILTER.as && i.as.map(String).indexOf(String(FILTER.as)) < 0) { return false; }
+            if (FILTER.ty && i.ty !== FILTER.ty) { return false; }
+            if (FILTER.pr && String(i.pr) !== String(FILTER.pr)) { return false; }
+            if (FILTER.ms && i.ms !== FILTER.ms) { return false; }
+            if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
+            if (kw && (i.key + ' ' + i.subject + ' ' + (i.sub || '')).toLowerCase().indexOf(kw) < 0) { return false; }
+
+            return true;
+        }).sort(sortCmp());
+    }
+    function renderIssues() {
+        renderIssueFilters();
+        renderSortHead();
+
+        var matched = filteredIssues();
+        // Tree mode pages over the rows that are actually listed (folded
+        // children are not), so the dom stays as bounded as in the flat list.
+        var parents = 0;
+        var all = matched;
+        if (TREE_ON) {
+            all = treeRows(matched, false);
+            all.forEach(function (e) { if (e.n > 0) { parents++; } });
+        }
+        syncTreeControls(parents);
+        var total = all.length;
+        var size = PAGE.size > 0 ? PAGE.size : total;
+        var pages = size > 0 ? Math.max(1, Math.ceil(total / size)) : 1;
+        // Clamped rather than trusted: the page can be arrived at from a link,
+        // and the list it was written against may since have got shorter.
+        if (PAGE.no > pages) { PAGE.no = pages; }
+        if (PAGE.no < 1) { PAGE.no = 1; }
+        var from = size > 0 ? (PAGE.no - 1) * size : 0;
+        var page = size > 0 ? all.slice(from, from + size) : all;
+
+        var head = document.getElementById('pp-chk-cell');
+        if (head) { head.hidden = !BULK_ON; }
+        // tree mode: the ▼/▶ toggles get a column of their own at the left
+        // (snoro 2026-11-18: inside the subject they were hard to read)
+        // tree mode only: a narrow column left of 件名 holds the indent and
+        // the ▼/▶ or └ (snoro 2026-11-18), so the subject cell stays clean
+        var tHead = document.getElementById('pp-tcol-head');
+        if (tHead) { tHead.hidden = !TREE_ON; }
+
+        var onPage = {};
+        if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
+
+        var rows = '', shown = 0;
+        page.forEach(function (item) {
+            shown++;
+            var i = TREE_ON ? item.i : item;
+            var parent = i.parent && issueById(i.parent)
+                ? '<span class="parent">' + esc(issueById(i.parent).key) + ' &gt;</span>' : '';
+            var tgl = '', ind = '';
+            if (TREE_ON) {
+                // The "KEY >" prefix is only needed where the parent is not the
+                // row above in the tree: filtered out, or on another page.
+                if (item.depth > 0 && Object.prototype.hasOwnProperty.call(onPage, 'i' + i.parent)) { parent = ''; }
+                var folded = treeFolded(i.id);
+                tgl = item.n > 0
+                    ? '<a href="javascript:void(0);" role="button" class="pp-tgl" data-tgl="' + esc(i.id) +
+                        '" aria-expanded="' + (folded ? 'false' : 'true') + '" title="' +
+                        esc(folded ? (L.tree_expand || '開く') : (L.tree_collapse || '閉じる')) + '">' +
+                        (folded ? '▶' : '▼') + '<span class="n">' + item.n + '</span></a>'
+                    : '';
+                // one slot at the indent (snoro 2026-11-18): a parent shows its
+                // ▼/▶ (with the child count) there, a leaf child shows "└"
+                ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;">' +
+                    (tgl || (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '')) + '</span>';
+            }
+            var trCls = (own(SEL, i.id) ? 'sel' : '') + (i.unread ? ' pp-unread' : '') +
+                (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
+                (TREE_ON && item.n > 0 ? ' pp-tpar' : '');
+            var ms = own(D.milestones, i.ms);
+            rows += '<tr data-issue="' + esc(i.id) + '"' + (trCls.trim() ? ' class="' + trCls.trim() + '"' : '') + '>' +
+                (BULK_ON ? '<td class="chk"><input type="checkbox" class="pp-bchk" data-id="' + esc(i.id) + '"' +
+                    (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
+                '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
+                '<td' + edAttr('ty') + '>' + tag(i.ty) + '</td>' +
+                '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a></td>' +
+                // indent/toggle in a fixed slot on the left, subject and 件名サブ
+                // stacked to its right so both lines start at the same place
+                (TREE_ON ? '<td class="pp-tcol">' + ind + '</td>' : '') +
+                '<td class="sub">' + parent + esc(i.subject) +
+                    (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
+                '<td>' + avlist(i.as) + '</td>' +
+                '<td' + edAttr('st') + '>' + pill(i.st) + '</td>' +
+                '<td' + edAttr('pr') + '>' + prio(i.pr) + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('ms') + '>' + esc(ms ? ms.l : '') + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + '</td>' +
+                '<td' + edAttr('dd') + '>' + dueCell(i) + '</td>' +
+                '<td>' + pbar(i.pg) + '</td>' +
+                '<td class="up">' + esc(i.up) + '</td></tr>';
+        });
+        document.getElementById('pp-issue-rows').innerHTML = rows;
+        renderPager(total, from, shown, pages, matched.length);
+        syncBulkBar();
+    }
+
+    // `matched` is how many issues pass the filters; in tree mode `total` is
+    // the listed rows, which is fewer while parents are folded.
+    function renderPager(total, from, shown, pages, matched) {
+        // Two different facts, and the reader wants both: where this page sits
+        // inside the filtered list, and how much of the project that list is.
+        var count = fmt(L.cnt_line, typeof matched === 'number' ? matched : total, D.issues.length);
+        document.getElementById('pp-issue-count').textContent = (total === 0 || pages <= 1)
+            ? count
+            : String(L.pg_range).replace(':from', from + 1).replace(':to', from + shown)
+                .replace(':total', total) + '　' + count;
+
+        var nav = document.getElementById('pp-pg-nav');
+        if (!nav) { return; }
+        if (pages <= 1) { nav.innerHTML = ''; return; }
+        var html = '<button type="button" data-pg="' + (PAGE.no - 1) + '"' +
+            (PAGE.no <= 1 ? ' disabled' : '') + '>' + esc(L.pg_prev) + '</button>';
+        pageNumbers(PAGE.no, pages).forEach(function (n) {
+            if (n === 0) { html += '<span class="gap">…</span>'; return; }
+            html += '<button type="button" data-pg="' + n + '"' + (n === PAGE.no ? ' aria-current="true"' : '') +
+                ' title="' + esc(String(L.pg_page).replace(':no', n)) + '">' + n + '</button>';
+        });
+        html += '<button type="button" data-pg="' + (PAGE.no + 1) + '"' +
+            (PAGE.no >= pages ? ' disabled' : '') + '>' + esc(L.pg_next) + '</button>';
+        nav.innerHTML = html;
+    }
+    // First, last, and the neighbourhood of the current page; 0 stands for the
+    // gap between them. Sixty pages of buttons would be its own kind of
+    // unusable.
+    function pageNumbers(cur, pages) {
+        var out = [];
+        for (var n = 1; n <= pages; n++) {
+            if (n === 1 || n === pages || Math.abs(n - cur) <= 1) {
+                if (out.length && n - out[out.length - 1] > 1) { out.push(0); }
+                out.push(n);
+            }
+        }
+
+        return out;
+    }
+
+    /* ------------------------------------------------ bulk edit --------- */
+    function syncBulkBar() {
+        var bar = document.getElementById('pp-bulk');
+        if (!bar) { return; }
+        var n = selIds().length;
+        bar.hidden = !BULK_ON || n === 0;
+        if (n) {
+            fillBulkSelects();
+            document.getElementById('pp-bulk-n').textContent = String(L.bk_selected).replace(':count', n);
+        }
+        var all = document.getElementById('pp-chk-all');
+        if (all) {
+            // The header box speaks for this page only. Half ticked is a real
+            // third state, and indeterminate is how a checkbox says so.
+            var boxes = [].slice.call(document.querySelectorAll('#pp-issue-rows .pp-bchk'));
+            var ticked = boxes.filter(function (b) { return b.checked; }).length;
+            all.checked = boxes.length > 0 && ticked === boxes.length;
+            all.indeterminate = ticked > 0 && ticked < boxes.length;
+            all.disabled = boxes.length === 0;
+        }
+        bkDisarm();
+    }
+
+    // Built once. Every one of them opens on "leave as is", so an apply with
+    // nothing chosen is refused rather than silently blanking five fields.
+    function fillBulkSelects() {
+        var stSel = document.getElementById('pp-bk-st');
+        if (!stSel || stSel.options.length) { return; }
+        var start = function (id, label, clearable) {
+            var sel = document.getElementById(id);
+            sel.add(new Option(label + ': ' + L.bk_keep, ''));
+            if (clearable) { sel.add(new Option(label + ': ' + L.bk_none, '__none__')); }
+            return sel;
+        };
+        var st = start('pp-bk-st', L.col_st, false);
+        (D.statuses || []).forEach(function (s) { st.add(new Option(s.l, s.k)); });
+
+        var as = start('pp-bk-as', L.f_as, true);
+        Object.keys(D.users || {}).sort(function (a, b) {
+            return cmpText(user(a).n, user(b).n);
+        }).forEach(function (u) { as.add(new Option(user(u).n, u)); });
+
+        var ty = start('pp-bk-ty', L.f_ty, false);
+        metaKeys(D.types).forEach(function (k) { ty.add(new Option(D.types[k].l, k)); });
+
+        var pr = start('pp-bk-pr', L.f_pr, false);
+        metaKeys(D.priorities).forEach(function (k) { pr.add(new Option(D.priorities[k].l, k)); });
+
+        var ms = start('pp-bk-ms', L.f_ms, true);
+        Object.keys(D.milestones || {}).sort(function (a, b) {
+            return cmpText(msSortKey(a), msSortKey(b));
+        }).forEach(function (k) { ms.add(new Option(D.milestones[k].l, k)); });
+    }
+
+    // Only the boxes the user moved. '__none__' is how the two clearable
+    // fields say "clear it", which is a real edit and not the same as
+    // "leave it". It is sent as '' for the assignees too: jQuery drops an
+    // empty array from a form post altogether, so [] never arrived and the
+    // assignees were never cleared.
+    function bulkSet() {
+        var set = {};
+        [['pp-bk-st', 'st'], ['pp-bk-as', 'as'], ['pp-bk-ty', 'ty'],
+         ['pp-bk-pr', 'pr'], ['pp-bk-ms', 'ms']].forEach(function (def) {
+            var el = document.getElementById(def[0]);
+            if (!el || el.value === '') { return; }
+            if (el.value === '__none__') {
+                set[def[1]] = '';
+                return;
+            }
+            set[def[1]] = def[1] === 'as' ? [el.value] : el.value;
+        });
+
+        return set;
+    }
+    // The rows a bulk edit could not save, each with what stopped it. Kept
+    // on screen until it is closed: a toast is gone before a list of keys
+    // can be read, and these are exactly the rows still saying the old thing.
+    function bkShowFailed(failed) {
+        var box = document.getElementById('pp-bk-failed');
+        if (!box) { return; }
+        box.textContent = '';
+        var list = Array.isArray(failed) ? failed : [];
+        box.hidden = !list.length;
+        if (!list.length) { return; }
+        var head = document.createElement('div');
+        head.className = 'hd';
+        var title = document.createElement('span');
+        title.textContent = String(L.bk_failed_title).replace(':count', list.length);
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'x';
+        close.title = L.m_close;
+        close.setAttribute('aria-label', L.m_close);
+        close.textContent = '×';
+        close.addEventListener('click', function () { bkShowFailed([]); });
+        head.appendChild(title);
+        head.appendChild(close);
+        box.appendChild(head);
+        var ul = document.createElement('ul');
+        list.forEach(function (row) {
+            var li = document.createElement('li');
+            var key = document.createElement('a');
+            key.className = 'bl-key';
+            key.href = '#' + issueHash(row && row.id);
+            key.textContent = String((row && row.key) || ('#' + (row && row.id)));
+            var why = document.createElement('span');
+            why.className = 'why';
+            why.textContent = String((row && row.message) || L.bk_fail);
+            li.appendChild(key);
+            li.appendChild(why);
+            ul.appendChild(li);
+        });
+        box.appendChild(ul);
+    }
+
+    // Two clicks rather than a confirm dialog: this screen never opens a
+    // browser modal, and an edit that lands on forty issues at once deserves
+    // one deliberate second thought.
+    var bkArmed = false;
+    var bkTimer = null;
+    var bkUpdating = false;
+    function bkDisarm() {
+        var btn = document.getElementById('pp-bk-apply');
+        if (!btn) { return; }
+        bkArmed = false;
+        if (bkTimer) { clearTimeout(bkTimer); bkTimer = null; }
+        btn.classList.remove('armed');
+        btn.disabled = bkUpdating;
+        btn.textContent = bkUpdating ? L.bk_working : L.bk_apply;
+    }
+    function bkArm() {
+        var btn = document.getElementById('pp-bk-apply');
+        bkArmed = true;
+        btn.classList.add('armed');
+        btn.textContent = L.bk_again;
+        bkTimer = setTimeout(bkDisarm, 4000);
+    }
+
+    function bulkApply() {
+        if (bkUpdating) { return; }
+        var ids = selIds();
+        var set = bulkSet();
+        if (!ids.length) { return; }
+        if (!Object.keys(set).length) { toast(L.bk_nothing, true); return; }
+        if (!bkArmed) { bkArm(); return; }
+
+        var btn = document.getElementById('pp-bk-apply');
+        if (bkTimer) { clearTimeout(bkTimer); bkTimer = null; }
+        bkArmed = false;
+        bkUpdating = true;
+        btn.disabled = true;
+        btn.classList.remove('armed');
+        btn.textContent = L.bk_working;
+
+        $.ajax({
+            url: D.urls.bulk,
+            type: 'POST',
+            data: { ids: ids, set: set },
+            dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            bkUpdating = false;
+            if (!alive()) { return; }
+            if (!res || !res.ok) { toast(errText(null, res, L.bk_fail), true); bkDisarm(); return; }
+            var failed = Array.isArray(res.failed) ? res.failed : [];
+            var parts = [String(L.bk_done).replace(':count', res.updated)];
+            if (res.denied) { parts.push(String(L.bk_denied).replace(':count', res.denied)); }
+            if (failed.length) { parts.push(String(L.bk_failed).replace(':count', failed.length)); }
+            if (res.missing) { parts.push(String(L.bk_missing).replace(':count', res.missing)); }
+            toast(parts.join(' '), !res.updated || failed.length > 0);
+            bkShowFailed(failed);
+            clearSelection();
+            // The rows on screen are now wrong in exactly the way the edit
+            // was right, so the list is re-read rather than patched.
+            refreshData(true);
+        }).fail(function (xhr) {
+            bkUpdating = false;
+            if (!alive()) { return; }
+            toast(xhrErr(xhr, L.bk_fail), true);
+            bkDisarm();
+        });
+    }
+
+    /* ------------------------------------------------ csv --------------- */
+    function csvCell(v) {
+        var s = (v === null || v === undefined) ? '' : String(v);
+        // A cell opening with =, +, - or @ (or a tab or CR in front of one)
+        // is a formula to a spreadsheet, not a subject line. A leading
+        // apostrophe makes it text again, and excel hides the apostrophe. A
+        // plain negative number is the one '-' cell left as it is, so it
+        // still sorts and sums as a number.
+        if (/^[=+@\t\r]/.test(s) || /^-(?!\d+(\.\d+)?$)/.test(s)) { s = "'" + s; }
+
+        return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+    function exportCsv() {
+        var rows = filteredIssues();
+        if (!rows.length) { toast(L.f_csv_empty, true); return; }
+        var lines = [[L.col_ty, L.col_key, L.col_subject, L.col_as, L.col_st, L.col_pr,
+            L.col_ms, L.col_cat, L.col_sd, L.col_dd, L.col_pg, L.col_up].map(csvCell).join(',')];
+        rows.forEach(function (i) {
+            lines.push([
+                (own(D.types, i.ty) || {}).l || '',
+                i.key,
+                i.subject,
+                (i.as || []).map(function (u) { return user(u).n; }).join(' / '),
+                (own(ST, i.st) || {}).l || '',
+                (own(D.priorities, i.pr) || {}).l || '',
+                (own(D.milestones, i.ms) || {}).l || '',
+                (i.cat || []).map(function (c) { return own(D.categories, c) || ''; }).join(' / '),
+                i.sd || '',
+                i.dd || '',
+                (i.pg === null || i.pg === undefined) ? '' : i.pg,
+                i.up || ''
+            ].map(csvCell).join(','));
+        });
+        // Excel on a japanese windows reads a UTF-8 file with no byte order
+        // mark as shift_jis and turns every label into mojibake, so the mark
+        // is not optional here. CRLF for the same reader.
+        var blob = new Blob(['\ufeff' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = (D.project.key || 'issues') + '-' + D.today + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    /* ------------------------------------------------ saved conditions -- */
+    function savedList() {
+        try {
+            var raw = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+            return Array.isArray(raw) ? raw : [];
+        } catch (e) { return []; }
+    }
+    function savedWrite(list) {
+        try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+    }
+    function renderSaved() {
+        var box = document.getElementById('pp-sf-list');
+        if (!box) { return; }
+        var list = savedList();
+        if (!list.length) {
+            box.innerHTML = '<div class="pp-sf-empty">' + esc(L.sf_none) + '</div>';
+            return;
+        }
+        box.innerHTML = list.map(function (item, n) {
+            return '<div class="pp-sf-item" data-sf="' + n + '" role="button" tabindex="0">' +
+                '<i class="fa fa-filter"></i><span class="nm">' + esc(item.n) + '</span>' +
+                '<a class="rm" href="javascript:void(0);" data-sf-del="' + n + '" title="' + esc(L.sf_del) +
+                '" aria-label="' + esc(L.sf_del) + '"><i class="fa fa-times"></i></a></div>';
+        }).join('');
+    }
+    function savedApply(n) {
+        var item = savedList()[n];
+        if (!item) { return; }
+        FILTER_FIELDS.forEach(function (k) {
+            var v = own(item.f, k);
+            FILTER[k] = (v != null && typeof v !== 'object') ? String(v) : '';
+        });
+        SORT.by = (item.s && own(SORT_COLS, item.s.by)) ? item.s.by : SORT_DEF.by;
+        SORT.dir = (item.s && item.s.dir === 'desc') ? 'desc' : 'asc';
+        sfMenu(false);
+        afterFilterChange();
+    }
+    function savedAdd() {
+        var input = document.getElementById('pp-sf-name');
+        var name = input.value.trim();
+        if (name === '') { toast(L.sf_need_name, true); input.focus(); return; }
+        var list = savedList();
+        var at = -1;
+        list.forEach(function (item, n) { if (item.n === name) { at = n; } });
+        if (at < 0 && list.length >= SAVED_MAX) {
+            toast(String(L.sf_full).replace(':max', SAVED_MAX), true);
+            return;
+        }
+        var entry = { n: name, f: {}, s: { by: SORT.by, dir: SORT.dir } };
+        FILTER_FIELDS.forEach(function (k) { entry.f[k] = FILTER[k]; });
+        // Saving twice under one name corrects that condition rather than
+        // growing a second one spelled the same.
+        if (at >= 0) { list[at] = entry; } else { list.push(entry); }
+        savedWrite(list);
+        input.value = '';
+        renderSaved();
+        toast(String(L.sf_saved).replace(':name', name));
+    }
+    function savedDelete(n) {
+        var list = savedList();
+        var item = list[n];
+        if (!item) { return; }
+        list.splice(n, 1);
+        savedWrite(list);
+        renderSaved();
+        toast(String(L.sf_deleted).replace(':name', item.n));
+    }
+    function sfMenu(open) {
+        var menu = document.getElementById('pp-sf-menu');
+        var btn = document.getElementById('pp-sf-btn');
+        if (!menu) { return; }
+        menu.hidden = !open;
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (!open) { return; }
+        renderSaved();
+        var box = document.getElementById('pp-f-save');
+        try { box.checked = !!localStorage.getItem(FILTER_KEY); } catch (e) { box.checked = false; }
+    }
+
+    /* ------------------------------------------------ staying current --- */
+    // checked: when the cheap question was last asked. path: the screen the
+    // reader was standing on, so the filter rewriting the address bar is not
+    // mistaken for a move between tabs. When the data on screen was fetched is
+    // D.now, which the server stamps into the payload it builds.
+    var LIVE = { stamp: String(D.stamp || ''), busy: false, checked: 0, path: parseHash().path };
+    // How old the last answer has to be before asking again. Returning to the
+    // window fires on every alt-tab and gets the long floor; clicking a tab
+    // inside the page is a deliberate "show me this" and gets the short one.
+    var CHECK_GAP_NAV = 5000;
+    var CHECK_GAP_FOCUS = 30000;
+
+    // seq: the number the request for this payload took when it left (0 for
+    // the page itself). An issue answered by a request that left after it -
+    // a comment posted while the refresh was on its way - is newer than the
+    // payload, and keeps both its detail and its row.
+    function seedDetails(seq) {
+        var held = DET || {};
+        var since = seq || 0;
+        DET = {};
+        Object.keys(D.details || {}).forEach(function (key) {
+            var det = D.details[key];
+            det.issue = det.issue || issueById(key);
+            if (det.issue) { det._seq = since; DET[key] = det; }
+        });
+        Object.keys(held).forEach(function (key) {
+            var old = held[key];
+            if (!old || !(old._seq > since)) { return; }
+            DET[key] = old;
+            (D.issues || []).forEach(function (row, n) {
+                if (old.issue && String(row.id) === String(key)) { D.issues[n] = old.issue; }
+            });
+        });
+    }
+    // Every answer that writes DET is numbered when its request leaves, and
+    // one older than the copy already held is dropped: a prefetch sent before
+    // a comment was posted must not land after the comment's own answer and
+    // take the comment back off the screen. Returns whether it was stored.
+    function detPut(id, det, seq) {
+        var held = own(DET, String(id));
+        var mine = (typeof seq === 'number') ? seq : ++DET_SEQ;
+        if (held && typeof held._seq === 'number' && held._seq > mine) { return false; }
+        det._seq = mine;
+        DET[id] = det;
+
+        return true;
+    }
+    function markStale(on) {
+        var btn = root.querySelector('.pp-refresh');
+        if (!btn) { return; }
+        btn.classList.toggle('stale', !!on);
+        btn.title = on ? L.rf_stale : L.rf_button;
+    }
+    // Anything the reader has started and not finished outranks freshness:
+    // a redraw underneath an open form or a half written comment would throw
+    // away work to deliver news.
+    function safeToRefresh(detailOnly) {
+        if (FM.el && !FM.el.hidden) { return false; }
+        if (NED.el && !NED.el.hidden) { return false; }
+        if (!detailOnly && selIds().length) { return false; }
+        // A comment being rewritten in place is half-written work too, and a
+        // redraw of the timeline is exactly what takes its box away.
+        if (document.querySelector('#pp-d-timeline .cedit')) { return false; }
+        if (currentScreen === 'issue' && (cmtBusy || (QE.editable && Object.keys(qeChanged()).length))) { return false; }
+        var status = document.getElementById('pp-cmt-status');
+        if (currentScreen === 'issue' && status && status.value) { return false; }
+        var box = document.getElementById('pp-cmt-text');
+
+        return !(box && box.value.trim() !== '');
+    }
+    // quiet: the caller has already said something about why the data moved,
+    // so a second toast would only talk over it.
+    // done: called with whether the screen really was rebuilt, for a caller
+    // that has a fallback to fall back to.
+    function refreshData(quiet, done) {
+        if (!(D.urls && D.urls.data)) {
+            if (done) { done(false); }
+            return;
+        }
+        if (LIVE.busy) {
+            // One is already on its way, but it was asked before whatever
+            // this caller has just changed - a bulk edit, a card saved on the
+            // board - so it would land showing the state before. It goes
+            // round once more when it lands instead.
+            LIVE.again = LIVE.again || { quiet: true, dones: [] };
+            if (!quiet) { LIVE.again.quiet = false; }
+            if (done) { LIVE.again.dones.push(done); }
+            return;
+        }
+        LIVE.busy = true;
+        var ok = false;
+        var seq = ++DET_SEQ;
+        var btn = root.querySelector('.pp-refresh');
+        if (btn) { btn.classList.add('busy'); }
+        $.ajax({ url: D.urls.data, dataType: 'json', cache: false })
+            .done(function (res) {
+                if (!alive()) { return; }
+                if (!res || !res.ok || !res.payload) { toast(errText(null, res, L.rf_fail), true); return; }
+                if (!safeToRefresh()) { markStale(true); return; }
+                adoptPayload(res.payload, seq);
+                ok = true;
+                if (!quiet) { toast(L.rf_done); }
+            })
+            .fail(function (xhr) { if (alive()) { toast(xhrErr(xhr, L.rf_fail), true); } })
+            .always(function () {
+                LIVE.busy = false;
+                if (!alive()) { return; }
+                LIVE.checked = Date.now();
+                var b = root.querySelector('.pp-refresh');
+                if (b) { b.classList.remove('busy'); }
+                if (done) { done(ok); }
+                var again = LIVE.again;
+                LIVE.again = null;
+                if (again) {
+                    refreshData(again.quiet, function (fresh) {
+                        again.dones.forEach(function (fn) { fn(fresh); });
+                    });
+                }
+            });
+    }
+    // Swap the data the whole screen is drawn from, then draw it again. The
+    // filter, the sort, the page and the open screen all survive: they live
+    // outside the payload, which is the point of doing it this way rather
+    // than reloading the page.
+    function adoptPayload(next, seq) {
+        D = next;
+        ST = {};
+        ST_RANK = {};
+        (D.statuses || []).forEach(function (s, n) { ST[s.k] = s; ST_RANK[s.k] = n; });
+        LIVE.stamp = String(D.stamp || '');
+        // Something in this project moved, which is the whole reason this
+        // payload was fetched. Every form built from the old one would open
+        // showing what the row used to say - and save that back over it.
+        NED.editFormCache = {};
+        NED.editFormAt = {};
+        NED.createFormCache = {};
+        clearSelection();
+        seedDetails(seq);
+        // The board and the gantt are whole pages the server renders; marking
+        // them unread is enough - they reload the next time their tab is
+        // opened, and right now if that is where the reader is standing.
+        ['board', 'gantt'].forEach(function (kind) {
+            if (!EMBEDS[kind]) { return; }
+            EMBEDS[kind].loaded = false;
+            // One already in flight cannot be called back; it is asked to go
+            // round once more when it lands instead.
+            if (EMBEDS[kind].loading) { EMBEDS[kind].refetch = true; }
+        });
+        // Emptied so the next render fills them from the data that just
+        // arrived; leaving them would keep offering a milestone that has been
+        // deleted and hide the member who joined this morning.
+        ['pp-f-as', 'pp-f-ty', 'pp-f-pr', 'pp-f-ms', 'pp-f-cat'].forEach(function (id) {
+            var sel = document.getElementById(id);
+            while (sel && sel.options.length > 1) { sel.remove(1); }
+        });
+        ['pp-bk-st', 'pp-bk-as', 'pp-bk-ty', 'pp-bk-pr', 'pp-bk-ms'].forEach(function (id) {
+            var sel = document.getElementById(id);
+            if (sel) { sel.innerHTML = ''; }
+        });
+        renderHead();
+        markStale(false);
+        renderHome();
+        renderIssues();
+        renderBurndownSelect();
+        renderWiki(currentWiki);
+        renderFiles();
+        syncUploadUi();
+        var path = parseHash().path;
+        var open = path.match(/^issue-(.+)$/);
+        if (open) {
+            var id = resolveIssueRef(open[1]);
+            if (id) { renderDetail(id); }
+        }
+        if (path === 'board' || path === 'gantt') { ensureEmbed(path); }
+    }
+    // The cheap half of the question. One aggregate on the server, with a
+    // floor underneath it so a burst of navigation asks it once.
+    function checkStamp(gap) {
+        if (LIVE.busy || !(D.urls && D.urls.stamp)) { return; }
+        var now = Date.now();
+        if (now - LIVE.checked < (gap || CHECK_GAP_FOCUS)) { return; }
+        LIVE.checked = now;
+        $.ajax({ url: D.urls.stamp, dataType: 'json', cache: false }).done(function (res) {
+            if (!alive()) { return; }
+            if (!res || !res.ok || String(res.stamp) === LIVE.stamp) { return; }
+            if (safeToRefresh()) { refreshData(false); } else { markStale(true); }
+        });
+    }
+
+    /* ------------------------------------------------ burndown ---------- */
+    function renderBurndownSelect() {
+        var sel = document.getElementById('pp-bd-select');
+        sel.innerHTML = '';
+        (D.burndown || []).forEach(function (b, i) {
+            sel.add(new Option(b.l + (b.start || b.due ? '（' + d2(b.start) + '〜' + d2(b.due) + '）' : ''), i));
+        });
+        if (!(D.burndown || []).length) {
+            document.getElementById('pp-bd-body').innerHTML = '<div style="color:var(--bl-faint);">' + esc(L.bd_no_ms) + '</div>';
+            return;
+        }
+        renderBurndown(0);
+    }
+    function renderBurndown(index) {
+        var b = D.burndown[index];
+        if (!b) { return; }
+        var W = 760, H = 320, PL = 44, PR = 16, PT = 18, PB = 40;
+        function parse(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+        var points = b.points.map(function (p) { return [parse(p[0]), p[1]]; });
+        var today = parse(D.today);
+        var x0 = b.start ? parse(b.start) : points[0][0];
+        var xEnd = b.due ? parse(b.due) : today;
+        var x1 = new Date(Math.max(xEnd, today, points.length ? points[points.length - 1][0] : today));
+        if (x1 <= x0) { x1 = new Date(x0.getTime() + 7 * 86400000); }
+        var days = (x1 - x0) / 86400000;
+        function X(d) { return PL + (d - x0) / 86400000 / days * (W - PL - PR); }
+        function Y(v) { return PT + (1 - v / ymax) * (H - PT - PB); }
+        function valueAt(d) {
+            var v = 0;
+            points.forEach(function (p) { if (p[0] <= d) { v = p[1]; } });
+            return v;
+        }
+        // planned: from the remaining count at the start straight to zero on the due day
+        var startValue = valueAt(x0) || b.total;
+        // The scale holds the planned line as well. It can start above anything
+        // the actual line reached, and was then drawn off the top of the chart.
+        var ymax = Math.max(4, Math.max.apply(null, b.points.map(function (p) { return p[1]; })
+            .concat(b.due ? [startValue] : [])) + 1);
+
+        var s = '';
+        var ystep = ymax <= 8 ? 2 : Math.ceil(ymax / 5);
+        for (var v = 0; v <= ymax; v += ystep) {
+            s += '<line class="' + (v ? 'grid' : 'axis') + '" x1="' + PL + '" y1="' + Y(v) + '" x2="' + (W - PR) + '" y2="' + Y(v) + '"/>' +
+                '<text x="' + (PL - 8) + '" y="' + (Y(v) + 4) + '" text-anchor="end">' + v + '</text>';
+        }
+        var tickStep = Math.max(1, Math.ceil(days / 63)) * 7;
+        for (var t = new Date(x0); t <= x1; t = new Date(t.getTime() + tickStep * 86400000)) {
+            s += '<line class="grid" x1="' + X(t) + '" y1="' + PT + '" x2="' + X(t) + '" y2="' + Y(0) + '"/>' +
+                '<text x="' + X(t) + '" y="' + (H - PB + 16) + '" text-anchor="middle">' + (t.getMonth() + 1) + '/' + t.getDate() + '</text>';
+        }
+        s += '<text x="14" y="12" text-anchor="start" font-weight="bold">' + esc(L.bd_y) + '</text>';
+        if (today >= x0 && today <= x1) {
+            s += '<line x1="' + X(today) + '" y1="' + PT + '" x2="' + X(today) + '" y2="' + Y(0) + '" stroke="#d9534f" stroke-width="1.5" stroke-dasharray="3 3"/>' +
+                '<text x="' + (X(today) + 4) + '" y="' + (PT + 10) + '" fill="#d9534f" font-weight="bold">' + esc(L.bd_today) + '</text>';
+        }
+        if (b.due) {
+            s += '<line x1="' + X(x0) + '" y1="' + Y(startValue) + '" x2="' + X(parse(b.due)) + '" y2="' + Y(0) + '" stroke="#4488c5" stroke-width="2"/>';
+        }
+        // actual: step line through the event days, extended to today
+        var line = [];
+        var previous = null;
+        points.forEach(function (p) {
+            if (previous !== null) { line.push(X(p[0]) + ',' + Y(previous)); }
+            line.push(X(p[0]) + ',' + Y(p[1]));
+            previous = p[1];
+        });
+        if (previous !== null && today > points[points.length - 1][0]) {
+            line.push(X(today) + ',' + Y(previous));
+        }
+        s += '<polyline points="' + line.join(' ') + '" fill="none" stroke="#c9483d" stroke-width="2.5" stroke-linejoin="round"/>';
+        points.forEach(function (p) {
+            s += '<circle cx="' + X(p[0]) + '" cy="' + Y(p[1]) + '" r="4.5" fill="#c9483d" stroke="#fff" stroke-width="2">' +
+                svgTip((p[0].getMonth() + 1) + '/' + p[0].getDate() + '　' + p[1]) + '</circle>';
+        });
+
+        // forecast from the last 3 weeks' pace
+        var remaining = previous === null ? b.total : previous;
+        var finish = null;
+        var horizon = new Date(today.getTime() - 21 * 86400000);
+        var base = null;
+        points.forEach(function (p) { if (p[0] <= horizon) { base = p; } });
+        if (!base && points.length) { base = points[0]; }
+        if (base && remaining > 0) {
+            var spentDays = Math.max(1, (today - base[0]) / 86400000);
+            var rate = (base[1] - remaining) / spentDays;
+            if (rate > 0.01) {
+                finish = new Date(today.getTime() + remaining / rate * 86400000);
+                var fx = Math.min(X(x1) + 40, X(finish));
+                s += '<line x1="' + X(today) + '" y1="' + Y(remaining) + '" x2="' + fx + '" y2="' +
+                    Y(Math.max(0, remaining - rate * ((fx - X(today)) / (W - PL - PR) * days))) +
+                    '" stroke="#98a5b1" stroke-width="2" stroke-dasharray="5 4"/>';
+            }
+        }
+        s += '<g font-size="11">' +
+            '<line x1="' + (W - 250) + '" y1="' + (PT + 2) + '" x2="' + (W - 226) + '" y2="' + (PT + 2) + '" stroke="#4488c5" stroke-width="2"/><text x="' + (W - 220) + '" y="' + (PT + 6) + '">' + esc(L.bd_plan) + '</text>' +
+            '<line x1="' + (W - 168) + '" y1="' + (PT + 2) + '" x2="' + (W - 144) + '" y2="' + (PT + 2) + '" stroke="#c9483d" stroke-width="2.5"/><text x="' + (W - 138) + '" y="' + (PT + 6) + '">' + esc(L.bd_actual) + '</text>' +
+            '<line x1="' + (W - 92) + '" y1="' + (PT + 2) + '" x2="' + (W - 68) + '" y2="' + (PT + 2) + '" stroke="#98a5b1" stroke-width="2" stroke-dasharray="5 4"/><text x="' + (W - 62) + '" y="' + (PT + 6) + '">' + esc(L.bd_forecast) + '</text></g>';
+        document.getElementById('pp-bd-svg').innerHTML = s;
+
+        var side = '<div class="tile"><div class="n">' + esc(remaining) +
+            '<small style="font-size:12px;font-weight:400;color:var(--bl-sub);"> / ' + esc(b.total) + esc(L.unit_cnt) + '</small></div>' +
+            '<div class="l">' + esc(L.bd_left) + '（' + esc(fmt(L.bd_done, b.done)) + '）</div></div>';
+        if (b.due) {
+            side += '<div class="tile"><div class="n">' + Math.max(0, daysTo(b.due)) +
+                '<small style="font-size:12px;font-weight:400;color:var(--bl-sub);"> ' + esc(L.unit_day) + '</small></div>' +
+                '<div class="l">' + esc(fmt(L.bd_days_left, d2(b.due), Math.max(0, daysTo(b.due)))) + '</div></div>';
+        }
+        if (finish && remaining > 0) {
+            var fdate = (finish.getMonth() + 1) + '/' + finish.getDate();
+            var over = b.due && finish > parse(b.due);
+            side += '<div class="tile ' + (over ? 'warn' : 'ok') + '"><div class="n">' +
+                (over ? '<i class="fa fa-exclamation-triangle"></i> ' : '<i class="fa fa-check"></i> ') +
+                esc(over ? fmt(L.bd_forecast_warn, fdate) : L.bd_forecast_ok) + '</div></div>';
+        }
+        // The server reads only so many revisions; past that the line is drawn
+        // from a cut history and the early part of the curve may be wrong.
+        // Said rather than left to read as the whole story.
+        if (b.partial) {
+            side += '<div class="tile"><div class="l" style="color:var(--bl-amber);">' +
+                '<i class="fa fa-info-circle"></i> ' + esc(L.bd_partial) + '</div></div>';
+        }
+        document.getElementById('pp-bd-side').innerHTML = side;
+    }
+
+    /* ------------------------------------------------ issue detail ------ */
+    var currentIssue = null;
+    // Which screen is on. The pinned composer belongs to the issue screen
+    // alone, so everything that shows or hides it asks this first.
+    var currentScreen = null;
+    var detailEpoch = 0;
+    var cmtBusy = false;
+    var cmtPending = {};
+    var cmtSequence = 0;
+    function detailCurrent(id, epoch) {
+        return alive() && currentScreen === 'issue' && String(currentIssue) === String(id)
+            && (epoch === undefined || epoch === detailEpoch);
+    }
+    function cmtSetBusy(on) {
+        cmtBusy = on;
+        var btn = document.getElementById('pp-cmt-submit');
+        if (btn) { btn.disabled = on; btn.textContent = on ? L.posting : L.submit; }
+        ['pp-cmt-fields', 'pp-cmt-status', 'pp-notify-chips', 'pp-dockcancel'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) { el.inert = on; }
+        });
+        root.querySelectorAll('.pp-next-status').forEach(function (b) { b.disabled = on; });
+    }
+    // The page carries the details of its issues, so opening one costs no
+    // request at all - which is the only thing that helps here: a request
+    // spends ~400ms booting the framework and ~50ms doing the work.
+    var DET = {};
+    // The number the next request that writes DET takes; see detPut.
+    var DET_SEQ = 0;
+    // Same work on a refresh, so it lives in one function now.
+    seedDetails();
+    function skel(count) {
+        var html = '';
+        for (var i = 0; i < count; i++) { html += '<div class="pp-skel' + (i % 3 === 1 ? ' w2' : (i % 3 === 2 ? ' w3' : '')) + '"></div>'; }
+        return html;
+    }
+    // Everything the list already knows renders instantly; only the
+    // description and the timeline wait for the fetch (usually already
+    // prefetched, so there is nothing to wait for at all).
+    function localDetail(issue) {
+        return {
+            issue: issue,
+            description: null,
+            editable: true,
+            watch: { count: null, on: false },
+            timeline: null
+        };
+    }
+    function renderDetail(id) {
+        var epoch = ++detailEpoch;
+        cmtSetBusy(false);
+        ppDockMsg('', false);
+        document.getElementById('pp-cmtform').classList.remove('busy');
+        if (String(currentIssue) !== String(id)) {
+            // Each issue has its own half-written comment, kept for the life
+            // of the tab: the box holds this issue's, not the last one's.
+            document.getElementById('pp-cmt-text').value = dockDraftRead(id);
+            cmtPreviewOff();
+        }
+        currentIssue = id;
+        markRead(id, true);
+        cmtSetBusy(!!cmtPending[id]);
+        var issue = issueById(id);
+        // ISS00257: no prewarm of issue.edit_url here - issue edits open in
+        // the native NED form, so that hidden admin-form iframe was never used.
+        if (DET[id]) {
+            buildDetail(DET[id]);
+            // a partial copy (the bulk query hit its ceiling) is shown at once
+            // and then completed from the single-issue endpoint
+            if (!DET[id].partial) { return; }
+            var seq = ++DET_SEQ;
+            ppQueue(function () {
+                return $.getJSON(D.urls.base + '/issue/' + id);
+            }).then(function (res) {
+                if (!alive() || !res || !res.ok) { return; }
+                $.extend(D.users, res.users || {});
+                if (!detPut(id, res, seq)) { return; }
+                if (detailCurrent(id, epoch) && safeToRefresh(true)) { buildDetail(res); }
+            }).catch(function () { });
+            return;
+        }
+        if (issue) {
+            buildDetail(localDetail(issue));   // instant from what the list knows
+        } else {
+            document.getElementById('pp-d-main').innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+            document.getElementById('pp-d-timeline').innerHTML = '';
+        }
+        fetchDetails(id, false, epoch);
+    }
+    // Only a project bigger than the embed limit ever gets here. One request
+    // then brings the missing issue AND its neighbours in the list, so the
+    // clicks around it are free too.
+    function fetchDetails(id, low, epoch) {
+        if (epoch === undefined) { epoch = detailEpoch; }
+        var initialPaint = !issueById(id) && !DET[id];
+        var want = [id];
+        (D.issues || []).forEach(function (row) {
+            if (want.length < 30 && !own(DET, String(row.id)) && String(row.id) !== String(id)) { want.push(row.id); }
+        });
+        var seq = ++DET_SEQ;
+        ppQueue(function () {
+            return $.getJSON(D.urls.base + '/issue_details', { ids: want.join(',') });
+        }, low).then(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            $.extend(D.users, res.users || {});
+            var wrote = {};
+            Object.keys(res.details || {}).forEach(function (key) {
+                var det = res.details[key];
+                // The server's row is the newer one; what only the list
+                // carries (stars, watches) is kept from the list's copy.
+                var local = issueById(key);
+                det.issue = det.issue ? $.extend({}, local || {}, det.issue) : local;
+                if (!det.issue || !detPut(key, det, seq)) { return; }
+                wrote[key] = true;
+                (D.issues || []).forEach(function (row, n) {
+                    if (String(row.id) === String(key)) { D.issues[n] = det.issue; }
+                });
+            });
+            if (detailCurrent(currentIssue, epoch) && currentIssue !== null && own(wrote, String(currentIssue))
+                && (initialPaint || safeToRefresh(true))) {
+                buildDetail(DET[currentIssue]);
+            } else if (detailCurrent(id, epoch) && !issueById(id) && !DET[id]) {
+                toast(L.post_fail, true);       // asked for an issue that is not here
+                location.hash = 'issues';
+            }
+        }, function (xhr) {
+            if (detailCurrent(id, epoch) && !DET[id]) {
+                document.getElementById('pp-d-main').innerHTML = '<span style="color:#c0392b;">' + esc(xhrErr(xhr, L.post_fail)) + '</span>';
+            }
+        });
+    }
+    // Whatever the page could not embed is topped up once in the background.
+    function prefetchDetails() {
+        if (!(D.features && D.features.prefetch)) { return; }
+        var missing = (D.issues || []).filter(function (row) { return !DET[row.id]; });
+        if (!missing.length) { return; }
+        fetchDetails(missing[0].id, true);
+    }
+    function buildDetail(res) {
+        var i = res.issue;
+        var local = issueById(i.id) || i;
+        // show() names the screen from what the list already knows; once the
+        // detail lands it can name the ticket even if the list never had it.
+        if (String(currentIssue) === String(i.id)) { setTitle(i.key + ' ' + i.subject); }
+        var next = null, seen = false;
+        (D.statuses || []).forEach(function (s) {
+            if (seen && !next) { next = s; }
+            if (s.k === i.st) { seen = true; }
+        });
+        var head = '<div class="bl-dhead">' + tag(i.ty) +
+            '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' +
+            starBtn('star', D.issue_table, i.id, local.star, local.my_star) + issueNav(i) +
+            '<span style="margin-left:auto;display:flex;gap:8px;">' +
+            (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
+                '<i class="fa fa-arrow-right"></i> ' + fmt(esc(L.to_next), esc(next.l)) + '</button>' : '') +
+            (res.description ? '<a class="bl-btn-sub pp-quote pp-dquote"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
+            (CAN_ADD_ISSUE ? '<a class="bl-btn-sub pp-issuecopy"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
+            '<a class="bl-btn-sub pp-mailbtn"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
+            '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
+                '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
+            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a></span></div>' +
+            '<div class="bl-dtitle">' + esc(i.subject) + '</div>' +
+            (i.sub ? '<div class="pp-dsubsub">' + esc(i.sub) + '</div>' : '') +
+            '<div class="bl-dsum">' +
+            '<span class="it"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
+            '<span class="it"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
+            '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') || '—') + '</span>' +
+            '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
+            '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span></div>' +
+            '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
+                : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>';
+        document.getElementById('pp-d-main').innerHTML = head;
+        linkifyIssueRefs(document.querySelector('#pp-d-main .bl-desc'));
+        // The quote button carries the description as words, not markup, and
+        // the rendered block is the shortest way to those words.
+        var descEl = document.querySelector('#pp-d-main .bl-desc');
+        var dquote = document.querySelector('#pp-d-main .pp-dquote');
+        if (dquote && descEl) { dquote.dataset.text = String(descEl.innerText || '').trim(); }
+
+        var parentIssue = i.parent ? issueById(i.parent) : null;
+        var ms = own(D.milestones, i.ms);
+        var props = [
+            [L.col_st, pill(i.st)], [L.col_pr, prio(i.pr)],
+            [L.col_as, (i.as || []).map(function (u) { return avname(u); }).join('<br>') || '—'],
+            [L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:5px;"></i>' + esc(ms.l) : '—'],
+            [L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
+            [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
+            [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
+            [L.lbl_pg, pbar(i.pg)],
+            [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#issue-' + esc(parentIssue.id) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
+            [L.lbl_watch, '<i class="fa fa-eye" style="color:var(--bl-faint);"></i> ' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people))]
+        ];
+        document.getElementById('pp-d-props').innerHTML = props.map(function (p) {
+            return '<div class="row"><span class="k">' + esc(p[0]) + '</span><span class="v">' + p[1] + '</span></div>';
+        }).join('');
+
+        var kids = (D.issues || []).filter(function (x) { return String(x.parent) === String(i.id); });
+        // A child is a new issue: editing this one is not enough on its own.
+        var canAddChild = res.editable && CAN_ADD_ISSUE;
+        // The box stays up with no children in it when the user may add one:
+        // that button is the only way to say "this belongs under that".
+        document.getElementById('pp-d-childbox').style.display = (kids.length || canAddChild) ? '' : 'none';
+        document.getElementById('pp-d-children').innerHTML = kids.map(function (k) {
+            return '<div class="row"><div class="k"><span class="bl-key">' + esc(k.key) + '</span></div>' +
+                '<div class="v"><a class="bl-issuelink" href="#issue-' + esc(k.id) + '">' + esc(k.subject) + '</a>'
+                + pill(k.st) + av((k.as || [])[0]) + '</div></div>';
+        }).join('') + (canAddChild
+            ? '<div class="row"><div class="k"></div><div class="v">'
+                + '<a href="javascript:void(0);" class="pp-addchild" style="color:var(--bl-accent-d);font-weight:600;">'
+                + '<i class="fa fa-plus"></i> ' + esc(L.child_add) + '</a></div></div>'
+            : '');
+        // Backlog's childIssueSummary, from what the list already knows.
+        var kidsDone = kids.filter(function (k) { return isDone(k.st); }).length;
+        document.getElementById('pp-d-childsum').textContent =
+            kids.length ? fmt(L.children_done, kidsDone, kids.length) : '';
+
+        // What the reader had picked in the dock for this same issue outlives
+        // the redraw - the status to move it to and who to tell - the way the
+        // fields do (see renderQuickEdit). A refused save repaints the issue
+        // with what changed, and the choices made against it are theirs.
+        var same = QE.issue !== null && String(QE.issue) === String(i.id);
+        var keepSt = '';
+        var keepNotify = null;
+        if (same) {
+            var stWas = document.getElementById('pp-cmt-status');
+            keepSt = stWas ? stWas.value : '';
+            keepNotify = Array.prototype.map.call(
+                document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)'),
+                function (c) { return String(c.getAttribute('data-user')); });
+        }
+
+        renderRelated(i, res);
+        renderIssueFiles(res);
+        renderTimeline(res);
+        renderQuickEdit(i, res);
+
+        var sel = document.getElementById('pp-cmt-status');
+        var stNow = own(ST, i.st);
+        sel.innerHTML = '<option value="">' + esc(fmt(L.st_keep, stNow ? stNow.l : i.st)) + '</option>' +
+            (D.statuses || []).filter(function (s) { return s.k !== i.st; }).map(function (s) {
+                return '<option value="' + esc(s.k) + '">→ ' + esc(s.l) + '</option>';
+            }).join('');
+        sel.disabled = !res.editable;
+        if (keepSt && res.editable) {
+            // Only a status still on offer: one the issue has meanwhile
+            // reached is no longer a change.
+            Array.prototype.forEach.call(sel.options, function (o) { if (o.value === keepSt) { sel.value = keepSt; } });
+        }
+
+        var p = D.project;
+        var people = [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
+            return v && a.indexOf(v) === x && String(v) !== String(D.me);
+        });
+        document.getElementById('pp-notify-chips').innerHTML = people.map(function (u) {
+            var on = keepNotify && keepNotify.indexOf(String(u)) >= 0;
+            return '<span class="bl-chip' + (on ? '' : ' off') + ' pp-notify" data-user="' + esc(u) + '">' + esc(user(u).n) + '</span>';
+        }).join(' ');
+        var dockav = document.getElementById('pp-dockav');
+        if (dockav) { dockav.innerHTML = av(D.me); }
+        cmtSetBusy(cmtBusy);
+        ppDockFit();
+    }
+    /* ------------------------------------------------ quick edit -------- */
+    // Backlog changes an issue from the same form the comment is written in:
+    // the fields that move day to day sit under the comment box, and one
+    // button sends both. Only what the reader may edit is offered, and only
+    // what they actually changed is sent.
+    //
+    // The widgets are built from the masters the payload already carries, so
+    // opening the dock costs no request. What it collects is diffed against
+    // QE.base, which is refreshed from every answer the server sends back.
+    //
+    // Only a widget the reader touched can be sent (QE.touched). The others
+    // were drawn from the row, and a value the dock has no option for - an
+    // assignee who is not a member, a milestone deleted since - used to read
+    // back as missing, so a plain comment took it off the issue.
+    //
+    // issue / st / ua: which issue the dock was drawn for, the status it
+    // showed and the version it was drawn from - what a save quotes back so
+    // the server can refuse it when somebody else got there first.
+    var QE = { base: {}, editable: false, touched: {}, issue: null, st: '', ua: null };
+    // The dock's fields by their short names, and the def-map role each one
+    // is stored under.
+    var QE_COLS = {
+        pr: 'priority', as: 'assignees', ms: 'milestone', cat: 'category',
+        sd: 'start', dd: 'due', eh: 'estimate', ah: 'actual', pg: 'progress'
+    };
+    // Column names live in the def map, not in this file: an install that
+    // renamed one overrides the map instead of patching code.
+    function qeCol(key) { return own(D.issue_cols, key) || ''; }
+    function qeRow(label, node) {
+        var row = document.createElement('div');
+        row.className = 'row';
+        var k = document.createElement('span');
+        k.className = 'k';
+        k.textContent = label;
+        var v = document.createElement('span');
+        v.className = 'v';
+        v.appendChild(node);
+        row.appendChild(k);
+        row.appendChild(v);
+
+        return row;
+    }
+    function qeSelect(name, options, value, blank) {
+        var sel = document.createElement('select');
+        sel.className = 'bl-qe-in';
+        sel.dataset.qe = name;
+        sel.add(new Option(blank, ''));
+        options.forEach(function (o) { sel.add(new Option(o[1], o[0])); });
+        qeSelectEnsure(sel, value);
+        sel.value = value == null ? '' : String(value);
+
+        return sel;
+    }
+    // A value the list does not offer - an option deleted since, a word from
+    // before the upgrade - is still the field's value. It gets an entry of its
+    // own; without one the select read back as empty, and the next comment
+    // quietly blanked the field.
+    function qeSelectEnsure(sel, value) {
+        var v = value == null ? '' : String(value);
+        if (v === '') { return; }
+        var listed = Array.prototype.some.call(sel.options, function (o) { return o.value === v; });
+        if (listed) { return; }
+        var opt = new Option(qeUnlisted(v), v);
+        opt.className = 'pp-qe-unlisted';
+        sel.add(opt);
+    }
+    // How a value with no label of its own is written in the dock.
+    function qeUnlisted(v) {
+        return String(L.qe_unlisted || ':value').replace(':value', String(v));
+    }
+    function qeInput(name, type, value, extra) {
+        var input = document.createElement('input');
+        // A date, datetime or time field is not the browser's own widget -
+        // see _datepicker.blade.php for why. Anything else is a plain input.
+        var dated = type === 'date' || type === 'datetime' || type === 'time';
+        input.type = dated ? 'text' : type;
+        input.className = 'bl-qe-in' + (type === 'number' ? ' bl-qe-num' : '');
+        input.dataset.qe = name;
+        input.value = value == null ? '' : String(value);
+        Object.keys(extra || {}).forEach(function (k) { input.setAttribute(k, extra[k]); });
+        if (dated && window.ppDateField) { window.ppDateField(input, type); }
+
+        return input;
+    }
+    // Multi-value fields are chips rather than a multi-select: a <select
+    // multiple> hides everything not currently scrolled to, and these lists
+    // are short enough to show whole.
+    //
+    // labelOf names a value the options do not carry, for the chip it gets.
+    function qeChips(name, options, values, labelOf) {
+        var box = document.createElement('div');
+        box.className = 'bl-qe-chips';
+        box.dataset.qe = name;
+        box.dataset.qeMulti = '1';
+        box._qeLabel = labelOf || qeUnlisted;
+        options.forEach(function (o) { qeChip(box, String(o[0]), o[1], false); });
+        if (!options.length) {
+            var em = document.createElement('span');
+            em.className = 'em';
+            em.style.color = 'var(--bl-faint)';
+            em.textContent = L.empty;
+            box.appendChild(em);
+        }
+        qeChipsSet(box, values);
+
+        return box;
+    }
+    function qeChip(box, val, label, extra) {
+        var chip = document.createElement('span');
+        chip.className = 'bl-chip off' + (extra ? ' pp-qe-extra' : '');
+        chip.dataset.val = val;
+        chip.textContent = label;
+        if (extra && L.qe_extra) { chip.title = L.qe_extra; }
+        chip.addEventListener('click', function () {
+            chip.classList.toggle('off');
+            QE.touched[box.dataset.qe] = true;
+            qeMark();
+        });
+        box.appendChild(chip);
+
+        return chip;
+    }
+    // Turn on exactly these values. One the options do not offer - an
+    // assignee who is not a member of the project, a category deleted since -
+    // gets a chip of its own, switched on, rather than being dropped from
+    // the list the next save sends.
+    function qeChipsSet(box, values) {
+        var want = (values || []).map(String);
+        var have = {};
+        Array.prototype.forEach.call(box.querySelectorAll('.bl-chip'), function (chip) {
+            have[chip.dataset.val] = true;
+            chip.classList.toggle('off', want.indexOf(chip.dataset.val) < 0);
+        });
+        want.forEach(function (v) {
+            if (own(have, v)) { return; }
+            have[v] = true;
+            qeChip(box, v, box._qeLabel ? box._qeLabel(v) : v, true).classList.remove('off');
+        });
+        var em = box.querySelector('.em');
+        if (em) { em.hidden = !!box.querySelector('.bl-chip'); }
+    }
+    function renderQuickEdit(i, res) {
+        var box = document.getElementById('pp-cmt-fields');
+        var editbox = document.getElementById('pp-d-editbox');
+        if (!box) { return; }
+        // The same issue drawn again - a refresh, a save refused because
+        // somebody else got there first - keeps what the reader moved and has
+        // not sent. Another issue starts clean.
+        var same = QE.issue !== null && QE.issue !== undefined && String(QE.issue) === String(i.id);
+        var carry = same ? qeCarry() : null;
+        QE.touched = {};
+        QE.issue = i.id;
+        QE.st = i.st == null ? '' : String(i.st);
+        QE.ua = i.ua || null;
+        QE.editable = !!res.editable;
+        QE.base = {
+            pr: i.pr == null ? '' : String(i.pr),
+            as: (i.as || []).map(String),
+            ms: i.ms == null ? '' : String(i.ms),
+            cat: (i.cat || []).map(String),
+            sd: i.sd || '', dd: i.dd || '',
+            eh: i.eh == null ? '' : String(i.eh),
+            ah: i.ah == null ? '' : String(i.ah),
+            pg: i.pg == null ? '' : String(i.pg)
+        };
+        // The two date rows carry a picker each, and the calendar they open
+        // lives off <body> - so the picker has to be told before its input
+        // disappears, or it is left holding a detached field.
+        if (window.ppDateFieldDestroy) { window.ppDateFieldDestroy(box); }
+        box.innerHTML = '';
+        if (!box._qeBound) {
+            // Typed into or picked is what makes a field the reader's; a
+            // field nobody touched is never part of a save.
+            var touch = function (ev) {
+                var w = ev.target && ev.target.closest ? ev.target.closest('[data-qe]') : null;
+                if (w && w.dataset.qe) { QE.touched[w.dataset.qe] = true; }
+                qeMark();
+            };
+            box.addEventListener('change', touch);
+            box.addEventListener('input', touch);
+            box._qeBound = true;
+        }
+        // The status row is built here so it sits with the other fields, but
+        // the select keeps its id: the comment endpoint - not the row API -
+        // is what changes a status, because that is what notifies people.
+        var st = document.createElement('select');
+        st.id = 'pp-cmt-status';
+        st.className = 'bl-qe-in';
+        box.appendChild(qeRow(L.st_change, st));
+        if (!res.editable) {
+            if (editbox) { editbox.hidden = true; }
+
+            return;
+        }
+        if (editbox) { editbox.hidden = false; }
+
+        var people = [D.project.manager].concat(D.project.members || []).filter(function (v, x, a) {
+            return v && a.indexOf(v) === x;
+        }).map(function (u) { return [String(u), user(u).n]; });
+        var prios = metaKeys(D.priorities).map(function (k) { return [k, D.priorities[k].l]; });
+        var miles = Object.keys(D.milestones || {}).map(function (k) { return [k, D.milestones[k].l]; })
+            .sort(function (a, b) { return cmpText(a[1], b[1]); });
+        var cats = Object.keys(D.categories || {}).map(function (k) { return [k, String(D.categories[k])]; })
+            .sort(function (a, b) { return cmpText(a[1], b[1]); });
+
+        box.appendChild(qeRow(L.col_pr, qeSelect('pr', prios, QE.base.pr, L.empty)));
+        box.appendChild(qeRow(L.col_as, qeChips('as', people, QE.base.as, function (v) {
+            // Not a member, but a person the payload knows by name.
+            var u = own(D.users, v);
+            return u ? String(u.n) : qeUnlisted(v);
+        })));
+        box.appendChild(qeRow(L.col_ms, qeSelect('ms', miles, QE.base.ms, L.empty)));
+        box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat)));
+        box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd)));
+        box.appendChild(qeRow(L.col_dd, qeInput('dd', 'date', QE.base.dd)));
+        box.appendChild(qeRow(L.lbl_eh_only, qeInput('eh', 'number', QE.base.eh, { min: '0', step: '0.5' })));
+        box.appendChild(qeRow(L.lbl_ah_only, qeInput('ah', 'number', QE.base.ah, { min: '0', step: '0.5' })));
+        box.appendChild(qeRow(L.lbl_pg, qeInput('pg', 'number', QE.base.pg, { min: '0', max: '100', step: '1' })));
+        if (carry) { qeApplyCarry(carry); }
+        qeMark();
+    }
+    // What the reader has moved and not sent, each with the base it was moved
+    // from - read off the dock just before it is drawn again.
+    function qeCarry() {
+        var now = qeRead();
+        var out = {};
+        Object.keys(QE.touched || {}).forEach(function (key) {
+            if (!(key in now) || qeSame(now[key], QE.base[key])) { return; }
+            out[key] = { now: now[key], was: QE.base[key] };
+        });
+
+        return out;
+    }
+    // ...and put back over the new base. A multi-value field takes the
+    // reader's additions and removals rather than their whole list: an
+    // assignee somebody else added in the meantime stays added.
+    function qeApplyCarry(carry) {
+        var box = document.getElementById('pp-cmt-fields');
+        if (!box) { return; }
+        Object.keys(carry).forEach(function (key) {
+            var el = box.querySelector('[data-qe="' + key + '"]');
+            if (!el) { return; }
+            var c = carry[key];
+            var value;
+            if (el.dataset.qeMulti) {
+                var was = (c.was || []).map(String);
+                var now = (c.now || []).map(String);
+                value = (QE.base[key] || []).map(String).filter(function (v) {
+                    return !(was.indexOf(v) >= 0 && now.indexOf(v) < 0);
+                });
+                now.forEach(function (v) {
+                    if (was.indexOf(v) < 0 && value.indexOf(v) < 0) { value.push(v); }
+                });
+                qeChipsSet(el, value);
+            } else {
+                value = String(c.now == null ? '' : c.now);
+                if (el.tagName === 'SELECT') { qeSelectEnsure(el, value); }
+                el.value = value;
+            }
+            if (!qeSame(value, QE.base[key])) { QE.touched[key] = true; }
+        });
+    }
+    // Back to what the issue says: every widget shows its base again, the
+    // status and the people picked are let go, and nothing counts as unsent.
+    function qeReset() {
+        var box = document.getElementById('pp-cmt-fields');
+        QE.touched = {};
+        if (box) {
+            box.querySelectorAll('[data-qe]').forEach(function (el) {
+                var key = el.dataset.qe;
+                if (el.dataset.qeMulti) { qeChipsSet(el, QE.base[key] || []); return; }
+                el.value = QE.base[key] == null ? '' : String(QE.base[key]);
+            });
+        }
+        var st = document.getElementById('pp-cmt-status');
+        if (st) { st.value = ''; }
+        document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
+        qeMark();
+    }
+    // What the widgets hold now, in the same shape QE.base is kept in, so the
+    // two can be compared field by field.
+    function qeRead() {
+        var out = {};
+        var box = document.getElementById('pp-cmt-fields');
+        if (!box) { return out; }
+        box.querySelectorAll('[data-qe]').forEach(function (el) {
+            var name = el.dataset.qe;
+            if (name === 'st') { return; }
+            if (el.dataset.qeMulti) {
+                out[name] = Array.prototype.slice.call(el.querySelectorAll('.bl-chip:not(.off)'))
+                    .map(function (c) { return String(c.dataset.val); });
+
+                return;
+            }
+            out[name] = String(el.value == null ? '' : el.value);
+        });
+
+        return out;
+    }
+    function qeSame(a, b) {
+        if (Array.isArray(a) || Array.isArray(b)) {
+            var x = (a || []).slice().sort(), y = (b || []).slice().sort();
+
+            return x.length === y.length && x.every(function (v, n) { return String(v) === String(y[n]); });
+        }
+
+        return String(a == null ? '' : a) === String(b == null ? '' : b);
+    }
+    // The fields the reader moved, by their short names, holding what each
+    // widget says now. A widget nobody touched is left out whatever it reads:
+    // it was drawn from the row, and a comment that only meant to say
+    // something must never "correct" a value the dock merely could not show.
+    function qeChanged() {
+        var now = qeRead();
+        var out = {};
+        Object.keys(QE_COLS).forEach(function (key) {
+            if (!own(QE.touched, key) || !(key in now) || qeSame(now[key], QE.base[key])) { return; }
+            out[key] = now[key];
+        });
+
+        return out;
+    }
+    // ...keyed by the column each is stored in - a partial write, so a field
+    // this form never offered is never touched either.
+    function qeColumns(changed) {
+        var out = {};
+        Object.keys(changed || {}).forEach(function (key) {
+            var col = qeCol(own(QE_COLS, key));
+            if (col) { out[col] = changed[key]; }
+        });
+
+        return out;
+    }
+    function qeDiff() { return qeColumns(qeChanged()); }
+    // A count on the collapsed bar, so the dock says it is holding unsent
+    // work without having to be opened to find out.
+    function qeMark() {
+        var state = document.getElementById('pp-dockstate');
+        if (!state) { return; }
+        var text = document.getElementById('pp-cmt-text');
+        var n = Object.keys(qeChanged()).length;
+        var stEl = document.getElementById('pp-cmt-status');
+        if (stEl && stEl.value) { n += 1; }
+        var typed = !!(text && text.value.trim());
+        state.textContent = (n || typed) ? L.dock_draft + (n ? ' (' + n + ')' : '') : '';
+    }
+    window.ppQeDiff = qeDiff;
+    // The dock is fixed to the window, so it has to be told where the content
+    // area is and how tall it ended up. Measured rather than written as a
+    // calc(): the sidebar collapses, the theme changes the header height, and
+    // any constant here would be wrong on somebody's screen.
+    function ppDockFit() {
+        var dock = document.getElementById('pp-cmtdock');
+        var screen = document.getElementById('pp-issue');
+        if (!dock || !screen) { return; }
+        if (dock.hidden) {
+            screen.style.removeProperty('--pp-dock-h');
+            document.body.style.removeProperty('--pp-dock-h');
+            document.body.classList.remove('pp-dock-on');
+            return;
+        }
+        var host = screen.parentNode && screen.parentNode.getBoundingClientRect
+            ? screen.parentNode : screen;
+        var r = host.getBoundingClientRect();
+        dock.style.setProperty('--pp-dock-l', Math.round(r.left) + 'px');
+        dock.style.setProperty('--pp-dock-w', Math.round(r.width) + 'px');
+        var h = Math.ceil(dock.getBoundingClientRect().height);
+        screen.style.setProperty('--pp-dock-h', h + 'px');
+        // The admin footer lives outside this page's markup and has to be
+        // told as well, or it scrolls up over the dock at the foot of the
+        // document. Only the bar's own height is reserved: the sheet opens
+        // upwards over the issue and closes again, and a footer that jumped
+        // by half a screen every time it did would be worse than the bug.
+        var bar = document.getElementById('pp-dockbar');
+        var barH = bar ? Math.ceil(bar.getBoundingClientRect().height) : h;
+        document.body.style.setProperty('--pp-dock-h', barH + 'px');
+        document.body.classList.add('pp-dock-on');
+    }
+    window.ppDockFit = ppDockFit;
+    // On screen only while an issue is: every other screen has its own way in
+    // to writing, and a composer pinned under a wiki page means nothing.
+    function ppDockShow(on) {
+        var dock = document.getElementById('pp-cmtdock');
+        if (!dock) { return; }
+        if (!on) { ppDockOpen(false); }
+        dock.hidden = !on;
+        ppDockFit();
+    }
+    function ppDockOpen(on) {
+        var dock = document.getElementById('pp-cmtdock');
+        var sheet = document.getElementById('pp-docksheet');
+        var bar = document.getElementById('pp-dockbar');
+        if (!dock || !sheet) { return; }
+        sheet.hidden = !on;
+        dock.classList.toggle('on', !!on);
+        if (bar) { bar.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+        ppDockFit();
+        if (on) {
+            var box = document.getElementById('pp-cmt-text');
+            if (box) { try { box.focus(); } catch (e) { /* ignore */ } }
+        }
+    }
+    window.ppDockOpen = ppDockOpen;
+    function ppDockIsOpen() {
+        var sheet = document.getElementById('pp-docksheet');
+        return !!(sheet && !sheet.hidden);
+    }
+    // The inline editor owns the whole screen while it is mounted, and a
+    // composer floating over it belongs to the issue it just replaced.
+    function ppDetailEditing(on) {
+        if (on) { detailEpoch++; cmtSetBusy(false); }
+        var dock = document.getElementById('pp-cmtdock');
+        if (!dock) { return; }
+        if (on) {
+            dock._wasOn = String(currentScreen) === 'issue' && !dock.hidden;
+            ppDockShow(false);
+            return;
+        }
+        if (dock._wasOn) { ppDockShow(true); }
+        dock._wasOn = false;
+    }
+    window.ppDetailEditing = ppDetailEditing;
+    var ppFitPending = null;
+    window.addEventListener('resize', function onPpFit() {
+        if (!alive()) { window.removeEventListener('resize', onPpFit); return; }
+        if (ppFitPending) { return; }
+        ppFitPending = setTimeout(function () { ppFitPending = null; if (alive()) { ppDockFit(); } }, 120);
+    });
+    // Backlog shows the stream two ways: everything that happened, or the
+    // comments on their own. The choice belongs to the person, not to the
+    // issue, so it is remembered and applies to whatever opens next.
+    var TL_KEY = 'pmportal.timeline.filter';
+    var TLF = 'all';
+    try { TLF = localStorage.getItem(TL_KEY) === 'cmt' ? 'cmt' : 'all'; } catch (e) { /* ignore */ }
+    function renderTimeline(res) {
+        var box = document.getElementById('pp-d-timeline');
+        document.querySelectorAll('#pp-tl-filter button').forEach(function (b) {
+            b.classList.toggle('on', b.getAttribute('data-tl') === TLF);
+        });
+        // A comment being rewritten in place is the reader's unsent work, and
+        // this is the redraw that would take its box away - a background
+        // refresh, a comment posted or deleted. Each open editor is put back
+        // on its comment afterwards, text and caret as they were.
+        var editing = cmtEditsOpen();
+        if (res.timeline === null) { box.innerHTML = skel(4); return; }
+        var rows = (res.timeline || []).filter(function (e) { return TLF !== 'cmt' || e.tp === 'cmt'; });
+        box.innerHTML = rows.map(function (e) {
+            var body = '';
+            if (e.tp === 'chg') {
+                body = '<div class="chg">' + (e.chg || []).map(function (c) {
+                    return '<div><b>' + esc(c[0]) + '</b>: ' + esc(c[1]) + '<span class="arr">→</span><b>' + esc(c[2]) + '</b></div>';
+                }).join('') + '</div>';
+            } else if (e.tp === 'add') {
+                body = '<div class="chg"><i class="fa fa-plus" style="color:#4caf93;margin-right:6px;"></i>' + esc(L.added) + '</div>';
+            } else if (e.tp === 'file') {
+                body = '<div class="chg"><i class="fa fa-paperclip" style="margin-right:6px;"></i>' + esc(L.file_added) +
+                    ' <a class="bl-file" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a></div>';
+            } else {
+                // Only the author may rewrite or remove what they wrote; the
+                // address of a comment is public to everyone who can read it.
+                var mine = !!e.del;
+                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' +
+                    '<div class="act">' + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
+                    '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
+                    '<span class="cmenu"><a href="javascript:void(0);" class="pp-cmenu" title="' + esc(L.cmt_menu) + '"><i class="fa fa-ellipsis-h"></i></a>' +
+                    '<span class="m" hidden>' +
+                    (mine ? '<a href="javascript:void(0);" class="pp-cedit" data-cid="' + esc(e.cid) + '" data-text="' + esc(e.text) + '">' + esc(L.cmt_edit) + '</a>' : '') +
+                    '<a href="javascript:void(0);" class="pp-ccopy" data-cid="' + esc(e.cid) + '">' + esc(L.cmt_copy) + '</a>' +
+                    (mine ? '<a href="javascript:void(0);" class="pp-cdel" data-cid="' + esc(e.cid) + '">' + esc(L.del) + '</a>' : '') +
+                    '</span></span></div>';
+            }
+            return '<div class="ent"' + (e.tp === 'cmt' ? ' id="pp-c' + esc(e.cid) + '"' : '') + '>' + av(e.by, 1) +
+                '<div class="body"><div class="head"><span class="who">' + esc(user(e.by).n) + '</span><span class="tm">' + esc(e.at) + '</span></div>' + body + '</div></div>';
+        }).join('') || ('<div style="color:var(--bl-faint);font-size:12px;">' + esc(L.empty) + '</div>');
+        clipLongComments();
+        highlightLinkedComment();
+        editing.forEach(function (open) { cmtEditStart(open.cid, open.value, open); });
+    }
+    // The inline comment editors that are open: which comment, what is typed
+    // and where the caret is - enough to put one back after a redraw.
+    function cmtEditsOpen() {
+        var out = [];
+        document.querySelectorAll('#pp-d-timeline .ent .cedit').forEach(function (wrap) {
+            var ent = wrap.closest('.ent');
+            var area = wrap.querySelector('textarea');
+            if (!ent || !area || !/^pp-c/.test(ent.id || '')) { return; }
+            out.push({
+                cid: ent.id.slice(4), value: area.value,
+                start: area.selectionStart, end: area.selectionEnd,
+                focused: document.activeElement === area
+            });
+        });
+
+        return out;
+    }
+    // A long comment is folded the way Backlog folds one, so a conversation
+    // stays scannable. The fold is per comment and per reading - nothing is
+    // stored, and reopening the issue folds it again.
+    var CLIP_AT = 260;
+    function clipLongComments() {
+        var box = document.getElementById('pp-d-timeline');
+        box.querySelectorAll('.ent .txt').forEach(clipOne);
+        // A picture has no height until it has arrived, so a comment that is
+        // long only because of one measures short here and has to be asked
+        // again the moment the browser knows how big it is.
+        box.querySelectorAll('.ent .txt img').forEach(function (img) {
+            if (img.complete) { return; }
+            img.addEventListener('load', function () { clipOne(img.closest('.txt')); }, { once: true });
+        });
+        document.getElementById('pp-tl-expand').textContent = L.tl_expand;
+        syncExpandAll();
+    }
+    function clipOne(txt) {
+        if (!txt || txt.classList.contains('clip') || txt.parentNode.querySelector('.more')) { return; }
+        if (txt.scrollHeight <= CLIP_AT) { return; }
+        txt.classList.add('clip');
+        var row = document.createElement('div');
+        row.className = 'more';
+        var more = document.createElement('a');
+        more.className = 'pp-cmore';
+        more.href = 'javascript:void(0);';
+        more.textContent = L.cmt_more;
+        row.appendChild(more);
+        txt.parentNode.insertBefore(row, txt.nextSibling);
+        syncExpandAll();
+    }
+    function syncExpandAll() {
+        var box = document.getElementById('pp-d-timeline');
+        document.getElementById('pp-tl-expand').hidden = !box.querySelector('.ent .more');
+    }
+    // A copied comment address opens the issue and says which comment it
+    // meant. show() restores the screen's own scroll one frame from now, so
+    // the jump waits for that to be over rather than fighting it.
+    function highlightLinkedComment() {
+        var want = parseQuery(parseHash().query).c;
+        if (!want) { return; }
+        var ent = document.getElementById('pp-c' + want);
+        if (!ent) { return; }
+        ent.classList.add('hl');
+        setTimeout(function () { ent.classList.remove('hl'); }, 2600);
+        setTimeout(function () {
+            try { ent.scrollIntoView({ block: 'center' }); } catch (e) { ent.scrollIntoView(); }
+        }, 80);
+    }
+    // The files hanging off this issue, laid out on the same two-cell rule as
+    // every other card on this screen: the preview sits in the label cell, what
+    // is known about the file in the value cell.
+    function renderIssueFiles(res) {
+        var rows = res.files || [];
+        document.getElementById('pp-d-filebox').style.display = rows.length ? '' : 'none';
+        document.getElementById('pp-d-filesum').textContent = rows.length ? String(rows.length) : '';
+        document.getElementById('pp-d-files').innerHTML = rows.map(function (f) {
+            var href = esc(linkUrl(f.url));
+            return '<div class="row"><div class="k">' +
+                '<a class="th" href="' + href + '" target="_blank" rel="noopener" title="' + esc(f.name) + '">' +
+                (f.img && imgSrcOk(f.url) ? '<img src="' + esc(f.url) + '" alt="' + esc(f.name) + '">'
+                       : '<span class="ic"><i class="fa fa-file-o"></i></span>') +
+                '</a></div>' +
+                '<div class="v"><a class="n" href="' + href + '" target="_blank" rel="noopener">' + esc(f.name) + '</a>' +
+                '<span class="mt">' + esc(user(f.by).n) + ' · ' + esc(f.at) + '</span></div></div>';
+        }).join('');
+    }
+    // Backlog's "‹ 3 / 21 ›": step through the list you came from without
+    // going back to it between issues. The order and the membership are the
+    // grid's own, filters included - what the user is actually looking at.
+    function issueNav(current) {
+        var list = filteredIssues();
+        // In tree mode the grid's order is the tree's, folded rows included.
+        if (TREE_ON) { list = treeRows(list, true).map(function (e) { return e.i; }); }
+        var at = -1;
+        list.forEach(function (row, index) { if (String(row.id) === String(current.id)) { at = index; } });
+        if (at < 0 || list.length < 2) { return ''; }
+        var prev = list[at - 1], next = list[at + 1];
+        return '<span class="bl-inav">' +
+            '<a class="' + (prev ? '' : 'off') + '" href="#' + (prev ? esc(issueHash(prev.id)) : '') + '" title="' + esc(L.nav_prev) + '"><i class="fa fa-angle-left"></i></a>' +
+            '<span>' + esc(fmt(L.nav_pos, at + 1, list.length)) + '</span>' +
+            '<a class="' + (next ? '' : 'off') + '" href="#' + (next ? esc(issueHash(next.id)) : '') + '" title="' + esc(L.nav_next) + '"><i class="fa fa-angle-right"></i></a></span>';
+    }
+    // Comment text is written in the small subset of Backlog's formatting
+    // rules a conversation actually uses. It arrives as plain text and is
+    // escaped first, so every tag below is one this function wrote - no
+    // comment can smuggle markup in, however it was typed.
+    //
+    // Code, links and images are lifted into a holding array the moment they
+    // are recognised: what is left of them - a URL, the body of a snippet -
+    // must not be read as markup by the rules that run after.
+    function renderCommentText(text) {
+        var html = esc(text);
+        var kept = [];
+        var MARK = String.fromCharCode(1);
+        function keep(h) { kept.push(h); return MARK + (kept.length - 1) + MARK; }
+        // \[ and \] are a bracket and nothing more, the way markdown writes
+        // one inside the text of a link - and the way a file name is written
+        // when it is inserted as a link (see mdLinkText). Each is held aside
+        // as the single character it stands for, so a name cannot close its
+        // link early and open a second one pointing somewhere of its own.
+        var LIT = String.fromCharCode(2);
+        var lits = [];
+        function unlit(s) {
+            return String(s).replace(new RegExp(LIT + '(\\d+)' + LIT, 'g'), function (m, at) {
+                return lits[Number(at)] || '';
+            });
+        }
+
+        html = html.replace(/```[ \t]*\r?\n?([\s\S]*?)```/g, function (m, body) {
+            return keep('<pre class="bl-code">' + body.replace(/\s+$/, '') + '</pre>');
+        });
+        html = html.replace(/`([^`\r\n]+)`/g, function (m, body) { return keep('<code>' + body + '</code>'); });
+        html = html.replace(/\\([\[\]])/g, function (m, ch) {
+            lits.push(ch);
+            return LIT + (lits.length - 1) + LIT;
+        });
+        // The image and the link differ by one leading '!', so images first.
+        // A picture is fetched the moment the comment is read, with the
+        // reader's session - so on this site only a file may be one, and a
+        // comment cannot make its readers' browsers call anything else here
+        // (a GET logout, say). Any other safe address is an ordinary link.
+        html = html.replace(/!\[([^\]\r\n]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
+            var href = unlit(url);
+            if (!safeHref(href)) { return m; }
+            if (!imgSrcOk(unesc(href))) {
+                return keep('<a href="' + href + '" target="_blank" rel="noopener">' + (unlit(alt) || href) + '</a>');
+            }
+            return keep('<a class="bl-cimg" href="' + href + '" target="_blank" rel="noopener">' +
+                '<img src="' + href + '" alt="' + unlit(alt) + '"></a>');
+        });
+        html = html.replace(/\[([^\]\r\n]+)\]\(([^)\s]+)\)/g, function (m, label, url) {
+            var href = unlit(url);
+            if (!safeHref(href)) { return m; }
+            return keep('<a href="' + href + '" target="_blank" rel="noopener">' + unlit(label) + '</a>');
+        });
+        // A bare address is a link too - the commonest thing anyone pastes.
+        // Trailing punctuation is sentence, not URL, so it stays outside.
+        html = html.replace(/https?:\/\/[^\s<>]+/g, function (m) {
+            var tail = m.match(/[.,;:)\]}]+$/);
+            var url = unlit(tail ? m.slice(0, m.length - tail[0].length) : m);
+            return keep('<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>') + (tail ? tail[0] : '');
+        });
+
+        html = html.replace(/\*\*([^*\r\n]+)\*\*/g, '<b>$1</b>');
+        html = html.replace(/(^|[^*\w])\*([^*\r\n]+)\*(?!\w)/g, '$1<i>$2</i>');
+        html = html.replace(/~~([^~\r\n]+)~~/g, '<s>$1</s>');
+        html = mdBlocks(html);
+
+        // A mention is an address, so it is a link: hovering one says who the
+        // person is, and the card behind it is the only place that ever says.
+        // Known names are linked and held aside; what is left is a handle
+        // this project has never heard of, which is marked but not linked.
+        var mm = mentions();
+        if (mm.re) {
+            html = html.replace(mm.re, function (m, lead, name) {
+                return lead + keep('<a class="bl-mention pp-card" href="javascript:void(0);" data-uid="' +
+                    esc(mm.by[name]) + '">@' + name + '</a>');
+            });
+        }
+        // A handle nobody on this project answers to. Marked, so the writer
+        // can see it was read as a mention, but not linked to anyone. The
+        // same leading guard keeps it out of a mail address.
+        html = html.replace(/(^|[^\w@.])@([A-Za-z0-9_.\-]+)/g, '$1<span class="bl-mention">@$2</span>');
+        var key = (D.project.key || '#') + '-';
+        html = html.replace(new RegExp(reEsc(key) + '(\\d+)', 'g'), function (m, num) {
+            // The number in a key is the key's own number, which is not always
+            // the row id - so it is resolved rather than pasted into the
+            // address, and a key this project does not carry is left as it was
+            // written instead of pointing at whatever row shares the number.
+            var hit = issueByKeyNum(num) || issueById(num);
+            return keep('<a class="bl-issuelink pp-card" href="#' +
+                (hit ? esc(issueHash(hit.id)) : ('issue-' + num)) + '"' +
+                (hit ? ' data-issue="' + esc(hit.id) + '"' : '') + '>' + m + '</a>');
+        });
+        // The other way an issue gets written - "#292" - which is what the
+        // key is under the surface and what anyone types when they are not
+        // looking at the key. Only linked when this project is carrying it:
+        // a bare number that names nothing is a number.
+        html = html.replace(/(^|[^\w&;])#(\d+)\b/g, function (m, lead, num) {
+            var hit = issueById(num) || issueByKeyNum(num);
+            if (!hit) { return m; }
+            return lead + keep('<a class="bl-issuelink pp-card" href="#' + esc(issueHash(hit.id)) +
+                '" data-issue="' + esc(hit.id) + '">#' + num + '</a>');
+        });
+
+        return unlit(html.replace(new RegExp(MARK + '(\\d+)' + MARK, 'g'), function (m, at) {
+            return kept[Number(at)];
+        // A block brings its own spacing, so the newlines that open and
+        // close it must not draw one as well.
+        }).replace(/<br>(?=<(?:ul|ol|blockquote|pre|table|hr|h[1-6])\b)/g, '')
+            .replace(/(<\/(?:ul|ol|blockquote|pre|table|h[1-6])>)<br>/g, '$1')
+            .replace(/<hr><br>/g, '<hr>'));
+    }
+    // The text esc() wrote, read back as the characters it stood for - what
+    // the browser will make of an address once it is in an attribute.
+    function unesc(s) {
+        return String(s).replace(/&(amp|lt|gt|quot|#x27);/g, function (m, e) {
+            return { amp: '&', lt: '<', gt: '>', quot: '"', '#x27': "'" }[e];
+        });
+    }
+    // A file name as the text of a markdown link. Brackets are escaped, so a
+    // name cannot close its link early and open one of its own pointing
+    // somewhere else; a backslash at the very end would escape the closing
+    // bracket, so it is written as the full-width one instead.
+    function mdLinkText(name) {
+        return String(name == null ? '' : name)
+            .replace(/[\r\n]+/g, ' ')
+            .replace(/([\[\]])/g, '\\$1')
+            .replace(/\\+$/, function (m) { return m.replace(/\\/g, '＼'); });
+    }
+    // A file's address as the target of a markdown link: one that would end
+    // the link early or break it in two is percent-encoded instead.
+    function mdLinkUrl(url) {
+        return String(url == null ? '' : url).replace(/[()\s]/g, function (c) { return encodeURIComponent(c); });
+    }
+    // The link markup for one file, picture or not.
+    function mdFileLink(name, url, img) {
+        return (img ? '!' : '') + '[' + mdLinkText(name) + '](' + mdLinkUrl(url) + ')';
+    }
+    // The description and the wiki page are markdown now, the way Backlog
+    // writes them. Rows saved through Exment's own form before that - and
+    // through it still, since that form keeps its rich-text editor - hold
+    // the editor's html instead, and escaping that would show the reader
+    // their own tags. So: html that was authored as html is passed through
+    // as it always was, and everything else is read as markdown.
+    function mdAuthoredAsHtml(s) {
+        // The block tags a rich-text editor opens a document with. Not <img>
+        // and not <br>, which open nothing and are what an injected string
+        // would arrive as.
+        return /^\s*<(?:p|div|h[1-6]|ul|ol|table|blockquote|pre|figure)[\s>]/i.test(s)
+            || /<\/(?:p|div)>/i.test(s);
+    }
+    // What this branch carries is formatting written in an editor. It is read
+    // through an allowlist, not a blocklist: every tag and every attribute not
+    // named below is dropped, so a tag added to HTML later cannot reopen a hole
+    // the way a forgotten blocklist entry would. style is not on the attribute
+    // list - it let an injected row paint a full-screen overlay, and safe CSS
+    // is too hard to prove by hand - and the elements the HTML parser treats
+    // specially (raw-text, escapable-text, a foreign namespace) are removed
+    // whole: those are exactly the ones whose re-parse on assignment to
+    // innerHTML can differ from the parse seen here, which is the mismatch a
+    // mutation payload rides. Images pasted into the old editor arrive as data:
+    // urls and are kept.
+    var MD_ALLOW_TAGS = {
+        a: 1, abbr: 1, b: 1, blockquote: 1, br: 1, caption: 1, code: 1, col: 1,
+        colgroup: 1, dd: 1, del: 1, div: 1, dl: 1, dt: 1, em: 1, figcaption: 1,
+        figure: 1, h1: 1, h2: 1, h3: 1, h4: 1, h5: 1, h6: 1, hr: 1, i: 1, img: 1,
+        ins: 1, li: 1, ol: 1, p: 1, pre: 1, s: 1, small: 1, span: 1, strike: 1,
+        strong: 1, sub: 1, sup: 1, table: 1, tbody: 1, td: 1, tfoot: 1, th: 1,
+        thead: 1, tr: 1, u: 1, ul: 1
+    };
+    var MD_ALLOW_ATTR = { href: 1, src: 1, alt: 1, title: 1, colspan: 1, rowspan: 1, start: 1 };
+    var MD_DROP_TAGS = {
+        script: 1, style: 1, noscript: 1, template: 1, iframe: 1, frame: 1,
+        frameset: 1, object: 1, embed: 1, applet: 1, form: 1, input: 1,
+        button: 1, select: 1, option: 1, textarea: 1, link: 1, meta: 1,
+        base: 1, title: 1, svg: 1, math: 1, xmp: 1, listing: 1
+    };
+    function mdSanitizeNode(parent) {
+        var child = parent.firstChild;
+        while (child) {
+            var next = child.nextSibling;
+            if (child.nodeType === 3) {
+                // text node: nothing in it can run, keep it
+            } else if (child.nodeType !== 1) {
+                parent.removeChild(child); // comment, CDATA, processing instruction
+            } else {
+                var tag = String(child.tagName || '').toLowerCase();
+                if (MD_DROP_TAGS[tag]) {
+                    parent.removeChild(child);
+                } else if (!MD_ALLOW_TAGS[tag]) {
+                    // Unknown, but not known to run: keep the text it wraps,
+                    // drop the tag itself, and carry on through the lifted nodes
+                    // so they are checked too.
+                    var first = child.firstChild;
+                    while (child.firstChild) { parent.insertBefore(child.firstChild, child); }
+                    parent.removeChild(child);
+                    next = first || next;
+                } else {
+                    var attrs = Array.prototype.slice.call(child.attributes);
+                    for (var i = 0; i < attrs.length; i++) {
+                        var n = String(attrs[i].name).toLowerCase();
+                        if (!MD_ALLOW_ATTR[n]) { child.removeAttribute(attrs[i].name); continue; }
+                        if (n === 'href' && !safeHref(child.getAttribute('href'))) {
+                            child.removeAttribute('href');
+                        } else if (n === 'src' && !imgSrcOk(child.getAttribute('src'))) {
+                            // Same rule as a picture in a comment: nothing on
+                            // this site but a file is fetched just by reading.
+                            child.removeAttribute('src');
+                        }
+                    }
+                    mdSanitizeNode(child);
+                }
+            }
+            child = next;
+        }
+    }
+    function mdSanitizeOnce(html) {
+        if (typeof DOMParser !== 'function') { return null; }
+        var doc;
+        try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch (e) { return null; }
+        if (!doc || !doc.body) { return null; }
+        mdSanitizeNode(doc.body);
+        return doc.body.innerHTML;
+    }
+    function mdSanitizeHtml(html) {
+        var out = String(html == null ? '' : html);
+        // Re-clean until the string stops changing. A payload that only turns
+        // dangerous when the browser re-parses the cleaned string shows up as a
+        // difference on the next pass and is cleaned then; a string that comes
+        // back unchanged is one the browser parses the same way this did.
+        // Capped so a pathological input cannot spin.
+        for (var i = 0; i < 4; i++) {
+            var cleaned = mdSanitizeOnce(out);
+            if (cleaned === null) { return esc(out); } // no parser here: show as text, never raw
+            if (cleaned === out) { return out; }
+            out = cleaned;
+        }
+        return out;
+    }
+    function renderRichText(text) {
+        var s = String(text == null ? '' : text);
+        if (!s.trim()) { return ''; }
+
+        return mdAuthoredAsHtml(s) ? mdSanitizeHtml(s) : renderCommentText(s);
+    }
+    // Only addresses a browser can be pointed at without running anything.
+    // "javascript:" survives escaping untouched, so it is stopped here.
+    function safeHref(url) {
+        return /^(https?:\/\/|\/|\.{1,2}\/|#)/i.test(String(url || ''));
+    }
+    // An address for a link the page writes itself; anything that is not a
+    // safe one points nowhere.
+    function linkUrl(url) { return safeHref(url) ? String(url) : '#'; }
+    // Where a picture may come from. Showing one is a request made with the
+    // reader's session, before anybody clicks anything - so on this site
+    // only the file endpoints qualify (stored files, and the temporary ones
+    // a paste makes before the save), and elsewhere any http(s) picture or a
+    // data:image. Everything else - javascript:, other data:, this site's
+    // other pages - is never put in a src.
+    var IMG_PATHS = (function () {
+        var out = [];
+        function add(url, from, to) {
+            if (!url) { return; }
+            try {
+                var path = new URL(String(url), location.href).pathname.replace(/\/+$/, '');
+                if (from.test(path)) { out.push(path.replace(from, to)); }
+            } catch (e) { /* not an address */ }
+        }
+        add(D.urls && D.urls.data_base, /\/data$/, '/files/');
+        add(D.urls && D.urls.temp_image_upload, /\/tmpimages$/, '/tmpfiles/');
+
+        return out;
+    })();
+    function imgSrcOk(url) {
+        var s = String(url == null ? '' : url).trim();
+        if (/^data:image\//i.test(s)) { return true; }
+        var u;
+        try { u = new URL(s, location.href); } catch (e) { return false; }
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') { return false; }
+        if (u.origin !== location.origin) { return true; }
+
+        return IMG_PATHS.some(function (p) { return u.pathname.indexOf(p) === 0; });
+    }
+    // "- [ ] still to do" / "- [x] done". The box shows the state; it does
+    // not change it, because the state is a character in the text and this is
+    // the rendered copy of that text.
+    function mdListItem(text) {
+        var box = text.match(/^\[([ xX])\]\s+(.*)$/);
+        if (!box) { return '<li>' + text + '</li>'; }
+
+        return '<li class="task"><input type="checkbox" disabled' +
+            (box[1] === ' ' ? '' : ' checked') + '> ' + box[2] + '</li>';
+    }
+    // Lines into blocks: headings, rules, tables, quotes, code, the two kinds
+    // of list - and a <br> for each newline that stands between two ordinary
+    // lines, never around a block, which brings its own spacing.
+    function mdBlocks(html) {
+        var out = [], list = null, plain = false, table = null, code = null;
+        // How many empty lines are waiting to be spent, and where the last
+        // ordinary line was written - a heading underlined by = or - has to
+        // reach back and rewrite the line it belongs to.
+        var blanks = 0, lastText = null;
+        // Every block ends the paragraph above it, so the next ordinary line
+        // opens a new one and the empty lines in between are already spent.
+        function opened() { plain = false; blanks = 0; lastText = null; }
+        function closeList() { if (list) { out.push('</' + list + '>'); list = null; } lastText = null; }
+        // A line that was indented stays indented. Markdown drops the spaces
+        // and html collapses what is left, and a stack trace or a pasted
+        // listing is only readable while its shape survives. This renderer
+        // already keeps every newline the author typed, so keeping the
+        // columns they typed as well is the same promise.
+        function indent(line) {
+            var run = line.match(/^[ \t]+/);
+            if (!run) { return line; }
+            var wide = 0, i;
+            for (i = 0; i < run[0].length; i++) { wide += run[0].charAt(i) === '\t' ? 4 : 1; }
+            return new Array(wide + 1).join('&nbsp;') + line.slice(run[0].length);
+        }
+        // An ordinary line. One newline draws one break; a run of empty lines
+        // draws one more and no further, so a pasted mail cannot leave a
+        // screenful of nothing between two paragraphs.
+        function pushLine(line) {
+            var lead = plain ? (blanks ? '<br><br>' : '<br>') : '';
+            blanks = 0;
+            lastText = { at: out.push(lead + indent(line)) - 1, lead: lead, text: line.trim() };
+            plain = true;
+        }
+        // Pipes only make a table once the divider row has said so. Without
+        // it they are pipes - a keyboard drawing, a shell pipeline - and
+        // wrapping them in <table> would invent a header nobody typed.
+        function closeTable() {
+            if (!table) { return; }
+            var rows = table, i;
+            table = null;
+            if (!(rows.length > 1 && rows[1].indexOf('-') >= 0 && /^[\s|:-]+$/.test(rows[1]))) {
+                rows.forEach(pushLine);
+                return;
+            }
+            var cells = function (row) {
+                return row.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
+            };
+            var t = '<table><thead><tr>';
+            cells(rows[0]).forEach(function (c) { t += '<th>' + c.trim() + '</th>'; });
+            t += '</tr></thead><tbody>';
+            for (i = 2; i < rows.length; i++) {
+                t += '<tr>';
+                cells(rows[i]).forEach(function (c) { t += '<td>' + c.trim() + '</td>'; });
+                t += '</tr>';
+            }
+            out.push(t + '</tbody></table>');
+            opened();
+        }
+        // Four spaces or a tab, where a paragraph is not already running: the
+        // other way markdown writes code, and the one a pasted stack trace
+        // arrives in. Without it the indent collapses and the trace loses the
+        // shape that made it readable.
+        function closeCode() {
+            if (!code) { return; }
+            while (code.length && !code[code.length - 1].trim()) { code.pop(); }
+            if (code.length) { out.push('<pre class="bl-code">' + code.join('\n') + '</pre>'); }
+            code = null;
+            opened();
+        }
+        html.split(/\r?\n/).forEach(function (line) {
+            if (code) {
+                // A blank line is only a gap inside the block; anything that
+                // has come back to the margin has left it.
+                if (!line.trim()) { code.push(''); return; }
+                if (/^(?: {4}|\t)/.test(line)) { code.push(line.replace(/^(?: {4}|\t)/, '')); return; }
+                closeCode();
+            }
+            if (/^\s*\|.*\|\s*$/.test(line)) {
+                // A table opening inside a list ends the list first, or the
+                // rows would be emitted between the last <li> and its </ul>.
+                if (!table) { closeList(); table = []; }
+                table.push(line);
+                return;
+            }
+            closeTable();
+            // Empty lines are counted, not written. What they are worth is
+            // decided by whatever comes next, which may be a block that
+            // brings its own spacing and wants none of theirs.
+            if (!line.trim()) { if (plain) { blanks++; } return; }
+            // The other way markdown writes a heading: the words on one line,
+            // a rule of = or - under them. Only directly under - an empty line
+            // in between means the rule is a rule.
+            var under = line.match(/^\s*(=+|-+)\s*$/);
+            if (under && lastText && !blanks) {
+                var lv = under[1].charAt(0) === '=' ? 1 : 2;
+                // The heading carries its own spacing, so the break that used
+                // to open this line goes with the line it opened.
+                out[lastText.at] = '<h' + lv + '>' + lastText.text + '</h' + lv + '>';
+                opened();
+                return;
+            }
+            // Before the list rule, which would otherwise read "* * *" as
+            // three bullets. "---" has no space after the dash, so it was
+            // never a list to begin with.
+            if (/^\s*(?:-{3,}|_{3,}|\*{3,})\s*$/.test(line)) { closeList(); out.push('<hr>'); opened(); return; }
+            var head = line.match(/^\s*(#{1,6})\s+(.*)$/);
+            if (head) {
+                closeList();
+                out.push('<h' + head[1].length + '>' + head[2] + '</h' + head[1].length + '>');
+                opened();
+                return;
+            }
+            // Indented code cannot interrupt a paragraph - an empty line has
+            // to have ended it first - and inside a list an indent is the
+            // item continuing, not code.
+            if (!list && (!plain || blanks) && /^(?: {4}|\t)/.test(line)) {
+                code = [line.replace(/^(?: {4}|\t)/, '')];
+                return;
+            }
+            var ul = line.match(/^\s*[-*]\s+(.*)$/);
+            var ol = line.match(/^\s*\d+\.\s+(.*)$/);
+            var quote = line.match(/^\s*&gt;\s?(.*)$/);
+            if (ul || ol) {
+                var want = ul ? 'ul' : 'ol';
+                if (list !== want) { closeList(); out.push('<' + want + '>'); list = want; }
+                out.push(mdListItem(ul ? ul[1] : ol[1]));
+                opened();
+                return;
+            }
+            closeList();
+            if (quote) { out.push('<blockquote>' + quote[1] + '</blockquote>'); opened(); return; }
+            pushLine(line);
+        });
+        closeCode();
+        closeList();
+        closeTable();
+
+        return out.join('');
+    }
+    // The same links for text that is stored as HTML - the description and
+    // the wiki - where escape-then-replace cannot be reused. Walk the text
+    // nodes and leave the markup alone; anything already inside a link, and
+    // any key the payload cannot name, stays as it is.
+    var issueRefRe = null;
+    function linkifyIssueRefs(el) {
+        if (!el) { return; }
+        if (issueRefRe === null) {
+            var key = String(D.project.key || '');
+            issueRefRe = (key && key.indexOf('#') < 0)
+                ? new RegExp('(' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '-\\d+)', 'gi')
+                : false;
+        }
+        if (!issueRefRe || !window.NodeFilter) { return; }
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        var nodes = [];
+        while (walker.nextNode()) {
+            var n = walker.currentNode;
+            var p = n.parentNode;
+            if (p && p.closest && p.closest('a,code,pre,script,style,textarea')) { continue; }
+            issueRefRe.lastIndex = 0;
+            if (issueRefRe.test(String(n.nodeValue))) { nodes.push(n); }
+        }
+        nodes.forEach(function (node) {
+            var text = String(node.nodeValue);
+            var frag = document.createDocumentFragment();
+            var last = 0;
+            var changed = false;
+            var m;
+            issueRefRe.lastIndex = 0;
+            while ((m = issueRefRe.exec(text)) !== null) {
+                var hitId = resolveIssueRef(m[1]);
+                if (!hitId) { continue; }
+                changed = true;
+                frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+                var a = document.createElement('a');
+                a.className = 'bl-issuelink pp-card';
+                a.href = '#' + issueHash(hitId);
+                a.dataset.issue = hitId;
+                a.textContent = m[1];
+                frag.appendChild(a);
+                last = m.index + m[1].length;
+            }
+            if (!changed) { return; }
+            frag.appendChild(document.createTextNode(text.slice(last)));
+            node.parentNode.replaceChild(frag, node);
+        });
+    }
+
+    /* ---- related issues: the sideways links the parent column cannot say */
+    function relationsOf(id) {
+        return (D.relations || []).filter(function (r) {
+            return String(r.f) === String(id) || String(r.t) === String(id);
+        });
+    }
+    // Read from the far side, "blocks" must answer as "blocked by" - the
+    // inverse key rides in the payload next to each label.
+    function relTypeLabel(rt, incoming) {
+        var types = D.relation_types || {};
+        var t = own(types, rt);
+        if (!t) { return rt; }
+        if (!incoming) { return t.l; }
+        return (own(types, t.inv) || {}).l || t.l;
+    }
+    // One link being added at a time. The duplicate check reads the links
+    // the page holds, which only learn about this one when its answer is
+    // back - so a double click used to file the same link twice.
+    var relAdding = false;
+    function renderRelated(i, res) {
+        var box = document.getElementById('pp-d-relbox');
+        if (!box) { return; }
+        var rows = relationsOf(i.id);
+        var canEdit = !!(D.related_table && res.editable);
+        if (!rows.length && !canEdit) { box.style.display = 'none'; return; }
+        box.style.display = '';
+        var html = rows.map(function (r) {
+            var incoming = String(r.t) === String(i.id) && String(r.f) !== String(i.id);
+            var otherId = incoming ? r.f : r.t;
+            var other = issueById(otherId);
+            var link = other
+                ? '<a class="bl-issuelink pp-card" href="#issue-' + esc(keyRef(other)) + '" data-issue="' + esc(other.id) + '">' + esc(other.key) + ' ' + esc(other.subject) + '</a>'
+                // An issue this project is not carrying - one that was related
+                // across projects, or has since moved. All the row can say by
+                // itself is the number; the card behind it says the rest.
+                : '<a class="bl-issuelink pp-card" href="' + esc(D.urls.data_base + '/' + D.issue_table + '/' + otherId) + '" data-issue="' + esc(otherId) + '">#' + esc(otherId) + '</a>';
+            return '<div class="row"><div class="k">' + esc(relTypeLabel(r.rt, incoming)) + '</div>' +
+                '<div class="v"><span class="tx">' + link + '</span>' +
+                (other ? pill(other.st) : '') +
+                (canEdit ? '<a href="javascript:void(0);" class="pp-rel-del" data-rel="' + esc(r.id) + '" title="' + esc(L.del) + '"><i class="fa fa-times"></i></a>' : '') +
+                '</div></div>';
+        }).join('');
+        if (!rows.length) {
+            html = '<div class="row"><div class="k"></div><div class="v bl-relempty">' + esc(L.rel_none) + '</div></div>';
+        }
+        if (canEdit) {
+            html += '<div class="row"><div class="k"></div><div class="v bl-reladd">' +
+                '<select id="pp-rel-type">' +
+                Object.keys(D.relation_types || {}).map(function (key) {
+                    return '<option value="' + esc(key) + '">' + esc(D.relation_types[key].l) + '</option>';
+                }).join('') +
+                '</select><span id="pp-rel-pick"></span>' +
+                '<button type="button" class="bl-btn-sub" id="pp-rel-add"><i class="fa fa-plus"></i> ' + esc(L.rel_add) + '</button></div></div>';
+        }
+        document.getElementById('pp-d-related').innerHTML = html;
+        Array.prototype.forEach.call(box.querySelectorAll('.pp-rel-del'), function (btn) {
+            btn.addEventListener('click', onRelDel);
+        });
+        if (!canEdit) { return; }
+        var pick = ppIssueField({
+            url: D.urls.lightapi_base + '/lookup/' + D.issue_table + '?parent_id=' + D.project.id + '&exclude=' + i.id,
+            title: L.ib_title_rel,
+            multiple: false
+        });
+        document.getElementById('pp-rel-pick').appendChild(pick.root);
+        var addBtn = document.getElementById('pp-rel-add');
+        addBtn.disabled = relAdding;
+        addBtn.addEventListener('click', function () {
+            if (relAdding) { return; }
+            var to = pick.select.value;
+            var rt = document.getElementById('pp-rel-type').value;
+            if (!to) { return; }
+            if (String(to) === String(i.id)) { toast(L.rel_self, true); return; }
+            var dup = relationsOf(i.id).some(function (r) {
+                return String(String(r.t) === String(i.id) ? r.f : r.t) === String(to);
+            });
+            if (dup) { toast(L.rel_dup, true); return; }
+            var value = {};
+            value[D.related_cols.f] = String(i.id);
+            value[D.related_cols.t] = String(to);
+            value[D.related_cols.rt] = rt;
+            relAdding = true;
+            addBtn.disabled = true;
+            $.ajax({
+                url: D.urls.lightapi_base + '/data/' + D.related_table,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ value: value }),
+                headers: { 'X-CSRF-TOKEN': CSRF }
+            }).done(function (r2) {
+                if (!alive()) { return; }
+                if (!r2 || !r2.ok) { toast(errText(null, r2, L.rel_fail), true); return; }
+                (D.relations = D.relations || []).push({ id: r2.id, f: parseInt(i.id, 10), t: parseInt(to, 10), rt: rt });
+                if (String(currentIssue) === String(i.id)) { relAdding = false; renderRelated(i, res); }
+                toast(L.m_saved);
+            }).fail(function (xhr) {
+                if (alive()) { toast(xhrErr(xhr, L.rel_fail), true); }
+            }).always(function () {
+                relAdding = false;
+                if (addBtn.isConnected) { addBtn.disabled = false; }
+            });
+        });
+    }
+    function onRelDel(ev) {
+        var btn = ev.currentTarget;
+        if (btn.dataset.busy === '1') { return; }
+        var relId = btn.getAttribute('data-rel');
+        var issueId = currentIssue;
+        btn.dataset.busy = '1';
+        $.ajax({
+            url: D.urls.lightapi_base + '/data/' + D.related_table + '/' + relId,
+            type: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (r2) {
+            if (!alive()) { return; }
+            if (!r2 || !r2.ok) { toast(errText(null, r2, L.rel_del_fail), true); return; }
+            D.relations = (D.relations || []).filter(function (r) { return String(r.id) !== String(relId); });
+            var issue = issueById(issueId);
+            if (String(currentIssue) === String(issueId) && issue) {
+                renderRelated(issue, DET[issueId] || localDetail(issue));
+            }
+            toast(L.m_saved);
+        }).fail(function (xhr) {
+            if (alive()) { toast(xhrErr(xhr, L.rel_del_fail), true); }
+        }).always(function () { btn.dataset.busy = ''; });
+    }
+
+    /* ------------------------------------------------ wiki -------------- */
+    var currentWiki = null;
+    function renderWiki(selectId) {
+        var wiki = D.wiki || { enabled: false, pages: [] };
+        if (!wiki.enabled) {
+            document.getElementById('pp-wtree').innerHTML = '<div style="color:var(--bl-faint);white-space:normal;">' + esc(L.wiki_none) + '</div>';
+            document.getElementById('pp-whead').innerHTML = '';
+            document.getElementById('pp-wbody').innerHTML = '';
+            return;
+        }
+        if (!wiki.pages.length) {
+            document.getElementById('pp-wtree').innerHTML = '<div style="color:var(--bl-faint);white-space:normal;">' + esc(L.wiki_empty) + '</div>';
+            document.getElementById('pp-whead').innerHTML = '';
+            document.getElementById('pp-wbody').innerHTML = '';
+            return;
+        }
+        if (selectId === undefined || selectId === null) {
+            selectId = currentWiki !== null ? currentWiki : wiki.pages[0].id;
+        }
+        currentWiki = selectId;
+        var kids = {};
+        wiki.pages.forEach(function (page) {
+            var parent = page.parent || 0;
+            (kids[parent] = kids[parent] || []).push(page);
+        });
+        var byId = {};
+        wiki.pages.forEach(function (p) { byId[p.id] = true; });
+        var drawn = {};
+        // The nesting is unbounded; only the indent class is capped. Every
+        // descendant used to be handed level 1, so a grandchild sat at exactly
+        // the same indent as its own parent and a deep tree read as two flat
+        // levels whatever shape it really had.
+        function node(page, level, orphan) {
+            // Doubles as a cycle guard: a page whose parent chain loops back on
+            // itself would otherwise recurse until the stack gives out.
+            if (drawn[page.id]) { return ''; }
+            drawn[page.id] = true;
+            var has = !!kids[page.id];
+            var cls = 'nd' + (level ? ' lv' + Math.min(level, 4) : '') + (orphan ? ' orphan' : '') +
+                (String(page.id) === String(selectId) ? ' on' : '');
+            var html = '<div class="' + cls + '" data-wiki="' + esc(page.id) + '">' +
+                '<i class="fa ' + (has ? 'fa-folder-o' : 'fa-file-text-o') + '"></i>' + esc(page.title) + '</div>';
+            (kids[page.id] || []).forEach(function (child) { html += node(child, level + 1, false); });
+            return html;
+        }
+        var tree = (kids[0] || []).map(function (page) { return node(page, 0, false); }).join('');
+        // A page whose parent was deleted lands in kids[<dead id>], which the
+        // walk from the root never visits: the row stays in the database and
+        // disappears from the only screen that lists wiki pages. Hang those off
+        // the root instead. Testing the parent against the payload - rather
+        // than against what has been drawn so far - keeps this independent of
+        // the order the pages arrive in, so a child can never be emitted twice.
+        wiki.pages.forEach(function (page) {
+            var parent = page.parent || 0;
+            if (parent && !byId[parent]) { tree += node(page, 0, true); }
+        });
+        document.getElementById('pp-wtree').innerHTML = tree;
+
+        var page = null;
+        wiki.pages.forEach(function (p) { if (String(p.id) === String(selectId)) { page = p; } });
+        if (!page) { page = wiki.pages[0]; }
+        setTitle(page.title + ' | ' + L.tab_wiki);
+        var files = page.files || [];
+        document.getElementById('pp-whead').innerHTML = '<span>' + esc(page.title) + '</span>' +
+            '<span style="margin-left:auto;display:flex;gap:8px;">' +
+            '<span class="bl-btn-sub">' + starBtn('star', D.wiki_table, page.id, page.star, page.my_star) + '</span>' +
+            // Offered only to whoever may read the page's history: Exment's
+            // compare screen answers anyone else with an error page.
+            (page.hist === false || !page.hist_url ? '' :
+                '<a class="bl-btn-sub pp-mlink" data-url="' + esc(page.hist_url) + '" data-mtitle="' + esc(L.m_history) + '" data-msub="' + esc(page.title) + '"><i class="fa fa-history"></i> ' + esc(L.wiki_hist) + '</a>') +
+            '<a class="bl-btn-main pp-mlink" style="padding:6px 14px;text-decoration:none;" data-url="' + esc(page.edit_url) + '" data-mtitle="' + esc(L.m_edit_wiki) + '" data-msub="' + esc(page.title) + '"><i class="fa fa-pencil"></i> ' + esc(L.wiki_edit) + '</a></span>';
+        document.getElementById('pp-wbody').innerHTML =
+            '<div class="bl-wmeta"><span><i class="fa fa-pencil"></i> ' + esc(L.wiki_meta) + ': ' + esc(user(page.upby).n) + ' ' + esc(page.up) + '</span>' +
+            (files.length ? '<span><i class="fa fa-paperclip"></i> ' + esc(L.wiki_files) + ' (' + files.length + ')</span>' : '') + '</div>' +
+            (renderRichText(page.content) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>') +
+            (files.length ? '<p>' + files.map(function (f) {
+                return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a> ';
+            }).join('') + '</p>' : '');
+        linkifyIssueRefs(document.getElementById('pp-wbody'));
+        // ISS00257: wiki edits open in the native NED form; no iframe prewarm.
+    }
+
+    /* ------------------------------------------------ files ------------- */
+    function renderFiles() {
+        var files = D.files || {};
+        var rows = (files.rows || []).map(function (f) {
+            return '<tr><td><a class="bl-file" style="margin-top:0;" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a></td>' +
+                '<td>' + esc(f.src) + '</td><td>' + esc(user(f.by).n) + '</td><td>' + esc(f.at) + '</td></tr>';
+        }).join('');
+        document.getElementById('pp-file-rows').innerHTML = rows ||
+            '<tr><td colspan="4" style="color:var(--bl-faint);">' + esc(L.files_empty) + '</td></tr>';
+        // The list has a ceiling. Saying so beats a list that silently stops
+        // and reads as everything there is.
+        var cut = document.getElementById('pp-files-partial');
+        if (cut) { cut.hidden = files.partial !== true; }
+    }
+    function uploadFiles(files) {
+        if (!files || !files.length) { return; }
+        // No upload url means the server would refuse: archived, no edit, or
+        // attachments off. The drop zone is hidden then, but a drop onto the
+        // table itself could still reach here.
+        if (!(D.urls && D.urls.upload)) { toast(L.files_up_fail, true); return; }
+        var data = new FormData();
+        Array.prototype.forEach.call(files, function (f) { data.append('file_data[]', f); });
+        toast(L.posting);
+        $.ajax({
+            url: D.urls.upload, type: 'POST', data: data, processData: false, contentType: false,
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function () {
+            if (!alive()) { return; }
+            toast(L.files_up_ok);
+            // A reload is how the list learns about the file - unless
+            // something half-written is on the page, which a reload would
+            // throw away. The refresh button says there is news instead.
+            setTimeout(function () {
+                if (!alive()) { return; }
+                if (safeToRefresh()) { location.reload(); } else { markStale(true); }
+            }, 600);
+        }).fail(function (xhr) {
+            if (alive()) { toast(xhrErr(xhr, L.files_up_fail), true); }
+        });
+    }
+
+    /* ------------------------------------------------ read receipts ----- */
+    // Who has opened an issue, and the list's unread mark (Outlook-style:
+    // bold until opened, and right-click to mark read / unread).
+    //
+    // Opening an issue tells the server without waiting, in the slow lane of
+    // the request queue, and only once per page view: the screen never waits
+    // on it and a busy reader's real requests go first.
+    var READ_SENT = {};
+    function readAv(r) {
+        var u = user(r.by);
+        var title = u.n + '  ' + (r.at || '') + (r.old ? '  (' + L.reads_old + ')' : '');
+        return '<span class="bl-av pp-read' + (r.old ? ' old' : '') + '" style="background:' + ppColor(u.c) + '" title="' + esc(title) + '">' +
+            esc(u.i) + avImg(u) + '</span>';
+    }
+    function readsHtml(reads) {
+        if (reads === undefined || reads === null) { return '<span class="pp-reads-v">…</span>'; }
+        if (!reads.length) { return '<span class="pp-reads-v none">' + esc(L.reads_none) + '</span>'; }
+        var shown = reads.slice(0, 15);
+        return '<span class="pp-reads-v"><span class="pp-reads-n">' + reads.length + '</span>' +
+            shown.map(readAv).join('') +
+            (reads.length > shown.length ? '<span class="pp-reads-more">+' + (reads.length - shown.length) + '</span>' : '') +
+            '</span>';
+    }
+    function paintUnread(id) {
+        var row = issueById(id);
+        var tr = document.querySelector('#pp-issue-rows tr[data-issue="' + String(id).replace(/[^0-9]/g, '') + '"]');
+        if (tr) { tr.classList.toggle('pp-unread', !!(row && row.unread)); }
+    }
+    // Every issue of the project, in one request - not one per row.
+    function readAll() {
+        if (!D.urls || !D.urls.base) { return; }
+        $.ajax({
+            url: D.urls.base + '/read-all',
+            type: 'POST', dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).then(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            (D.issues || []).forEach(function (i) {
+                if (i.unread) { i.unread = false; paintUnread(i.id); }
+                READ_SENT[String(i.id)] = true;
+            });
+            toast(String(L.read_all_done).replace(':count', res.count));
+        }, function (xhr) { toast(xhrErr(xhr, L.read_all_fail), true); });
+    }
+    function markRead(id, read) {
+        if (id === null || id === undefined || !D.urls || !D.urls.base) { return; }
+        var row = issueById(id);
+        var key = String(id);
+        if (read && READ_SENT[key] === true && !(row && row.unread)) { return; }
+        READ_SENT[key] = read;
+        if (row) { row.unread = !read; }
+        paintUnread(id);
+        ppQueue(function () {
+            return $.ajax({
+                url: D.urls.base + '/issue/' + encodeURIComponent(key) + '/read',
+                type: 'POST', dataType: 'json', data: { read: read ? 1 : 0 },
+                headers: { 'X-CSRF-TOKEN': CSRF }
+            });
+        }, true).then(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            $.extend(D.users, res.users || {});
+            var det = own(DET, key);
+            // A reader who just opened it has seen the latest: nobody's mark
+            // in this fresh list is "old" for what this screen shows.
+            if (det) {
+                var before = {};
+                (det.reads || []).forEach(function (r) { before[r.by] = r; });
+                det.reads = (res.reads || []).map(function (r) {
+                    var was = before[r.by];
+                    return { by: r.by, at: r.at, old: !!(was && was.at === r.at && was.old) };
+                });
+            }
+            if (String(currentIssue) === key) {
+                var box = document.querySelector('#pp-d-main .pp-reads .pp-reads-v');
+                if (box) { box.outerHTML = readsHtml(det ? det.reads : res.reads); }
+            }
+        }).catch(function () {
+            // Not worth a message: the next opening tries again.
+            if (READ_SENT[key] === read) { delete READ_SENT[key]; }
+        });
+    }
+    // "Mail this issue": pick people of the project, add a note, send.
+    function mailClose() {
+        var old = document.getElementById('pp-mailbox');
+        if (old) { old.remove(); }
+    }
+    function mailOpen(issueId) {
+        if (issueId === null || issueId === undefined) { return; }
+        mailClose();
+        var p = D.project || {};
+        // The sender comes first, so a copy to oneself is one tick away.
+        var ids = [];
+        [D.me, p.manager].concat(p.members || [], p.viewers || []).forEach(function (u) {
+            u = Number(u);
+            if (u && ids.indexOf(u) < 0) { ids.push(u); }
+        });
+        var issue = issueById(issueId) || {};
+        var box = document.createElement('div');
+        box.id = 'pp-mailbox';
+        box.className = 'pp-mailbox';
+        box.innerHTML = '<div class="pp-mailbox-back"></div><div class="pp-mailbox-panel" role="dialog" aria-modal="true">' +
+            '<div class="pp-mailbox-head"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_title) +
+                '<div class="pp-mailbox-sub">' + esc((issue.key || '') + ' ' + (issue.subject || '')) + '</div></div>' +
+            '<div class="pp-mailbox-k">' + esc(L.mail_to) + '</div>' +
+            '<div class="pp-mailbox-users">' + ids.map(function (u) {
+                return '<label><input type="checkbox" value="' + esc(u) + '">' + avname(u) + '</label>';
+            }).join('') + '</div>' +
+            '<textarea class="pp-mailbox-msg" rows="4" placeholder="' + esc(L.mail_msg_ph) + '"></textarea>' +
+            '<div class="pp-mailbox-note">' + esc(L.mail_note) + '</div>' +
+            '<div class="pp-mailbox-foot"><span class="pp-mailbox-err"></span>' +
+                '<button type="button" class="bl-btn-sub pp-mailbox-cancel">' + esc(L.mail_cancel) + '</button>' +
+                '<button type="button" class="bl-btn-main pp-mailbox-send"><i class="fa fa-paper-plane"></i> ' + esc(L.mail_send) + '</button></div>' +
+            '</div>';
+        root.appendChild(box);
+        var err = box.querySelector('.pp-mailbox-err');
+        box.querySelector('.pp-mailbox-back').addEventListener('click', mailClose);
+        box.querySelector('.pp-mailbox-cancel').addEventListener('click', mailClose);
+        box.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { mailClose(); } });
+        box.querySelector('.pp-mailbox-users').addEventListener('change', function () { err.textContent = ''; });
+        var send = box.querySelector('.pp-mailbox-send');
+        send.addEventListener('click', function () {
+            var users = [].slice.call(box.querySelectorAll('.pp-mailbox-users input:checked')).map(function (c) { return c.value; });
+            if (!users.length) { err.textContent = L.mail_none; return; }
+            send.disabled = true;
+            err.textContent = '';
+            $.ajax({
+                url: D.urls.base + '/issue/' + encodeURIComponent(issueId) + '/mail',
+                type: 'POST', dataType: 'json',
+                data: { users: users, message: box.querySelector('.pp-mailbox-msg').value },
+                headers: { 'X-CSRF-TOKEN': CSRF }
+            }).done(function (res) {
+                if (!res || !res.ok) { send.disabled = false; err.textContent = errText(null, res, L.mail_fail); return; }
+                mailClose();
+                toast(String(L.mail_sent).replace(':count', res.count) +
+                    (res.skipped ? String(L.mail_skipped).replace(':count', res.skipped) : ''));
+            }).fail(function (xhr) {
+                send.disabled = false;
+                err.textContent = xhrErr(xhr, L.mail_fail);
+            });
+        });
+        var first = box.querySelector('.pp-mailbox-users input');
+        if (first) { first.focus(); }
+    }
+    function ctxClose() {
+        var old = document.getElementById('pp-ctx');
+        if (old) { old.remove(); }
+    }
+    function ctxOpen(x, y, items) {
+        ctxClose();
+        var menu = document.createElement('div');
+        menu.id = 'pp-ctx';
+        menu.className = 'pp-ctx';
+        menu.setAttribute('role', 'menu');
+        menu.innerHTML = items.map(function (it, n) {
+            return '<button type="button" role="menuitem" data-n="' + n + '"><i class="fa ' + esc(it.i) + '"></i> ' + esc(it.l) + '</button>';
+        }).join('');
+        root.appendChild(menu);
+        var w = menu.offsetWidth, h = menu.offsetHeight;
+        menu.style.left = Math.max(4, Math.min(x, window.innerWidth - w - 4)) + 'px';
+        menu.style.top = Math.max(4, Math.min(y, window.innerHeight - h - 4)) + 'px';
+        menu.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-n]');
+            if (!b) { return; }
+            ctxClose();
+            items[Number(b.getAttribute('data-n'))].f();
+        });
+        var first = menu.querySelector('button');
+        if (first) { first.focus(); }
+    }
+    document.addEventListener('mousedown', function (ev) {
+        if (!ev.target.closest || !ev.target.closest('#pp-ctx')) { ctxClose(); }
+    }, true);
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ctxClose(); } });
+    window.addEventListener('scroll', ctxClose, true);
+    window.addEventListener('blur', ctxClose);
+
+    /* ------------------------------------------------ writes ------------ */
+    // One button, two writes, in the order Backlog puts them in: the fields
+    // first, then the comment that explains them.
+    //
+    // The fields go through the row API, which already checks permission,
+    // whitelists columns and runs the table's own validation - so this screen
+    // adds no second, weaker copy of those rules. The status stays on the
+    // comment endpoint because changing it is what notifies people, and that
+    // pipeline lives there.
+    function postComment(statusOnly) {
+        if (cmtBusy || currentIssue === null || cmtPending[currentIssue]) { return; }
+        var issueId = currentIssue;
+        var epoch = detailEpoch;
+        var base = D.urls.base;
+        var table = D.issue_table;
+        var fieldsUrl = (D.urls && D.urls.lightapi_base) + '/data/' + table + '/' + issueId;
+        var submittedBox = document.getElementById('pp-cmt-text');
+        var text = statusOnly ? '' : submittedBox.value;
+        var statusEl = document.getElementById('pp-cmt-status');
+        var statusTo = statusOnly || (statusEl ? statusEl.value : '');
+        var ours = QE.issue !== null && String(QE.issue) === String(issueId);
+        // The status the reader was looking at when they picked the next one.
+        // The server refuses the move when somebody changed it in between,
+        // rather than walking the issue back to where this screen thought it
+        // still stood - which the "next status" button above all would do.
+        var statusFrom = ours ? QE.st : null;
+        var changed = (statusOnly || !QE.editable) ? {} : qeChanged();
+        var diff = qeColumns(changed);
+        // The version the dock was drawn from: a save over somebody else's
+        // newer one is refused instead of written.
+        var version = ours ? QE.ua : null;
+        var hasText = String(text).trim() !== '';
+        var hasFields = Object.keys(diff).length > 0;
+        if (!hasText && !statusTo && !hasFields) {
+            // Nothing typed, nothing picked, nothing changed: the comment
+            // endpoint would only refuse it. Said here, and nothing in the
+            // dock is touched.
+            ppDockMsg(L.dock_empty, true);
+            return;
+        }
+        var label = (issueById(issueId) || {}).key || '';
+        var sequence = ++cmtSequence;
+        cmtPending[issueId] = sequence;
+        if (!statusOnly) {
+            submittedBox._ppCmtOwner = sequence;
+            // Kept for the life of the tab until the server has it: leaving
+            // the issue empties the box, and a post that then fails has nobody
+            // on screen to hand the text back to.
+            if (hasText) { dockDraftSave(issueId, text); }
+        }
+        var notifyUsers = $('#pp-notify-chips .pp-notify:not(.off)').map(function () { return $(this).data('user'); }).get();
+        var mailBox = document.getElementById('pp-notify-mail');
+        var notifyMail = !!(mailBox && mailBox.checked);
+        var current = function () { return detailCurrent(issueId, epoch); };
+        var settled = function () {
+            if (cmtPending[issueId] === sequence) { delete cmtPending[issueId]; }
+            if (detailCurrent(issueId)) { cmtSetBusy(!!cmtPending[issueId]); }
+        };
+        // Said whether or not the reader is still on this issue: a failure
+        // nobody hears about is a comment its writer believes was posted. The
+        // text itself waits in the issue's draft for them to come back to.
+        var failed = function (message) {
+            settled();
+            if (!current()) {
+                toast((label ? label + ': ' : '') + message, true);
+                return;
+            }
+            ppDockMsg(message, true);
+            toast(message, true);
+        };
+        // Somebody else saved the issue first. Nothing of the reader's is
+        // thrown away: the issue is drawn again with what changed - the fields
+        // they moved and the status and people they picked are carried across
+        // the redraw - and the text stays in the box to be sent again.
+        var stale = function (fresh, seq) {
+            settled();
+            if (!current()) {
+                toast((label ? label + ': ' : '') + L.dock_stale_keep, true);
+                return;
+            }
+            toast(L.dock_stale_keep, true);
+            if (fresh && fresh.issue && String(fresh.issue.id) === String(issueId)) {
+                applyDetail($.extend({}, fresh, { ok: true }), undefined, 'force', seq);
+            } else {
+                reloadIssue(issueId, undefined, true);
+            }
+            ppDockMsg(L.dock_stale_keep, true);
+        };
+        cmtSetBusy(true);
+        ppDockMsg('', false);
+
+        var send = function () {
+            var seq = ++DET_SEQ;
+            var data = { comment: text, status_to: statusTo || '', notify_users: notifyUsers };
+            if (notifyMail) { data.notify_mail = 1; }
+            if (statusTo && statusFrom !== null) { data.status_from = statusFrom; }
+            $.ajax({
+                url: base + '/issue/' + issueId + '/comment',
+                type: 'POST',
+                dataType: 'json',
+                data: data,
+                headers: { 'X-CSRF-TOKEN': CSRF }
+            }).done(function (res) {
+                if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
+                    failed(errText(null, res, L.post_fail));
+                    return;
+                }
+                settled();
+                dockDraftClear(issueId, text);
+                applyDetail(res, epoch, false, seq);
+                if (!statusOnly && alive() && String(currentIssue) === String(issueId)
+                    && submittedBox === document.getElementById('pp-cmt-text')
+                    && submittedBox._ppCmtOwner === sequence && submittedBox.value === text) {
+                    submittedBox.value = '';
+                    submittedBox._ppCmtOwner = null;
+                }
+                if (!current()) { return; }
+                toast(L.posted);
+                ppDockMsg('', false);
+                var box = document.getElementById('pp-cmt-text');
+                if (!box.value) { cmtPreviewOff(); }
+                // What was sent is spent: the status picked and the people told
+                // went with this comment, not with the next one. A field moved
+                // while it was on its way is carried across the redraw.
+                var stNow = document.getElementById('pp-cmt-status');
+                if (stNow && statusTo && stNow.value === String(statusTo)) { stNow.value = ''; }
+                document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
+                var mailNow = document.getElementById('pp-notify-mail');
+                if (mailNow) { mailNow.checked = false; }
+                buildDetail(own(DET, String(issueId)) || res);
+                if (!box.value.trim()) { ppDockOpen(false); }
+                if (statusTo) {
+                    setTimeout(function () {
+                        if (current() && safeToRefresh()) { location.reload(); }
+                    }, 500);
+                }
+            }).fail(function (xhr) {
+                var body = xhrBody(xhr);
+                if (xhr && xhr.status === 409 && body && body.error === 'stale') { stale(body, seq); return; }
+                failed(xhrErr(xhr, L.post_fail));
+            });
+        };
+
+        // No field moved: straight to the comment.
+        if (!hasFields) { send(); return; }
+
+        ppDockMsg(L.dock_saving, false);
+        var patchSeq = ++DET_SEQ;
+        var patch = { value: diff };
+        if (version) { patch.updated_at = version; }
+        fetch(fieldsUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            credentials: 'same-origin',
+            body: JSON.stringify(patch)
+        }).then(ppJson, ppNoAnswer).then(function (res) {
+            if (res.status === 200 && res.body && res.body.ok) {
+                var ua = qeAdopt(issueId, changed, res.body, patchSeq);
+                if (QE.issue !== null && String(QE.issue) === String(issueId)) {
+                    // Sent: these fields now say what the row says, and are no
+                    // longer anybody's unsent work - unless they were moved
+                    // again while the save was on its way.
+                    var nowVals = qeRead();
+                    Object.keys(changed).forEach(function (k) {
+                        QE.base[k] = changed[k];
+                        if (qeSame(nowVals[k], changed[k])) { delete QE.touched[k]; }
+                    });
+                    if (ua) { QE.ua = ua; }
+                    qeMark();
+                }
+                delete NED.editFormCache[table + '::' + issueId];
+                if (hasText || statusTo) { send(); return; }
+                // Fields alone: there is nothing to say, so nothing is posted.
+                // The issue is read again for the history line the save made.
+                settled();
+                if (current()) { toast(L.m_saved); ppDockMsg('', false); }
+                reloadIssue(issueId, epoch, false);
+                return;
+            }
+            if (res.status === 409 && res.body && res.body.error === 'stale') { stale(null, null); return; }
+            failed(errText(res.status, res.body, L.dock_save_fail));
+        }).catch(function () {
+            failed(errText(null, null, L.dock_save_fail));
+        });
+    }
+    // The row as the list holds it, brought up to what a save just wrote -
+    // and to the version the server now has, which is the one the next save
+    // from this screen has to quote or be refused as stale.
+    function qeAdopt(issueId, changed, answer, seq) {
+        var row = (answer && answer.row && typeof answer.row === 'object') ? answer.row : null;
+        var ua = (answer && (answer.updated_at || (row && row.updated_at))) || null;
+        var rows = [];
+        var listed = issueById(issueId);
+        if (listed) { rows.push(listed); }
+        var det = own(DET, String(issueId));
+        if (det && det.issue && rows.indexOf(det.issue) < 0) { rows.push(det.issue); }
+        // An answer that left before this save is older than what it wrote.
+        if (det && typeof seq === 'number' && !(det._seq > seq)) { det._seq = seq; }
+        rows.forEach(function (issue) {
+            Object.keys(QE_COLS).forEach(function (key) {
+                var col = qeCol(QE_COLS[key]);
+                if (row && col && Object.prototype.hasOwnProperty.call(row, col)) {
+                    issue[key] = qeRowValue(key, row[col]);
+                } else if (Object.prototype.hasOwnProperty.call(changed, key)) {
+                    issue[key] = qeRowValue(key, changed[key]);
+                }
+            });
+            if (ua) { issue.ua = ua; }
+        });
+
+        return ua;
+    }
+    // A stored value in the shape the list rows carry it (buildIssueRow).
+    function qeRowValue(key, v) {
+        var list = Array.isArray(v) ? v : ((v === null || v === undefined || v === '') ? [] : [v]);
+        if (key === 'as') {
+            return list.map(Number).filter(function (n) { return isFinite(n) && n > 0; });
+        }
+        if (key === 'cat') { return list.map(String); }
+        if (key === 'sd' || key === 'dd') {
+            var day = String(v == null ? '' : v).slice(0, 10);
+            return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+        }
+        if (key === 'pg') {
+            return (v === null || v === undefined || v === '' || !isFinite(Number(v))) ? null : Number(v);
+        }
+        if (key === 'eh' || key === 'ah') { return (v === undefined || v === '') ? null : v; }
+
+        return (v === null || v === undefined) ? '' : String(v);
+    }
+    // One issue read again and folded back in, for a screen that knows its
+    // copy is behind: a save that left a line in the history, or a save
+    // refused because somebody else got there first (force: drawn even with
+    // work in the dock, which the redraw carries across).
+    function reloadIssue(issueId, epoch, force) {
+        if (!(D.urls && D.urls.base)) { return; }
+        var seq = ++DET_SEQ;
+        ppQueue(function () {
+            return $.getJSON(D.urls.base + '/issue/' + issueId);
+        }).then(function (res) {
+            if (!alive() || !res || !res.ok || !res.issue) { return; }
+            applyDetail(res, epoch, force ? 'force' : true, seq);
+        }).catch(function () { /* the copy on screen stands */ });
+    }
+    // The comment being written, per issue, for the life of the tab. Moving
+    // to another issue empties the box, and a post that fails after its
+    // writer has moved on has no box to go back into - so it waits here, and
+    // the box shows it again when they return to the issue.
+    function dockDraftKey(issueId) {
+        return 'pmportal.dock.u' + String(D.me || 0) + '.p' + String((D.project && D.project.id) || 0) + '.' + String(issueId);
+    }
+    function dockDraftSave(issueId, text) {
+        if (issueId === null || issueId === undefined) { return; }
+        try {
+            if (String(text || '').trim() === '') { sessionStorage.removeItem(dockDraftKey(issueId)); return; }
+            sessionStorage.setItem(dockDraftKey(issueId), String(text));
+        } catch (e) { /* private mode or full: the box still holds it */ }
+    }
+    function dockDraftRead(issueId) {
+        try { return sessionStorage.getItem(dockDraftKey(issueId)) || ''; } catch (e) { return ''; }
+    }
+    // text: drop it only while it still says what was sent - newer words
+    // typed for the same issue are somebody's next comment.
+    function dockDraftClear(issueId, text) {
+        try {
+            var key = dockDraftKey(issueId);
+            if (text === undefined || sessionStorage.getItem(key) === String(text)) { sessionStorage.removeItem(key); }
+        } catch (e) { /* nothing stored */ }
+    }
+    function ppDockMsg(text, isError) {
+        var el = document.getElementById('pp-dockmsg');
+        if (!el) { return; }
+        el.textContent = text || '';
+        el.classList.toggle('err', !!isError);
+    }
+
+    /* ------------------------------------------------ type-ahead -------- */
+    // Backlog lets a writer reach the three things a ticket is always about
+    // without leaving the keyboard: @ a person, # another issue, ~ a file.
+    // The list is drawn from what the page already holds, so a trigger costs
+    // no request and works with the network down.
+    //
+    // Mounted on <body> rather than beside the field: the editors sit inside
+    // boxes that clip and scroll, and a list anchored inside one of them is
+    // cut off at the first border it meets.
+    var TA_MAX = 12;
+    var TA = { el: null, ta: null, trigger: null, from: 0, items: [], idx: 0 };
+    var TA_HOSTS = '#pp-cmt-text, .pp-ne-desc-row textarea.pp-ne-in, .bl-tl .cedit textarea';
+    // A trigger only counts at the start of a word. Without this every mail
+    // address in a paragraph would open the people list.
+    var TA_OPEN_BEFORE = /[\s(\[{>]/;
+    function taSources() {
+        return {
+            '@': {
+                title: L.ta_user,
+                rows: function () {
+                    return Object.keys(D.users || {}).map(function (id) {
+                        var u = user(id);
+
+                        return { label: u.n, av: id, insert: '@' + u.n + ' ' };
+                    }).sort(function (a, b) { return cmpText(a.label, b.label); });
+                }
+            },
+            '#': {
+                title: L.ta_issue,
+                rows: function () {
+                    // The bare key is what linkifyIssueRefs turns back into a
+                    // link, so that is what is written - not "#KEY", which
+                    // would read as a link and render as text.
+                    return (D.issues || []).map(function (i) {
+                        return { label: i.subject, key: i.key, insert: i.key + ' ' };
+                    });
+                }
+            },
+            '~': {
+                title: L.ta_file,
+                rows: function () {
+                    return ((D.files && D.files.rows) || []).map(function (f) {
+                        return { label: f.name, insert: mdFileLink(f.name, f.url, false) };
+                    });
+                }
+            }
+        };
+    }
+    function taEl() {
+        if (TA.el) { return TA.el; }
+        var box = document.createElement('div');
+        box.className = 'pp-ta';
+        box.hidden = true;
+        // mousedown, not click: the field must keep focus, or the caret this
+        // is about to write at is gone by the time the click lands.
+        box.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+        box.addEventListener('click', function (ev) {
+            var b = ev.target.closest('.it');
+            if (!b) { return; }
+            taAccept(parseInt(b.dataset.i, 10) || 0);
+        });
+        document.body.appendChild(box);
+        TA.el = box;
+
+        return box;
+    }
+    function taClose() {
+        if (TA.el) { TA.el.hidden = true; }
+        TA.trigger = null;
+        TA.items = [];
+    }
+    function taIsOpen() { return !!(TA.el && !TA.el.hidden); }
+    // Where the caret is, in document space. A textarea gives no such answer,
+    // so the text before the caret is laid out again in a hidden copy of the
+    // field and the position of what follows it is read off that.
+    function taCaret(el, pos) {
+        var cs = getComputedStyle(el);
+        var mirror = document.createElement('div');
+        ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight',
+         'textTransform', 'wordSpacing', 'textIndent', 'paddingTop', 'paddingRight',
+         'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth',
+         'borderBottomWidth', 'borderLeftWidth', 'boxSizing'].forEach(function (p) {
+            mirror.style[p] = cs[p];
+        });
+        mirror.style.position = 'absolute';
+        mirror.style.visibility = 'hidden';
+        mirror.style.whiteSpace = 'pre-wrap';
+        mirror.style.overflowWrap = 'break-word';
+        mirror.style.width = el.clientWidth + 'px';
+        mirror.style.left = '0px';
+        mirror.style.top = '0px';
+        mirror.textContent = el.value.slice(0, pos);
+        var mark = document.createElement('span');
+        mark.textContent = el.value.slice(pos) || '.';
+        mirror.appendChild(mark);
+        document.body.appendChild(mirror);
+        var x = mark.offsetLeft, y = mark.offsetTop, h = mark.offsetHeight;
+        document.body.removeChild(mirror);
+        var r = el.getBoundingClientRect();
+
+        return {
+            left: r.left + window.scrollX + x - el.scrollLeft,
+            top: r.top + window.scrollY + y - el.scrollTop,
+            h: h || parseInt(cs.lineHeight, 10) || 16
+        };
+    }
+    function taRender() {
+        var box = taEl();
+        var src = own(taSources(), TA.trigger);
+        box.innerHTML = '';
+        var head = document.createElement('div');
+        head.className = 'hd';
+        head.textContent = TA.trigger + ' ' + (src ? src.title : '');
+        box.appendChild(head);
+        var list = document.createElement('div');
+        list.className = 'ls';
+        if (!TA.items.length) {
+            var em = document.createElement('div');
+            em.className = 'em';
+            em.textContent = L.ta_none;
+            list.appendChild(em);
+        }
+        TA.items.forEach(function (it, n) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'it' + (n === TA.idx ? ' on' : '');
+            b.dataset.i = String(n);
+            if (it.av) {
+                var u = user(it.av);
+                var a = document.createElement('span');
+                a.className = 'bl-av';
+                a.style.background = ppColor(u.c);
+                a.textContent = u.i;
+                if (u.a) { a.insertAdjacentHTML('beforeend', avImg(u)); }
+                b.appendChild(a);
+            }
+            if (it.key) {
+                var k = document.createElement('span');
+                k.className = 'bl-key';
+                k.textContent = it.key;
+                b.appendChild(k);
+            }
+            var n1 = document.createElement('span');
+            n1.className = 'n';
+            n1.textContent = it.label;
+            b.appendChild(n1);
+            list.appendChild(b);
+        });
+        box.appendChild(list);
+        var foot = document.createElement('div');
+        foot.className = 'ft';
+        foot.textContent = L.ta_hint;
+        box.appendChild(foot);
+    }
+    function taPlace() {
+        var box = taEl();
+        var at = taCaret(TA.ta, TA.from);
+        box.hidden = false;
+        box.style.left = '0px';
+        box.style.top = '0px';
+        var w = box.offsetWidth, h = box.offsetHeight;
+        var left = Math.min(at.left, window.scrollX + document.documentElement.clientWidth - w - 8);
+        // Under the caret when there is room, above it when there is not -
+        // which in the pinned composer is almost always.
+        var below = at.top + at.h + 4;
+        var roomBelow = window.scrollY + window.innerHeight - below;
+        var top = roomBelow >= h ? below : Math.max(window.scrollY + 4, at.top - h - 4);
+        box.style.left = Math.max(window.scrollX + 4, left) + 'px';
+        box.style.top = top + 'px';
+    }
+    // Read back from the caret to the nearest trigger. Anything with a space
+    // in between means the writer has moved on, and the list closes.
+    function taScan(el) {
+        var pos = el.selectionStart;
+        if (pos !== el.selectionEnd) { return null; }
+        var value = el.value;
+        var srcs = taSources();
+        for (var i = pos - 1; i >= 0 && pos - i <= 40; i--) {
+            var ch = value.charAt(i);
+            if (/\s/.test(ch)) { return null; }
+            if (!own(srcs, ch)) { continue; }
+            var before = i > 0 ? value.charAt(i - 1) : '';
+            if (before && !TA_OPEN_BEFORE.test(before)) { return null; }
+
+            return { trigger: ch, from: i, query: value.slice(i + 1, pos) };
+        }
+
+        return null;
+    }
+    function taMatch(rows, query) {
+        var q = String(query || '').toLowerCase();
+        if (!q) { return rows.slice(0, TA_MAX); }
+
+        return rows.filter(function (r) {
+            return String(r.label || '').toLowerCase().indexOf(q) >= 0 ||
+                String(r.key || '').toLowerCase().indexOf(q) >= 0;
+        }).slice(0, TA_MAX);
+    }
+    function taRefresh(el) {
+        var hit = taScan(el);
+        if (!hit) { taClose(); return; }
+        var src = own(taSources(), hit.trigger);
+        if (!src) { taClose(); return; }
+        var rows = src.rows();
+        // A source with nothing in it never opens: a project with no files
+        // would otherwise flash an empty box at every ~ in ~~strike~~. One
+        // that has rows but matches none says so, which is how the writer
+        // learns the trigger was understood.
+        if (!rows.length) { taClose(); return; }
+        TA.ta = el;
+        TA.trigger = hit.trigger;
+        TA.from = hit.from;
+        TA.items = taMatch(rows, hit.query);
+        TA.idx = 0;
+        taRender();
+        taPlace();
+    }
+    function taMove(step) {
+        if (!TA.items.length) { return; }
+        TA.idx = (TA.idx + step + TA.items.length) % TA.items.length;
+        taRender();
+        var on = TA.el.querySelector('.it.on');
+        if (on && on.scrollIntoView) { on.scrollIntoView({ block: 'nearest' }); }
+    }
+    function taAccept(index) {
+        var it = TA.items[index == null ? TA.idx : index];
+        var el = TA.ta;
+        if (!it || !el) { taClose(); return; }
+        var to = el.selectionStart;
+        el.value = el.value.slice(0, TA.from) + it.insert + el.value.slice(to);
+        var caret = TA.from + it.insert.length;
+        el.selectionStart = el.selectionEnd = caret;
+        taClose();
+        el.focus();
+        // Everything downstream of a field listens for input, not for us.
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    // A field is bound by the page it belongs to. The mark names that page's
+    // root rather than just saying "bound": a page left behind by pjax that
+    // marked a field first would otherwise keep it, and fill the new
+    // project's comment box with the old project's people, issues and files.
+    function ppTaAttach(el) {
+        if (!el || el._taBound === root) { return; }
+        el._taBound = root;
+        el.addEventListener('input', function () { if (alive()) { taRefresh(el); } });
+        el.addEventListener('click', function () { if (alive() && taIsOpen()) { taRefresh(el); } });
+        el.addEventListener('blur', function () { setTimeout(taClose, 120); });
+        // Capture, so the list answers the arrow keys before the field moves
+        // its caret and before Ctrl+Enter posts a half-typed mention.
+        el.addEventListener('keydown', function (ev) {
+            if (!alive() || !taIsOpen() || TA.ta !== el) { return; }
+            if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); taClose(); return; }
+            if (ev.key === 'ArrowDown') { ev.preventDefault(); taMove(1); return; }
+            if (ev.key === 'ArrowUp') { ev.preventDefault(); taMove(-1); return; }
+            if (ev.key === 'Enter' || ev.key === 'Tab') {
+                if (ev.ctrlKey || ev.metaKey || ev.altKey) { return; }
+                // Nothing matched: the key belongs to the field, not to a
+                // list that has nothing to choose from.
+                if (!TA.items.length) { taClose(); return; }
+                ev.preventDefault();
+                ev.stopPropagation();
+                taAccept();
+            }
+        }, true);
+    }
+    window.ppTaAttach = ppTaAttach;
+    // Bound once, lazily: the editors these run in are built and torn down
+    // per open, so there is no one moment when they all exist. Both
+    // listeners outlive a pjax swap, so each stands down with its page.
+    document.addEventListener('focusin', function onTaFocus(ev) {
+        if (!alive()) { document.removeEventListener('focusin', onTaFocus); return; }
+        var t = ev.target;
+        if (t && t.matches && t.matches(TA_HOSTS)) { ppTaAttach(t); }
+    });
+    window.addEventListener('scroll', function onTaScroll() {
+        if (!alive()) { window.removeEventListener('scroll', onTaScroll, true); taClose(); return; }
+        if (taIsOpen()) { taClose(); }
+    }, true);
+
+    // Fold a fresh detail answer back into the page: the caches the list and
+    // the screens read from, then a repaint. Every write on this screen -
+    // comment, edit, delete - answers with one, so none of them reloads.
+    //
+    // paint: false = caches only; 'force' = draw the issue again even with
+    // work in the dock (renderQuickEdit carries it across); anything else =
+    // draw it if nothing is in the way, else only the timeline and files.
+    // seq: the number its request took (detPut); an older answer than the
+    // copy held is dropped. Returns whether it was taken.
+    function applyDetail(res, epoch, paint, seq) {
+        if (!alive()) { return false; }
+        if (!res || !res.ok || !res.issue) { toast(L.post_fail, true); return false; }
+        $.extend(D.users, res.users || {});
+        res.issue = $.extend({}, issueById(res.issue.id) || {}, res.issue);
+        if (!detPut(res.issue.id, res, seq)) { return false; }
+        (D.issues || []).forEach(function (row, index) {
+            if (String(row.id) === String(res.issue.id)) { D.issues[index] = res.issue; }
+        });
+        if (paint !== false && detailCurrent(res.issue.id, epoch)) {
+            if (paint === 'force' || safeToRefresh()) { buildDetail(res); }
+            else { renderTimeline(res); renderIssueFiles(res); }
+        }
+
+        return true;
+    }
+
+    /* ------------------------------------------------ comment composer -- */
+    function cmtBox() { return document.getElementById('pp-cmt-text'); }
+    // Wrap the selection, or drop a placeholder in when there is none, and
+    // leave the selection where the typing continues.
+    function cmtWrap(before, after, placeholder) {
+        var box = cmtBox();
+        if (!box) { return; }
+        var from = box.selectionStart || 0, to = box.selectionEnd || 0;
+        var sel = box.value.slice(from, to) || placeholder || '';
+        box.value = box.value.slice(0, from) + before + sel + after + box.value.slice(to);
+        box.focus();
+        box.selectionStart = from + before.length;
+        box.selectionEnd = from + before.length + sel.length;
+        cmtPreviewRefresh();
+    }
+    // Prefix every line the selection touches - what the list and quote
+    // buttons do, and what makes them work on a paragraph at a time.
+    function cmtPrefix(make) {
+        var box = cmtBox();
+        if (!box) { return; }
+        var from = box.value.lastIndexOf('\n', (box.selectionStart || 0) - 1) + 1;
+        var to = box.value.indexOf('\n', box.selectionEnd || 0);
+        if (to < 0) { to = box.value.length; }
+        var out = box.value.slice(from, to).split('\n').map(make).join('\n');
+        box.value = box.value.slice(0, from) + out + box.value.slice(to);
+        box.focus();
+        box.selectionStart = from;
+        box.selectionEnd = from + out.length;
+        cmtPreviewRefresh();
+    }
+    function cmtTool(kind) {
+        if (kind === 'attach') { document.getElementById('pp-cmt-file').click(); return; }
+        if (kind === 'emoji') { cmtEmoji(); return; }
+        if (kind === 'preview') { cmtPreviewToggle(); return; }
+        if (kind === 'b') { cmtWrap('**', '**', ''); return; }
+        if (kind === 'i') { cmtWrap('*', '*', ''); return; }
+        if (kind === 's') { cmtWrap('~~', '~~', ''); return; }
+        if (kind === 'code') { cmtWrap('`', '`', ''); return; }
+        // No prompt() for the address: the placeholder is selected instead,
+        // so the next keystroke replaces it.
+        if (kind === 'link') { cmtWrap('[', '](https://)', L.ct_link_label); return; }
+        if (kind === 'ul') { cmtPrefix(function (line) { return line.replace(/^([-*]\s+)?/, '- '); }); return; }
+        if (kind === 'ol') { cmtPrefix(function (line, at) { return line.replace(/^(\d+\.\s+)?/, (at + 1) + '. '); }); return; }
+        if (kind === 'q') { cmtPrefix(function (line) { return line.replace(/^(&gt;\s?|>\s?)?/, '> '); }); return; }
+    }
+    // Not the whole Unicode chart - the two dozen a project conversation
+    // actually reaches for. Anything else can still be typed or pasted.
+    var EMOJI = ['👍', '🙏', '🎉', '✅', '☑️', '❗', '⚠️', '🐛', '🔥', '💡', '📝', '📌',
+        '👀', '🚀', '⏰', '❓', '💯', '👏', '🤝', '🔧', '😄', '😢', '🙇', '🆗'];
+    function cmtEmoji() {
+        var pad = document.getElementById('pp-cmt-emoji');
+        if (!pad.childNodes.length) {
+            EMOJI.forEach(function (ch) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = ch;
+                b.addEventListener('click', function () { cmtInsert(ch); });
+                pad.appendChild(b);
+            });
+        }
+        pad.hidden = !pad.hidden;
+        document.querySelector('#pp-cmt-tools button[data-ct="emoji"]').classList.toggle('on', !pad.hidden);
+    }
+    function cmtInsert(text) {
+        var box = cmtBox();
+        var from = box.selectionStart || 0, to = box.selectionEnd || 0;
+        box.value = box.value.slice(0, from) + text + box.value.slice(to);
+        box.focus();
+        box.selectionStart = box.selectionEnd = from + text.length;
+        cmtPreviewRefresh();
+    }
+    function cmtPreviewToggle() {
+        var prev = document.getElementById('pp-cmt-prev');
+        var btn = document.getElementById('pp-cmt-prevbtn');
+        var on = prev.hidden;
+        prev.hidden = !on;
+        cmtBox().hidden = on;
+        btn.classList.toggle('on', on);
+        btn.textContent = on ? L.ct_write : L.ct_preview;
+        cmtPreviewRefresh();
+    }
+    function cmtPreviewOff() {
+        var prev = document.getElementById('pp-cmt-prev');
+        if (prev && !prev.hidden) { cmtPreviewToggle(); }
+    }
+    function cmtPreviewRefresh() {
+        var prev = document.getElementById('pp-cmt-prev');
+        if (!prev || prev.hidden) { return; }
+        var text = cmtBox().value;
+        prev.innerHTML = text.trim()
+            ? '<div class="txt bl-md">' + renderCommentText(text) + '</div>'
+            : '<div style="color:var(--bl-faint);font-size:12px;">' + esc(L.empty) + '</div>';
+    }
+    // Paste, drop or pick: the file goes onto the issue and its address
+    // comes back, so the comment being written can point at it right away.
+    // This is the Backlog habit of pasting a screenshot straight into the
+    // comment box and never touching an attach button at all.
+    function cmtUpload(files) {
+        var list = Array.prototype.slice.call(files || []);
+        if (!list.length || currentIssue === null) { return; }
+        var issueId = currentIssue, epoch = detailEpoch;
+        var form = document.getElementById('pp-cmtform');
+        var data = new FormData();
+        list.forEach(function (f) {
+            // A pasted bitmap carries no name of its own; stamping it keeps
+            // two screenshots in the same issue apart.
+            var named = f.name && f.name !== 'blob' ? f.name
+                : ('image-' + Date.now() + '.' + (String(f.type || 'image/png').split('/')[1] || 'png'));
+            data.append('file_data[]', f, named);
+        });
+        form.classList.add('busy');
+        toast(L.cmt_uploading);
+        $.ajax({
+            url: D.urls.base + '/issue/' + issueId + '/upload', type: 'POST', data: data,
+            dataType: 'json',
+            processData: false, contentType: false, headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!alive()) { return; }
+            var det = own(DET, String(issueId));
+            if (res && res.ok && res.files && det) {
+                det.files = (det.files || []).concat(res.files.map(function (f) {
+                    return { name: f.name, url: f.url, img: f.img, by: D.me, at: '' };
+                }));
+            }
+            if (!detailCurrent(issueId, epoch)) { return; }
+            form.classList.remove('busy');
+            if (!res || !res.ok || !res.files) { toast(errText(null, res, L.cmt_up_fail), true); return; }
+            var box = cmtBox();
+            // The name is the text of the link, escaped so that a file named
+            // to close the link early cannot point the link somewhere else.
+            var markup = res.files.map(function (f) {
+                return mdFileLink(f.name, f.url, !!f.img);
+            }).join('\n');
+            box.value = box.value + (box.value && !/\n$/.test(box.value) ? '\n' : '') + markup + '\n';
+            box.focus();
+            box.selectionStart = box.selectionEnd = box.value.length;
+            dockDraftSave(issueId, box.value);
+            cmtPreviewRefresh();
+            qeMark();
+            toast(fmt(L.cmt_up_ok, res.files.length));
+            // The attachment box is fed by the detail payload, and the file
+            // is already stored - so add it locally rather than spend a
+            // request being told what we just sent.
+            if (det) { renderIssueFiles(det); }
+        }).fail(function (xhr) {
+            if (!detailCurrent(issueId, epoch)) { return; }
+            form.classList.remove('busy');
+            toast(xhrErr(xhr, L.cmt_up_fail), true);
+        });
+    }
+
+    /* ------------------------------------------------ comment actions --- */
+    // Rewriting a comment happens where it is read, not in the box at the
+    // bottom: the conversation around it is the context for the edit.
+    // restore: an editor being put back after a redraw of the timeline (see
+    // cmtEditsOpen) - its text, its caret, and focus only if it had it.
+    //
+    // Checked against the issue alone, not the screen's epoch: the editor
+    // is carried across redraws of its issue, and a save clicked in it is a
+    // save of a comment that is on screen right now.
+    function cmtEditStart(cid, text, restore) {
+        var issueId = currentIssue;
+        var ent = document.getElementById('pp-c' + cid);
+        if (!ent || ent.querySelector('.cedit')) { return; }
+        var txt = ent.querySelector('.txt');
+        var act = ent.querySelector('.act');
+        if (!txt) { return; }
+        var wrap = document.createElement('div');
+        wrap.className = 'cedit';
+        var area = document.createElement('textarea');
+        area.value = text;
+        var row = document.createElement('div');
+        row.className = 'row';
+        var save = document.createElement('button');
+        save.className = 'bl-btn-main';
+        save.textContent = L.cmt_save;
+        var cancel = document.createElement('button');
+        cancel.className = 'bl-btn-sub';
+        cancel.textContent = L.cmt_cancel;
+        row.appendChild(save);
+        row.appendChild(cancel);
+        wrap.appendChild(area);
+        wrap.appendChild(row);
+        txt.hidden = true;
+        if (act) { act.hidden = true; }
+        txt.parentNode.insertBefore(wrap, txt.nextSibling);
+        if (!restore) {
+            area.focus();
+        } else {
+            try { area.setSelectionRange(restore.start || 0, restore.end || 0); } catch (e) { /* not laid out */ }
+            if (restore.focused) { area.focus(); }
+        }
+        var close = function () {
+            wrap.remove();
+            txt.hidden = false;
+            if (act) { act.hidden = false; }
+        };
+        cancel.addEventListener('click', close);
+        save.addEventListener('click', function () {
+            if (!detailCurrent(issueId) || !wrap.isConnected) { return; }
+            var next = area.value.trim();
+            if (!next || save.disabled) { return; }
+            save.disabled = true;
+            save.textContent = L.posting;
+            var seq = ++DET_SEQ;
+            $.ajax({
+                url: D.urls.base + '/comment/' + cid, type: 'PATCH',
+                dataType: 'json',
+                data: { comment: next }, headers: { 'X-CSRF-TOKEN': CSRF }
+            }).done(function (res) {
+                if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
+                    if (detailCurrent(issueId)) {
+                        save.disabled = false; save.textContent = L.cmt_save;
+                        toast(errText(null, res, L.post_fail), true);
+                    }
+                    return;
+                }
+                // Done with: closed before the redraw, which would otherwise
+                // carry it across as work still open.
+                if (area.value.trim() === next) { close(); }
+                applyDetail(res, undefined, true, seq);
+                if (detailCurrent(issueId)) { toast(L.cmt_saved); }
+            }).fail(function (xhr) {
+                if (!detailCurrent(issueId)) { return; }
+                save.disabled = false;
+                save.textContent = L.cmt_save;
+                toast(xhrErr(xhr, L.post_fail), true);
+            });
+        });
+    }
+    // Delete asks by arming itself rather than by opening a dialog: the
+    // second click within a few seconds is the confirmation.
+    function cmtDelete(link) {
+        if (link.dataset.busy === '1') { return; }
+        if (link.dataset.armed !== '1') {
+            link.dataset.armed = '1';
+            link.textContent = L.cmt_del_ask;
+            setTimeout(function () {
+                if (!link.parentNode) { return; }
+                link.dataset.armed = '';
+                link.textContent = L.del;
+            }, 4000);
+            return;
+        }
+        var issueId = currentIssue, epoch = detailEpoch;
+        var seq = ++DET_SEQ;
+        link.dataset.busy = '1';
+        $.ajax({
+            url: D.urls.base + '/comment/' + link.dataset.cid, type: 'DELETE',
+            dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            link.dataset.busy = '';
+            if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
+                if (detailCurrent(issueId, epoch)) { toast(errText(null, res, L.cmt_del_fail), true); }
+                return;
+            }
+            applyDetail(res, epoch, true, seq);
+            if (detailCurrent(issueId, epoch)) { toast(L.cmt_deleted); }
+        }).fail(function (xhr) {
+            link.dataset.busy = '';
+            if (!detailCurrent(issueId, epoch)) { return; }
+            toast(xhrErr(xhr, L.cmt_del_fail), true);
+        });
+    }
+    function cmtCopyLink(cid) {
+        var issue = issueById(currentIssue);
+        copyText(location.origin + location.pathname + '#' +
+            (issue ? issueHash(issue.id) : 'issue-' + currentIssue) + '?c=' + cid, L.cmt_copied);
+    }
+    // Clipboard with the execCommand fallback the admin's iframe context
+    // still needs on older browsers.
+    function copyText(text, okMessage) {
+        var done = function () { toast(okMessage); };
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done, done);
+                return;
+            }
+        } catch (e) { /* fall through */ }
+        try {
+            var area = document.createElement('textarea');
+            area.value = text;
+            area.style.position = 'fixed';
+            area.style.top = '-1000px';
+            document.body.appendChild(area);
+            area.select();
+            document.execCommand('copy');
+            document.body.removeChild(area);
+            done();
+        } catch (e) { /* silent */ }
+    }
+    // What a new issue should start from. "child" hangs it under the open
+    // issue; "copy" repeats what the open issue says, minus its key, its
+    // history and its status - a duplicate starts at the project's first
+    // status, the way a brand new issue does.
+    function issuePrefill(kind) {
+        var cols = D.issue_cols || {};
+        var i = issueById(currentIssue);
+        if (!i || !cols.subject) { return null; }
+        var out = {};
+        function put(key, value) {
+            if (!cols[key] || value === null || value === undefined || value === '') { return; }
+            if (Array.isArray(value) && !value.length) { return; }
+            out[cols[key]] = value;
+        }
+        if (kind === 'child') {
+            put('parent', i.id);
+            put('milestone', i.ms);
+            put('type', i.ty);
+
+            return out;
+        }
+        put('subject', i.subject);
+        put('type', i.ty);
+        put('priority', i.pr);
+        put('assignees', i.as);
+        put('milestone', i.ms);
+        put('category', i.cat);
+        put('parent', i.parent);
+        put('start', i.sd);
+        put('due', i.dd);
+        put('estimate', i.eh);
+        var det = DET[currentIssue];
+        if (det && det.description) { put('description', det.description); }
+
+        return out;
+    }
+
+    /* ------------------------------------------------ in-portal form ---- */
+    // Create / edit / history open inside the portal: the real admin form is
+    // loaded in an iframe with the admin chrome hidden, so the user never
+    // feels thrown out of the Backlog-style screens onto the data screens.
+    // A second, hidden iframe stays pre-warmed (the create form at idle, the
+    // open issue's edit form when its screen opens), so the modal usually
+    // appears with the form already rendered - no spinner at all.
+    var FM = { el: document.getElementById('pp-fmodal'), frame: null, warm: null, snap: '', lastUrl: '', reloading: false };
+    if (FM.el) {
+        FM.frame = FM.el.querySelector('iframe:not(.pp-fm-warm)');
+        FM.warm = FM.el.querySelector('iframe.pp-fm-warm');
+    }
+    function chromeCss() {
+        return '.main-header,.main-sidebar,.main-footer,section.content-header{display:none!important}' +
+            '.content-wrapper{margin-left:0!important;background:transparent!important;padding-top:6px;min-height:0!important}' +
+            'body{background:var(--pp-bg,var(--bl-bg,#fff))!important;color:var(--bl-ink,#24323f)!important;' +
+            'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Meiryo,sans-serif;}' +
+            'a[href="' + D.urls.issue_data + '"],a[href="' + D.urls.wiki_data + '"],a[href="' + D.urls.project_data + '"],' +
+            'a[href^="' + D.urls.data_base.replace('/data', '/table') + '"]{display:none!important}';
+    }
+    // The portal's palette follows into the iframe as CSS variables, so the
+    // body rules that shape the form see the same accent / surface / ink
+    // colours. Read off the page rather than held as a second copy, so a
+    // deployment that overrides the stylesheet is followed here too.
+    var PALETTE = ['--bl-accent', '--bl-accent-d', '--bl-ink', '--bl-sub', '--bl-faint',
+        '--bl-line', '--bl-bg', '--bl-box', '--bl-box2', '--bl-chip', '--bl-hover',
+        '--bl-red', '--bl-amber'];
+    function frameThemeVars() {
+        var style = window.getComputedStyle(root);
+        var out = '';
+        PALETTE.forEach(function (name) {
+            var value = style.getPropertyValue(name);
+            if (value && value.trim() !== '') { out += name + ':' + value.trim() + ';'; }
+        });
+        return out;
+    }
+    function frameFormStyleVars() {
+        var style = (D.form_styles || {})[CUR_FORM_STYLE] || {};
+        var vars = style.vars || {};
+        var out = '';
+        Object.keys(vars).forEach(function (k) { out += k + ':' + vars[k] + ';'; });
+        return out;
+    }
+    // Big pack of body rules that read the variables set above. Every style
+    // - card / sheet / compact / flow - is a set of numbers, and this rule
+    // pack turns those numbers into a full admin form layout.
+    function frameBodyCss() {
+        return [
+            /* root reads all the variables */
+            ':root{--pp-bg:var(--bl-bg,#f5f7f9);}',
+            /* frame the form as a single central sheet */
+            '.wrapper,#pjax-container,#app{background:transparent!important;}',
+            'section.content{max-width:var(--pp-form-max,960px);margin:16px auto 40px!important;padding:0 16px!important;}',
+            /* the outer .box */
+            '.box.custom-border-info,.box{border:0!important;background:var(--bl-box,#fff)!important;' +
+                'border-radius:var(--pp-form-radius,10px)!important;box-shadow:var(--pp-form-shadow,0 8px 24px rgba(15,42,60,.08))!important;' +
+                'overflow:hidden;}',
+            /* header */
+            '.box-header.with-border{background:var(--pp-form-header-bg,var(--bl-box,#fff))!important;border-bottom:1px solid var(--bl-line,#dfe5ea)!important;padding:14px 22px!important;}',
+            '.box-header .box-title{font-size:var(--pp-form-header-fs,16px)!important;font-weight:700!important;color:var(--bl-ink,#24323f);}',
+            /* header text turns white on the accent gradient of "flow" */
+            '.pp-form-flow .box-header.with-border{color:#fff!important;border-bottom:0!important;padding:22px 28px!important;}',
+            '.pp-form-flow .box-header .box-title,.pp-form-flow .box-header i,.pp-form-flow .box-header a{color:#fff!important;}',
+            '.pp-form-flow .box-header .btn-default{background:rgba(255,255,255,.15)!important;color:#fff!important;border:1px solid rgba(255,255,255,.3)!important;}',
+            /* body */
+            '.box-body{padding:var(--pp-form-body-pad,18px 22px 22px)!important;background:var(--bl-box,#fff);}',
+            /* form-group as a row: label / control */
+            '.form-group{margin-bottom:var(--pp-form-gap,18px)!important;padding-top:0!important;}',
+            '.form-group .control-label{color:var(--bl-sub,#6b7a88)!important;font-weight:600!important;' +
+                'text-transform:var(--pp-form-label-transform,none);letter-spacing:var(--pp-form-label-letter,0);font-size:12.5px;}',
+            /* sheet: stack label above input, dim label */
+            '.pp-form-sheet .form-group>.control-label,.pp-form-sheet .form-group>[class^="col-"].control-label{' +
+                'text-align:left!important;width:100%!important;max-width:100%!important;flex:0 0 100%!important;padding:0 0 6px!important;}',
+            '.pp-form-sheet .form-group>[class^="col-"]:not(.control-label){' +
+                'width:100%!important;max-width:100%!important;flex:0 0 100%!important;padding-left:0!important;padding-right:0!important;}',
+            '.pp-form-sheet .form-control,.pp-form-sheet .select2-selection{' +
+                'border:0!important;border-bottom:1px solid var(--bl-line,#dfe5ea)!important;border-radius:0!important;' +
+                'background:transparent!important;padding-left:2px!important;padding-right:2px!important;}',
+            /* compact: two-column grid inside .box-body */
+            '.pp-form-compact .box-body{display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;}',
+            '.pp-form-compact .form-group{margin-bottom:var(--pp-form-gap,6px)!important;}',
+            '.pp-form-compact .form-group.textarea-group,.pp-form-compact .form-group:has(.editor-input),.pp-form-compact .form-group:has(textarea){grid-column:1 / -1;}',
+            /* inputs */
+            '.form-control,.select2-selection,.select2-selection--single,.select2-selection--multiple{' +
+                'border-radius:var(--pp-form-input-radius,6px)!important;border-color:var(--bl-line,#dfe5ea)!important;' +
+                'transition:border-color .15s ease, box-shadow .15s ease;}',
+            '.form-control:focus,.select2-container--focus .select2-selection{' +
+                'border-color:var(--bl-accent,#4caf93)!important;box-shadow:0 0 0 3px rgba(76,175,147,.15)!important;outline:0!important;}',
+            'textarea.form-control{min-height:100px;}',
+            /* buttons */
+            '.btn{border-radius:var(--pp-form-input-radius,6px)!important;font-weight:600;transition:filter .15s ease;}',
+            '.btn-primary,.btn-info{background:var(--bl-accent,#4caf93)!important;border-color:var(--bl-accent-d,#3d9a80)!important;color:#fff!important;}',
+            '.btn-primary:hover,.btn-primary:focus,.btn-info:hover,.btn-info:focus{filter:brightness(1.05);background:var(--bl-accent-d,#3d9a80)!important;}',
+            '.btn-default{background:var(--bl-box2,#f5f7f9)!important;border-color:var(--bl-line,#dfe5ea)!important;color:var(--bl-ink,#24323f)!important;}',
+            /* submit area */
+            '.after-submit,.box-footer{background:var(--pp-form-footer-bg,var(--bl-box,#fff))!important;' +
+                'border-top:1px solid var(--bl-line,#dfe5ea)!important;box-shadow:var(--pp-form-footer-shadow,none)!important;padding:14px 22px!important;}',
+            /* helpers */
+            '.help-block{color:var(--bl-sub,#6b7a88)!important;font-size:12px;}',
+            '.asterisk{color:#e57373;}',
+            'a{color:var(--bl-accent,#4caf93);}',
+            /* dark tweaks */
+            '.pp-form-dark,.pp-form-dark .box-body,.pp-form-dark .box{color:var(--bl-ink,#e4e9ee)!important;}',
+            '.pp-form-dark .form-control,.pp-form-dark .select2-selection{background:var(--bl-box2,#2b3541)!important;color:var(--bl-ink,#e4e9ee)!important;}',
+            '.pp-form-dark .select2-dropdown{background:var(--bl-box,#252e38)!important;color:var(--bl-ink,#e4e9ee)!important;border-color:var(--bl-line,#3a4653)!important;}',
+            '.pp-form-dark .select2-results__option{color:var(--bl-ink,#e4e9ee)!important;}',
+            '.pp-form-dark .btn-default{background:var(--bl-box2,#2b3541)!important;color:var(--bl-ink,#e4e9ee)!important;}',
+            /* the header widget-modal button pack is not for us here */
+            '.box-header .btn-group{filter:saturate(.8);}',
+        ].join('\n');
+    }
+    // Repaint the iframe: kill the admin chrome, drop in the palette and the
+    // form-style variables, install the body rules. Signature-guarded so the
+    // 400ms fmSync tick is a no-op after the first paint; only an actual
+    // form-style change rewrites the style element and body class.
+    function themeFrame(doc) {
+        var sig = CUR_FORM_STYLE;
+        var st = doc.getElementById('pp-frame-theme');
+        if (st && st.dataset.sig === sig && doc.body.dataset.ppFormSig === sig) { return; }
+        if (!st) {
+            st = doc.createElement('style');
+            st.id = 'pp-frame-theme';
+            doc.head.appendChild(st);
+        }
+        if (st.dataset.sig !== sig) {
+            st.textContent = ':root{' + frameThemeVars() + frameFormStyleVars() + '}\n' + frameBodyCss();
+            st.dataset.sig = sig;
+        }
+        // Body class controls the two style-specific shapes: sheet stacking
+        // and the compact two-column grid. Only rewritten when the signature
+        // actually changes, so we don't force a style recalc on every
+        // polling tick.
+        if (doc.body.dataset.ppFormSig !== sig) {
+            var cls = doc.body.className.replace(/\bpp-form-\S+/g, '').trim();
+            doc.body.className = (cls + ' pp-form-' + CUR_FORM_STYLE).trim();
+            doc.body.dataset.ppFormSig = sig;
+        }
+    }
+    function styleFrame(frame) {
+        var win, doc;
+        try {
+            win = frame.contentWindow;
+            doc = frame.contentDocument;
+        } catch (e) { return false; }
+        if (!doc || !doc.body || (win.location.href || '') === 'about:blank' || doc.readyState === 'loading') { return false; }
+        if (!/\/(create|edit|compare)(\/|\.|$)/.test(win.location.pathname)) { return false; }
+        if (!doc.getElementById('pp-frame-style')) {
+            var st = doc.createElement('style');
+            st.id = 'pp-frame-style';
+            st.textContent = chromeCss();
+            doc.head.appendChild(st);
+        }
+        themeFrame(doc);
+        frame.dataset.ready = '1';
+        return true;
+    }
+    function prewarm(url) {
+        if (!FM.warm || !url || !(D.features && D.features.prefetch)) { return; }
+        if (FM.warm.dataset.url === url) { return; }
+        FM.warm.dataset.url = url;
+        delete FM.warm.dataset.ready;
+        FM.warm.src = url;
+    }
+    function formModal(url, title, sub) {
+        if (!FM.el) { location.href = url; return; }
+        FM.el.querySelector('.t').textContent = title || '';
+        FM.el.querySelector('.s').textContent = sub || D.project.key || D.project.name || '';
+        FM.el.querySelector('.pp-fm-confirm').hidden = true;
+        FM.el.hidden = false;
+        document.body.classList.add('pp-fm-open');
+        FM.lastUrl = url;
+        if (FM.warm && FM.warm.dataset.url === url && FM.warm.dataset.ready) {
+            var cold = FM.frame;
+            FM.frame = FM.warm;
+            FM.warm = cold;
+            FM.frame.classList.remove('pp-fm-warm');
+            FM.warm.classList.add('pp-fm-warm');
+            delete FM.frame.dataset.url;
+            delete FM.warm.dataset.url;
+            delete FM.warm.dataset.ready;
+            FM.warm.src = 'about:blank';
+            FM.frame.style.visibility = 'visible';
+            FM.el.querySelector('.pp-fm-spin').hidden = true;
+            FM.snap = fmSerialize(FM.frame.contentDocument);
+            // Repaint the warm slot with the same URL: if the user closes
+            // and reopens (cancel path), the second open is a hot swap too
+            // instead of a cold /admin/data/... GET with all admin chrome.
+            setTimeout(function () { prewarm(url); }, 250);
+            return;
+        }
+        FM.el.querySelector('.pp-fm-spin').hidden = false;
+        FM.snap = '';
+        FM.frame.style.visibility = 'hidden';
+        FM.frame.src = url;
+    }
+    function fmSerialize(doc) {
+        try {
+            return Array.prototype.map.call(doc.querySelectorAll('form'), function (f) { return $(f).serialize(); }).join('&');
+        } catch (e) { return ''; }
+    }
+    function fmHide() {
+        FM.el.hidden = true;
+        document.body.classList.remove('pp-fm-open');
+        FM.frame.src = 'about:blank';
+        // Re-warm whichever URL the user was just on so the very next open
+        // (cancel-and-retry, or reopen the same issue's edit) is hot too.
+        // Skip if a save just fired location.reload - the tab is going away.
+        var url = FM.lastUrl;
+        if (url && !FM.reloading) {
+            setTimeout(function () { prewarm(url); }, 250);
+        }
+    }
+    function fmClose(force) {
+        if (!FM.el || FM.el.hidden) { return; }
+        if (!force && FM.frame.style.visibility !== 'hidden') {
+            if (fmSerialize(FM.frame.contentDocument) !== FM.snap) {
+                FM.el.querySelector('.pp-fm-confirm').hidden = false;
+                return;
+            }
+        }
+        fmHide();
+    }
+    function fmFinish(path) {
+        FM.reloading = true;
+        fmHide();
+        toast(L.m_saved);
+        var mi = path.match(new RegExp('/data/' + D.issue_table + '/(\\d+)$'));
+        var mw = path.match(new RegExp('/data/' + D.wiki_table + '/(\\d+)$'));
+        if (mi) { location.hash = 'issue-' + mi[1]; }
+        else if (mw) { location.hash = 'wiki-' + mw[1]; }
+        setTimeout(function () { location.reload(); }, 400);
+    }
+    // One idempotent sync covers both full loads and pjax swaps inside the
+    // frames: style whichever frame is ready, close when the active form
+    // leaves for a non-form page (that is what a successful save does).
+    function fmSync() {
+        if (!alive()) { clearInterval(fmTimer); return; }
+        if (FM.warm && FM.warm.dataset.url && !FM.warm.dataset.ready) { styleFrame(FM.warm); }
+        if (!FM.el || FM.el.hidden) { return; }
+        var win, doc, href, path;
+        try {
+            win = FM.frame.contentWindow;
+            doc = FM.frame.contentDocument;
+            href = win.location.href;
+            path = win.location.pathname;
+        } catch (e) { return; }
+        if (!doc || !doc.body || href === 'about:blank' || doc.readyState === 'loading') { return; }
+        if (/\/auth\/login/.test(path)) { location.href = href; return; }
+        if (!/\/(create|edit|compare)(\/|\.|$)/.test(path)) { fmFinish(path); return; }
+        if (styleFrame(FM.frame) && FM.frame.style.visibility === 'hidden') {
+            FM.snap = fmSerialize(doc);
+            FM.el.querySelector('.pp-fm-spin').hidden = true;
+            FM.frame.style.visibility = 'visible';
+        }
+    }
+    if (FM.frame) {
+        FM.frame.addEventListener('load', fmSync);
+        if (FM.warm) { FM.warm.addEventListener('load', fmSync); }
+        var fmTimer = setInterval(fmSync, 400);
+        FM.el.querySelector('.pp-fm-x').addEventListener('click', function () { fmClose(); });
+        FM.el.querySelector('.pp-fm-back').addEventListener('click', function () { fmClose(); });
+        FM.el.querySelector('.pp-fm-confirm .yes').addEventListener('click', function () { fmHide(); });
+        FM.el.querySelector('.pp-fm-confirm .no').addEventListener('click', function () {
+            FM.el.querySelector('.pp-fm-confirm').hidden = true;
+        });
+        // form-style picker: click the paint-brush button to toggle the
+        // menu, click an entry to apply it (and persist per user).
+        var styleBtn = FM.el.querySelector('.pp-fm-style-btn');
+        var styleMenu = FM.el.querySelector('.pp-fm-style-menu');
+        if (styleBtn && styleMenu) {
+            styleBtn.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                styleMenu.hidden = !styleMenu.hidden;
+                if (!styleMenu.hidden) { renderFormStyleMenu(); }
+            });
+            styleMenu.addEventListener('click', function (ev) {
+                var item = ev.target.closest('.pp-fm-style-item');
+                if (!item) { return; }
+                ev.stopPropagation();
+                applyFormStyle(item.dataset.style, true);
+                styleMenu.hidden = true;
+            });
+            document.addEventListener('click', function onStyleDoc(ev) {
+                if (!alive()) { document.removeEventListener('click', onStyleDoc); return; }
+                if (!styleMenu.hidden && !ev.target.closest('.pp-fm-style-wrap')) { styleMenu.hidden = true; }
+            });
+        }
+        document.addEventListener('keydown', function onFmKey(ev) {
+            if (!alive()) { document.removeEventListener('keydown', onFmKey); return; }
+            if (ev.key === 'Escape' && !FM.el.hidden) { fmClose(); }
+        });
+    }
+
+    /* --------------------------------------- native (no-iframe) edit modal */
+    // Alternative to the iframe form modal for the very common "edit an
+    // issue" flow: talks to /admin/lightapi/data/{table}/{id}/edit for a
+    // JSON schema + current values, renders the form itself, and saves
+    // back with a JSON PATCH. No admin chrome, no page reload, no depend-
+    // ency on the iCheck / select2 / TinyMCE stack. Everything else
+    // (create issue, wiki edit, settings) still uses the iframe path.
+    var NED = {
+        el: document.getElementById('pp-nedit'),
+        mode: 'edit', rowId: null, table: null, columns: null, values: {}, labels: {}, initial: '',
+        lookupCache: {}, lookupInflight: {},
+        saveUrl: null, saveMethod: 'PATCH', busy: false, canEdit: true,
+        epoch: 0, pbarEpoch: 0, draftOwner: '', createSaving: false, uploadingImage: false,
+        createFormCache: {}, createFormInflight: {},
+        // Per-row edit payload cache. Same shape as createFormCache but
+        // keyed by "<table>::<id>" so 編集 / プロジェクト設定 open instantly
+        // on the second click (and on the first click if hover-prefetch
+        // fired). TTL: within-tab session only — a successful save does a
+        // full location.reload() which clears the cache naturally.
+        editFormCache: {}, editFormInflight: {}, editFormAt: {},
+        // Phase A: Backlog-parity defaults. Phase B enhancements (segmented
+        // pills, colored option dots, autosave draft) toggle on via opts.
+        opts: { segmentedPills: false }
+    };
+    var nedPageId = Date.now().toString(36) + '.' + Math.random().toString(36).slice(2);
+    var NED_TYPES_WIDE = { text: 0, richtext: 1, file: 1 };
+    function nedCurrent(epoch) {
+        return alive() && NED.epoch === epoch && NED.el && !NED.el.hidden && NED.el.isConnected;
+    }
+    function nedRetireContext() {
+        if (nedDirty()) { nedDraftSave(); }
+        if (nedGuardTimer) { clearTimeout(nedGuardTimer); nedGuardTimer = null; }
+        nedGuard(false);
+        NED.epoch++;
+        NED.pbarEpoch++;
+        NED.draftOwner = nedPageId + '.' + NED.epoch;
+        NED.busy = false;
+        NED.createSaving = false;
+        NED.uploadingImage = false;
+        NED.createdId = null;
+        NED.fromBoard = false;
+        NED.force = false;
+        NED.columns = null;
+        NED.initial = '';
+        NED.saveUrl = null;
+        NED._payload = null;
+        NED._ai = null;
+        if (NED.el) {
+            NED.el.inert = false;
+            var bar = NED.el.querySelector('.pp-ne-pbar');
+            if (bar) { bar.hidden = true; }
+        }
+        return NED.epoch;
+    }
+
+    // Every key ships in the lang payload, so a miss means the key is gone.
+    // Showing the key keeps that visible instead of printing a stale literal.
+    // Test for presence, not truthiness: a deliberately empty label is a
+    // valid value and must not fall through to the key name.
+    function nedGetLangKey(k, fallback) {
+        if (L && typeof L[k] === 'string') { return L[k]; }
+        return fallback !== undefined ? fallback : k;
+    }
+    function nedFieldEl(name) {
+        if (!NED.el) { return null; }
+        return NED.el.querySelector('.pp-ne-form [data-fname="' + CSS.escape(name) + '"]');
+    }
+    function nedInputEl(name) {
+        var f = nedFieldEl(name);
+        return f ? f.querySelector('.pp-ne-in') : null;
+    }
+    function nedShowAlert(msg, ok) {
+        var a = NED.el.querySelector('.pp-ne-alert');
+        a.textContent = msg;
+        a.hidden = !msg;
+        a.classList.toggle('ok', !!ok);
+    }
+
+    // Somebody else saved this row while the form was open. Saving now would
+    // write the whole of what this form is holding over the whole of what
+    // they wrote, and neither screen would ever say so. So it stops here and
+    // offers the two honest ways out: read theirs, or knowingly replace it.
+    function nedShowConflict(info) {
+        var a = NED.el.querySelector('.pp-ne-alert');
+        a.classList.remove('ok');
+        a.hidden = false;
+        a.innerHTML = '';
+        var who = info && info.updated_by ? String(info.updated_by) : '';
+        var when = info && info.updated_at ? nedFormatMetaDate(info.updated_at) : '';
+        var msg = document.createElement('span');
+        msg.textContent = String(nedGetLangKey(who ? 'ned_stale_by' : 'ned_stale'))
+            .replace(':name', who).replace(':at', when);
+        a.appendChild(msg);
+
+        var reload = document.createElement('button');
+        reload.type = 'button';
+        reload.className = 'pp-ne-sidebtn';
+        reload.style.marginLeft = '10px';
+        reload.textContent = nedGetLangKey('ned_stale_reload');
+        reload.addEventListener('click', function () {
+            // Their version, read fresh. The draft the form keeps is what
+            // holds this form's own edits, so nothing typed is gone for good.
+            nedDraftSave();
+            var table = NED.table, id = NED.rowId;
+            if (NED.editFormCache) { delete NED.editFormCache[table + '::' + id]; }
+            nedGuard(false);
+            openNedit(table, id);
+        });
+        a.appendChild(reload);
+
+        var force = document.createElement('button');
+        force.type = 'button';
+        force.className = 'pp-ne-sidebtn';
+        force.style.marginLeft = '6px';
+        force.textContent = nedGetLangKey('ned_stale_force');
+        force.addEventListener('click', function () {
+            NED.force = true;
+            nedSave();
+        });
+        a.appendChild(force);
+    }
+
+    /* ----------------------------------------- unsaved-work protection --- */
+    // nedClose() already asks before throwing edits away, but it only sees the
+    // ways out that go through it: 戻る, the X, Escape. Every admin link is a
+    // pjax navigation that leaves the page without touching it, and the modal
+    // shares the viewport with the admin menu. beforeunload is the only hook
+    // that covers those, and localStorage is the only thing that survives a
+    // crash, a session timeout or a mis-click that gets confirmed anyway.
+    function nedBeforeUnload(ev) {
+        // A pjax swap never fires unload, so a stale instance's guard would
+        // survive it and nag on every later navigation - and nedGuard(false)
+        // from the new instance compares against its OWN function, so it
+        // could never clear this one. A dead page has nothing left to lose.
+        if (!alive()) { nedGuard(false); return; }
+        // Browsers substitute their own wording; returning any string at all
+        // is what actually raises the prompt.
+        ev.preventDefault();
+        ev.returnValue = '';
+
+        return '';
+    }
+    function nedGuard(on) {
+        if (on) { window.onbeforeunload = nedBeforeUnload; }
+        else if (window.onbeforeunload === nedBeforeUnload) { window.onbeforeunload = null; }
+    }
+    function nedDirty() {
+        if (!NED.el || NED.el.hidden || !NED.canEdit || !NED.columns) { return false; }
+        if (NED.uploadingImage) { return true; }
+        return nedSerialize() !== NED.initial;
+    }
+    // Debounced: nedSerialize() stringifies the whole form, body text and all,
+    // and the caller is a keystroke handler.
+    var nedGuardTimer = null;
+    function nedSyncGuard() {
+        if (nedGuardTimer) { clearTimeout(nedGuardTimer); }
+        var epoch = NED.epoch;
+        nedGuardTimer = setTimeout(function () {
+            nedGuardTimer = null;
+            if (!nedCurrent(epoch)) { return; }
+            var dirty = nedDirty();
+            nedGuard(dirty);
+            if (dirty) { nedDraftSave(); }
+        }, 250);
+    }
+
+    /* ----------------------------------------- back button --------------- */
+    // Where #new came from, so closing the create panel puts the reader back
+    // on the screen they left - filter query and all. Written by the hash
+    // listener, which is the only thing that still knows: by the time the
+    // router runs, the hash it replaced is gone. Null after a cold load
+    // straight onto #new, where there is no screen to go back to.
+    var NED_BACK = null;
+    // The address a panel is open at, when the hash is what opened it, and
+    // the hash to put back when it closes. Written by the router, read by
+    // nedClose. Null while the panel on screen has no address of its own -
+    // the wiki and project editors, which are opened in place.
+    var NED_HASH = null;
+    // True for the one open the hash is performing. See nedPushHistory.
+    var NED_HASH_OPEN = false;
+    // On a phone the back gesture is how people close things. With no entry of
+    // our own it walks out of the portal entirely and takes the edit with it.
+    // The pushed entry reuses the CURRENT url on purpose: the hash does not
+    // change, so only popstate fires and the hash router never sees it.
+    // Overlay mounts only - the inline mounts sit inside a screen the hash
+    // router already governs, and giving them a second mechanism would mean
+    // two competing owners of the same back press.
+    function nedPushHistory() {
+        if (!history.pushState || NED._histPushed || NED._target !== 'overlay') { return; }
+        // The same reason, for the one overlay that does have an address:
+        // #board?edit=<id> is already an entry for this panel, so a second
+        // one would mean two back presses to leave it.
+        if (NED_HASH_OPEN) { return; }
+        try {
+            history.pushState({ ppModal: 1 }, '', location.href);
+            NED._histPushed = true;
+        } catch (e) { /* ignore */ }
+    }
+    // Consume our entry when the modal closes any other way, so the back button
+    // does not have to be pressed twice afterwards to leave the screen.
+    function nedPopHistory() {
+        if (!NED._histPushed) { return; }
+        NED._histPushed = false;
+        NED._histSelfPop = true;
+        history.back();
+    }
+    window.addEventListener('popstate', function onNedPop() {
+        if (!alive()) { window.removeEventListener('popstate', onNedPop); return; }
+        if (NED._histSelfPop) { NED._histSelfPop = false; return; }
+        if (!NED.el || NED.el.hidden || !NED._histPushed) { return; }
+        // The entry is already gone by the time this fires.
+        NED._histPushed = false;
+        if (!nedClose()) { nedPushHistory(); }
+    });
+
+    /* ----------------------------------------- draft autosave ------------ */
+    // Drafts are kept per person and per project, and a create form's per
+    // kind of start: a plain new issue, the child of a given issue, the copy
+    // of a given issue. One slot for all of them handed the next user of a
+    // shared browser the last one's unsent text, and let a draft typed in one
+    // project be restored - status, milestone and category ids included -
+    // into an issue of another.
+    var DRAFT_PREFIX = 'pmportal.draft2.';
+    // How long a draft is offered back. It is for the crash, the expired
+    // session, the tab closed by mistake - not for months-old text that
+    // would only be restored over a row that has moved on since.
+    var DRAFT_MAX_AGE = 7 * 86400000;
+    function nedDraftKey() {
+        if (!NED.table) { return null; }
+        var who = 'u' + String(D.me || 0) + '.p' + String((D.project && D.project.id) || 0);
+        var what = NED.mode === 'create' ? 'new' + (NED.draftTag ? '.' + NED.draftTag : '') : String(NED.rowId);
+
+        return DRAFT_PREFIX + who + '.' + NED.table + '.' + what;
+    }
+    function nedDraftSave() {
+        var key = nedDraftKey();
+        if (!key) { return; }
+        try {
+            localStorage.setItem(key, JSON.stringify({
+                v: JSON.parse(nedSerialize()),
+                // The server baseline this draft was typed on top of, and the
+                // version of the row it was read from. Restoring puts back
+                // only what the draft changed against that baseline, and the
+                // save quotes that version, so a row that has moved on since
+                // is refused and shown rather than quietly overwritten.
+                base: NED.initial,
+                ua: NED.draftBaseAt || null,
+                owner: NED.draftOwner,
+                at: Date.now()
+            }));
+        } catch (e) { /* quota or private mode: a draft is a bonus, not a duty */ }
+    }
+    function nedDraftRead() {
+        var key = nedDraftKey();
+        if (!key) { return null; }
+        try {
+            var raw = localStorage.getItem(key);
+            if (!raw) { return null; }
+            var d = JSON.parse(raw);
+            if (!d || !d.v) { return null; }
+            if (!(Date.now() - Number(d.at) < DRAFT_MAX_AGE)) { localStorage.removeItem(key); return null; }
+
+            return d;
+        } catch (e) { return null; }
+    }
+    // What a draft changed against the form it was typed on, field by field.
+    function nedDraftOwn(d) {
+        var base = {};
+        try { base = d.base ? JSON.parse(d.base) : {}; } catch (e) { base = {}; }
+        var out = {};
+        Object.keys(d.v || {}).forEach(function (name) {
+            if (JSON.stringify(d.v[name]) !== JSON.stringify(own(base, name))) { out[name] = d.v[name]; }
+        });
+
+        return out;
+    }
+    // Once per page: drafts past their age go, and so do the slots from
+    // before drafts were per person (pmportal.draft.*) - nobody can tell any
+    // more whose they were, and none of them would ever be offered again.
+    function nedDraftPurge() {
+        try {
+            var now = Date.now();
+            var drop = [];
+            for (var n = 0; n < localStorage.length; n++) {
+                var key = localStorage.key(n);
+                if (!key) { continue; }
+                if (key.indexOf('pmportal.draft.') === 0) { drop.push(key); continue; }
+                if (key.indexOf(DRAFT_PREFIX) !== 0) { continue; }
+                var d = null;
+                try { d = JSON.parse(localStorage.getItem(key)); } catch (e) { d = null; }
+                if (!d || !(now - Number(d.at) < DRAFT_MAX_AGE)) { drop.push(key); }
+            }
+            drop.forEach(function (key) { localStorage.removeItem(key); });
+        } catch (e) { /* storage unavailable */ }
+    }
+    function nedDraftClear(key, owner, submitted) {
+        key = key || nedDraftKey();
+        if (!key) { return; }
+        try {
+            if (owner !== undefined) {
+                var raw = localStorage.getItem(key);
+                var draft = raw && JSON.parse(raw);
+                if (!draft || draft.owner !== owner) { return; }
+                if (submitted !== undefined && JSON.stringify(draft.v) !== submitted) { return; }
+            }
+            localStorage.removeItem(key);
+        } catch (e) { /* ignore */ }
+    }
+    function nedDraftBar(show) {
+        var bar = NED.el && NED.el.querySelector('.pp-ne-draft');
+        if (bar) { bar.hidden = !show; }
+    }
+    // Called once the form is painted and NED.initial is set. A draft equal to
+    // what is already on screen is noise, so drop it instead of asking.
+    function nedDraftOffer() {
+        var d = nedDraftRead();
+        if (!d) { nedDraftBar(false); return; }
+        // Nothing to give back: it says what the form already says, or it
+        // changed nothing against the form it was typed on.
+        if (JSON.stringify(d.v) === NED.initial || !Object.keys(nedDraftOwn(d)).length) {
+            nedDraftClear();
+            nedDraftBar(false);
+            return;
+        }
+        nedDraftBar(true);
+    }
+    function nedDraftRestore() {
+        var d = nedDraftRead();
+        if (!d || !NED._payload) { nedDraftBar(false); return; }
+        // Re-render off the original payload with the draft's values merged in.
+        // Going through nedRenderForm keeps every field type - lookups, dates,
+        // checkboxes - populated by the same code that populates them normally,
+        // instead of a second setter that would drift out of step with it.
+        //
+        // Only the fields the draft changed are put back. The rest of it is
+        // whatever the row said when it was typed, and writing that over the
+        // form would undo whoever has changed those fields since.
+        var serverValues = NED.values;
+        var serverInitial = NED.initial;
+        var serverBaseAt = NED.draftBaseAt;
+        var p = $.extend(true, {}, NED._payload);
+        p.row = p.row || {};
+        p.row.value = $.extend({}, p.row.value, nedDraftOwn(d));
+        nedDraftBar(false);
+        nedRenderForm(p, true);
+        // Restore the server defaults and the serialized diff/dirty baseline.
+        NED.values = serverValues;
+        NED.initial = serverInitial;
+        NED.draftBaseAt = serverBaseAt;
+        // The save quotes the version the draft was typed against: if the
+        // row has moved on since, the server says so instead of accepting
+        // the old picture of it.
+        if (NED.mode !== 'create' && d.ua) { NED.rowUpdatedAt = d.ua; }
+        nedSyncGuard();
+    }
+    // Route the modal into the right host container so it visually replaces
+    // the section the user asked to work on:
+    //   edit-issue    → sits in place of #pp-d-main (issue detail's main card)
+    //   create-issue  → sits in place of #pp-issue (issue detail screen)
+    //   edit-project  → sits in place of #pp-issue (project settings uses same slot)
+    //   overlay       → falls back to the old full-viewport overlay (wiki, etc.)
+    function nedResolveMountTarget() {
+        // opened from a screen that is not the issue detail - the board -
+        // there is no detail card on display to put the editor inside
+        if (NED.forceTarget) { return NED.forceTarget; }
+        if (NED.mode === 'edit') {
+            if (NED.table === D.issue_table) { return 'edit-issue'; }
+            if (NED.table === D.project_table) { return 'edit-project'; }
+        } else if (NED.mode === 'create') {
+            if (NED.table === D.issue_table) { return 'create-issue'; }
+        }
+        return 'overlay';
+    }
+    function nedMount(target) {
+        if (!NED.el) { return; }
+        // Undo any lingering mount state so a second open (e.g. 編集 →
+        // プロジェクト設定 without a close in between) starts from a
+        // clean slate — otherwise a hidden card / demoted screen would
+        // never come back.
+        if (NED._hidden) {
+            NED._hidden.forEach(function (t) { t.el.style.display = t.prev; });
+            NED._hidden = null;
+        }
+        if (NED._prevScreen) {
+            NED._prevScreen.classList.add('on');
+            NED._prevScreen = null;
+        }
+        // Remember original DOM home once so we can put the panel back
+        // where the Blade template left it after every close.
+        if (!NED._home) {
+            NED._home = { parent: NED.el.parentNode, next: NED.el.nextSibling };
+        }
+        NED.el.classList.remove('pp-nedit-overlay', 'pp-nedit-inline-main', 'pp-nedit-inline-screen');
+        // 'pmportal' is only borrowed while the panel lives on <body>; an
+        // inline mount is already inside the real #pmportal and does not want
+        // a second one nested in it.
+        NED.el.classList.remove('bl-screen', 'on', 'pmportal');
+        document.body.classList.remove('pp-fm-open');
+        NED._target = target;
+
+        if (target === 'edit-issue') {
+            var mainEl = document.getElementById('pp-d-main');
+            var mainCard = mainEl ? mainEl.closest('.bl-card-box') : null;
+            if (mainCard && mainCard.parentNode) {
+                // The editor brings its own 基本情報 card, so the read-only one
+                // steps aside: two of them stacked would say the same thing
+                // twice and only one of them would be live.
+                var propsEl = document.getElementById('pp-d-props');
+                var propsCard = propsEl ? propsEl.closest('.bl-card-box') : null;
+                NED._hidden = [{ el: mainCard, prev: mainCard.style.display || '' }];
+                if (propsCard) {
+                    NED._hidden.push({ el: propsCard, prev: propsCard.style.display || '' });
+                    propsCard.style.display = 'none';
+                }
+                mainCard.style.display = 'none';
+                mainCard.parentNode.insertBefore(NED.el, mainCard);
+                NED.el.classList.add('pp-nedit-inline-main');
+                // The editor takes the issue's place on screen, so the
+                // composer pinned under the issue steps aside while it is
+                // open. ppDetailEditing(false) puts it back on unmount.
+                ppDetailEditing(true);
+                return;
+            }
+        } else if (target === 'create-issue' || target === 'edit-project') {
+            var issueSection = document.getElementById('pp-issue');
+            if (issueSection && issueSection.parentNode) {
+                NED._prevScreen = root.querySelector('.bl-screen.on');
+                root.querySelectorAll('.bl-screen').forEach(function (s) { s.classList.remove('on'); });
+                issueSection.parentNode.insertBefore(NED.el, issueSection);
+                NED.el.classList.add('pp-nedit-inline-screen', 'bl-screen', 'on');
+                window.scrollTo(0, 0);
+                return;
+            }
+        }
+        // Overlay fallback (wiki edit/create, or if the target host is missing).
+        //
+        // Re-home the panel on <body> first. It is born inside
+        // #main.content-wrapper, which carries z-index:800, and a z-index on a
+        // flex item creates a stacking context - so every descendant is
+        // trapped at 800 however high it sets its own z-index. The admin
+        // sidebar sits at 810 and the header at 1030, both siblings of that
+        // wrapper, so the "full viewport" overlay used to leave the whole
+        // admin chrome painted on top of itself and still clickable. One
+        // stray click on the menu is a pjax navigation, and the half-written
+        // wiki page goes with it.
+        //
+        // Carry the 'pmportal' class along on the way out. Half the portal's
+        // stylesheet is written as ".pmportal <thing>", the modal's own Save
+        // and 戻る buttons included, and off <body> there is no .pmportal
+        // ancestor left to satisfy it. Putting the class on the panel itself
+        // makes those descendant selectors match again, and brings the
+        // palette with it: the --bl-* variables are declared on .pmportal
+        // for exactly this reason.
+        NED.el.classList.add('pp-nedit-overlay', 'pmportal');
+        if (NED.el.parentNode !== document.body) {
+            document.body.appendChild(NED.el);
+        }
+        document.body.classList.add('pp-fm-open');
+        nedSizeOverlay();
+        nedWatchOverlaySize(true);
+    }
+    // The modal is eight tenths of the content area, centred in it. Measured
+    // rather than guessed: the admin sidebar is 230px until somebody collapses
+    // it to 50, and a box centred on the viewport is off by half of whichever
+    // it currently is.
+    function nedSizeOverlay() {
+        // Bound on window while the overlay is open; a page pjax replaced
+        // with the overlay still up lets go of it here.
+        if (!alive()) { nedWatchOverlaySize(false); return; }
+        if (!NED.el || NED._target !== 'overlay') { return; }
+        var wrap = document.querySelector('.content-wrapper');
+        var s = NED.el.style;
+        if (!wrap) {
+            // No admin chrome to measure: fall back to the stylesheet, which
+            // centres on the viewport.
+            s.removeProperty('--pp-ne-w');
+            s.removeProperty('--pp-ne-l');
+            s.removeProperty('--pp-ne-tx');
+            return;
+        }
+        var r = wrap.getBoundingClientRect();
+        // Narrow enough that a tenth off each side would leave nothing to
+        // read in: take the width and keep a margin instead.
+        var pad = r.width < 820 ? 8 : r.width * 0.1;
+        s.setProperty('--pp-ne-w', Math.round(r.width - pad * 2) + 'px');
+        s.setProperty('--pp-ne-l', Math.round(r.left + pad) + 'px');
+        s.setProperty('--pp-ne-tx', '0px');
+    }
+    // Re-measured while the modal is open: collapsing the sidebar resizes the
+    // content area without resizing the window, so a window listener alone
+    // would miss it.
+    function nedWatchOverlaySize(on) {
+        if (!on) {
+            if (NED._ro) { NED._ro.disconnect(); NED._ro = null; }
+            window.removeEventListener('resize', nedSizeOverlay);
+            return;
+        }
+        window.addEventListener('resize', nedSizeOverlay);
+        if (NED._ro || typeof ResizeObserver !== 'function') { return; }
+        var wrap = document.querySelector('.content-wrapper');
+        if (!wrap) { return; }
+        NED._ro = new ResizeObserver(function () { nedSizeOverlay(); });
+        NED._ro.observe(wrap);
+    }
+    function nedUnmount() {
+        if (!NED.el) { return; }
+        nedWatchOverlaySize(false);
+        ['--pp-ne-w', '--pp-ne-l', '--pp-ne-tx'].forEach(function (p) {
+            NED.el.style.removeProperty(p);
+        });
+        document.body.classList.remove('pp-fm-open');
+        NED.el.classList.remove('pp-nedit-overlay', 'pp-nedit-inline-main', 'pp-nedit-inline-screen');
+        // 'pmportal' is only borrowed while the panel lives on <body>; an
+        // inline mount is already inside the real #pmportal and does not want
+        // a second one nested in it.
+        NED.el.classList.remove('bl-screen', 'on', 'pmportal');
+        if (NED._hidden) {
+            NED._hidden.forEach(function (t) { t.el.style.display = t.prev; });
+            NED._hidden = null;
+        }
+        if (NED._prevScreen) {
+            NED._prevScreen.classList.add('on');
+            NED._prevScreen = null;
+        }
+        if (NED._home && NED._home.parent) {
+            NED._home.parent.insertBefore(NED.el, NED._home.next);
+        }
+        NED._home = null;
+        NED._target = null;
+        ppDetailEditing(false);
+    }
+    // Returns true when the modal actually closed, false when the user chose
+    // to keep editing - the popstate handler needs to know which happened so
+    // it can put its history entry back.
+    function nedClose() {
+        if (!NED.el || NED.el.hidden) { return true; }
+        if (NED.createSaving) { return false; }
+        // If there are unsaved edits, confirm before closing. The draft stays
+        // in localStorage either way: someone who discards by accident should
+        // still be offered it back on the next open.
+        if (nedDirty()) {
+            if (!window.confirm(nedGetLangKey('m_discard'))) { return false; }
+        }
+        var refreshBoard = NED.fromBoard && NED.portalStale;
+        var savedId = NED.rowId, savedTable = NED.table;
+        nedRetireContext();
+        nedDraftBar(false);
+        nedPopHistory();
+        // A panel's address must not outlive the panel. Left standing, the link
+        // that opens it would set a hash that is already set: no hashchange
+        // fires, nothing happens, and the control looks broken. replaceState
+        // rather than a hash write, because nedUnmount has already put back
+        // what was behind - there is nothing left to route.
+        if (NED_HASH && history.replaceState && location.hash.slice(1) === NED_HASH.at) {
+            history.replaceState(null, '', NED_HASH.back);
+        }
+        NED_HASH = null;
+        NED.el.hidden = true;
+        nedUnmount();
+        nedClearLayout();
+        NED.el.querySelector('.pp-ne-form').hidden = true;
+        NED.el.querySelector('.pp-ne-foot').hidden = true;
+        NED.el.querySelector('.pp-ne-spin').hidden = false;
+        nedShowAlert('', false);
+        NED.rowId = null; NED.columns = null; NED.initial = ''; NED._payload = null;
+        if (refreshBoard) { nedRefreshBoard(savedId, savedTable); }
+
+        return true;
+    }
+    // Wipe the field slots but keep the hero/main/side skeleton so the
+    // next open can populate them without rebuilding the layout each time.
+    function nedClearLayout() {
+        var form = NED.el.querySelector('.pp-ne-form');
+        if (!form) { return; }
+        ['pp-ne-top-row', 'pp-ne-title-row', 'pp-ne-desc-row',
+         'pp-ne-props', 'pp-ne-files-row'].forEach(function (cls) {
+            var el = form.querySelector('.' + cls);
+            if (el) { el.innerHTML = ''; }
+        });
+        // Hide optional sections until nedRenderForm decides they have content.
+        ['pp-ne-top-row', 'pp-ne-desc-row', 'pp-ne-files-row'].forEach(function (cls) {
+            var el = form.querySelector('.' + cls);
+            if (el) { el.hidden = true; }
+        });
+    }
+    // Ensure the layout slots exist as direct children of the form:
+    //   .pp-ne-top-row    — parent issue and type, the two fields that frame
+    //                       everything below them
+    //   .pp-ne-title-row  — subject (full-width, document-title style)
+    //   .pp-ne-desc-row   — description (textarea / richtext, full-width panel)
+    //   .pp-ne-props      — the metadata fields, one to a row, inside the
+    //                       基本情報 card the issue screen already shows. The
+    //                       card does not move or change shape when editing
+    //                       starts; only what each row holds changes.
+    //   .pp-ne-files-row  — file drop zone
+    //
+    // One field to a row, not two. Two columns can only line up by accident:
+    // one help line on the left and every row below it sits half a line lower
+    // than the row it is meant to be beside - and the read-only card they
+    // stand in for has always been one field to a row.
+    // Idempotent: creates any missing slot and clears innerHTML on every call.
+    function nedEnsureLayout() {
+        var form = NED.el.querySelector('.pp-ne-form');
+        // Every re-render empties these slots, date fields and all.
+        if (window.ppDateFieldDestroy) { window.ppDateFieldDestroy(form); }
+        // Fast path: if we already built the 5 slots for a previous open
+        // and they're still attached to the form, just clear their
+        // children instead of re-running querySelector / createElement.
+        // Idempotent with the ensure() rebuild path — the DOM shape and
+        // slot identity are exactly the same either way.
+        if (NED._slots && NED._slots.title.parentNode === form) {
+            var s = NED._slots;
+            s.top.innerHTML = '';
+            s.title.innerHTML = '';
+            s.desc.innerHTML = '';
+            s.grid.innerHTML = '';
+            s.files.innerHTML = '';
+            s.top.hidden = true;
+            s.desc.hidden = true;
+            s.files.hidden = true;
+            return s;
+        }
+        function ensure(sel, parent, tag) {
+            var el = parent.querySelector(':scope > .' + sel);
+            if (!el) {
+                el = document.createElement(tag || 'div');
+                el.className = sel;
+                parent.appendChild(el);
+            }
+            el.innerHTML = '';
+            return el;
+        }
+        var top = ensure('pp-ne-top-row', form, 'div');
+        var title = ensure('pp-ne-title-row', form, 'div');
+        var desc = ensure('pp-ne-desc-row', form, 'div');
+        // The metadata grid lives inside a card, so it is found rather than
+        // made: ensure() only looks at the form's own children and would
+        // build a second, bare copy at the end of the form.
+        var grid = form.querySelector('.pp-ne-props')
+            || ensure('pp-ne-props', form, 'div');
+        grid.innerHTML = '';
+        var files = ensure('pp-ne-files-row', form, 'div');
+        top.hidden = true;
+        desc.hidden = true;
+        files.hidden = true;
+        NED._slots = { top: top, title: title, desc: desc, grid: grid, files: files };
+        return NED._slots;
+    }
+    // The issue form's shape, written in field names rather than left to
+    // whatever order the columns were created in. Backlog's own arrangement:
+    // the two fields that frame the issue above the subject, the text in the
+    // middle, and metadata in pairs that belong together - the two dates on
+    // one row, the two hour counts on the next.
+    //
+    // Names come from the def map and from the schema upgrade's own list, so
+    // an install that renamed a column, or has not run the upgrade and simply
+    // has not got one, lays out what it actually has. Every other table falls
+    // through with a null and keeps the old behaviour.
+    function nedIssueLayout() {
+        if (!D.issue_table || NED.table !== D.issue_table) { return null; }
+        var c = D.issue_cols || {};
+        var x = D.issue_extra_cols || {};
+        var rows = [
+            [c.status || null, c.assignees || null],
+            [c.priority || null, c.milestone || null],
+            [c.category || null, x.versions || null],
+            [c.start || null, c.due || null],
+            [c.estimate || null, c.actual || null],
+            [c.progress || null, x.resolution || null],
+            [x.notified_users || null]
+        ].filter(function (r) { return r.some(Boolean); });
+
+        return {
+            top: [c.parent || null, c.type || null].filter(Boolean),
+            rows: rows
+        };
+    }
+    // A column with nothing to say until the row exists. A resolution is how
+    // an issue was closed, and an issue being created has not been.
+    function nedSkipOnCreate(col) {
+        if (NED.mode !== 'create' || NED.table !== D.issue_table) { return false; }
+        var x = D.issue_extra_cols || {};
+
+        return !!x.resolution && col.name === x.resolution;
+    }
+    // Auto-pick the "headline" column: the first non-readonly text-ish
+    // field, which by convention is the record's title/subject/name.
+    function nedPickHeroColumn(cols) {
+        for (var i = 0; i < cols.length; i++) {
+            var c = cols[i];
+            if (c.readonly) { continue; }
+            if (c.type !== 'text') { continue; }
+            // Skip textarea/richtext (they belong to the description panel).
+            if (c.raw_type === 'textarea') { continue; }
+            return c;
+        }
+        return null;
+    }
+    // First long-form column: textarea / richtext. Renders as a full-width
+    // panel between title and metadata grid, matching Backlog's layout.
+    function nedPickDescColumn(cols) {
+        for (var i = 0; i < cols.length; i++) {
+            var c = cols[i];
+            if (c.readonly) { continue; }
+            if (c.type === 'richtext') { return c; }
+            if (c.type === 'text' && c.raw_type === 'textarea') { return c; }
+        }
+        return null;
+    }
+    // First file/image column: shown as its own drop-zone strip below the grid.
+    function nedPickFileColumn(cols) {
+        for (var i = 0; i < cols.length; i++) {
+            if (cols[i].type === 'file') { return cols[i]; }
+        }
+        return null;
+    }
+    // Fields the modal never renders as inputs: identity, timestamps,
+    // audit columns, soft-delete, parent link, and anything the backend
+    // marked read-only (auto_number, calc). The user asked us to hide
+    // rows that aren't editable so the form focuses on what they can
+    // actually change; timestamps/creator are surfaced separately in
+    // the header's meta strip so no useful information is lost.
+    function nedIsHiddenColumn(col) {
+        if (col.readonly) { return true; }
+        if (col.name === 'id' || col.name === 'created_at' || col.name === 'updated_at') { return true; }
+        if (col.name === 'created_user_id' || col.name === 'updated_user_id') { return true; }
+        if (col.name === 'suuid' || col.name === 'deleted_at' || col.name === 'deleted_user_id') { return true; }
+        if (col.name === 'parent_id' || col.name === 'parent_type') { return true; }
+        return false;
+    }
+    // ---- searchable chip picker ----------------------------------------
+    // One widget for every relation-ish field, here and in the settings
+    // tab (exported as window.ppMakePicker). A plain <select> filled with
+    // the first N rows of a table can never reach row N+1 - on a 10k-row
+    // user table that means most users simply cannot be picked. This one
+    // searches server-side through lookup_url?q= (the endpoint answers 50
+    // rows at most) and keeps what was chosen as chips, so the current
+    // value never depends on what the top-N happened to contain.
+    //
+    // The value rides in a hidden <select> carrying opts.valueClass:
+    // every serializer, differ and validator that read the old visible
+    // <select> keeps working against this one unchanged.
+    function ppMakePicker(opts) {
+        var multiple = !!opts.multiple;
+        var readonly = !!opts.readonly;
+        var texts = opts.texts || {};
+
+        var root = document.createElement('div');
+        root.className = 'pp-lkp' + (readonly ? ' readonly' : '');
+
+        var select = document.createElement('select');
+        if (multiple) { select.multiple = true; }
+        select.hidden = true;
+        select.tabIndex = -1;
+        if (opts.valueClass) { select.className = opts.valueClass; }
+
+        var box = document.createElement('div');
+        box.className = 'pp-lkp-box';
+        var q = document.createElement('input');
+        q.type = 'text';
+        q.className = 'pp-lkp-q';
+        q.placeholder = texts.search || '';
+        q.autocomplete = 'off';
+        if (readonly) { q.disabled = true; }
+
+        var dd = document.createElement('div');
+        dd.className = 'pp-lkp-dd';
+        dd.hidden = true;
+
+        var chosen = [];
+        (opts.values || []).forEach(function (v) {
+            if (v && v.value != null && v.value !== '') {
+                chosen.push({ value: String(v.value), label: v.label || String(v.value) });
+            }
+        });
+        if (!multiple && chosen.length > 1) { chosen = chosen.slice(0, 1); }
+
+        function sync() {
+            select.innerHTML = '';
+            if (!multiple) {
+                // The empty option is what makes "nothing chosen" read back
+                // as '' instead of the first real option.
+                var none = document.createElement('option');
+                none.value = ''; none.textContent = '';
+                select.appendChild(none);
+            }
+            chosen.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c.value; opt.textContent = c.label; opt.selected = true;
+                select.appendChild(opt);
+            });
+            if (!multiple && !chosen.length) { select.value = ''; }
+            renderChips();
+        }
+        function renderChips() {
+            Array.prototype.slice.call(box.querySelectorAll('.pp-lkp-chip')).forEach(function (n) { n.remove(); });
+            chosen.forEach(function (c) {
+                var chip = document.createElement('span');
+                chip.className = 'pp-lkp-chip';
+                var tx = document.createElement('span'); tx.textContent = c.label;
+                chip.appendChild(tx);
+                // Only a field that holds several values needs a cross on each
+                // one. Where one value is all there is, picking another
+                // replaces it and the dropdown carries the way to empty it.
+                if (!readonly && multiple) {
+                    var x = document.createElement('button');
+                    x.type = 'button'; x.className = 'pp-lkp-x'; x.textContent = '×';
+                    x.addEventListener('click', function (ev) {
+                        ev.stopPropagation();
+                        removeValue(c.value);
+                    });
+                    chip.appendChild(x);
+                }
+                box.insertBefore(chip, q);
+            });
+        }
+        function announce() {
+            select.dispatchEvent(new Event('input', { bubbles: true }));
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        function addValue(v, label) {
+            if (!multiple) { chosen = []; }
+            if (!chosen.some(function (c) { return c.value === String(v); })) {
+                chosen.push({ value: String(v), label: label });
+            }
+            sync(); announce();
+            q.value = '';
+            if (multiple) { runSearch(''); q.focus(); } else { closeDd(); }
+        }
+        function removeValue(v) {
+            chosen = chosen.filter(function (c) { return c.value !== String(v); });
+            sync(); announce();
+        }
+
+        // Search results per typed term, so flicking between two queries
+        // costs nothing the second time. The empty term rides the shared
+        // nedFetchLookup cache, which the form prewarms on open.
+        var seq = 0, qCache = {}, timer = null, active = -1;
+        function runSearch(term) {
+            var my = ++seq;
+            var key = String(term || '');
+            var paint = function (list) { if (my === seq) { renderDd(list); } };
+            if (key === '') { nedFetchLookup(opts.url).then(paint); return; }
+            if (qCache[key]) { paint(qCache[key]); return; }
+            var sep = opts.url.indexOf('?') >= 0 ? '&' : '?';
+            ppQueue(function () {
+                return fetch(opts.url + sep + 'limit=30&q=' + encodeURIComponent(key), {
+                    headers: { Accept: 'application/json' }, credentials: 'same-origin'
+                }).then(function (r) { return r.ok ? r.json() : { results: [] }; });
+            })
+                .then(function (j) { qCache[key] = j.results || []; paint(qCache[key]); })
+                .catch(function () { paint([]); });
+        }
+        function renderDd(list) {
+            dd.innerHTML = '';
+            var have = {};
+            chosen.forEach(function (c) { have[c.value] = true; });
+            var shown = 0;
+            // A single-value field has no cross on its chip, so emptying it
+            // is offered here instead - and only once there is something to
+            // empty, so a field that was never filled shows no such row.
+            if (!multiple && !readonly && chosen.length) {
+                var none = document.createElement('div');
+                none.className = 'pp-lkp-none';
+                none.textContent = texts.none || L.empty;
+                none.addEventListener('mousedown', function (ev) {
+                    ev.preventDefault();
+                    chosen = [];
+                    sync(); announce();
+                    q.value = '';
+                    closeDd();
+                });
+                dd.appendChild(none);
+            }
+            (list || []).forEach(function (r) {
+                if (have[String(r.value)]) { return; }
+                var op = document.createElement('div');
+                op.className = 'pp-lkp-op';
+                op.textContent = r.label;
+                op.setAttribute('data-v', String(r.value));
+                op.addEventListener('mousedown', function (ev) {
+                    // mousedown, not click: the input's blur would close the
+                    // dropdown before a click ever landed on it.
+                    ev.preventDefault();
+                    addValue(r.value, r.label);
+                });
+                dd.appendChild(op);
+                shown++;
+            });
+            if (!shown) {
+                var em = document.createElement('div');
+                em.className = 'pp-lkp-empty';
+                em.textContent = texts.empty || '-';
+                dd.appendChild(em);
+            }
+            dd.hidden = false;
+            active = -1;
+        }
+        function closeDd() { dd.hidden = true; active = -1; }
+        function moveActive(delta) {
+            var ops = dd.querySelectorAll('.pp-lkp-op');
+            if (!ops.length) { return; }
+            active = (active + delta + ops.length) % ops.length;
+            Array.prototype.forEach.call(ops, function (o, i) { o.classList.toggle('on', i === active); });
+            ops[active].scrollIntoView({ block: 'nearest' });
+        }
+
+        if (!readonly) {
+            box.addEventListener('mousedown', function (ev) {
+                if (ev.target === q) {
+                    // The box keeps focus after a pick, so a second click on
+                    // the input fires no focus event. Without this the list
+                    // could only be reopened from the keyboard.
+                    if (dd.hidden) { runSearch(q.value.trim()); }
+                    return;
+                }
+                ev.preventDefault();
+                q.focus();
+            });
+            q.addEventListener('focus', function () { runSearch(q.value.trim()); });
+            q.addEventListener('input', function () {
+                if (timer) { clearTimeout(timer); }
+                timer = setTimeout(function () { runSearch(q.value.trim()); }, 250);
+            });
+            q.addEventListener('keydown', function (ev) {
+                if (ev.key === 'ArrowDown') {
+                    ev.preventDefault();
+                    if (dd.hidden) { runSearch(q.value.trim()); } else { moveActive(1); }
+                    return;
+                }
+                if (ev.key === 'ArrowUp') { ev.preventDefault(); moveActive(-1); return; }
+                if (ev.key === 'Enter') {
+                    if (!dd.hidden) {
+                        ev.preventDefault();
+                        var ops = dd.querySelectorAll('.pp-lkp-op');
+                        var pick = active >= 0 ? ops[active] : ops[0];
+                        if (pick) { addValue(pick.getAttribute('data-v'), pick.textContent); }
+                    }
+                    return;
+                }
+                if (ev.key === 'Escape') {
+                    if (!dd.hidden) { ev.stopPropagation(); closeDd(); }
+                    return;
+                }
+                if (ev.key === 'Backspace' && q.value === '' && chosen.length) {
+                    removeValue(chosen[chosen.length - 1].value);
+                }
+            });
+            q.addEventListener('blur', function () {
+                // Give a mousedown on an option time to run first.
+                setTimeout(closeDd, 120);
+            });
+        }
+
+        box.appendChild(q);
+        root.appendChild(box);
+        root.appendChild(dd);
+        root.appendChild(select);
+        sync();
+
+        return {
+            root: root,
+            select: select,
+            // For the buttons that stand next to one: "me", and the row the
+            // quick add box has just created.
+            add: function (v, label) { if (!readonly) { addValue(v, label); } },
+            // For the AI fill and its undo: replace the whole selection, and
+            // read it back with labels so it can be put back as it was.
+            set: function (list) {
+                if (readonly) { return; }
+                chosen = [];
+                (list || []).forEach(function (x) {
+                    if (x && x.value != null && x.value !== '') {
+                        chosen.push({ value: String(x.value), label: x.label || String(x.value) });
+                    }
+                });
+                if (!multiple && chosen.length > 1) { chosen = chosen.slice(0, 1); }
+                sync(); announce();
+            },
+            values: function () {
+                return chosen.map(function (c) { return { value: c.value, label: c.label }; });
+            },
+            focus: function () { try { q.focus(); } catch (e) { /* ignore */ } }
+        };
+    }
+    window.ppMakePicker = ppMakePicker;
+
+    /* ------------------------------------------------------------------ */
+    /* the issue browser                                                   */
+    /* ------------------------------------------------------------------ */
+
+    // A key and a title, the way the issue list and the detail header write
+    // them. The lookup endpoint answers with a row id and a label, which is
+    // enough to file the row but not enough to recognise it by: PORTAL-291
+    // is how people refer to a課題 to each other. Where the portal already
+    // holds the issue its own key is used, and where it does not - an issue
+    // outside the loaded set - the key is composed the same way the server
+    // composes it, from the project key and the row id.
+    function ppIssueRow(value, label) {
+        var known = typeof issueById === 'function' ? issueById(value) : null;
+        if (known && known.key) {
+            return { value: String(value), key: String(known.key), subject: String(known.subject || label || '') };
+        }
+        var pk = (D.project && D.project.key) ? String(D.project.key) : '#';
+        return { value: String(value), key: pk + '-' + value, subject: String(label || '') };
+    }
+
+    // Formats one row for the places that show a chosen issue as a single
+    // line: the field itself, and the title of the form it opened from.
+    function ppIssueLabel(row) {
+        return row.subject ? row.key + ' ' + row.subject : row.key;
+    }
+
+    // A modal list of this project's issues, searched on the server.
+    //
+    // Searching here rather than in the browser is what makes it usable on a
+    // project with more issues than one response can carry: the endpoint
+    // answers at most a hundred rows, so a list filtered locally would be
+    // filtering the first hundred and quietly hiding the rest. Every rule
+    // about which issues may be picked - not itself, and not one that is
+    // already somebody's child where subtasking is one level deep - is
+    // already encoded in the url the caller passes, so this function decides
+    // nothing about what is offered and only decides how it is shown.
+    //
+    // opts: { url, title, onPick }
+    function ppIssueModal(opts) {
+        var el = document.createElement('div');
+        el.className = 'pp-ib';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-modal', 'true');
+        el.innerHTML =
+            '<div class="pp-ib-bd"></div>' +
+            '<div class="pp-ib-panel">' +
+              '<div class="pp-ib-head">' +
+                '<span class="pp-ib-title"></span>' +
+                '<button type="button" class="pp-ib-x" aria-label="' + esc(L.ib_close || '') + '">&times;</button>' +
+              '</div>' +
+              '<div class="pp-ib-qwrap"><i class="fa fa-search"></i>' +
+                '<input type="text" class="pp-ib-q" autocomplete="off">' +
+              '</div>' +
+              '<div class="pp-ib-body">' +
+                '<table class="pp-ib-tb"><thead><tr>' +
+                  '<th class="k"></th><th class="s"></th>' +
+                '</tr></thead><tbody></tbody></table>' +
+                '<div class="pp-ib-msg"></div>' +
+              '</div>' +
+              '<div class="pp-ib-foot"><span class="pp-ib-hint"></span>' +
+                '<button type="button" class="pp-ib-clear" hidden></button>' +
+              '</div>' +
+            '</div>';
+
+        var q = el.querySelector('.pp-ib-q');
+        var tb = el.querySelector('.pp-ib-tb tbody');
+        var msg = el.querySelector('.pp-ib-msg');
+        el.querySelector('.pp-ib-title').textContent = opts.title || L.ib_pick || '';
+        q.placeholder = L.ib_search || '';
+        el.querySelector('.pp-ib-tb th.k').textContent = L.ib_col_key || '';
+        el.querySelector('.pp-ib-tb th.s').textContent = L.ib_col_subject || '';
+        el.querySelector('.pp-ib-hint').textContent = L.ib_hint || '';
+        // Offered only when the field already holds an issue, because this
+        // button is the only way to empty a field that carries no cross.
+        var clearBtn = el.querySelector('.pp-ib-clear');
+        clearBtn.textContent = L.ib_clear || '';
+        clearBtn.hidden = !opts.canClear;
+        clearBtn.addEventListener('click', function () {
+            close();
+            if (opts.onPick) { opts.onPick(null); }
+        });
+
+        var rows = [];
+        var active = -1;
+        var seq = 0;
+        var closed = false;
+
+        function close() {
+            if (closed) { return; }
+            closed = true;
+            document.removeEventListener('keydown', onKey, true);
+            el.remove();
+            document.body.classList.remove('pp-ib-open');
+        }
+
+        function setActive(n) {
+            var trs = tb.querySelectorAll('tr');
+            if (!trs.length) { active = -1; return; }
+            active = Math.max(0, Math.min(trs.length - 1, n));
+            Array.prototype.forEach.call(trs, function (tr, i) {
+                tr.classList.toggle('on', i === active);
+            });
+            var cur = trs[active];
+            if (cur && cur.scrollIntoView) { cur.scrollIntoView({ block: 'nearest' }); }
+        }
+
+        function choose(n) {
+            var row = rows[n];
+            if (!row) { return; }
+            close();
+            if (opts.onPick) { opts.onPick(row); }
+        }
+
+        function paint(list) {
+            rows = list;
+            tb.innerHTML = '';
+            if (!list.length) {
+                msg.textContent = L.ib_empty || '';
+                msg.hidden = false;
+                active = -1;
+                return;
+            }
+            msg.hidden = true;
+            list.forEach(function (row, i) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td class="k"><span class="bl-key">' + esc(row.key) + '</span></td>' +
+                    '<td class="s">' + esc(row.subject) + '</td>';
+                tr.addEventListener('click', function () { choose(i); });
+                tr.addEventListener('mousemove', function () { if (active !== i) { setActive(i); } });
+                tb.appendChild(tr);
+            });
+            setActive(0);
+        }
+
+        function load(term) {
+            var mine = ++seq;
+            msg.textContent = L.ib_loading || '';
+            msg.hidden = false;
+            var sep = opts.url.indexOf('?') >= 0 ? '&' : '?';
+            var url = opts.url + sep + 'limit=100' + (term ? '&q=' + encodeURIComponent(term) : '');
+            fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+                .catch(function () { return { results: [] }; })
+                .then(function (j) {
+                    // A slow answer to an old keystroke must not replace the
+                    // list the newest one already painted.
+                    if (closed || mine !== seq) { return; }
+                    paint((j.results || []).map(function (r) { return ppIssueRow(r.value, r.label); }));
+                });
+        }
+
+        function onKey(ev) {
+            // Left open by a page pjax has since replaced: it would go on
+            // eating Enter and the arrow keys on the page that replaced it.
+            if (!alive()) { close(); return; }
+            if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); return; }
+            if (ev.key === 'ArrowDown') { ev.preventDefault(); setActive(active + 1); return; }
+            if (ev.key === 'ArrowUp') { ev.preventDefault(); setActive(active - 1); return; }
+            if (ev.key === 'Enter') { ev.preventDefault(); choose(active); }
+        }
+
+        var timer = null;
+        q.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () { load(q.value.trim()); }, 220);
+        });
+        el.querySelector('.pp-ib-x').addEventListener('click', close);
+        el.querySelector('.pp-ib-bd').addEventListener('click', close);
+        // Capture, so Escape closes this and not the form underneath it.
+        document.addEventListener('keydown', onKey, true);
+
+        document.body.appendChild(el);
+        document.body.classList.add('pp-ib-open');
+        try { q.focus(); } catch (e) { /* ignore */ }
+        load('');
+
+        return { close: close };
+    }
+    window.ppIssueModal = ppIssueModal;
+
+    // An issue-valued field that is filled from the modal above.
+    //
+    // The value rides in a hidden <select> carrying opts.valueClass, exactly
+    // as ppMakePicker's does, so every serializer, differ and validator that
+    // reads a picker keeps working against this one unchanged.
+    //
+    // opts: { url, title, valueClass, readonly, value: {value,label}|null }
+    function ppIssueField(opts) {
+        var readonly = !!opts.readonly;
+
+        var root = document.createElement('div');
+        root.className = 'pp-ibf' + (readonly ? ' readonly' : '');
+
+        var select = document.createElement('select');
+        select.hidden = true;
+        select.tabIndex = -1;
+        if (opts.valueClass) { select.className = opts.valueClass; }
+
+        var face = document.createElement('button');
+        face.type = 'button';
+        face.className = 'pp-ibf-face';
+        if (readonly) { face.disabled = true; }
+
+        var current = null;
+
+        function sync() {
+            select.innerHTML = '';
+            var none = document.createElement('option');
+            none.value = ''; none.textContent = '';
+            select.appendChild(none);
+            if (current) {
+                var opt = document.createElement('option');
+                opt.value = current.value;
+                opt.textContent = ppIssueLabel(current);
+                opt.selected = true;
+                select.appendChild(opt);
+            }
+            if (current) {
+                face.innerHTML = '<span class="bl-key">' + esc(current.key) + '</span>' +
+                    '<span class="sj">' + esc(current.subject) + '</span>';
+                face.classList.add('set');
+            } else {
+                face.textContent = L.ib_pick || '';
+                face.classList.remove('set');
+            }
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function open() {
+            if (readonly) { return; }
+            ppIssueModal({
+                url: opts.url,
+                title: opts.title,
+                // One value means no cross beside the field: the browser that
+                // sets it is also where it is unset.
+                canClear: !!current,
+                onPick: function (row) { current = row || null; sync(); }
+            });
+        }
+
+        face.addEventListener('click', open);
+
+        if (opts.value && opts.value.value) {
+            current = ppIssueRow(opts.value.value, opts.value.label);
+        }
+
+        root.appendChild(face);
+        root.appendChild(select);
+        sync();
+
+        return {
+            root: root,
+            select: select,
+            open: open,
+            reset: function () { current = null; sync(); },
+            focus: function () { try { face.focus(); } catch (e) { /* ignore */ } }
+        };
+    }
+    window.ppIssueField = ppIssueField;
+
+    // A list that has just grown a row. Dropping the cached copy is what
+    // makes the new one appear the next time the picker is opened.
+    function nedForgetLookup(url) {
+        if (!url) { return; }
+        delete NED.lookupCache[url];
+        delete NED.lookupInflight[url];
+    }
+    function nedFetchLookup(url) {
+        if (NED.lookupCache[url]) { return Promise.resolve(NED.lookupCache[url]); }
+        // Dedupe in-flight requests: N select_table columns pointing at
+        // the same lookup URL (common when several fields reference the
+        // same master table) collapse to a single network request.
+        if (NED.lookupInflight[url]) { return NED.lookupInflight[url]; }
+        var sep = url.indexOf('?') >= 0 ? '&' : '?';
+        // A form with six relation columns used to open six connections at
+        // once. They go through the queue now, so the server sees them one
+        // after another and the first list still paints straight away.
+        var p = ppQueue(function () {
+            return fetch(url + sep + 'limit=100', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : { results: [] }; });
+        })
+            .then(function (j) { NED.lookupCache[url] = j.results || []; return NED.lookupCache[url]; })
+            .catch(function () { NED.lookupCache[url] = []; return []; })
+            .finally(function () { delete NED.lookupInflight[url]; });
+        NED.lookupInflight[url] = p;
+        return p;
+    }
+
+    // Compact date rendering for the header meta strip. Turns
+    // "2026-08-25 14:47:07" into "2026/08/25 14:47" (drops seconds and
+    // matches the Backlog format users are used to reading).
+    function nedFormatMetaDate(raw) {
+        if (!raw) { return ''; }
+        var s = String(raw).replace('T', ' ');
+        var m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ ]?(\d{2}:\d{2})?/);
+        if (!m) { return s.slice(0, 16); }
+        return m[1] + '/' + m[2] + '/' + m[3] + (m[4] ? ' ' + m[4] : '');
+    }
+
+    // Populate the small "created / updated" strip under the title so the
+    // user still sees provenance even though we hid the id/timestamp
+    // rows from the form. Silently no-ops in create mode.
+    function nedRenderMetaStrip(payload) {
+        var strip = NED.el.querySelector('.pp-ne-meta');
+        var sepEl = NED.el.querySelector('.pp-ne-meta-sep');
+        var cEl = NED.el.querySelector('.pp-ne-meta-created');
+        var uEl = NED.el.querySelector('.pp-ne-meta-updated');
+        if (!strip) { return; }
+        var row = payload && payload.row;
+        if (!row || NED.mode === 'create') {
+            strip.hidden = true; return;
+        }
+        // "作成 2026/10/14 10:00 · 山田": who comes after the time, with no
+        // English "by" between them.
+        var cLabel = nedGetLangKey('ned_meta_created');
+        var uLabel = nedGetLangKey('ned_meta_updated');
+        var cDate = nedFormatMetaDate(row.created_at);
+        var uDate = nedFormatMetaDate(row.updated_at);
+        var cBy = row.created_by || '';
+        var uBy = row.updated_by || '';
+        var showC = !!cDate;
+        var showU = !!uDate && uDate !== cDate;
+        if (showC) {
+            cEl.textContent = cLabel + ' ' + cDate + (cBy ? ' · ' + cBy : '');
+            cEl.hidden = false;
+        } else { cEl.hidden = true; }
+        if (showU) {
+            uEl.textContent = uLabel + ' ' + uDate + (uBy && uBy !== cBy ? ' · ' + uBy : '');
+            uEl.hidden = false;
+        } else { uEl.hidden = true; }
+        if (sepEl) { sepEl.hidden = !(showC && showU); }
+        strip.hidden = !(showC || showU);
+    }
+
+    // Copy the issue key (or fallback "#<id>") to the clipboard. Falls
+    // back to a hidden textarea + execCommand path on old browsers so
+    // this keeps working in the admin's iframe context.
+    function nedCopyKey() {
+        var keyEl = NED.el.querySelector('.pp-ne-key');
+        if (!keyEl) { return; }
+        var text = keyEl.textContent || '';
+        if (!text || text === nedGetLangKey('ned_new')) { return; }
+        var showFlash = function () {
+            var orig = text;
+            keyEl.classList.add('copied');
+            keyEl.textContent = nedGetLangKey('ned_key_copied');
+            setTimeout(function () {
+                keyEl.classList.remove('copied');
+                keyEl.textContent = orig;
+            }, 900);
+        };
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(showFlash, function () { showFlash(); });
+                return;
+            }
+        } catch (e) { /* fall through */ }
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.top = '-1000px';
+            document.body.appendChild(ta); ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showFlash();
+        } catch (e) { /* silent */ }
+    }
+
+    // Renders one field into the form and returns the wrapping element.
+    // The dispatch is intentionally boring so the reader can tell at a
+    // glance which HTML control shows up for which Exment column type.
+    // The issue form offers one assignee, the way Backlog does: a task two
+    // people own is a task nobody owns. The column itself stays multi-valued,
+    // so a row that already carries more than one still shows all of them -
+    // dropping the second name silently on the next save would be a worse
+    // answer than the question deserves.
+    function nedPickerMultiple(col, current) {
+        if (!col.multiple) { return false; }
+        if (NED.table !== D.issue_table) { return true; }
+        var as = (D.issue_cols || {}).assignees;
+        if (!as || col.name !== as) { return true; }
+
+        return current.length > 1;
+    }
+    // The column's own help describes the column, which is multi-valued and
+    // says so. This form offers one name, so under this form it would be
+    // describing something the reader cannot do.
+    function nedFieldHelp(col) {
+        if (NED.table === D.issue_table) {
+            var as = (D.issue_cols || {}).assignees;
+            if (as && col.name === as && !nedPickerMultiple(col, [])) {
+                return nedGetLangKey('ne_as_help', col.help);
+            }
+        }
+
+        return col.help;
+    }
+    // "I will take this one" - the single most used field value on the form,
+    // and the one that needs a search box least.
+    function nedMineButton(col, picker) {
+        if (NED.table !== D.issue_table || !D.me) { return null; }
+        var as = (D.issue_cols || {}).assignees;
+        if (!as || col.name !== as) { return null; }
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pp-ne-sidebtn';
+        b.textContent = nedGetLangKey('ne_mine');
+        b.addEventListener('click', function () {
+            picker.add(String(D.me), user(D.me).n);
+        });
+
+        return b;
+    }
+    // Wanting a milestone that does not exist yet is not a reason to leave
+    // the issue you are writing, go to the settings tab, make one, come back
+    // and start again. Which column holds the name and which one ties the row
+    // to the project comes from the server, and the button only exists when
+    // the server also said this user may create one.
+    function nedQuickAdd(col, picker) {
+        var conf = (D.quick_add || {})[col.target_table];
+        if (!conf || col.can_create !== true) { return null; }
+        if (!D.project || !D.project.id || !(D.urls && D.urls.lightapi_base)) { return null; }
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = nedGetLangKey('ne_qa_ph');
+        var add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'pp-ne-sidebtn';
+        add.textContent = nedGetLangKey('ne_qa_add');
+        var box = document.createElement('div');
+        box.className = 'pp-ne-qa';
+        box.hidden = true;
+        box.appendChild(input);
+        box.appendChild(add);
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pp-ne-sidebtn';
+        btn.title = nedGetLangKey('ne_qa_open');
+        btn.setAttribute('aria-label', nedGetLangKey('ne_qa_open'));
+        btn.textContent = '+';
+        btn.addEventListener('click', function () {
+            box.hidden = !box.hidden;
+            if (!box.hidden) { input.focus(); }
+        });
+
+        var busy = false;
+        var submit = function () {
+            var name = input.value.trim();
+            if (busy || name === '') { return; }
+            busy = true;
+            add.disabled = true;
+            var value = {};
+            value[conf.col] = name;
+            value[conf.parent] = String(D.project.id);
+            fetch(D.urls.lightapi_base + '/data/' + col.target_table, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': CSRF
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ value: value })
+            }).then(ppJson, ppNoAnswer).then(function (res) {
+                busy = false;
+                add.disabled = false;
+                var body = res.body || {};
+                if (!body.ok || !body.id) {
+                    toast(nedQuickAddError(res.status, res.body), true);
+                    return;
+                }
+                nedForgetLookup(col.lookup_url);
+                picker.add(String(body.id), name);
+                input.value = '';
+                box.hidden = true;
+                toast(String(nedGetLangKey('ne_qa_done')).replace(':name', name));
+            }).catch(function () {
+                busy = false;
+                add.disabled = false;
+                toast(nedGetLangKey('ne_qa_fail'), true);
+            });
+        };
+        add.addEventListener('click', submit);
+        input.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter') { ev.preventDefault(); submit(); return; }
+            // Stopped here, or the form itself would read it as "close me".
+            if (ev.key === 'Escape') { ev.stopPropagation(); box.hidden = true; }
+        });
+
+        return { btn: btn, box: box };
+    }
+    // Say what went wrong when the server knows, rather than "failed": the
+    // field's own validation message first, then the portal's sentence.
+    function nedQuickAddError(status, body) {
+        var fields = body && body.ok === false && body.fields;
+        if (fields && typeof fields === 'object') {
+            var first = Object.keys(fields)[0];
+            if (first) {
+                var msg = fields[first];
+
+                return Array.isArray(msg) ? msg.join(' ') : String(msg);
+            }
+        }
+
+        return errText(status, body, nedGetLangKey('ne_qa_fail'));
+    }
+    // Most issues have no parent, so the field opens as a line of text rather
+    // than as a search box nobody is going to type in. One click turns it
+    // into the search box. An issue that already has a parent skips this and
+    // shows it, because there it is the answer rather than the question.
+    // Whether this column is the one that makes a課題 somebody's subtask.
+    // Named by the payload rather than by a literal, because the column is
+    // whatever the install called it.
+    function nedIsParentIssueCol(col) {
+        var parentCol = (D.issue_cols || {}).parent;
+        return !!(parentCol && NED.table === D.issue_table && col && col.name === parentCol);
+    }
+    function nedParentFold(col, wrap, holder, picker, readonly) {
+        var parentCol = (D.issue_cols || {}).parent;
+        if (NED.table !== D.issue_table || !parentCol || col.name !== parentCol) { return; }
+        wrap.classList.add('pp-ne-fg-parent');
+        if (readonly || picker.select.value) { return; }
+        holder.hidden = true;
+        var open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'pp-ne-parent-open';
+        var icon = document.createElement('i');
+        icon.className = 'fa fa-sitemap';
+        open.appendChild(icon);
+        open.appendChild(document.createTextNode(nedGetLangKey('ne_parent_set')));
+        open.addEventListener('click', function () {
+            open.remove();
+            holder.hidden = false;
+            picker.focus();
+        });
+        wrap.appendChild(open);
+    }
+    // A picker, plus whatever small controls belong beside it.
+    function nedAppendPicker(col, wrap, picker, readonly) {
+        var holder = picker.root;
+        var sides = [];
+        var qa = null;
+        if (!readonly) {
+            var mine = nedMineButton(col, picker);
+            if (mine) { sides.push(mine); }
+            qa = nedQuickAdd(col, picker);
+            if (qa) { sides.push(qa.btn); }
+        }
+        if (sides.length) {
+            holder = document.createElement('div');
+            holder.className = 'pp-ne-withbtn';
+            holder.appendChild(picker.root);
+            sides.forEach(function (b) { holder.appendChild(b); });
+        }
+        wrap.appendChild(holder);
+        if (qa) { wrap.appendChild(qa.box); }
+        nedParentFold(col, wrap, holder, picker, readonly);
+        // Kept so one field can fill in another: a mention in the description
+        // adds the person mentioned to the notify column.
+        NED._pickers[col.name] = picker;
+    }
+
+    function nedField(col, value, labels) {
+        var wrap = document.createElement('div');
+        wrap.className = 'pp-ne-fg';
+        wrap.dataset.fname = col.name;
+        wrap.dataset.ftype = col.type;
+        if (NED_TYPES_WIDE[col.type]) { wrap.classList.add('wide'); }
+
+        var lbl = document.createElement('label');
+        lbl.textContent = col.label || col.name;
+        if (col.required && !col.readonly) {
+            var req = document.createElement('span'); req.className = 'req'; req.textContent = '*'; lbl.appendChild(req);
+        }
+        if (col.readonly) {
+            var ro = document.createElement('span'); ro.className = 'ro'; ro.textContent = nedGetLangKey('ned_readonly');
+            lbl.appendChild(ro);
+        }
+        wrap.appendChild(lbl);
+
+        var input, ph;
+        var readonly = col.readonly || !NED.canEdit;
+
+        if (!NED.canEdit && col.name !== 'id' && col.type !== 'auto_number') { readonly = true; }
+
+        if (col.type === 'boolean') {
+            // The row label above already names this switch; naming it a
+            // second time beside the box is the doubled text the project
+            // settings escape hatch used to show. The box rides alone in
+            // the control column, with the row label as its click target.
+            var chk = document.createElement('label'); chk.className = 'pp-ne-check';
+            input = document.createElement('input'); input.type = 'checkbox'; input.className = 'pp-ne-in';
+            input.id = 'pp-ne-b-' + col.name;
+            lbl.htmlFor = input.id;
+            input.checked = !!(value === true || value === 1 || value === '1' || value === 'on');
+            input.disabled = readonly;
+            chk.appendChild(input);
+            wrap.appendChild(chk);
+        } else if (col.type === 'richtext' || (col.type === 'text' && col.raw_type === 'textarea')) {
+            input = document.createElement('textarea'); input.className = 'pp-ne-in';
+            input.rows = 6; input.value = value == null ? '' : String(value);
+            if (readonly) { input.readOnly = true; }
+            if (col.placeholder) { input.placeholder = col.placeholder; }
+            wrap.appendChild(input);
+        } else if (col.type === 'select' && Array.isArray(col.options)) {
+            // Segmented pill selector for compact coloured selects
+            // (status/priority): one click, colour-coded, no dropdown.
+            // Reserved for single-select with a small option set so the
+            // Phase A parity: Backlog uses plain <select> dropdowns for
+            // status / priority; the segmented pill lives in Phase B as
+            // opt-in "enhanced" mode gated by NED.opts.segmentedPills.
+            var useSeg = !!(NED.opts && NED.opts.segmentedPills)
+                && !col.multiple && col.options.length >= 1 && col.options.length <= 5;
+            if (useSeg) {
+                var seg = document.createElement('div'); seg.className = 'pp-ne-seg';
+                if (readonly) { seg.classList.add('readonly'); }
+                input = document.createElement('input');
+                input.type = 'hidden'; input.className = 'pp-ne-in';
+                input.value = (value == null || value === undefined) ? '' : String(value);
+                var curVal = String(input.value);
+                col.options.forEach(function (o) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button'; btn.className = 'pp-ne-seg-b';
+                    btn.dataset.value = String(o.key);
+                    btn.textContent = o.label;
+                    if (o.color) { btn.style.setProperty('--seg-c', o.color); }
+                    if (String(o.key) === curVal) { btn.classList.add('on'); }
+                    btn.addEventListener('click', function () {
+                        if (readonly) { return; }
+                        seg.querySelectorAll('.pp-ne-seg-b').forEach(function (x) { x.classList.remove('on'); });
+                        var alreadyOn = input.value === String(o.key);
+                        if (alreadyOn) { input.value = ''; }
+                        else { input.value = String(o.key); btn.classList.add('on'); }
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    seg.appendChild(btn);
+                });
+                wrap.appendChild(seg);
+                wrap.appendChild(input);
+            } else {
+                input = document.createElement('select'); input.className = 'pp-ne-in';
+                if (col.multiple) { input.multiple = true; }
+                if (!col.multiple) {
+                    var empty = document.createElement('option');
+                    empty.value = ''; empty.textContent = nedGetLangKey('ned_none');
+                    input.appendChild(empty);
+                }
+                var multiVals = Array.isArray(value) ? value.map(String) : (value == null ? [] : [String(value)]);
+                col.options.forEach(function (o) {
+                    var opt = document.createElement('option');
+                    opt.value = o.key; opt.textContent = o.label;
+                    if (multiVals.indexOf(String(o.key)) >= 0) { opt.selected = true; }
+                    if (o.color) { opt.style.color = o.color; }
+                    input.appendChild(opt);
+                });
+                if (readonly) { input.disabled = true; }
+                wrap.appendChild(input);
+                // Optional pill preview under a single-value coloured select.
+                if (!col.multiple) {
+                    var pill = document.createElement('span'); pill.className = 'pp-ne-pill';
+                    var applyPill = function () {
+                        var opt = input.options[input.selectedIndex];
+                        if (opt && opt.value) {
+                            pill.hidden = false; pill.textContent = opt.textContent;
+                            pill.style.background = opt.style.color || 'var(--bl-sub)';
+                        } else { pill.hidden = true; }
+                    };
+                    applyPill();
+                    input.addEventListener('change', applyPill);
+                    var pillWrap = document.createElement('div'); pillWrap.style.marginTop = '4px'; pillWrap.appendChild(pill);
+                    wrap.appendChild(pillWrap);
+                }
+            }
+        } else if ((col.type === 'relation' || col.type === 'user' || col.type === 'organization') && col.lookup_url) {
+            var pre = Array.isArray(value) ? value.map(String)
+                : (typeof value === 'string' && value.indexOf(',') >= 0 ? value.split(',').map(function (v) { return v.trim(); })
+                : (value == null || value === '' ? [] : [String(value)]));
+            var preLabels = (labels && labels[col.name])
+                ? String(labels[col.name]).split(/、/) : [];
+            if (nedIsParentIssueCol(col)) {
+                // The parent of a課題 is picked from a table of keys and
+                // titles, not from a line of labels: a dropdown of subjects
+                // alone cannot be read, because the key is how people refer
+                // to an issue and two issues often share a subject.
+                var pf = ppIssueField({
+                    url: col.lookup_url,
+                    title: nedGetLangKey('ib_title_parent'),
+                    valueClass: 'pp-ne-in',
+                    readonly: readonly,
+                    value: pre.length ? { value: pre[0], label: preLabels[0] || '' } : null
+                });
+                input = pf.select;
+                wrap.classList.add('pp-ne-fg-parent');
+                wrap.appendChild(pf.root);
+                NED._pickers[col.name] = pf;
+            } else {
+            var picker = ppMakePicker({
+                url: col.lookup_url,
+                multiple: nedPickerMultiple(col, pre),
+                readonly: readonly,
+                valueClass: 'pp-ne-in',
+                values: pre.map(function (v, i) { return { value: v, label: preLabels[i] || v }; }),
+                texts: { search: nedGetLangKey('lkp_search'), empty: nedGetLangKey('lkp_empty') }
+            });
+            input = picker.select;
+            nedAppendPicker(col, wrap, picker, readonly);
+            }
+        } else if (col.type === 'date' || col.type === 'datetime' || col.type === 'time') {
+            input = document.createElement('input');
+            input.className = 'pp-ne-in';
+            // The picker's format is the API's own, so the value goes in
+            // untouched apart from trimming a date's trailing time. That
+            // also makes the diff honest: the old datetime-local input held
+            // "...T14:30" while the server had "...14:30:00", so a datetime
+            // column counted as edited on every save even when nobody
+            // touched it, and was written back each time.
+            var v = String(value == null ? '' : value);
+            if (col.type === 'date') { v = v.slice(0, 10); }
+            input.value = v;
+            if (readonly) { input.readOnly = true; }
+            if (window.ppDateField) { window.ppDateField(input, col.type); }
+            wrap.appendChild(input);
+        } else if (col.type === 'integer' || col.type === 'number') {
+            input = document.createElement('input');
+            input.className = 'pp-ne-in';
+            input.type = 'number';
+            if (col.type === 'integer') { input.step = '1'; }
+            input.value = value == null ? '' : String(value);
+            if (readonly) { input.readOnly = true; }
+            wrap.appendChild(input);
+        } else if (col.type === 'auto_number' || col.type === 'id') {
+            input = document.createElement('input');
+            input.className = 'pp-ne-in';
+            input.type = 'text';
+            input.value = value == null ? '' : String(value);
+            input.readOnly = true;
+            wrap.appendChild(input);
+        } else if (col.type === 'file') {
+            // Backlog-style drop zone: dashed border box with a hidden
+            // <input type="file"> and a hint. Upload still goes through
+            // the existing controller path; here we just surface the
+            // current attachment name and let the user swap it locally.
+            var drop = document.createElement('div');
+            drop.className = 'pp-ne-drop';
+            var hint = document.createElement('div');
+            hint.className = 'pp-ne-drop-hint';
+            hint.textContent = value
+                ? String(value)
+                : nedGetLangKey('ned_files_drop_hint');
+            input = document.createElement('input');
+            input.type = 'file'; input.className = 'pp-ne-in';
+            if (readonly) { input.disabled = true; }
+            drop.appendChild(hint);
+            drop.appendChild(input);
+            wrap.appendChild(drop);
+            // Clicking anywhere in the drop zone opens the picker.
+            drop.addEventListener('click', function (ev) {
+                if (readonly) { return; }
+                if (ev.target !== input) { input.click(); }
+            });
+            input.addEventListener('change', function () {
+                var f = input.files && input.files[0];
+                if (f) { hint.textContent = f.name; }
+            });
+        } else {
+            input = document.createElement('input');
+            input.className = 'pp-ne-in';
+            input.type = col.type === 'email' ? 'email' : (col.type === 'url' ? 'url' : 'text');
+            input.value = value == null ? '' : String(value);
+            if (col.placeholder) { input.placeholder = col.placeholder; }
+            if (readonly) { input.readOnly = true; }
+            wrap.appendChild(input);
+        }
+
+        var helpText = nedFieldHelp(col);
+        if (helpText) {
+            var help = document.createElement('div'); help.className = 'help'; help.textContent = helpText;
+            wrap.appendChild(help);
+        }
+        var err = document.createElement('div'); err.className = 'err'; err.hidden = true;
+        wrap.appendChild(err);
+        return wrap;
+    }
+
+    // Turn a rendered field back into the value we send in the PATCH body.
+    function nedCollect(col) {
+        var el = nedInputEl(col.name);
+        if (!el) { return undefined; }
+        if (col.type === 'boolean') { return el.checked ? 1 : 0; }
+        if (el.tagName === 'SELECT' && el.multiple) {
+            var out = [];
+            Array.prototype.forEach.call(el.options, function (o) { if (o.selected && o.value) { out.push(o.value); } });
+            return out;
+        }
+        if (el.tagName === 'SELECT') { return el.value || null; }
+        return el.value;
+    }
+    function nedSerialize() {
+        if (!NED.columns) { return ''; }
+        var snap = {};
+        NED.columns.forEach(function (c) {
+            if (c.readonly) { return; }
+            snap[c.name] = nedCollect(c);
+        });
+        return JSON.stringify(snap);
+    }
+    // Only ship the fields the user actually changed - the API supports
+    // partial updates, and there is no reason to overwrite a co-worker's
+    // concurrent tweak to a field we didn't touch.
+    function nedBuildDiff() {
+        var diff = {};
+        var baseline = NED.initial ? JSON.parse(NED.initial) : NED.values;
+        NED.columns.forEach(function (c) {
+            if (c.readonly) { return; }
+            var now = nedCollect(c);
+            var was = baseline[c.name];
+            var eq = false;
+            if (Array.isArray(now) && Array.isArray(was)) {
+                eq = now.length === was.length && now.every(function (v, i) { return String(v) === String(was[i]); });
+            } else if (now == null && (was == null || was === '')) {
+                eq = true;
+            } else {
+                eq = String(now == null ? '' : now) === String(was == null ? '' : was);
+            }
+            if (!eq) { diff[c.name] = now; }
+        });
+        return diff;
+    }
+
+    // ... but a diff needs something to diff against, and on create there is
+    // no row on the server to leave alone. The form is not empty either: it
+    // opens on the project's first status and first issue type, exactly as
+    // Backlog's does, and those are the values the diff calls unchanged and
+    // throws away. What arrived was the subject the user typed and nothing
+    // else - an issue with no status, which belongs to no board column, so
+    // the card was simply not on the board.
+    //
+    // Empty fields are still left out. A column the user did not fill has
+    // nothing to say, and posting "" for every one of them would hand the
+    // server a date column an empty string to parse.
+    function nedBuildCreate() {
+        var out = {};
+        NED.columns.forEach(function (c) {
+            if (c.readonly) { return; }
+            var now = nedCollect(c);
+            if (now === undefined || now === null || now === '') { return; }
+            if (Array.isArray(now) && !now.length) { return; }
+            out[c.name] = now;
+        });
+        return out;
+    }
+
+    // Phase B: Backlog-style formatting toolbar above the description
+    // textarea. Buttons wrap the current selection with markdown
+    // syntax so keyboard users can format without leaving the field.
+    // Fill subject and description from the picked type's template. Tracks
+    // what the template last wrote, so switching the type replaces its own
+    // text - or clears it, for a type with none - but never text the user
+    // typed over it.
+    function nedBindTypeTemplate(tpl, titleCol, descCol) {
+        var typeEl = nedInputEl(tpl.column);
+        if (!typeEl) { return; }
+        var applied = { s: null, d: null };
+        function applyOne(col, key) {
+            var el = col ? nedInputEl(col.name) : null;
+            if (!el || el.readOnly || el.disabled) { return; }
+            var row = tpl.rows[String(typeEl.value || '')] || {};
+            var next = String(row[key] || '');
+            var cur = String(el.value || '');
+            if (cur !== '' && cur !== applied[key]) { return; }
+            applied[key] = next;
+            if (cur === next) { return; }
+            el.value = next;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        function applyBoth() { applyOne(titleCol, 's'); applyOne(descCol, 'd'); }
+        typeEl.addEventListener('change', applyBoth);
+        applyBoth();
+    }
+
+    var NED_EMOJI = [
+        '😀', '😄', '😅', '😊', '😉', '🙂', '😍', '🤔',
+        '😐', '😑', '😢', '😭', '😱', '😡', '🙏', '👍',
+        '👎', '👌', '👏', '🙌', '💪', '🎉', '🔥', '✨',
+        '⭐', '❤️', '✅', '❌', '⚠️', '❓', '❗', '💡',
+        '📌', '📝', '📎', '📅', '⏰', '🐛', '🚀', '🍀'
+    ];
+    // A markdown table nobody wants to type out by hand. Two columns is the
+    // shape most tables start as; adding a third is one more pipe.
+    var NED_TABLE_SNIPPET = '\n| A | B |\n| --- | --- |\n|  |  |\n';
+
+    // execCommand is deprecated and is still the only way to change a
+    // textarea while leaving the browser's undo stack standing. Assigning
+    // .value is the fallback, and costs the writer every undo step they had
+    // built up - which is why it is the fallback and not the method.
+    function nedMdReplace(ta, from, to, text) {
+        ta.focus();
+        ta.setSelectionRange(from, to);
+        var ok = false;
+        try {
+            ok = text === '' ? document.execCommand('delete') : document.execCommand('insertText', false, text);
+        } catch (e) { ok = false; }
+        if (ok) { return; }
+        var v = ta.value;
+        ta.value = v.slice(0, from) + text + v.slice(to);
+        ta.selectionStart = ta.selectionEnd = from + text.length;
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    // Enter at the end of a list item makes the next one. An item left empty
+    // is the writer saying the list is over, so the marker they just made
+    // goes away instead. Returns whether the newline has been dealt with.
+    function nedMdContinueList(ta) {
+        if (ta.selectionStart !== ta.selectionEnd) { return false; }
+        var at = ta.selectionStart, v = ta.value;
+        var from = v.lastIndexOf('\n', at - 1) + 1;
+        var line = v.slice(from, at);
+        var m = line.match(/^(\s*)(?:([-*])\s(\[[ xX]\]\s)?|(\d+)\.\s)/);
+        if (!m) { return false; }
+        if (line.length === m[0].length) {
+            nedMdReplace(ta, from, at, '');
+            return true;
+        }
+        var marker = m[2] ? (m[2] + ' ' + (m[3] ? '[ ] ' : '')) : (String(Number(m[4]) + 1) + '. ');
+        nedMdReplace(ta, at, at, '\n' + m[1] + marker);
+
+        return true;
+    }
+    function nedMdWrap(ta, open, close) {
+        var s = ta.selectionStart, e = ta.selectionEnd;
+        var sel = ta.value.slice(s, e);
+        nedMdReplace(ta, s, e, open + sel + close);
+        ta.selectionStart = s + open.length;
+        ta.selectionEnd = s + open.length + sel.length;
+    }
+    // The three shortcuts every editor has, plus the list carried on. Bound
+    // once the field exists, which is after the toolbar above it was built.
+    var NED_MD_KEYS = { b: ['**', '**'], i: ['*', '*'], k: ['[', '](url)'] };
+    function nedBindMarkdownKeys(fg) {
+        var ta = fg.querySelector('textarea.pp-ne-in');
+        if (!ta || ta.readOnly) { return; }
+        ta.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter') {
+                if (ev.shiftKey || ev.ctrlKey || ev.metaKey || ev.altKey) { return; }
+                if (nedMdContinueList(ta)) { ev.preventDefault(); }
+                return;
+            }
+            if (!(ev.ctrlKey || ev.metaKey) || ev.altKey) { return; }
+            var wrap = NED_MD_KEYS[String(ev.key || '').toLowerCase()];
+            if (!wrap) { return; }
+            ev.preventDefault();
+            nedMdWrap(ta, wrap[0], wrap[1]);
+        });
+    }
+    // Errors from a refused save are shown against the field, and focus is
+    // put on it. Neither works while the preview is covering it.
+    function nedLeavePreview() {
+        var row = NED.el && NED.el.querySelector('.pp-ne-desc-row.previewing');
+        var tab = row && row.querySelector('.pp-ne-desc-head .tab[data-tab="edit"]');
+        if (tab) { tab.click(); }
+    }
+
+    function nedInjectDescToolbar(descRow, col) {
+        // Idempotent: skip if we already injected once for this open. The head
+        // is the part every reader gets; the toolbar may have been left out.
+        if (descRow.querySelector('.pp-ne-desc-head')) { return; }
+        var bar = document.createElement('div');
+        bar.className = 'pp-ne-desc-toolbar';
+        // The pop-outs share one box: only one of them can be open anyway,
+        // and a second click on the same button closes it.
+        var pop = document.createElement('div');
+        pop.className = 'pp-ne-tpop';
+        pop.hidden = true;
+        var popKind = null;
+        var closePop = function () { pop.hidden = true; popKind = null; };
+
+        var textarea = function () { return descRow.querySelector('textarea.pp-ne-in'); };
+        // Replaces the selection and leaves the caret where the writer will
+        // carry on typing, which for a table is the first data cell.
+        var insertText = function (text, back) {
+            var ta = textarea();
+            if (!ta) { return; }
+            var s = ta.selectionStart;
+            nedMdReplace(ta, s, ta.selectionEnd, text);
+            var caret = s + text.length - (back || 0);
+            ta.selectionStart = ta.selectionEnd = caret;
+            ta.focus();
+        };
+
+        var fillEmoji = function () {
+            var grid = document.createElement('div');
+            grid.className = 'emo';
+            NED_EMOJI.forEach(function (ch) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = ch;
+                b.addEventListener('click', function () { insertText(ch); closePop(); });
+                grid.appendChild(b);
+            });
+            pop.appendChild(grid);
+        };
+        // Writing the name is half of it. The other half is that the person
+        // named should hear about it, which on this table is the notify
+        // column - so the mention fills it in and says so, rather than
+        // leaving a name in the text that reaches nobody.
+        var fillMention = function () {
+            var ids = Object.keys(D.users || {});
+            if (!ids.length) { pop.appendChild(nedPopEmpty()); return; }
+            var notify = (D.issue_extra_cols || {}).notified_users;
+            ids.sort(function (a, b) { return cmpText(user(a).n, user(b).n); }).forEach(function (id) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'row';
+                b.textContent = '@' + user(id).n;
+                b.addEventListener('click', function () {
+                    insertText('@' + user(id).n + ' ');
+                    var picker = notify && NED._pickers ? NED._pickers[notify] : null;
+                    if (picker) {
+                        picker.add(String(id), user(id).n);
+                        toast(String(nedGetLangKey('md_mention_added')).replace(':name', user(id).n));
+                    }
+                    closePop();
+                });
+                pop.appendChild(b);
+            });
+        };
+        var fillFile = function () {
+            var rows = (D.files && D.files.rows) || [];
+            if (!rows.length) { pop.appendChild(nedPopEmpty()); return; }
+            rows.forEach(function (f) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'row';
+                b.textContent = f.name;
+                b.addEventListener('click', function () {
+                    insertText(mdFileLink(f.name, f.url, false));
+                    closePop();
+                });
+                pop.appendChild(b);
+            });
+        };
+        var fillHelp = function () {
+            var rules = [
+                ['# ', L.md_head],
+                ['**' + nedGetLangKey('md_bold') + '**', L.md_bold],
+                ['*' + nedGetLangKey('md_italic') + '*', L.md_italic],
+                ['~~' + nedGetLangKey('md_strike') + '~~', L.md_strike],
+                ['- ', L.md_list],
+                ['1. ', L.md_list_ordered],
+                ['- [ ] ', L.md_list_check],
+                ['> ', L.md_quote],
+                ['`code`', L.md_code],
+                ['[text](url)', L.md_link],
+                ['| a | b |', L.md_table],
+                ['---', L.md_rule]
+            ];
+            var table = document.createElement('table');
+            rules.forEach(function (r) {
+                var tr = document.createElement('tr');
+                var td1 = document.createElement('td');
+                var code = document.createElement('code');
+                code.textContent = r[0];
+                td1.appendChild(code);
+                var td2 = document.createElement('td');
+                td2.textContent = r[1];
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                table.appendChild(tr);
+            });
+            pop.appendChild(table);
+        };
+        var openPop = function (kind, anchor) {
+            if (popKind === kind) { closePop(); return; }
+            pop.innerHTML = '';
+            popKind = kind;
+            if (kind === 'emoji') { fillEmoji(); }
+            else if (kind === 'mention') { fillMention(); }
+            else if (kind === 'file') { fillFile(); }
+            else { fillHelp(); }
+            pop.hidden = false;
+            pop.style.left = Math.max(0, anchor.offsetLeft) + 'px';
+        };
+
+        // Backlog splits the description in two: a tab the writer types in
+        // and a tab that shows what they typed. Markdown is only half
+        // readable as source - a table is not readable at all until it is
+        // drawn - and there was no way to see it here short of saving.
+        var head = document.createElement('div');
+        head.className = 'pp-ne-desc-head';
+        var nm = document.createElement('span');
+        nm.className = 'nm';
+        // The field's own label, moved up out of the box so that the toolbar
+        // sits directly on the thing it writes into.
+        nm.textContent = (col && (col.label || col.name)) || '';
+        head.appendChild(nm);
+        var tabs = document.createElement('div');
+        tabs.className = 'tabs';
+        var prev = document.createElement('div');
+        prev.className = 'pp-ne-desc-prev bl-md';
+        prev.hidden = true;
+        var tabEdit = null, tabPrev = null;
+        var showPreview = function (on) {
+            if (on) {
+                closePop();
+                var ta = textarea();
+                prev.innerHTML = renderRichText(ta ? ta.value : '') ||
+                    '<p style="color:var(--bl-faint);">' + esc(nedGetLangKey('md_prev_empty')) + '</p>';
+                linkifyIssueRefs(prev);
+                // Last in the row, so it stands where the field stood.
+                if (!prev.isConnected) { descRow.appendChild(prev); }
+            }
+            prev.hidden = !on;
+            descRow.classList.toggle('previewing', !!on);
+            tabEdit.classList.toggle('on', !on);
+            tabPrev.classList.toggle('on', !!on);
+            if (!on) { var back = textarea(); if (back) { back.focus(); } }
+        };
+        var mkTab = function (kind, label) {
+            var t = document.createElement('button');
+            t.type = 'button';
+            t.className = 'tab';
+            t.dataset.tab = kind;
+            t.textContent = label;
+            t.addEventListener('click', function (ev) { ev.preventDefault(); showPreview(kind === 'prev'); });
+            tabs.appendChild(t);
+
+            return t;
+        };
+        tabEdit = mkTab('edit', nedGetLangKey('md_tab_edit'));
+        tabPrev = mkTab('prev', nedGetLangKey('md_tab_prev'));
+        tabEdit.classList.add('on');
+        head.appendChild(tabs);
+        descRow.appendChild(head);
+        // readOnly stops typing, not these buttons: they write into the field
+        // from script. A reader who may not change it keeps the preview and
+        // gets nothing to format with. Same rule as nedRenderField.
+        if (!NED.canEdit || (col && col.readonly)) { return; }
+
+        var actions = [
+            { label: 'H', title: L.md_head, line: '## ' },
+            { label: 'B', title: L.md_bold, wrap: ['**', '**'] },
+            { label: 'I', title: L.md_italic, wrap: ['*', '*'] },
+            { label: 'S', title: L.md_strike, wrap: ['~~', '~~'] },
+            { sep: 1 },
+            { label: '•', title: L.md_list, line: '- ' },
+            { label: '1.', title: L.md_list_ordered, line: '1. ' },
+            { label: '☐', title: L.md_list_check, line: '- [ ] ' },
+            { sep: 1 },
+            { label: '❝', title: L.md_quote, line: '> ' },
+            { label: '</>', title: L.md_code, wrap: ['`', '`'] },
+            { label: '🔗', title: L.md_link, wrap: ['[', '](url)'] },
+            { label: '⊞', title: L.md_table, insert: NED_TABLE_SNIPPET, back: 6 },
+            { sep: 1 },
+            { label: '@', title: L.md_mention, pop: 'mention' },
+            { label: '☺', title: L.md_emoji, pop: 'emoji' },
+            { label: '📎', title: L.md_file, pop: 'file' },
+            { label: '?', title: L.md_help, pop: 'help' }
+        ];
+        actions.forEach(function (a) {
+            if (a.sep) { var s = document.createElement('span'); s.className = 'tsep'; bar.appendChild(s); return; }
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'tbtn'; b.title = a.title; b.textContent = a.label;
+            b.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                if (a.pop) { openPop(a.pop, b); return; }
+                closePop();
+                if (a.insert) { insertText(a.insert, a.back); return; }
+                var ta = textarea();
+                if (!ta) { return; }
+                var s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+                if (a.wrap) {
+                    nedMdWrap(ta, a.wrap[0], a.wrap[1]);
+                } else if (a.line) {
+                    // The prefix goes at the head of every selected line, or
+                    // of the line the caret is on when nothing is selected.
+                    var lineStart = v.lastIndexOf('\n', s - 1) + 1;
+                    var lineEnd = v.indexOf('\n', e);
+                    if (lineEnd < 0) { lineEnd = v.length; }
+                    var prefixed = v.slice(lineStart, lineEnd).split('\n').map(function (ln) {
+                        return a.line + ln;
+                    }).join('\n');
+                    nedMdReplace(ta, lineStart, lineEnd, prefixed);
+                    ta.selectionStart = ta.selectionEnd = s + a.line.length;
+                }
+                ta.focus();
+            });
+            bar.appendChild(b);
+        });
+        bar.appendChild(pop);
+        // A click anywhere else is the usual way out of a pop-out. The form
+        // is torn down and rebuilt per open, so the listener has to let go
+        // when the page it belongs to does.
+        document.addEventListener('click', function onTpopOutside(ev) {
+            if (!alive() || !bar.isConnected) {
+                document.removeEventListener('click', onTpopOutside);
+                return;
+            }
+            if (!bar.contains(ev.target)) { closePop(); }
+        });
+        descRow.appendChild(bar);
+    }
+    function nedPopEmpty() {
+        var em = document.createElement('div');
+        em.className = 'empty';
+        em.textContent = nedGetLangKey('lkp_empty');
+
+        return em;
+    }
+
+    // Phase B: live char counter below the description textarea. The limit
+    // comes from col.max_length when present, or falls back to 2000 which
+    // matches the default Exment text-column length.
+    function nedAttachCharCount(fg) {
+        var ta = fg.querySelector('textarea.pp-ne-in');
+        if (!ta) { return; }
+        var col = NED.columns.filter(function (c) { return c.name === fg.dataset.fname; })[0];
+        var max = (col && col.max_length) ? col.max_length : 2000;
+        var box = document.createElement('div');
+        box.className = 'pp-ne-charcount';
+        var n = document.createElement('span'); n.className = 'n'; n.textContent = String((ta.value || '').length);
+        var slash = document.createTextNode(' / ');
+        var m = document.createElement('span'); m.className = 'max'; m.textContent = String(max);
+        box.appendChild(n); box.appendChild(slash); box.appendChild(m);
+        fg.appendChild(box);
+        var upd = function () {
+            var len = (ta.value || '').length;
+            n.textContent = String(len);
+            box.classList.toggle('warn', len >= max * 0.8 && len < max);
+            box.classList.toggle('over', len >= max);
+        };
+        ta.addEventListener('input', upd);
+        upd();
+    }
+
+    // Phase B: on-blur required-field check. Empties get a red border and
+    // an inline error message; typing anything clears both. Save is also
+    // gated by nedValidate() before firing the AJAX.
+    function nedValidateField(fg) {
+        if (!fg || !fg.dataset || !fg.dataset.fname) { return true; }
+        // The chip picker validates 150ms after its search box loses focus,
+        // so leaving the box by clicking save lands this call after the form
+        // has closed and dropped its columns. There is nothing left to check
+        // then, and throwing here kills whatever else was queued behind it.
+        if (!NED.columns || !NED.columns.filter) { return true; }
+        var col = NED.columns.filter(function (c) { return c.name === fg.dataset.fname; })[0];
+        if (!col || !col.required || col.readonly) { return true; }
+        var val = nedCollect(col);
+        var isEmpty = (val == null) || val === '' || (Array.isArray(val) && val.length === 0);
+        var errEl = fg.querySelector('.err');
+        if (isEmpty) {
+            fg.classList.add('err');
+            if (errEl) { errEl.textContent = nedGetLangKey('ned_required'); errEl.hidden = false; }
+            return false;
+        }
+        fg.classList.remove('err');
+        if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+        return true;
+    }
+    function nedValidate() {
+        var ok = true;
+        NED.el.querySelectorAll('.pp-ne-fg').forEach(function (fg) {
+            if (!nedValidateField(fg)) { ok = false; }
+        });
+        return ok;
+    }
+
+    // Phase B: colored bullet next to a coloured single-value <select>.
+    // We wrap the <select> in .pp-ne-sel-wrap and drop a small dot span
+    // that reads the option's color on change. Non-coloured selects are
+    // untouched (dot stays hidden).
+    function nedAttachSelectDot(fg) {
+        var sel = fg.querySelector('select.pp-ne-in');
+        if (!sel || sel.multiple) { return; }
+        var hasColor = Array.prototype.some.call(sel.options, function (o) { return o.style && o.style.color; });
+        if (!hasColor) { return; }
+        var wrap = document.createElement('div'); wrap.className = 'pp-ne-sel-wrap';
+        var dot = document.createElement('span'); dot.className = 'pp-ne-sel-dot';
+        sel.parentNode.insertBefore(wrap, sel);
+        wrap.appendChild(dot);
+        wrap.appendChild(sel);
+        var upd = function () {
+            var o = sel.options[sel.selectedIndex];
+            var c = o && o.style && o.style.color;
+            if (c) { dot.style.setProperty('--sel-c', c); dot.classList.remove('hidden'); }
+            else { dot.classList.add('hidden'); }
+        };
+        sel.addEventListener('change', upd);
+        upd();
+    }
+
+    // keepDraft is set when this render IS the draft restore, so the bar does
+    // not turn round and offer to restore what it just restored, and so the
+    // pristine server payload stays available for a second restore.
+    function nedRenderForm(payload, keepDraft) {
+        var epoch = NED.epoch;
+        if (!keepDraft) { NED._payload = payload; }
+        var form = NED.el.querySelector('.pp-ne-form');
+        var slots = nedEnsureLayout();
+        NED.columns = payload.columns || [];
+        NED.values = (payload.row && payload.row.value) || {};
+        NED.labels = (payload.row && payload.row.labels) || {};
+        NED.saveUrl = payload.save && payload.save.url;
+        NED.saveMethod = (payload.save && payload.save.method) || 'PATCH';
+        NED.canEdit = !!(payload.permissions && payload.permissions.can_edit);
+        // The version this form was drawn from. Sent back on save so the
+        // server can refuse to write it over a newer one - and kept with any
+        // draft typed on top of it, for the same reason (nedDraftSave).
+        NED.rowUpdatedAt = (payload.row && payload.row.updated_at) || null;
+        NED.draftBaseAt = NED.rowUpdatedAt;
+        NED._pickers = {};
+
+        // Kick off every lookup fetch in parallel BEFORE building the
+        // field DOM. Without this the per-field nedField() calls fire
+        // their nedFetchLookup() sequentially as they're appended — so
+        // N select_table columns = N serial round-trips on first render.
+        // Because nedFetchLookup dedupes both cache and in-flight, the
+        // per-field .then() below reuses these same promises for free.
+        NED.columns.forEach(function (c) {
+            if (c && c.lookup_url && !nedIsHiddenColumn(c)) { nedFetchLookup(c.lookup_url); }
+        });
+
+        var isCreate = NED.mode === 'create';
+        if (isCreate) {
+            NED.el.querySelector('.pp-ne-key').textContent = nedGetLangKey('ned_new');
+            NED.el.querySelector('.pp-ne-t').textContent = (payload.table && payload.table.label) || '';
+        } else {
+            // The portal calls an issue PORTAL-13 in the list, the detail
+            // head, links and the search box, and this chip copies what it
+            // shows - so it must not show the template's auto-number
+            // (ISS00013) instead. An issue this page has not loaded (one
+            // of another project, opened from a link) keeps the old label.
+            var knownIssue = NED.table === D.issue_table && payload.row ? issueById(payload.row.id) : null;
+            NED.el.querySelector('.pp-ne-key').textContent = (knownIssue && knownIssue.key)
+                || (payload.row && payload.row.value && payload.row.value.issue_key) || ('#' + (payload.row ? payload.row.id : ''));
+            NED.el.querySelector('.pp-ne-t').textContent = payload.row ? payload.row.label : '';
+        }
+        nedRenderMetaStrip(payload);
+
+        var visibleCols = NED.columns.filter(function (c) {
+            return !nedIsHiddenColumn(c) && !nedSkipOnCreate(c);
+        });
+        var titleCol = nedPickHeroColumn(visibleCols);
+        var descCol = nedPickDescColumn(visibleCols);
+        var fileCol = nedPickFileColumn(visibleCols);
+
+        // Title, description and file have slots of their own; everything
+        // else waits in metaOrder for the layout below to place it.
+        var built = {};
+        var metaOrder = [];
+        visibleCols.forEach(function (c) {
+            var el = nedField(c, NED.values[c.name], NED.labels);
+            built[c.name] = el;
+            if (titleCol && c.name === titleCol.name) {
+                el.classList.add('pp-ne-fg-title');
+                var heroIn = el.querySelector('.pp-ne-in');
+                if (heroIn && !heroIn.readOnly && !heroIn.value) {
+                    heroIn.placeholder = nedGetLangKey('ned_hero_ph');
+                }
+                slots.title.appendChild(el);
+            } else if (descCol && c.name === descCol.name) {
+                nedInjectDescToolbar(slots.desc, descCol);
+                slots.desc.appendChild(el);
+                nedAttachCharCount(el);
+                nedBindMarkdownKeys(el);
+                slots.desc.hidden = false;
+            } else if (fileCol && c.name === fileCol.name) {
+                slots.files.appendChild(el);
+                slots.files.hidden = false;
+            } else {
+                metaOrder.push(c.name);
+            }
+        });
+
+        var layout = nedIssueLayout();
+        if (layout) {
+            var taken = {};
+            var waiting = function (name) {
+                return !!name && !!built[name] && !taken[name] && metaOrder.indexOf(name) >= 0;
+            };
+            layout.top.forEach(function (name) {
+                if (!waiting(name)) { return; }
+                slots.top.appendChild(built[name]);
+                slots.top.hidden = false;
+                taken[name] = true;
+            });
+            layout.rows.forEach(function (pair) {
+                // The pairing is only a reading order now that the fields
+                // stand one to a row: take each name in turn and let the
+                // card's own rule space them.
+                pair.forEach(function (name) {
+                    if (!waiting(name)) { return; }
+                    slots.grid.appendChild(built[name]);
+                    taken[name] = true;
+                });
+            });
+            metaOrder = metaOrder.filter(function (name) { return !taken[name]; });
+        }
+        // Whatever the layout did not name: every column of every other table,
+        // and any column added to the issue table since. These keep the old
+        // behaviour and follow in column order.
+        metaOrder.forEach(function (name) { slots.grid.appendChild(built[name]); });
+
+        // A type may bring a template subject and description (Backlog's
+        // per-type issue template). Only when creating: an existing issue's
+        // text belongs to whoever wrote it, not to the type. Applied before
+        // the snapshot below, so an untouched prefilled form is still clean.
+        if (isCreate && payload.templates && payload.templates.rows) {
+            nedBindTypeTemplate(payload.templates, titleCol, descCol);
+        }
+
+        // The AI button sits beside the subject; a button is not a field, so
+        // the clean snapshot below is unaffected.
+        nedAiMount(slots, titleCol, descCol);
+
+        NED.initial = nedSerialize();
+        // A fresh paint is by definition clean; drop any guard left over from
+        // the previous row so opening a second record does not inherit it.
+        nedGuard(false);
+        if (!keepDraft) { nedDraftOffer(); }
+        NED.el.querySelector('.pp-ne-spin').hidden = true;
+        form.hidden = false;
+        NED.el.querySelector('.pp-ne-foot').hidden = false;
+        NED.el.querySelectorAll('.pp-ne-save').forEach(function (b) { b.disabled = !NED.canEdit; });
+        // Push post-paint work (colored-dot decoration, blur/input
+        // validators) into a rAF so the browser can paint the form once
+        // and the user sees fields immediately; the decoration lands on
+        // the very next frame (~16ms later) without blocking the paint.
+        var attachDeco = function () {
+            if (!nedCurrent(epoch)) { return; }
+            NED.el.querySelectorAll('.pp-ne-form .pp-ne-fg').forEach(function (fg) {
+                nedAttachSelectDot(fg);
+                var inputs = fg.querySelectorAll('.pp-ne-in');
+                inputs.forEach(function (input) {
+                    input.addEventListener('blur', function () { nedValidateField(fg); });
+                    input.addEventListener('input', function () {
+                        if (fg.classList.contains('err')) { nedValidateField(fg); }
+                    });
+                });
+                // A chip picker's value carrier is hidden and so never
+                // blurs; its search box is the part the user leaves.
+                var pq = fg.querySelector('.pp-lkp-q');
+                if (pq) {
+                    pq.addEventListener('blur', function () {
+                        setTimeout(function () {
+                            if (nedCurrent(epoch) && fg.isConnected) { nedValidateField(fg); }
+                        }, 150);
+                    });
+                }
+            });
+            nedUpdateChangeCount();
+        };
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(attachDeco);
+        } else {
+            attachDeco();
+        }
+        if (!NED.canEdit) {
+            nedShowAlert((payload.permissions && payload.permissions.edit_denied) || nedGetLangKey('ned_no_edit'), false);
+        } else {
+            nedShowAlert('', false);
+        }
+        nedFocusFirstField();
+    }
+
+    /* ------------------------------------------------ AI auto-fill ------ */
+    // The button that fills type, category, priority and assignee from the
+    // subject and description. The server decides everything that matters -
+    // what the project's lists are, what counts as confident, who is free -
+    // and this side only puts values into fields the way the person would,
+    // and never over a value the person chose.
+    function nedAiActive() {
+        return !!(D.ai && D.ai.enabled && NED.canEdit && NED.table === D.issue_table && D.urls && D.urls.ai_suggest);
+    }
+    function nedAiLang(k, args) {
+        var text = (L.ai && typeof L.ai[k] === 'string') ? L.ai[k] : k;
+        return String(text).replace(/:([a-z_]+)/g, function (m, key) {
+            return args && Object.prototype.hasOwnProperty.call(args, key) ? String(args[key]) : m;
+        });
+    }
+    // The columns the AI may write, by this install's names.
+    function nedAiColumns() {
+        var c = D.issue_cols || {};
+        return [c.type, c.category, c.priority, c.assignees].filter(Boolean);
+    }
+    function nedAiCol(name) {
+        var found = null;
+        (NED.columns || []).forEach(function (col) { if (col.name === name) { found = col; } });
+        return found;
+    }
+    // A field's value as a list of strings, whatever widget holds it.
+    function nedAiNorm(v) {
+        if (v === undefined || v === null || v === '') { return []; }
+        if (Array.isArray(v)) {
+            return v.filter(function (x) { return x !== null && x !== undefined && x !== ''; }).map(String);
+        }
+        return [String(v)];
+    }
+    function nedAiSame(a, b) {
+        a = nedAiNorm(a).slice().sort();
+        b = nedAiNorm(b).slice().sort();
+        return a.length === b.length && a.every(function (v, i) { return v === b[i]; });
+    }
+    // Only an empty field is filled - and, on a new issue, a field still
+    // holding the default the form opened with: that default is the
+    // project's first row, not a choice anybody made. On an existing issue
+    // every value is somebody's and stays.
+    function nedAiFillable(col) {
+        var now = nedAiNorm(nedCollect(col));
+        if (!now.length) { return true; }
+        return NED.mode === 'create' && nedAiSame(now, NED.values[col.name]);
+    }
+    // What a field holds right now, with labels, so undo can put it back.
+    function nedAiSnapshot(col) {
+        var picker = NED._pickers[col.name];
+        if (picker && typeof picker.values === 'function') { return picker.values(); }
+        var el = nedInputEl(col.name);
+        if (!el) { return []; }
+        if (el.tagName === 'SELECT') {
+            var out = [];
+            Array.prototype.forEach.call(el.options, function (o) {
+                if (o.selected && o.value) { out.push({ value: o.value, label: o.textContent }); }
+            });
+            return out;
+        }
+        return el.value === '' ? [] : [{ value: String(el.value), label: String(el.value) }];
+    }
+    // Fill one field the way the user would, so every serializer, differ and
+    // validator that reads the form sees an ordinary value.
+    function nedAiSet(col, list) {
+        var picker = NED._pickers[col.name];
+        if (picker && typeof picker.set === 'function') { picker.set(list); return true; }
+        var el = nedInputEl(col.name);
+        if (!el) { return false; }
+        if (el.tagName === 'SELECT') {
+            var want = {};
+            list.forEach(function (x) { want[String(x.value)] = true; });
+            Array.prototype.forEach.call(el.options, function (o) { o.selected = !!want[o.value]; });
+            if (!el.multiple && !list.length) { el.value = ''; }
+        } else {
+            el.value = list.length ? String(list[0].value) : '';
+        }
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+    }
+    function nedAiChip(col, kind, text, tip) {
+        var fg = nedFieldEl(col.name);
+        if (!fg) { return null; }
+        Array.prototype.slice.call(fg.querySelectorAll('.pp-ne-ai-chip')).forEach(function (n) { n.remove(); });
+        var chip = document.createElement('span');
+        chip.className = 'pp-ne-ai-chip ' + kind;
+        chip.textContent = text;
+        if (tip) { chip.title = tip; }
+        fg.appendChild(chip);
+        return chip;
+    }
+    // Green above the auto threshold, amber between the two: the backtest
+    // put the category at 57-76% right in that band, so it has to be seen.
+    function nedAiBand(conf) {
+        var auto = (D.ai && D.ai.threshold_auto) || 0.8;
+        return conf >= auto ? 'ok' : 'mid';
+    }
+    function nedAiPct(conf) { return Math.round((conf || 0) * 100); }
+    function nedAiClear() {
+        if (!NED.el) { return; }
+        Array.prototype.slice.call(NED.el.querySelectorAll('.pp-ne-ai-chip')).forEach(function (n) { n.remove(); });
+        Array.prototype.slice.call(NED.el.querySelectorAll('.pp-ne-fg.pp-ne-ai')).forEach(function (n) { n.classList.remove('pp-ne-ai'); });
+    }
+    function nedAiMount(slots, titleCol, descCol) {
+        NED._ai = null;
+        if (!nedAiActive() || !titleCol) { return; }
+        var titleIn = nedInputEl(titleCol.name);
+        if (!titleIn) { return; }
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pp-ne-ai-btn';
+        btn.innerHTML = '<i class="fa fa-magic"></i> ' + esc(nedAiLang('fill'));
+        slots.title.classList.add('has-ai');
+        slots.title.appendChild(btn);
+
+        var descIn = descCol ? nedInputEl(descCol.name) : null;
+        var minSubject = (D.ai && D.ai.min_subject) || 3;
+        var minDesc = (D.ai && D.ai.min_description) || 30;
+        // Dim until there is a subject; the tooltip says what a longer
+        // description would add, because priority is only scored with one.
+        var refresh = function () {
+            if (NED._ai && NED._ai.busy) { return; }
+            var subject = String(titleIn.value || '').trim();
+            var desc = String(descIn ? descIn.value : '').replace(/<[^>]*>/g, '').trim();
+            btn.disabled = NED.busy || subject.length < minSubject;
+            btn.title = btn.disabled ? nedAiLang('need_text')
+                : (desc.length < minDesc ? nedAiLang('need_desc_tip', { n: minDesc }) : '');
+        };
+        titleIn.addEventListener('input', refresh);
+        if (descIn) { descIn.addEventListener('input', refresh); }
+        btn.addEventListener('click', function () { nedAiRun(btn, titleCol, descCol); });
+        btn._ppAiRefresh = refresh;
+        refresh();
+    }
+    function nedAiRun(btn, titleCol, descCol) {
+        if (NED.busy || !nedAiActive()) { return; }
+        var subject = String(nedCollect(titleCol) || '').trim();
+        var description = descCol ? String(nedCollect(descCol) || '') : '';
+        if (!subject) { return; }
+        var epoch = NED.epoch;
+        // Busy blocks the save: a save landing between the request and the
+        // answer would store a half-filled form and reload under the answer.
+        NED.busy = true;
+        NED._ai = { busy: true };
+        var was = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> ' + esc(nedAiLang('filling'));
+        var saveBtns = NED.el.querySelectorAll('.pp-ne-save');
+        saveBtns.forEach(function (b) { b.disabled = true; });
+        nedShowAlert('', false);
+        var done = function () {
+            if (!nedCurrent(epoch)) { return; }
+            NED.busy = false;
+            btn.disabled = false;
+            btn.innerHTML = was;
+            saveBtns.forEach(function (b) { b.disabled = !NED.canEdit; });
+        };
+        var body = { subject: subject, description: description };
+        if (NED.mode !== 'create' && NED.rowId) { body.issue_id = NED.rowId; }
+        // The category as the form holds it now - unsaved, or emptied - which
+        // is what decides a category's default assignee, not the one stored
+        // on the row or the one the AI would guess.
+        var catCol = nedAiCol((D.issue_cols || {}).category);
+        if (catCol) {
+            var cat = nedCollect(catCol);
+            body.category = (cat === undefined || cat === null) ? '' : cat;
+        }
+        fetch(D.urls.ai_suggest, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            credentials: 'same-origin',
+            body: JSON.stringify(body)
+        }).then(ppJson, ppNoAnswer).then(function (res) {
+            if (!nedCurrent(epoch)) { return; }
+            done();
+            if (res.status !== 200 || !res.body || !res.body.ok) {
+                NED._ai = null;
+                nedShowAlert(errText(res.status, res.body, nedAiLang('err_failed')), false);
+                return;
+            }
+            nedAiApply(res.body);
+        }).catch(function () {
+            if (!nedCurrent(epoch)) { return; }
+            done();
+            NED._ai = null;
+            nedShowAlert(nedAiLang('err_failed'), false);
+        });
+    }
+    // Put the answers on the form: fill what is empty, offer where a value
+    // already stands or where the AI was not sure, and say why where it has
+    // nothing to offer.
+    function nedAiApply(res) {
+        nedAiClear();
+        var state = { busy: false, suggestion_id: res.suggestion_id, prev: {}, filled: [], fields: res.fields || {} };
+        var filled = 0;
+        var picks = 0;
+        nedAiColumns().forEach(function (name) {
+            var col = nedAiCol(name);
+            var f = state.fields[name];
+            if (!col || !f) { return; }
+            if (f.value === null || f.value === undefined) {
+                nedAiChip(col, 'off', f.reason || nedAiLang('unsure'), null);
+                return;
+            }
+            var list = nedAiNorm(f.value).map(function (v, i) {
+                return { value: v, label: (i === 0 && f.label) ? f.label : v };
+            });
+            var pct = nedAiPct(f.confidence);
+            var tip = f.reason || '';
+            var mark = function () {
+                var fg = nedFieldEl(col.name);
+                if (fg) { fg.classList.add('pp-ne-ai'); }
+                nedAiChip(col, nedAiBand(f.confidence), (f.severe ? '⚠ ' : '') + nedAiLang('chip', { pct: pct }), tip);
+            };
+            if (!f.ok) {
+                // Below the threshold the best guess is offered, never put
+                // in: on the type check it was still right 8 times in 9,
+                // so it is worth one click - the person's click.
+                if (nedAiSame(nedCollect(col), f.value)) {
+                    nedAiChip(col, 'off', f.reason || nedAiLang('unsure'), null);
+                    return;
+                }
+                var pickTip = nedAiLang('pick_tip');
+                if (f.reason && f.reason !== nedAiLang('unsure')) { pickTip += '\n' + f.reason; }
+                nedAiOffer(col, 'pick', nedAiLang('pick', { label: f.label || '', pct: pct }), pickTip, list, state, mark);
+                picks++;
+                return;
+            }
+            if (nedAiFillable(col)) {
+                state.prev[name] = nedAiSnapshot(col);
+                if (nedAiSet(col, list)) {
+                    state.filled.push(name);
+                    filled++;
+                    mark();
+                }
+                return;
+            }
+            if (nedAiSame(nedCollect(col), f.value)) { return; }
+            // A value the person chose stays; the suggestion becomes a chip.
+            nedAiOffer(col, 'adopt', nedAiLang('adopt', { label: f.label || '', pct: pct }), tip, list, state, mark);
+        });
+        NED._ai = state;
+        nedUpdateChangeCount();
+        nedAiNotice(filled, picks);
+    }
+    // A suggestion as a chip beside the field; a click on it is the person
+    // choosing that value, the same as picking it from the list.
+    function nedAiOffer(col, kind, text, tip, list, state, mark) {
+        var chip = nedAiChip(col, kind, text, tip);
+        if (!chip) { return; }
+        chip.setAttribute('role', 'button');
+        chip.tabIndex = 0;
+        var take = function () {
+            state.prev[col.name] = nedAiSnapshot(col);
+            if (nedAiSet(col, list)) {
+                state.filled.push(col.name);
+                mark();
+                nedUpdateChangeCount();
+            }
+        };
+        chip.addEventListener('click', take);
+        chip.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); take(); }
+        });
+    }
+    function nedAiNotice(filled, picks) {
+        if (!filled) { nedShowAlert(nedAiLang(picks ? 'filled_none_pick' : 'filled_none'), true); return; }
+        nedShowAlert(nedAiLang('filled', { n: filled }), true);
+        var alert = NED.el.querySelector('.pp-ne-alert');
+        var undo = document.createElement('button');
+        undo.type = 'button';
+        undo.className = 'pp-ne-ai-undo';
+        undo.textContent = nedAiLang('undo');
+        undo.addEventListener('click', nedAiUndo);
+        alert.appendChild(undo);
+    }
+    function nedAiUndo() {
+        var state = NED._ai;
+        if (!state) { return; }
+        Object.keys(state.prev).forEach(function (name) {
+            var col = nedAiCol(name);
+            if (col) { nedAiSet(col, state.prev[name] || []); }
+        });
+        nedAiClear();
+        state.filled = [];
+        state.prev = {};
+        nedUpdateChangeCount();
+        nedShowAlert(nedAiLang('undone'), true);
+    }
+    // After a successful save: what the person kept, against what was
+    // offered. Fire and forget - the page is about to reload - and keepalive
+    // so the reload does not cancel it.
+    function nedAiFeedback(issueId, state, submitted, url) {
+        if (!state || !state.suggestion_id || !url) { return; }
+        var applied = {};
+        Object.keys(state.fields || {}).forEach(function (name) {
+            if (Object.prototype.hasOwnProperty.call(submitted, name)) { applied[name] = submitted[name]; }
+        });
+        try {
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                credentials: 'same-origin',
+                keepalive: true,
+                body: JSON.stringify({ suggestion_id: state.suggestion_id, issue_id: issueId || null, applied: applied })
+            }).catch(function () { /* statistics only */ });
+        } catch (e) { /* statistics only */ }
+    }
+
+    // Update the save button label with a live "(N)" counter of changed
+    // fields. Only meaningful in edit mode; create mode always says "保存".
+    function nedUpdateChangeCount() {
+        var neMail = NED.el.querySelector('.pp-ne-mail');
+        if (neMail) {
+            var mailOn = NED.mode === 'create' && NED.table === D.issue_table;
+            if (neMail.hidden === mailOn) {
+                neMail.hidden = !mailOn;
+                if (!mailOn) { neMail.querySelector('input').checked = false; }
+            }
+        }
+        var labels = NED.el.querySelectorAll('.pp-ne-save-label');
+        if (!labels.length) { return; }
+        var base = NED.mode === 'create'
+            ? nedGetLangKey('ned_save')
+            : nedGetLangKey('ned_save');
+        var text = base;
+        if (NED.mode !== 'create' && NED.canEdit && NED.columns) {
+            var diff = nedBuildDiff();
+            var n = Object.keys(diff).length;
+            if (n > 0) { text = base + ' (' + n + ')'; }
+        }
+        labels.forEach(function (l) { l.textContent = text; });
+    }
+    function nedFocusFirstField() {
+        var epoch = NED.epoch;
+        setTimeout(function () {
+            if (!nedCurrent(epoch)) { return; }
+            var pref = NED.el.querySelector('.pp-ne-fg-title .pp-ne-in:not([readonly]):not([disabled])');
+            // :not([hidden]) keeps the focus off a chip picker's value
+            // carrier, which is a real <select> the user never sees.
+            var any = pref || NED.el.querySelector('.pp-ne-form .pp-ne-in:not([readonly]):not([disabled]):not([type=hidden]):not([hidden])');
+            if (any && typeof any.focus === 'function') {
+                try { any.focus({ preventScroll: true }); } catch (e) { any.focus(); }
+                if (any.tagName === 'INPUT' && any.type === 'text') {
+                    try { any.select(); } catch (e) { /* ignore */ }
+                }
+            }
+        }, 40);
+    }
+
+    // Same-tab per-row edit payload fetch with cache + in-flight dedup.
+    // Mirrors nedFetchCreateForm but keyed by "<table>::<id>". Callers
+    // pass forceRefresh=true to bypass the cache for background
+    // revalidation after a stale-hit render.
+    function nedFetchEditForm(table, id, forceRefresh, low) {
+        var key = table + '::' + id;
+        if (!forceRefresh && NED.editFormCache[key]) { return Promise.resolve(NED.editFormCache[key]); }
+        if (NED.editFormInflight[key]) {
+            // A prewarm queued this a moment ago. Someone is waiting for it
+            // now, so it must not stay behind the rest of the slow lane.
+            if (!low) { ppQueue.promote(NED.editFormInflight[key]); }
+            return NED.editFormInflight[key];
+        }
+        var url = (D.urls && D.urls.lightapi_base) + '/data/' + table + '/' + id + '/edit';
+        var q = ppQueue(function () { return nedGetForm(url); }, low);
+        var p = q
+            .then(function (j) { NED.editFormCache[key] = j; NED.editFormAt[key] = Date.now(); return j; })
+            .finally(function () { delete NED.editFormInflight[key]; });
+        p.ppJob = q.ppJob;
+        NED.editFormInflight[key] = p;
+        return p;
+    }
+    // A form payload - or a refusal, thrown as the {status, body} pair
+    // errText words: a 403 the portal explained, a proxy's error page, no
+    // answer at all. Never the browser's own exception text.
+    function nedGetForm(url) {
+        return fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+            .then(ppJson, ppNoAnswer)
+            .then(function (res) {
+                if (res.status >= 200 && res.status < 300 && res.body && typeof res.body === 'object') { return res.body; }
+                throw res;
+            });
+    }
+    // The sentence for a form that could not be opened.
+    function nedFormError(e) {
+        return errText(e && typeof e.status === 'number' ? e.status : null, e && e.body, nedGetLangKey('ned_error'));
+    }
+    // Whether a cached form is recent enough to open without a round trip.
+    function nedFormFresh(table, id, maxAgeMs) {
+        var at = NED.editFormAt[table + '::' + id];
+        return !!at && (Date.now() - at) < (maxAgeMs || 90000);
+    }
+    // The settings pane reads the same payload from the same endpoint;
+    // sharing this cache is what turns its two requests into one.
+    window.ppFetchEditForm = nedFetchEditForm;
+    function nedPrewarmEditForm(table, id) {
+        // Fire-and-forget on hover / mousedown of an edit link so the
+        // click sees a hot promise (or a cache hit) instead of a cold
+        // network round-trip.
+        if (!NED.el || !table || !id) { return; }
+        nedFetchEditForm(table, id, false, true).catch(function () { });
+    }
+
+    // The cached form is a photograph, and the row may have moved since it
+    // was taken. It is still shown at once - the reader gets their form with
+    // no wait - but the real one is fetched straight away, and when it comes
+    // back different the form is corrected underneath them.
+    function nedRevalidateForm(table, id) {
+        var epoch = NED.epoch;
+        var version = NED.rowUpdatedAt;
+        nedFetchEditForm(table, id, true, true).then(function (j) {
+            // They may have closed it, or moved on to another row, in the
+            // time this took.
+            if (!nedCurrent(epoch) || NED.busy || NED.rowUpdatedAt !== version) { return; }
+            if (NED.mode !== 'edit' || NED.table !== table) { return; }
+            if (String(NED.rowId) !== String(id)) { return; }
+            var fresh = (j.row && j.row.updated_at) || null;
+            if (!fresh || String(fresh) === String(NED.rowUpdatedAt)) { return; }
+            // Anything typed outranks the news: redrawing would throw their
+            // work away to deliver it. They are told instead, with the same
+            // two ways out that a refused save offers.
+            if (nedDirty()) {
+                nedShowConflict({ updated_at: fresh, updated_by: (j.row && j.row.updated_by) || null });
+                return;
+            }
+            nedRenderForm(j);
+            nedShowAlert(nedGetLangKey('ned_reloaded'), true);
+        }).catch(function () { /* the cached form stands */ });
+    }
+
+    function openNedit(table, id) {
+        if (!NED.el) { return; }
+        // Preserve back-compat with the old openNedit(id) 1-arg signature.
+        if (id === undefined) { id = table; table = D.issue_table; }
+        var epoch = nedRetireContext();
+        NED.mode = 'edit';
+        NED.table = table;
+        NED.rowId = id;
+        NED.draftTag = '';
+        // Opened over the board, by the board. It drew this card and can draw
+        // it again, so a save there need not build the whole portal a second
+        // time. Set on every open, so it never outlives the one it was set for.
+        NED.fromBoard = (NED.forceTarget === 'overlay');
+        nedMount(nedResolveMountTarget());
+        nedPushHistory();
+        NED.el.hidden = false;
+        nedShowAlert('', false);
+
+        var key = table + '::' + id;
+        if (NED.editFormCache[key]) {
+            // Cache hit: paint the form immediately, so opening costs nothing
+            // the reader can feel, and then check what was painted.
+            NED.el.querySelector('.pp-ne-spin').hidden = true;
+            nedRenderForm(NED.editFormCache[key]);
+            // Three seconds, not ninety. The old number was picked to spare
+            // the server a request, and bought that by showing a form that
+            // could be a minute and a half out of date - which is a row's
+            // whole lifetime on a busy board. This is short enough that only
+            // a hover-prewarm, or the same form opened twice in a breath,
+            // skips the check.
+            if (!nedFormFresh(table, id, 3000)) {
+                nedRevalidateForm(table, id);
+            }
+            return;
+        }
+
+        NED.el.querySelector('.pp-ne-spin').hidden = false;
+        NED.el.querySelector('.pp-ne-form').hidden = true;
+        NED.el.querySelector('.pp-ne-foot').hidden = true;
+        NED.el.querySelector('.pp-ne-key').textContent = '';
+        NED.el.querySelector('.pp-ne-t').textContent = '';
+
+        nedFetchEditForm(table, id)
+            .then(function (j) { if (nedCurrent(epoch)) { nedRenderForm(j); } })
+            .catch(function (e) {
+                if (!nedCurrent(epoch)) { return; }
+                NED.el.querySelector('.pp-ne-spin').hidden = true;
+                nedShowAlert(nedFormError(e), false);
+            });
+    }
+
+    // Open the native modal in "create" mode: fetches an empty form
+    // (schema + defaults) from the light endpoint and never touches the
+    // iframe pipeline, so a second click never redownloads admin
+    // chrome/CSS/JS. The schema does not vary between opens in the same
+    // tab, so we memoise the payload in NED.createFormCache and treat
+    // subsequent opens as offline (0 network) with a quiet background
+    // refresh.
+    function nedFetchCreateForm(tbl, low) {
+        // The status and type lists belong to a project, so the defaults the
+        // form should offer depend on which project we are in. Keep the cache
+        // key in step with that or the second project reuses the first one's.
+        var parent = (D.project && D.project.id) || '';
+        var ck = tbl + '|' + parent;
+        if (NED.createFormCache[ck]) { return Promise.resolve(NED.createFormCache[ck]); }
+        if (NED.createFormInflight[ck]) {
+            if (!low) { ppQueue.promote(NED.createFormInflight[ck]); }
+            return NED.createFormInflight[ck];
+        }
+        var url = (D.urls && D.urls.lightapi_base) + '/data/' + tbl + '/create'
+            + (parent ? '?parent_id=' + encodeURIComponent(parent) : '');
+        var q = ppQueue(function () { return nedGetForm(url); }, low);
+        var p = q
+            .then(function (j) { NED.createFormCache[ck] = j; return j; })
+            .finally(function () { delete NED.createFormInflight[ck]; });
+        p.ppJob = q.ppJob;
+        NED.createFormInflight[ck] = p;
+        return p;
+    }
+    function nedCreateFormCached(tbl) {
+        return NED.createFormCache[tbl + '|' + ((D.project && D.project.id) || '')];
+    }
+    // A create form that starts from somewhere - "add a child of this one",
+    // "copy this one". The values are resolved on the server so a picker
+    // arrives with its label already attached, exactly as a default does;
+    // the answer describes one row, not the table, so it is never cached.
+    function nedFetchPrefilledForm(tbl, prefill) {
+        var parent = (D.project && D.project.id) || '';
+        var url = (D.urls && D.urls.lightapi_base) + '/data/' + tbl + '/create'
+            + '?prefill=' + encodeURIComponent(JSON.stringify(prefill))
+            + (parent ? '&parent_id=' + encodeURIComponent(parent) : '');
+
+        return ppQueue(function () { return nedGetForm(url); });
+    }
+    function nedPrewarmCreateForm(tbl) {
+        // Fire-and-forget so the first click on 課題の追加 renders instantly.
+        if (!NED.el) { return; }
+        nedFetchCreateForm(tbl || D.issue_table, true).catch(function () { });
+    }
+
+    // The create form has an address, so a click goes through it rather than
+    // straight into openNcreate: that is what leaves something in the address
+    // bar to reload, bookmark or send to somebody.
+    //
+    // Only the issue form. A child or a copy carries values taken off the
+    // issue on screen - the description among them - and none of that is in
+    // the URL, so a link that reopened those would quietly drop fields.
+    function goCreate() {
+        if (parseHash().path === 'new') { return; }
+        location.hash = 'new';
+    }
+
+    // The editor has an address too: #issue-<key>?edit. Going through it is
+    // what makes a reload, or a link sent to somebody, open the form rather
+    // than the issue behind it - and it makes the back gesture close the
+    // editor rather than walk out of the issue.
+    //
+    // Only the issue editor. The wiki and project forms are opened from
+    // screens of their own and are left as they were; the board keeps its
+    // overlay, which is a different screen behind the same panel rather than
+    // a different address for this one.
+    // Edit a row where it stands, on a screen that keeps its place behind
+    // the panel: the board's cards and the gantt's bars. The address names
+    // that screen rather than the issue, because that screen is what is
+    // still on display - #board?edit=<id>, #gantt?edit=<id>.
+    function goEditOver(screen, id) {
+        var want = screen + '?edit=' + id;
+        if (location.hash.slice(1) === want) { return; }
+        location.hash = want;
+    }
+
+    function goEdit(table, id) {
+        if (table !== D.issue_table) { openNedit(table, id); return; }
+        var want = issueHash(id) + '?edit';
+        if (location.hash.slice(1) === want) { return; }
+        location.hash = want;
+    }
+
+    // draftTag: which kind of start this is - '' for a plain new row,
+    // 'child<id>' or 'copy<id>' for one begun from an issue - so each keeps a
+    // draft slot of its own (nedDraftKey).
+    function openNcreate(table, prefill, draftTag) {
+        if (!NED.el) { return; }
+        var tbl = table || D.issue_table;
+        var epoch = nedRetireContext();
+        NED.mode = 'create';
+        NED.table = tbl;
+        NED.rowId = null;
+        NED.draftTag = draftTag ? String(draftTag).replace(/[^A-Za-z0-9_-]/g, '') : '';
+        nedMount(nedResolveMountTarget());
+        nedPushHistory();
+        NED.el.hidden = false;
+        NED.el.querySelector('.pp-ne-key').textContent = '';
+        NED.el.querySelector('.pp-ne-t').textContent = '';
+        nedShowAlert('', false);
+
+        if (!prefill && nedCreateFormCached(tbl)) {
+            NED.el.querySelector('.pp-ne-spin').hidden = true;
+            nedRenderForm(nedCreateFormCached(tbl));
+            return;
+        }
+        NED.el.querySelector('.pp-ne-spin').hidden = false;
+        NED.el.querySelector('.pp-ne-form').hidden = true;
+        NED.el.querySelector('.pp-ne-foot').hidden = true;
+        (prefill ? nedFetchPrefilledForm(tbl, prefill) : nedFetchCreateForm(tbl))
+            .then(function (j) { if (nedCurrent(epoch)) { nedRenderForm(j); } })
+            .catch(function (e) {
+                if (!nedCurrent(epoch)) { return; }
+                NED.el.querySelector('.pp-ne-spin').hidden = true;
+                nedShowAlert(nedFormError(e), false);
+            });
+    }
+
+    // Phase B: top-edge progress bar during save. 'start' widens the bar
+    // to 70% immediately (perceived motion); 'done' completes to 100%
+    // then fades out; 'error' snaps to 100% in red then fades. The bar
+    // element itself is inert markup — see index.blade.php.
+    function nedPbar(state) {
+        var bar = NED.el && NED.el.querySelector('.pp-ne-pbar');
+        if (!bar) { return; }
+        if (state === 'start') {
+            NED.pbarEpoch++;
+            bar.hidden = false; bar.classList.remove('err'); bar.style.opacity = '1';
+            bar.style.width = '0%';
+            // Force a reflow so the transition kicks in from 0 → 70.
+            void bar.offsetWidth;
+            bar.style.width = '70%';
+            return;
+        }
+        if (state === 'done' || state === 'error') {
+            var epoch = NED.epoch, progress = NED.pbarEpoch;
+            if (state === 'error') { bar.classList.add('err'); }
+            bar.style.width = '100%';
+            setTimeout(function () {
+                if (!nedCurrent(epoch) || NED.pbarEpoch !== progress) { return; }
+                bar.style.opacity = '0';
+                setTimeout(function () {
+                    if (!nedCurrent(epoch) || NED.pbarEpoch !== progress) { return; }
+                    bar.hidden = true; bar.style.width = '0%'; bar.classList.remove('err');
+                }, 300);
+            }, 250);
+        }
+    }
+    function nedRefreshBoard(id, table) {
+        NED.portalStale = true;
+        window.postMessage({
+            exmentFormFrame: 'saved',
+            id: String(id),
+            table: String(table)
+        }, window.location.origin);
+        refreshData(true, function (fresh) {
+            if (alive() && fresh) { NED.portalStale = false; }
+        });
+    }
+    function nedImagePaste(ev) {
+        var input = ev.target;
+        // ISS00245: the issue description and the wiki page body (2026-11-18)
+        if (!input || input.tagName !== 'TEXTAREA' || !input.classList.contains('pp-ne-in')
+            || (NED.table !== D.issue_table && NED.table !== D.wiki_table) || !NED.canEdit || input.readOnly) { return; }
+        var field = input.closest('[data-fname]');
+        var col = field && nedAiCol(field.dataset.fname);
+        if (!col || col.type !== 'richtext' || !ev.clipboardData) { return; }
+        var files = [];
+        Array.prototype.forEach.call(ev.clipboardData.items || [], function (item) {
+            if (item.kind !== 'file') { return; }
+            var file = item.getAsFile();
+            if (file && /^image\//i.test(file.type)) { files.push(file); }
+        });
+        if (!files.length) {
+            files = Array.prototype.filter.call(ev.clipboardData.files || [], function (file) {
+                return /^image\//i.test(file.type);
+            });
+        }
+        if (!files.length) { return; }
+        ev.preventDefault();
+        if (NED.busy) { nedShowAlert(nedGetLangKey('ned_saving'), false); return; }
+        if (!D.urls.temp_image_upload) { nedShowAlert(L.cmt_up_fail, false); return; }
+        var extensions = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/bmp': 'bmp', 'image/webp': 'webp' };
+        if (files.some(function (file) { return !extensions[String(file.type).toLowerCase()]; })) {
+            nedShowAlert(L.cmt_up_fail, false);
+            return;
+        }
+        var epoch = NED.epoch, start = input.selectionStart, end = input.selectionEnd;
+        var uploadUrl = D.urls.temp_image_upload, tempBase;
+        try {
+            var parsed = new URL(uploadUrl, location.href);
+            if (parsed.origin !== location.origin || !/\/tmpimages\/?$/.test(parsed.pathname)) {
+                throw new Error('Invalid clipboard upload endpoint.');
+            }
+            tempBase = parsed.href.replace(/\/tmpimages\/?$/, '/tmpfiles/');
+        } catch (error) { nedShowAlert(L.cmt_up_fail, false); return; }
+        var html = mdAuthoredAsHtml(input.value);
+        var buttons = Array.prototype.slice.call(NED.el.querySelectorAll('.pp-ne-save'));
+        var labels = buttons.map(function (button) { return button.innerHTML; });
+        var aiButton = NED.el.querySelector('.pp-ne-ai-btn');
+        NED.busy = true; NED.uploadingImage = true;
+        input.readOnly = true;
+        nedGuard(true);
+        buttons.forEach(function (button) { button.disabled = true; });
+        if (aiButton) { aiButton.disabled = true; }
+        nedShowAlert(L.cmt_uploading, true);
+        var done = function () {
+            NED.busy = false; NED.uploadingImage = false;
+            input.readOnly = false;
+            buttons.forEach(function (button, index) { button.disabled = !NED.canEdit; button.innerHTML = labels[index]; });
+            if (aiButton && aiButton._ppAiRefresh) { aiButton._ppAiRefresh(); }
+            nedUpdateChangeCount();
+            nedGuard(nedDirty());
+        };
+        Promise.all(files.map(function (file, index) {
+            var name = 'image-' + Date.now() + '-' + index + '.' + extensions[String(file.type).toLowerCase()];
+            var data = new FormData();
+            data.append('file', file, name);
+            return fetch(uploadUrl, {
+                method: 'POST', body: data, credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF }
+            }).then(ppJson, ppNoAnswer).then(function (res) {
+                var body = res.body;
+                var url = body && body.location;
+                // Refused as the {status, body} pair errText words: this is
+                // Exment's own endpoint, and what it says on failure - often
+                // English validation text - is never shown as it stands.
+                if (res.status < 200 || res.status >= 300 || typeof url !== 'string' || url.indexOf(tempBase) !== 0
+                    || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(url.slice(tempBase.length))) {
+                    throw { status: res.status, body: body };
+                }
+                return html ? '<img src="' + esc(url) + '" alt="' + esc(name) + '">'
+                    : mdFileLink(name, url, true);
+            });
+        })).then(function (markup) {
+            if (!nedCurrent(epoch)) { return; }
+            input.setRangeText(markup.join(html ? '' : '\n'), start, end, 'end');
+            done();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            nedDraftSave();
+            nedShowAlert(fmt(L.cmt_up_ok, markup.length), true);
+            input.focus();
+        }).catch(function (error) {
+            if (!nedCurrent(epoch)) { return; }
+            done();
+            // A 2xx that is not an upload (an address off the endpoint) has no
+            // status sentence and falls through to the upload's own wording.
+            var status = error && typeof error.status === 'number' && (error.status < 200 || error.status >= 300) ? error.status : null;
+            nedShowAlert(errText(status, error && error.body, L.cmt_up_fail), false);
+        });
+    }
+    function nedResolveImageUrls(text, images) {
+        if (typeof text !== 'string') { return text; }
+        text = text.replace(/<img\b[^>]*>/gi, function (tag) {
+            var src = tag.match(/\bsrc="([^"]*)"/i);
+            var image = src && images[src[1]];
+            if (!image) { return tag; }
+            tag = tag.replace(/\sdata-exment-file-uuid="[^"]*"/gi, '');
+            return tag.replace('<img', '<img data-exment-file-uuid="' + image.uuid + '"');
+        });
+        Object.keys(images).forEach(function (source) { text = text.split(source).join(images[source].url); });
+        return text;
+    }
+    function nedRewriteDraftImages(key, owner, images) {
+        try {
+            var raw = key && localStorage.getItem(key);
+            var draft = raw && JSON.parse(raw);
+            if (!draft || draft.owner !== owner) { return; }
+            Object.keys(images || {}).forEach(function (name) {
+                draft.v[name] = nedResolveImageUrls(draft.v[name], images[name]);
+            });
+            localStorage.setItem(key, JSON.stringify(draft));
+        } catch (e) { /* quota or private mode */ }
+    }
+
+    // Which row a newly created record hangs off. Issues and wiki pages
+    // live inside the current project; anything else is standalone.
+    function nedParentFor(mode, table) {
+        if (mode !== 'create') { return null; }
+        if (table !== D.issue_table && table !== D.wiki_table) { return null; }
+        if (!D.project || !D.project.id || !D.project_table) { return null; }
+        return { id: D.project.id, type: D.project_table };
+    }
+    function nedPreserveEdits() {
+        nedGuard(true);
+        nedDraftSave();
+        nedShowAlert(nedGetLangKey('ned_saved') + ' ' + nedGetLangKey('draft_found'), true);
+    }
+
+    function nedSave() {
+        if (NED.busy || !NED.canEdit || !NED.saveUrl) { return; }
+        nedLeavePreview();
+        // Clear stale per-field errors from a previous attempt so the
+        // user sees only the errors that came back this time.
+        NED.el.querySelectorAll('.pp-ne-fg.err').forEach(function (fg) {
+            fg.classList.remove('err');
+            var e = fg.querySelector('.err');
+            if (e) { e.hidden = true; e.textContent = ''; }
+        });
+        // Phase B: block save if any required field is empty. The blur
+        // handlers already show inline errors; here we re-run for the
+        // "user hit Save without focusing anything" case.
+        if (!nedValidate()) {
+            nedShowAlert(nedGetLangKey('ned_validation'), false);
+            var firstErr = NED.el.querySelector('.pp-ne-fg.err .pp-ne-in');
+            if (firstErr) { try { firstErr.focus(); } catch (e) { /* ignore */ } }
+            return;
+        }
+        var isCreate = NED.mode === 'create';
+        var diff = isCreate ? nedBuildCreate() : nedBuildDiff();
+        if (!isCreate && !Object.keys(diff).length) {
+            nedShowAlert(nedGetLangKey('ned_saved'), true);
+            return;
+        }
+        var epoch = NED.epoch;
+        var table = NED.table, rowId = NED.rowId, fromBoard = NED.fromBoard;
+        var submitted = nedSerialize(), submittedValues = JSON.parse(submitted);
+        var draftKey = nedDraftKey(), draftOwner = NED.draftOwner;
+        var aiState = NED._ai, feedbackUrl = D.urls && D.urls.ai_feedback;
+        var createdId = NED.createdId;
+        var apiBase = D.urls && D.urls.lightapi_base;
+        nedDraftSave();
+        NED.busy = true;
+        NED.createSaving = isCreate;
+        NED.el.inert = isCreate;
+        var saveBtns = NED.el.querySelectorAll('.pp-ne-save');
+        var savedLabel = saveBtns.length ? saveBtns[0].innerHTML : '';
+        var restore = function () {
+            NED.busy = false;
+            NED.createSaving = false;
+            NED.el.inert = false;
+            saveBtns.forEach(function (b) { b.disabled = !NED.canEdit; b.innerHTML = savedLabel; });
+            var aiButton = NED.el.querySelector('.pp-ne-ai-btn');
+            if (aiButton && aiButton._ppAiRefresh) { aiButton._ppAiRefresh(); }
+            nedUpdateChangeCount();
+        };
+        saveBtns.forEach(function (b) {
+            b.disabled = true;
+            b.innerHTML = '<i class="fa fa-spinner fa-spin"></i> ' + nedGetLangKey('ned_saving');
+        });
+        nedShowAlert('', false);
+        nedPbar('start');
+
+        var body = { value: diff };
+        var neMail = NED.el.querySelector('.pp-ne-mail input');
+        if (isCreate && table === D.issue_table && neMail && neMail.checked) { body.notify_mail = 1; }
+        // What this form knew when it opened. A save that carries it can be
+        // refused; one that does not is the old blind overwrite.
+        if (!isCreate && NED.rowUpdatedAt && !NED.force) { body.updated_at = NED.rowUpdatedAt; }
+        NED.force = false;
+        // A new issue or wiki page belongs to the project through Exment's
+        // parent relation, which is not a custom column and therefore never
+        // part of the diff. Without it the row is saved with no project and
+        // disappears from every project-scoped list.
+        var parent = nedParentFor(NED.mode, NED.table);
+        if (parent) {
+            body.parent_id = parent.id;
+            body.parent_type = parent.type;
+        }
+
+        fetch(NED.saveUrl, {
+            method: NED.saveMethod || 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': CSRF
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(body)
+        }).then(ppJson, ppNoAnswer).then(function (res) {
+            var newId = res.body && (res.body.id || (res.body.row && res.body.row.id));
+            var ok = (res.status === 200 || res.status === 201) && res.body && res.body.ok && (!isCreate || newId);
+            if (ok) {
+                if (rowId) {
+                    delete DET[rowId];
+                    delete NED.editFormCache[table + '::' + rowId];
+                }
+                nedAiFeedback(isCreate ? newId : rowId, aiState, submittedValues, feedbackUrl);
+                if (!nedCurrent(epoch)) {
+                    nedDraftClear(draftKey, draftOwner, submitted);
+                    nedRewriteDraftImages(draftKey, draftOwner, res.body.image_urls);
+                    return;
+                }
+                nedPbar('done');
+                if (!isCreate) { restore(); }
+                (NED.columns || []).forEach(function (c) {
+                    if (res.body.row && (c.name in res.body.row)) {
+                        NED.values[c.name] = res.body.row[c.name];
+                    }
+                });
+                NED.rowUpdatedAt = res.body.updated_at || (res.body.row && res.body.row.updated_at) || NED.rowUpdatedAt;
+                NED.draftBaseAt = NED.rowUpdatedAt;
+                if (NED._payload && NED._payload.row) {
+                    NED._payload.row.value = NED.values;
+                    NED._payload.row.updated_at = NED.rowUpdatedAt;
+                }
+                Object.keys(res.body.image_urls || {}).forEach(function (name) {
+                    submittedValues[name] = nedResolveImageUrls(submittedValues[name], res.body.image_urls[name]);
+                    var input = nedInputEl(name);
+                    if (input) { input.value = nedResolveImageUrls(input.value, res.body.image_urls[name]); }
+                });
+                NED.initial = JSON.stringify(submittedValues);
+                if (NED._ai === aiState) { NED._ai = null; }
+                if (fromBoard) { NED.portalStale = true; }
+                if (isCreate) {
+                    // A committed create must never be retried as another POST.
+                    NED.mode = 'edit';
+                    NED.rowId = newId;
+                    NED.createdId = newId;
+                    NED.saveUrl = apiBase + '/data/' + table + '/' + newId;
+                    NED.saveMethod = 'PATCH';
+                    if (NED._payload) {
+                        NED._payload.save = { url: NED.saveUrl, method: 'PATCH' };
+                        if (NED._payload.row) { NED._payload.row.id = newId; }
+                    }
+                }
+                nedUpdateChangeCount();
+                if (nedDirty()) {
+                    restore();
+                    nedPreserveEdits();
+                    if (isCreate) { nedDraftClear(draftKey, draftOwner); }
+                    return;
+                }
+                nedGuard(false);
+                nedDraftClear(draftKey, draftOwner);
+                nedDraftBar(false);
+                if (!isCreate && fromBoard && rowId) {
+                    NED.fromBoard = false;
+                    nedClose();
+                    nedRefreshBoard(rowId, table);
+                    return;
+                }
+
+                setTimeout(function () {
+                    if (!nedCurrent(epoch) || (!isCreate && NED.busy)) { return; }
+                    if (nedDirty()) { restore(); nedPreserveEdits(); return; }
+                    try {
+                        sessionStorage.setItem('pp-ne-saved-flash', nedGetLangKey('m_saved'));
+                    } catch (e) { /* private mode: skip */ }
+                    var destinationId = isCreate ? newId : createdId;
+                    if (destinationId) {
+                        if (table === D.wiki_table) {
+                            location.hash = 'wiki-' + destinationId;
+                        } else if (table === D.issue_table) {
+                            location.hash = 'issue-' + destinationId;
+                        }
+                    }
+                    location.reload();
+                }, 350);
+                return;
+            }
+            if (!nedCurrent(epoch)) { return; }
+            restore();
+            nedPbar('error');
+            if (res.status === 409 && res.body && res.body.error === 'stale') {
+                nedShowConflict(res.body);
+                return;
+            }
+            if (res.status === 422 && res.body && res.body.fields && typeof res.body.fields === 'object') {
+                Object.keys(res.body.fields).forEach(function (k) {
+                    var fg = nedFieldEl(k);
+                    if (!fg) { return; }
+                    fg.classList.add('err');
+                    var e = fg.querySelector('.err');
+                    if (e) { e.hidden = false; e.textContent = Array.isArray(res.body.fields[k]) ? res.body.fields[k].join(' ') : String(res.body.fields[k]); }
+                });
+            }
+            nedShowAlert(errText(res.status, res.body, nedGetLangKey('ned_error')), false);
+        }).catch(function () {
+            if (!nedCurrent(epoch)) { return; }
+            restore();
+            nedPbar('error');
+            nedShowAlert(nedGetLangKey('ned_error'), false);
+        });
+    }
+
+    // Returns {table, id} when a URL points at any portal-managed
+    // table's edit page - the ones where we swap the iframe modal for the
+    // native lightweight-form. Otherwise null.
+    function maybeNedit(url) {
+        var tables = [D.issue_table, D.wiki_table, D.project_table];
+        var s = String(url || '');
+        for (var i = 0; i < tables.length; i++) {
+            var t = tables[i];
+            if (!t) { continue; }
+            var m = s.match(new RegExp('/data/' + t + '/(\\d+)/edit(?:$|[?#])'));
+            if (m) { return { table: t, id: m[1] }; }
+        }
+        return null;
+    }
+
+    // Returns a table name when a URL points at a portal-managed
+    // create page so we can swap the iframe modal for the native form.
+    function maybeNcreate(url) {
+        var tables = [D.issue_table, D.wiki_table];
+        var s = String(url || '');
+        for (var i = 0; i < tables.length; i++) {
+            var t = tables[i];
+            if (!t) { continue; }
+            if (new RegExp('/data/' + t + '/create(?:$|[?#])').test(s)) { return t; }
+        }
+        return null;
+    }
+
+    if (NED.el) {
+        NED.el.querySelector('.pp-ne-x').addEventListener('click', nedClose);
+        NED.el.querySelector('.pp-ne-back').addEventListener('click', nedClose);
+        NED.el.querySelectorAll('.pp-ne-cancel').forEach(function (b) { b.addEventListener('click', nedClose); });
+        NED.el.querySelectorAll('.pp-ne-save').forEach(function (b) { b.addEventListener('click', nedSave); });
+        var keyBtn = NED.el.querySelector('.pp-ne-key');
+        if (keyBtn) {
+            keyBtn.addEventListener('click', nedCopyKey);
+            keyBtn.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); nedCopyKey(); }
+            });
+        }
+        // Live change counter: recompute on any field change/input so the
+        // save button always shows the pending diff count.
+        var form = NED.el.querySelector('.pp-ne-form');
+        if (form) {
+            form.addEventListener('paste', nedImagePaste);
+            // ISS00245: an image dropped on the body goes the same way as one
+            // pasted (uploaded, then ![name](url) at the caret).
+            form.addEventListener('dragover', function (ev) {
+                var t = ev.target;
+                if (t && t.tagName === 'TEXTAREA' && t.classList.contains('pp-ne-in')
+                    && ev.dataTransfer && Array.prototype.indexOf.call(ev.dataTransfer.types || [], 'Files') >= 0) {
+                    ev.preventDefault();
+                }
+            });
+            form.addEventListener('drop', function (ev) {
+                var t = ev.target;
+                if (!t || t.tagName !== 'TEXTAREA' || !t.classList.contains('pp-ne-in') || !ev.dataTransfer
+                    || !(ev.dataTransfer.files && ev.dataTransfer.files.length)) { return; }
+                // never let the browser open a dropped file in place of the form
+                ev.preventDefault();
+                var hasImage = Array.prototype.some.call(ev.dataTransfer.files, function (f) { return /^image\//i.test(f.type); });
+                if (!hasImage) { nedShowAlert('本文に入れられるのは画像だけです。ほかのファイルは「ファイル」から添付してください。', false); return; }
+                nedImagePaste({ target: t, clipboardData: ev.dataTransfer, preventDefault: function () {} });
+            });
+            form.addEventListener('input', nedUpdateChangeCount);
+            form.addEventListener('change', nedUpdateChangeCount);
+            // Same two events drive the leave-page guard and the draft, both
+            // debounced inside nedSyncGuard because this fires per keystroke.
+            form.addEventListener('input', nedSyncGuard);
+            form.addEventListener('change', nedSyncGuard);
+        }
+        var draftBar = NED.el.querySelector('.pp-ne-draft');
+        if (draftBar) {
+            draftBar.querySelector('.pp-ne-draft-yes').addEventListener('click', nedDraftRestore);
+            draftBar.querySelector('.pp-ne-draft-no').addEventListener('click', function () {
+                nedDraftClear();
+                nedDraftBar(false);
+            });
+        }
+        // Ctrl+Enter and Command+Enter both save (below); the hint names the
+        // key this keyboard actually has, Ctrl unless it is an Apple one.
+        if (/Mac|iPhone|iPad|iPod/.test(navigator.platform || '')) {
+            NED.el.querySelectorAll('.pp-ne-modkey[data-mac]').forEach(function (k) {
+                k.textContent = k.getAttribute('data-mac');
+            });
+        }
+        document.addEventListener('keydown', function onNedKey(ev) {
+            if (!alive()) { document.removeEventListener('keydown', onNedKey); return; }
+            if (ev.key === 'Escape' && !NED.el.hidden) { nedClose(); }
+            if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter' && !NED.el.hidden) {
+                ev.preventDefault(); nedSave();
+            }
+        });
+    }
+    window.openNedit = openNedit;
+    window.openNcreate = openNcreate;
+    // How the kanban board embedded in this screen opens a card: the portal's
+    // own editor, rather than a form window that knows nothing about the
+    // screen around it. Over the board rather than inside the issue detail -
+    // that card is not on display while the board is.
+    // Through the hash, so the panel has an address a reload can come back
+    // to. The router answers it by calling neditOverScreen below; this one
+    // only writes the address.
+    window.openNeditOverlay = function (table, id) {
+        var scr = parseHash().path;
+        if (table === D.issue_table && (scr === 'board' || scr === 'gantt')) {
+            goEditOver(scr, id);
+            return;
+        }
+        neditOverScreen(table, id);
+    };
+    function neditOverScreen(table, id, fromHash) {
+        NED.forceTarget = 'overlay';
+        NED_HASH_OPEN = !!fromHash;
+        try {
+            openNedit(table, id);
+        } finally {
+            NED.forceTarget = null;
+            NED_HASH_OPEN = false;
+        }
+    }
+    window.nedPrewarmEditForm = nedPrewarmEditForm;
+    window.nedPrewarmCreateForm = nedPrewarmCreateForm;
+
+    // Any link that points at the raw data screens is folded back into the
+    // portal: record pages become the portal detail, forms become the modal.
+    function interceptDataLink(a, ev) {
+        if (ev.defaultPrevented || ev.ctrlKey || ev.metaKey || ev.shiftKey || (ev.button && ev.button !== 0)) { return false; }
+        if (a.target && a.target !== '_self') { return false; }
+        var href = a.href || '';
+        var base = D.urls.data_base + '/';
+        if (href.indexOf(base) !== 0) { return false; }
+        var seg = href.slice(base.length).split(/[?#]/)[0].replace(/\/+$/, '').split('/');
+        var table = seg[0], id = seg[1] || '', act = seg[2] || '';
+        function handled(fn) { ev.preventDefault(); fn(); return true; }
+        if (table === D.issue_table) {
+            if (id === 'create') { return handled(goCreate); }
+            if (/^\d+$/.test(id) && !act) {
+                return handled(function () {
+                    // A click on the chart opens the editor over it, the way a
+                    // card does on the board: the gantt is where a wrong date
+                    // is noticed, and the two date fields are in that panel.
+                    // Only from the chart itself - a link inside an open panel
+                    // still means the issue, which is what it says.
+                    if (parseHash().path === 'gantt' && (!NED.el || NED.el.hidden)) {
+                        goEditOver('gantt', id);
+                        return;
+                    }
+                    location.hash = 'issue-' + id;
+                });
+            }
+            if (act === 'edit') {
+                return handled(function () { goEdit(D.issue_table, id); });
+            }
+            if (act === 'compare') { return handled(function () { formModal(href, L.m_history, ''); }); }
+        }
+        if (table === D.wiki_table) {
+            if (id === 'create') { return handled(function () { openNcreate(D.wiki_table); }); }
+            if (/^\d+$/.test(id) && !act) { return handled(function () { location.hash = 'wiki-' + id; }); }
+            if (act === 'edit') { return handled(function () { openNedit(D.wiki_table, id); }); }
+            if (act === 'compare') { return handled(function () { formModal(href, L.m_history, ''); }); }
+        }
+        if (table === D.project_table && String(id) === String(D.project.id)) {
+            if (act === 'edit') { return handled(function () { openNedit(D.project_table, id); }); }
+            if (!act) { return handled(function () { location.hash = 'home'; }); }
+        }
+        return false;
+    }
+    // Embedded widgets (kanban / gantt) route their record jumps through here.
+    window.ppNavigate = function (url) {
+        var a = document.createElement('a');
+        a.href = url;
+        var fake = { defaultPrevented: false, ctrlKey: false, metaKey: false, shiftKey: false, button: 0, preventDefault: function () {} };
+        return interceptDataLink(a, fake);
+    };
+    // The board attaches its card drawer to <body>, outside root, so clicks on
+    // the drawer's links never reach the handler on root and would leave the
+    // portal for the raw record screen. Caught on the document instead, and
+    // released once this page is gone.
+    document.addEventListener('click', function onDrawerLink(ev) {
+        if (!alive()) { document.removeEventListener('click', onDrawerLink); return; }
+        var a = ev.target.closest ? ev.target.closest('#kb-drawer a[href]') : null;
+        if (a) { interceptDataLink(a, ev); }
+    });
+
+    /* --------------------------------------- lazy embedded widgets ------ */
+    // Kanban / gantt widgets are heavy (~1s each on a busy project) and
+    // most sessions never open those tabs. Loading them the moment the tab
+    // is switched on, and topping them up in the background afterwards,
+    // keeps the portal home instant no matter how many cards there are.
+    var EMBEDS = {
+        board: { url: (D.urls || {}).embed_board || '' },
+        gantt: { url: (D.urls || {}).embed_gantt || '' }
+    };
+    function ensureEmbed(kind, cb, low) {
+        var slot = EMBEDS[kind];
+        if (!slot || !slot.url) { if (cb) { cb(); } return; }
+        var host = document.getElementById('pp-embed-' + kind);
+        if (!host) { if (cb) { cb(); } return; }
+        if (slot.loaded) { if (cb) { cb(); } return; }
+        if (slot.loading) {
+            slot.cbs.push(cb || function () {});
+            // Queued as background work and wanted for real now: jump it.
+            if (!low && slot.job) { ppQueue.promote(slot.job); }
+            return;
+        }
+        slot.loading = true;
+        slot.cbs = cb ? [cb] : [];
+        // These two are whole pages - the heaviest thing the portal asks for.
+        // Queued like everything else, so warming them up in the background
+        // can never be what the user's next click is waiting behind.
+        slot.job = ppQueue(function () {
+            return $.ajax({ url: slot.url, cache: false, dataType: 'text' })
+            .done(function (html) {
+                if (typeof html !== 'string' || !html.length) {
+                    host.innerHTML = '<div class="bl-card-box"><div class="bl-boxbody"><i class="fa fa-info-circle"></i> ' +
+                        esc(kind === 'gantt' ? L.gantt_none : L.board_none) + '</div></div>';
+                } else {
+                    host.innerHTML = html;
+                    execEmbeddedScripts(host);
+                }
+                slot.loaded = true;
+                slot.loading = false;
+                slot.cbs.forEach(function (fn) { fn(); });
+                // The data moved while this html was on its way, so what
+                // just landed is already the old board. Marking it unread
+                // afterwards would not help: it has been marked loaded, and
+                // nothing is going to ask for it again.
+                if (slot.refetch) {
+                    slot.refetch = false;
+                    slot.loaded = false;
+                    ensureEmbed(kind, null, true);
+                }
+            })
+            .fail(function (xhr) {
+                slot.loading = false;
+                // Release whoever was waiting on it either way, or a caller
+                // sits for ever on a callback that is never coming.
+                slot.cbs.forEach(function (fn) { fn(); });
+                host.innerHTML = '<div class="bl-card-box"><div class="bl-boxbody" style="color:#c0392b;">' +
+                    '<i class="fa fa-warning"></i> ' + esc(xhrErr(xhr, L.post_fail)) + '</div></div>';
+            });
+        }, low).catch(function () { });
+    }
+    // innerHTML swaps the markup but leaves inline scripts inert; the kanban
+    // and gantt widgets both keep their state and behaviour in one such
+    // block, so we re-create every <script> node in order and let the
+    // browser run them the second time around.
+    function execEmbeddedScripts(container) {
+        var scripts = container.querySelectorAll('script');
+        for (var i = 0; i < scripts.length; i++) {
+            var old = scripts[i];
+            var ns = document.createElement('script');
+            if (old.type) { ns.type = old.type; }
+            if (old.id) { ns.id = old.id; }
+            if (old.src) {
+                ns.src = old.src;
+                if (old.async) { ns.async = true; }
+                if (old.defer) { ns.defer = true; }
+            } else {
+                ns.text = old.textContent;
+            }
+            old.parentNode.replaceChild(ns, old);
+        }
+    }
+
+    /* ------------------------------------------------ routing ----------- */
+    /* ------------------------------------------------ recently viewed --- */
+    // Every issue opened here is remembered in localStorage, newest first,
+    // and the space dashboard and the top bar read the list back into their
+    // 最近見た lists. It is kept per person (pp_recent.u<id>, the same key
+    // _topbar and list read): one list per browser handed the next user of a
+    // shared machine the keys and subjects of what the last one had open.
+    // The old shared list cannot be told apart by owner, so it is dropped.
+    function recentPush(issueId) {
+        var i = issueById(issueId);
+        if (!i) { return; }
+        var entry = {
+            u: location.pathname + '#issue-' + keyRef(i),
+            k: String(i.key || ''),
+            s: String(i.subject || ''),
+            p: String((D.project && D.project.name) || ''),
+            t: Date.now()
+        };
+        var key = 'pp_recent.u' + String(D.me || 0);
+        var list = [];
+        try { list = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { list = []; }
+        if (!Array.isArray(list)) { list = []; }
+        list = list.filter(function (e) { return e && e.u !== entry.u; });
+        list.unshift(entry);
+        try {
+            localStorage.setItem(key, JSON.stringify(list.slice(0, 20)));
+            localStorage.removeItem('pp_recent');
+        } catch (e) { /* full or blocked */ }
+    }
+
+    function show(scr, issueId) {
+        // If the inline modal is currently occupying a screen slot (create issue
+        // or project settings), take it down before switching screens so the
+        // target section renders in a clean state.
+        if (NED && NED.el && !NED.el.hidden && NED._target && NED._target !== 'overlay') {
+            nedRetireContext();
+            NED.el.hidden = true;
+            nedUnmount();
+            nedClearLayout();
+            NED.el.querySelector('.pp-ne-form').hidden = true;
+            NED.el.querySelector('.pp-ne-foot').hidden = true;
+            NED.el.querySelector('.pp-ne-spin').hidden = false;
+            nedShowAlert('', false);
+            // This path bypasses nedClose(), so clear the leave-page guard by
+            // hand or it would outlive the modal it belongs to.
+            nedGuard(false);
+            nedDraftBar(false);
+            NED_HASH = null;
+            NED.rowId = null; NED.columns = null; NED.initial = ''; NED._payload = null;
+        }
+        // A card was saved on the board and only the board was told. Every
+        // other screen here was drawn from what that record used to say, so
+        // it is built again rather than shown as it was.
+        if (NED.portalStale && scr !== 'board') {
+            location.reload();
+            return;
+        }
+
+        // Park where this screen was before leaving it.
+        if (scrollKey !== null) { SCROLL_POS[scrollKey] = window.scrollY; }
+        root.querySelectorAll('.bl-screen').forEach(function (el) { el.classList.remove('on'); });
+        root.querySelectorAll('.bl-tab').forEach(function (el) {
+            el.classList.toggle('active', el.getAttribute('data-scr') === (scr === 'issue' ? 'issues' : scr));
+        });
+        var el = document.getElementById('pp-' + scr);
+        if (!el) { scr = 'home'; el = document.getElementById('pp-home'); }
+        el.classList.add('on');
+        currentScreen = scr;
+        if (scr !== 'issue') { detailEpoch++; cmtSetBusy(false); }
+        // Read-only while archived: the comment, status and upload routes all
+        // refuse, so the composer is not offered rather than offered and
+        // bounced. The quick-edit fields inside it are gated per issue by
+        // res.editable in renderQuickEdit as well.
+        ppDockShow(scr === 'issue' && !(D.project && D.project.archived));
+        if (scr === 'issue') { renderDetail(issueId); recentPush(issueId); }
+        if (scr === 'board' || scr === 'gantt') { ensureEmbed(scr); }
+        // renderWiki names the page it landed on, which beats "Wiki".
+        if (scr !== 'wiki') { setTitle(screenTitle(scr, issueId)); }
+        var bucket = scrollBucket(scr, issueId);
+        var want = SCROLL_POS[bucket] || 0;
+        scrollKey = bucket;
+        // One frame later: the screen only just gained .on, and until it has
+        // laid out the document is still the old, shorter height, so the
+        // browser would clamp the offset to whatever fits.
+        window.requestAnimationFrame(function () {
+            window.scrollTo(0, want);
+            // Same reason: the dock is fixed to the window, but it takes its
+            // left edge and its width from a content area that has no
+            // measurable box until the screen it belongs to has been laid out.
+            if (scr === 'issue') { ppDockFit(); }
+        });
+    }
+    // Coming out of a ticket used to land you at the top of the issue list
+    // every time. On a 200-row list that is a punishment for using the back
+    // button. Detail screens get a bucket per issue so each still opens at the
+    // top, and returning to one you had scrolled through keeps your place.
+    //
+    // Dormant on the current admin theme: styles.css gives html and body
+    // height:100%, so the window never scrolls at all - overflowing content is
+    // simply out of reach, and window.scrollY is always 0. This bookkeeping is
+    // then a no-op that costs nothing, and it starts working the day that rule
+    // becomes min-height. The unconditional scrollTo(0, 0) it replaces was
+    // equally inert, so nothing regressed either way.
+    var SCROLL_POS = {};
+    var scrollKey = null;
+    function scrollBucket(scr, issueId) {
+        return scr === 'issue' ? 'issue:' + (issueId || '') : scr;
+    }
+    // The tab strip already holds a translated label for every screen, so the
+    // title reuses it rather than adding a parallel set of keys to maintain.
+    function screenTitle(scr, issueId) {
+        if (scr === 'issue') {
+            var i = issueById(issueId);
+            if (i) { return i.key + ' ' + i.subject; }
+        }
+        var want = (scr === 'issue') ? 'issues' : scr;
+        var label = '';
+        root.querySelectorAll('.bl-tab').forEach(function (t) {
+            if (t.getAttribute('data-scr') === want) { label = t.textContent.trim(); }
+        });
+
+        return label;
+    }
+    // The hash carries a screen and, on the issue list, the filter state after
+    // a '?'. Splitting them here keeps every matcher below working on the
+    // screen name alone.
+    // The path out of any hash, not just the one in the address bar: the
+    // listener below is handed the hash it is leaving.
+    function parseHashOf(hash) {
+        var raw = (hash || '#home').slice(1);
+        var q = raw.indexOf('?');
+
+        return (q < 0 ? raw : raw.slice(0, q)) || 'home';
+    }
+    // The screen a panel was opened from, out of the hash it replaced. A
+    // panel's own address is not a screen to come back to: #new names the
+    // create form, and ?edit names the editor, so neither is kept. The rest
+    // of a query is - a filtered list is its query.
+    function nedBackFrom(hash) {
+        if (!hash) { return null; }
+        var path = parseHashOf(hash);
+        if (path === 'new') { return null; }
+        var q = hash.indexOf('?');
+        if (q >= 0 && ('edit' in parseQuery(hash.slice(q + 1)))) { return '#' + path; }
+
+        return hash;
+    }
+    function parseHash() {
+        var raw = (location.hash || '#home').slice(1);
+        var q = raw.indexOf('?');
+
+        return {
+            path: (q < 0 ? raw : raw.slice(0, q)) || 'home',
+            query: q < 0 ? '' : raw.slice(q + 1)
+        };
+    }
+    function parseQuery(s) {
+        var out = {};
+        if (!s) { return out; }
+        s.split('&').forEach(function (pair) {
+            if (!pair) { return; }
+            var i = pair.indexOf('=');
+            var k = i < 0 ? pair : pair.slice(0, i);
+            var v = i < 0 ? '' : pair.slice(i + 1);
+            try { out[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' ')); }
+            catch (e) { out[k] = v; }
+        });
+
+        return out;
+    }
+    // Which screens this project actually has. A feature switched off in
+    // the settings tab removes its tab, so the hash behind it must not
+    // quietly open a screen the user can no longer navigate back to.
+    var FEAT = (D.project && D.project.features) || {};
+    function screenOff(path) {
+        var scr = /^wiki-\d+$/.test(path) ? 'wiki' : path;
+        if (scr === 'wiki') { return FEAT.wiki === false; }
+        if (scr === 'files') { return FEAT.file === false; }
+        if (scr === 'gantt' || scr === 'burndown') { return FEAT.gantt === false; }
+        if (scr === 'settings') { return !(D.can && D.can.manage); }
+        // #new from a bookmark or the top bar of an earlier page: the form
+        // behind it would only be refused.
+        if (scr === 'new') { return !CAN_ADD_ISSUE; }
+        return false;
+    }
+    // Open what the hash asks for - unless that is the panel already open.
+    // Routing is not only navigation here: the same hash is routed again when
+    // a reader answers "keep editing" to the back button, and re-rendering
+    // the form then would throw away the edits they just chose to keep.
+    function nedHashOpen(at, back, open) {
+        if (NED_HASH && NED_HASH.at === at && NED.el && !NED.el.hidden) { return; }
+        open();
+        NED_HASH = { at: at, back: back };
+    }
+    // ...and close it when the hash stops asking. Only the overlay is closed
+    // here: a panel that takes a screen's place is taken down by show() on
+    // the way in, and taken down without asking, because the draft in
+    // localStorage is what answers for the text. The overlay has no screen
+    // change to ride on and - opened by the hash - no history entry of its
+    // own to pop, so this is where it goes. It still asks, because that is
+    // what the back button does over the board today.
+    function nedHashSync() {
+        if (!NED_HASH || location.hash.slice(1) === NED_HASH.at) { return; }
+        if (!NED.el || NED.el.hidden || NED._target !== 'overlay') { NED_HASH = null; return; }
+        var at = NED_HASH.at;
+        // nedClose() clears NED_HASH when it closes, and leaves it alone when
+        // the reader keeps editing - so the address can simply go back.
+        if (nedClose()) { return; }
+        location.hash = at;
+    }
+    function route() {
+        var h = parseHash();
+        var path = h.path;
+        nedHashSync();
+        if (screenOff(path)) {
+            if (history.replaceState) { history.replaceState(null, '', '#home'); }
+            show('home');
+            return;
+        }
+        var m = path.match(/^issue-(.+)$/);
+        if (m) {
+            var id = resolveIssueRef(m[1]);
+            if (id === null) {
+                // A key this project is not carrying: a stale bookmark, or a
+                // link copied out of a different project. The list is a more
+                // useful place to land than an empty detail pane.
+                if (history.replaceState) { history.replaceState(null, '', '#issues'); }
+                show('issues');
+                return;
+            }
+            show('issue', id);
+            // ?edit is the editor's address, written on top of the issue's own.
+            // It opens after show() has put up the screen it mounts inside.
+            if ('edit' in parseQuery(h.query)) {
+                nedHashOpen(path + '?' + h.query, '#' + path, function () {
+                    openNedit(D.issue_table, id);
+                });
+            }
+            return;
+        }
+        var w = path.match(/^wiki-(\d+)$/);
+        if (w) { currentWiki = w[1]; show('wiki'); renderWiki(w[1]); return; }
+        // A bare #wiki lands on whichever page is current - renderWiki() picks
+        // the first one when there is none. Routing it through renderWiki
+        // rather than show() alone is also what names the page in the title.
+        if (path === 'wiki') { show('wiki'); renderWiki(); return; }
+        if (path === 'new') {
+            // The hash stays #new for as long as the panel is open. Rewriting
+            // it to #issues here read as a tidy-up and was the thing that made
+            // a reload, or a copied link, open the list instead of the form.
+            //
+            // A screen still has to be standing behind it: this panel takes
+            // the place of one rather than floating over it, so arriving cold
+            // on #new with nothing shown yet would leave an empty page once it
+            // closed. The list is where a new issue joins.
+            if (!currentScreen) { show('issues'); }
+            nedHashOpen('new', NED_BACK || '#issues', function () {
+                openNcreate(D.issue_table);
+            });
+            return;
+        }
+        // The two screens that stay on display behind the editor. Their
+        // address carries the row being edited, so a reload comes back to the
+        // chart or the columns with the same panel open on them.
+        if (path === 'board' || path === 'gantt') {
+            show(path);
+            var row = parseQuery(h.query).edit;
+            if (row && issueById(row)) {
+                nedHashOpen(path + '?' + h.query, '#' + path, function () {
+                    neditOverScreen(D.issue_table, row, true);
+                });
+            } else if (row && history.replaceState) {
+                // A row this project is not carrying: a stale link, or an
+                // issue that has moved since. The screen itself is still
+                // where the link meant to land.
+                history.replaceState(null, '', '#' + path);
+            }
+            return;
+        }
+        if (path === 'issues') {
+            // A query in the URL is the whole truth - a link has to reproduce
+            // exactly what the sender was looking at. With no query at all the
+            // saved personal default applies and is then written back into the
+            // address bar, which is what stops a sticky filter from quietly
+            // emptying the list days later with nothing on screen to explain it.
+            if (h.query) { filterFromQuery(parseQuery(h.query)); }
+            renderIssues();
+            filterToUrl();
+        }
+        show(path);
+    }
+    window.addEventListener('hashchange', function onHash(ev) {
+        if (!alive()) { window.removeEventListener('hashchange', onHash); return; }
+        var from = (ev && ev.oldURL && ev.oldURL.indexOf('#') >= 0)
+            ? ev.oldURL.slice(ev.oldURL.indexOf('#'))
+            : '';
+        NED_BACK = nedBackFrom(from);
+        route();
+        // The other moment the screen is likely to be behind. These tabs never
+        // leave the page, so nothing in the browser announces the move - and
+        // the board and the gantt are edited inside their own page, which
+        // makes them precisely the screens whose changes this data cannot see.
+        // The filter rewrites the address bar with replaceState and so never
+        // reaches here.
+        var path = parseHash().path;
+        if (path !== LIVE.path) {
+            LIVE.path = path;
+            checkStamp(CHECK_GAP_NAV);
+        }
+    });
+
+    /* ------------------------------------------------ events ------------ */
+    document.getElementById('pp-tabs').addEventListener('click', function (ev) {
+        var t = ev.target.closest('.bl-tab');
+        if (!t) { return; }
+        var scr = t.getAttribute('data-scr');
+        // Clicking the tab already open changes no hash, so it routes nowhere.
+        // Read as "show me this again" it is the same request as arriving, and
+        // gets the same answer.
+        if (scr === parseHash().path) { checkStamp(CHECK_GAP_NAV); }
+        location.hash = scr;
+    });
+    // Pointing at the board tab is about as clear a statement of intent as
+    // there is, and the widget behind it takes the best part of a second to
+    // come back. Starting there buys the few hundred milliseconds between
+    // the cursor arriving and the click - and if the warm-up is already in
+    // the background queue, waiting its turn behind a pause, this is what
+    // takes it out and runs it now.
+    document.getElementById('pp-tabs').addEventListener('mouseover', function (ev) {
+        var t = ev.target.closest('.bl-tab');
+        if (!t) { return; }
+        var scr = t.getAttribute('data-scr');
+        if (scr === 'board' || scr === 'gantt') { ensureEmbed(scr); }
+    });
+    /* ---- hovercard: who that @ is, what that #123 is -------------------
+       Two kinds, one panel. An issue card is drawn straight out of the rows
+       this screen is already holding, so it costs no request at all; a user
+       card needs the one thing the browser cannot work out for itself - who
+       the person is - and asks the server once, then remembers the answer
+       for as long as the page lives. Both are read on the way past, so the
+       budget is a fraction of what a click would be allowed. */
+    var HC = { el: null, timer: null, key: '', users: {}, seq: 0 };
+    function hcEl() {
+        if (HC.el) { return HC.el; }
+        var el = document.createElement('div');
+        el.id = 'pp-hc';
+        // Off <body> there is no .pmportal ancestor left, and half the
+        // stylesheet is written as ".pmportal <thing>" - so the panel wears
+        // the class itself, which is also what carries the palette.
+        el.className = 'pmportal pp-hc';
+        el.hidden = true;
+        el.addEventListener('mouseenter', function () { clearTimeout(HC.timer); });
+        el.addEventListener('mouseleave', hcHide);
+        document.body.appendChild(el);
+        HC.el = el;
+        return el;
+    }
+    function hcHide() {
+        clearTimeout(HC.timer);
+        HC.key = '';
+        // Any answer still in flight is for a card nobody is looking at.
+        HC.seq++;
+        if (HC.el) { HC.el.hidden = true; HC.el.classList.remove('on'); }
+    }
+    // Under what was hovered, or above it when the foot of the window is
+    // nearer than the card is tall. Page coordinates: the panel is placed
+    // against the document, not the viewport.
+    function hcPlace(anchor) {
+        var el = hcEl();
+        var r = anchor.getBoundingClientRect();
+        var w = el.offsetWidth, h = el.offsetHeight;
+        var right = window.scrollX + document.documentElement.clientWidth - w - 8;
+        var left = Math.max(window.scrollX + 8, Math.min(r.left + window.scrollX, right));
+        var top = (r.bottom + h + 12 <= window.innerHeight)
+            ? r.bottom + window.scrollY + 6
+            : Math.max(window.scrollY + 4, r.top + window.scrollY - h - 6);
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+    }
+    function hcOpen(anchor, html) {
+        var el = hcEl();
+        el.innerHTML = html;
+        el.hidden = false;
+        // Measured after the content is in, or the height is last card's.
+        hcPlace(anchor);
+        el.classList.add('on');
+    }
+    function hcRows(rows) {
+        var body = rows.filter(function (r) { return r && r[1]; }).map(function (r) {
+            return '<div class="r"><div class="k">' + esc(r[0]) + '</div><div class="v">' + r[1] + '</div></div>';
+        }).join('');
+
+        return body ? '<div class="pp-hc-rows">' + body + '</div>' : '';
+    }
+    function hcMsg(anchor, text) {
+        hcOpen(anchor, '<div class="pp-hc-msg">' + esc(text) + '</div>');
+    }
+    // What this person is carrying on this project. Counted here rather than
+    // asked for, because the screen is holding every issue already and a
+    // round trip for a number it can add up itself is a round trip wasted.
+    function hcUserLoad(uid) {
+        var all = 0, open = 0, over = 0;
+        (D.issues || []).forEach(function (i) {
+            var as = i.as || [];
+            var mine = false;
+            for (var n = 0; n < as.length; n++) { if (String(as[n]) === String(uid)) { mine = true; } }
+            if (!mine) { return; }
+            all++;
+            if (isDone(i.st)) { return; }
+            open++;
+            if (i.dd && D.today && i.dd < D.today) { over++; }
+        });
+
+        return { all: all, open: open, over: over };
+    }
+    var HC_ROLE = { manager: 'role_pm', member: 'role_member', viewer: 'role_viewer' };
+    // Which of the three lists the project names this person in. The payload
+    // carries all three, so this costs nothing.
+    function hcRoleOf(uid) {
+        var p = D.project || {};
+        var has = function (list) {
+            var hit = false;
+            (list || []).forEach(function (v) { if (String(v) === String(uid)) { hit = true; } });
+            return hit;
+        };
+        if (String(p.manager) === String(uid)) { return 'manager'; }
+        if (has(p.members)) { return 'member'; }
+        if (has(p.viewers)) { return 'viewer'; }
+
+        return null;
+    }
+    // What the page already knows about this person. Anybody the screen has
+    // drawn an avatar for is in here, which is everybody a comment can name -
+    // so the card for a mention opens without a request, and the endpoint is
+    // left for the stranger the payload never had to carry.
+    function hcUserLocal(uid) {
+        var u = D.users && D.users[uid];
+        if (!u || u.cd === undefined) { return null; }
+
+        return { name: u.n, code: u.cd, orgs: u.og || [], role: hcRoleOf(uid) };
+    }
+    function hcUserHtml(uid, info) {
+        var u = user(uid);
+        var load = hcUserLoad(uid);
+        var name = (info && info.name) || u.n;
+        var roleKey = info ? own(HC_ROLE, info.role) : undefined;
+        var role = roleKey ? L[roleKey] : (info ? L.hc_norole : '');
+        return '<div class="pp-hc-top">' +
+            '<span class="bl-av lg" style="background:' + ppColor(u.c) + '">' + esc(u.i) + avImg(u) + '</span>' +
+            '<div><div class="pp-hc-nm">' + esc(name) + '</div>' +
+            (role ? '<div class="pp-hc-sub">' + esc(role) + '</div>' : '') + '</div></div>' +
+            hcRows([
+                [L.hc_code, info && info.code ? esc(info.code) : ''],
+                [L.hc_orgs, info && info.orgs && info.orgs.length ? esc(info.orgs.join(L.sep_dot)) : ''],
+                [L.hc_assigned, load.all
+                    ? esc(load.all + L.unit_cnt) + '<div class="pp-hc-sub">' +
+                        esc(fmt2(L.hc_open_overdue, load.open, load.over)) + '</div>'
+                    : ''],
+            ]) +
+            (info ? '' : '<div class="pp-hc-msg">' + esc(L.hc_loading) + '</div>');
+    }
+    // Two positional slots, so the Japanese can put them in either order.
+    function fmt2(tpl, a, b) {
+        return String(tpl).replace(/%1\$s/g, String(a)).replace(/%2\$s/g, String(b));
+    }
+    // A label from another project: real text, neutral colour, because the
+    // colour that goes with it is master data this page does not have.
+    function plainPill(label) {
+        return label ? '<span class="bl-pill" style="background:#95a5a6">' + esc(label) + '</span>' : '';
+    }
+    function plainTag(label) {
+        return label ? '<span class="bl-tag" style="background:#95a5a6">' + esc(label) + '</span>' : '';
+    }
+    function hcIssueHtml(i) {
+        var parent = i.parent ? issueById(i.parent) : null;
+        // A row from another project can carry a status or a type this page has
+        // no master data for. The server sends the plain label for those; drawn
+        // without a colour, since the colour belongs to the other project.
+        var st = own(ST, i.st) ? pill(i.st) : plainPill(i.st_l);
+        var ty = tag(i.ty) || plainTag(i.ty_l);
+        return '<div class="pp-hc-top"><div style="min-width:0">' +
+            '<div class="pp-hc-key">' + ty + ' ' + esc(i.key) + '</div>' +
+            '<div class="pp-hc-nm">' + esc(i.subject) + '</div></div></div>' +
+            hcRows([
+                [L.col_st, (st + ' ' + prio(i.pr)).trim()],
+                [L.col_as, (i.as || []).length ? avlist(i.as) : ''],
+                [L.col_dd, i.dd ? esc(d2(i.dd)) : ''],
+                [L.lbl_pg, (i.pg === 0 || i.pg) ? esc(i.pg + '%') : ''],
+                [L.lbl_parent, parent ? esc(parent.key + ' ' + parent.subject) : ''],
+            ]);
+    }
+    // An issue this project is not carrying - linked from somewhere else, or
+    // moved. The row comes from the server; the labels are master data the
+    // screen already has, so only the row itself crosses the wire.
+    function hcIssueFetch(anchor, id, seq) {
+        hcFetch('issue', id, function (res) {
+            if (seq !== HC.seq) { return; }
+            if (!res || !res.ok) { hcMsg(anchor, L.hc_no_issue); return; }
+            Object.keys(res.users || {}).forEach(function (uid) {
+                if (!D.users[uid]) { D.users[uid] = res.users[uid]; }
+            });
+            hcOpen(anchor, hcIssueHtml({
+                id: res.id, key: res.key || ('#' + res.id), subject: res.subject,
+                ty: res.ty, ty_l: res.ty_l, st: res.st, st_l: res.st_l,
+                pr: res.pr, as: res.as, dd: res.dd, pg: res.pg, parent: null
+            }));
+        });
+    }
+    function hcFetch(kind, id, done) {
+        var url = D.urls.lightapi_base + '/card/' + kind + '/' + encodeURIComponent(id) +
+            '?project=' + encodeURIComponent(D.project.id);
+        fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(done)
+            .catch(function () { done(null); });
+    }
+    function hcShow(anchor) {
+        var uid = anchor.dataset.uid;
+        var iid = anchor.dataset.issue;
+        var key = uid ? ('u:' + uid) : ('i:' + iid);
+        if (!uid && !iid) { return; }
+        if (key === HC.key && HC.el && !HC.el.hidden) { return; }
+        HC.key = key;
+        var seq = ++HC.seq;
+        if (iid) {
+            var hit = issueById(iid);
+            if (hit) { hcOpen(anchor, hcIssueHtml(hit)); return; }
+            hcMsg(anchor, L.hc_loading);
+            hcIssueFetch(anchor, iid, seq);
+            return;
+        }
+        if (HC.users[uid]) { hcOpen(anchor, hcUserHtml(uid, HC.users[uid])); return; }
+        var local = hcUserLocal(uid);
+        if (local) { hcOpen(anchor, hcUserHtml(uid, local)); return; }
+        hcOpen(anchor, hcUserHtml(uid, null));
+        hcFetch('user', uid, function (res) {
+            if (seq !== HC.seq) { return; }
+            if (!res || !res.ok) { hcMsg(anchor, L.hc_fail); return; }
+            HC.users[uid] = res;
+            hcOpen(anchor, hcUserHtml(uid, res));
+        });
+    }
+    root.addEventListener('mouseover', function (ev) {
+        var card = ev.target.closest('.pp-card');
+        if (!card) { return; }
+        clearTimeout(HC.timer);
+        // Long enough that a sweep across a paragraph of mentions opens
+        // nothing, short enough that stopping on one feels immediate.
+        HC.timer = setTimeout(function () { hcShow(card); }, 120);
+    });
+    root.addEventListener('mouseout', function (ev) {
+        var card = ev.target.closest('.pp-card');
+        if (!card) { return; }
+        var to = ev.relatedTarget;
+        if (to && HC.el && (HC.el === to || HC.el.contains(to))) { return; }
+        clearTimeout(HC.timer);
+        HC.timer = setTimeout(hcHide, 180);
+    });
+    // Both outlive a pjax swap, so each stands down with its page - taking the
+    // card it may have left open on <body> with it.
+    window.addEventListener('scroll', function onHcScroll() {
+        if (!alive()) { window.removeEventListener('scroll', onHcScroll, true); hcHide(); return; }
+        if (HC.el && !HC.el.hidden) { hcHide(); }
+    }, true);
+    document.addEventListener('keydown', function onHcKey(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onHcKey); hcHide(); return; }
+        if (ev.key === 'Escape' && HC.el && !HC.el.hidden) { hcHide(); }
+    });
+
+    // Hover on any form-modal link warms the standby iframe for that URL
+    // so a subsequent click is a hot swap (0ms) instead of a full page load.
+    // Coalesced so quick mouse sweeps don't burn a request per element.
+    var hoverPrewarmTimer = null;
+    var hoverPrewarmUrl = '';
+    // Separate coalescer for native-modal (edit / create) prewarms so the
+    // iframe timer above doesn't block them. 150ms debounce matches the
+    // task spec — long enough that scrolling past a row of 編集 buttons
+    // doesn't spam /edit endpoints, short enough that a deliberate hover
+    // lands the payload before the click event fires.
+    var nedHoverTimer = null;
+    var nedHoverKey = '';
+    function nedHoverDispatch(link) {
+        if (!link) { return; }
+        var url = link.dataset && link.dataset.url;
+        if (!url) { return; }
+        var editHit = maybeNedit(url);
+        var createTable = editHit ? null : maybeNcreate(url);
+        if (!editHit && !createTable) { return null; }
+        return { edit: editHit, create: createTable, url: url };
+    }
+    root.addEventListener('mouseover', function (ev) {
+        var link = ev.target.closest('.pp-mlink');
+        if (!link) { return; }
+        // First: native-modal prefetch (edit rows / create rows). This
+        // path runs even when D.features.prefetch is off — it costs one
+        // lightapi request per deliberate hover and pays back on the
+        // click.
+        var nedHit = nedHoverDispatch(link);
+        if (nedHit) {
+            var key = nedHit.edit
+                ? ('e:' + nedHit.edit.table + ':' + nedHit.edit.id)
+                : ('c:' + nedHit.create);
+            if (key !== nedHoverKey) {
+                nedHoverKey = key;
+                clearTimeout(nedHoverTimer);
+                nedHoverTimer = setTimeout(function () {
+                    if (nedHit.edit) { nedPrewarmEditForm(nedHit.edit.table, nedHit.edit.id); }
+                    else if (nedHit.create) { nedPrewarmCreateForm(nedHit.create); }
+                }, 150);
+            }
+            return;
+        }
+        // Otherwise: warm the standby iframe for wiki / history / etc.
+        if (!FM.warm || !(D.features && D.features.prefetch)) { return; }
+        var iframeUrl = link.dataset.url;
+        if (!iframeUrl || iframeUrl === hoverPrewarmUrl || (FM.warm.dataset.url === iframeUrl && FM.warm.dataset.ready)) { return; }
+        hoverPrewarmUrl = iframeUrl;
+        clearTimeout(hoverPrewarmTimer);
+        hoverPrewarmTimer = setTimeout(function () { prewarm(iframeUrl); }, 90);
+    });
+    // Mousedown fires ~50-100ms before click on a normal mouse press —
+    // giving that head start to the fetch is basically free and closes
+    // the gap for users who hovered too briefly to trip the 150ms timer
+    // (or clicked with keyboard focus after tabbing over).
+    root.addEventListener('mousedown', function (ev) {
+        var link = ev.target.closest('.pp-mlink');
+        if (!link) { return; }
+        var nedHit = nedHoverDispatch(link);
+        if (!nedHit) { return; }
+        if (nedHit.edit) { nedPrewarmEditForm(nedHit.edit.table, nedHit.edit.id); }
+        else if (nedHit.create) { nedPrewarmCreateForm(nedHit.create); }
+    });
+    root.addEventListener('click', function (ev) {
+        // Click-to-collapse card head (基本情報 / 子課題). Bail if the click
+        // landed on an interactive descendant so the collapse doesn't
+        // swallow buttons or links added later.
+        var collapseHead = ev.target.closest('.bl-boxhead[data-collapse]');
+        if (collapseHead && !ev.target.closest('a, button, input, select, textarea')) {
+            var card = collapseHead.closest('.bl-card-box');
+            if (card) { card.classList.toggle('bl-collapsed'); return; }
+        }
+        var mlink = ev.target.closest('.pp-mlink');
+        if (mlink) {
+            ev.preventDefault();
+            var editHit = maybeNedit(mlink.dataset.url);
+            if (editHit) { goEdit(editHit.table, editHit.id); return; }
+            var createTable = maybeNcreate(mlink.dataset.url);
+            if (createTable) {
+                if (createTable === D.issue_table) { goCreate(); }
+                else { openNcreate(createTable); }
+                return;
+            }
+            formModal(mlink.dataset.url, mlink.dataset.mtitle || '', mlink.dataset.msub || '');
+            return;
+        }
+        var anchor = ev.target.closest('a[href]');
+        if (anchor && interceptDataLink(anchor, ev)) { return; }
+        // Any click closes an open comment menu; a click on the trigger then
+        // toggles its own, which is what makes "click outside to close" work
+        // without a second listener watching the whole document.
+        var cmenuBtn = ev.target.closest('.pp-cmenu');
+        var wanted = cmenuBtn ? cmenuBtn.parentNode.querySelector('.m') : null;
+        document.querySelectorAll('#pp-d-timeline .cmenu .m').forEach(function (m) {
+            if (m !== wanted) { m.hidden = true; }
+        });
+        if (cmenuBtn) { wanted.hidden = !wanted.hidden; return; }
+        var star = ev.target.closest('.pp-star');
+        if (star) {
+            ev.stopPropagation();
+            $.ajax({
+                url: D.urls.base + '/star', type: 'POST',
+                data: { star_type: star.dataset.starType, target_type: star.dataset.targetType, target_id: star.dataset.targetId },
+                headers: { 'X-CSRF-TOKEN': CSRF }
+            }).done(function (res) {
+                star.classList.toggle('on', res.on);
+                star.querySelector('i').className = 'fa ' + (res.on ? 'fa-star' : 'fa-star-o');
+                star.querySelector('.ct').textContent = res.count ? ' ' + res.count : '';
+                if (star.dataset.targetType === D.issue_table && star.dataset.starType === 'star') {
+                    var issue = issueById(star.dataset.targetId);
+                    if (issue) { issue.star = res.count; issue.my_star = res.on; }
+                }
+                if (star.dataset.targetType === D.wiki_table) {
+                    (D.wiki.pages || []).forEach(function (p) {
+                        if (String(p.id) === String(star.dataset.targetId)) { p.star = res.count; p.my_star = res.on; }
+                    });
+                }
+            });
+            return;
+        }
+        var watch = ev.target.closest('.pp-watch');
+        if (watch) {
+            $.ajax({
+                url: D.urls.base + '/star', type: 'POST',
+                data: { star_type: 'watch', target_type: watch.dataset.targetType, target_id: watch.dataset.targetId },
+                headers: { 'X-CSRF-TOKEN': CSRF }
+            }).done(function (res) {
+                watch.classList.toggle('on', res.on);
+                watch.querySelector('.wl').textContent = res.on ? L.unwatch : L.watch;
+                watch.querySelector('.wc').textContent = res.count;
+            });
+            return;
+        }
+        var chip = ev.target.closest('.pp-notify');
+        if (chip) { chip.classList.toggle('off'); return; }
+        var nextBtn = ev.target.closest('.pp-next-status');
+        if (nextBtn) { postComment(nextBtn.dataset.next); return; }
+        var quote = ev.target.closest('.pp-quote');
+        if (quote) {
+            // Quoting is the start of writing a reply, so the dock has to be
+            // open before the text is put in it - otherwise the quote lands
+            // in a box nobody can see.
+            ppDockOpen(true);
+            var qbox = cmtBox();
+            cmtPreviewOff();
+            qbox.value = '> ' + String(quote.dataset.text || '').replace(/\n/g, '\n> ') + '\n\n' + qbox.value;
+            qbox.focus();
+            qbox.selectionStart = qbox.selectionEnd = qbox.value.length;
+            if (currentIssue !== null) { dockDraftSave(currentIssue, qbox.value); }
+            qeMark();
+            return;
+        }
+        var more = ev.target.closest('.pp-cmore');
+        if (more) {
+            var moreTxt = more.closest('.body').querySelector('.txt');
+            more.textContent = moreTxt.classList.toggle('clip') ? L.cmt_more : L.cmt_less;
+            return;
+        }
+        var cedit = ev.target.closest('.pp-cedit');
+        if (cedit) { cmtEditStart(cedit.dataset.cid, cedit.getAttribute('data-text') || ''); return; }
+        var ccopy = ev.target.closest('.pp-ccopy');
+        if (ccopy) { cmtCopyLink(ccopy.dataset.cid); return; }
+        var cdel = ev.target.closest('.pp-cdel');
+        if (cdel) { cmtDelete(cdel); return; }
+        var addChild = ev.target.closest('.pp-addchild');
+        if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
+        var mailBtn = ev.target.closest('.pp-mailbtn');
+        if (mailBtn) { mailOpen(currentIssue); return; }
+        var issueCopy = ev.target.closest('.pp-issuecopy');
+        if (issueCopy) { openNcreate(D.issue_table, issuePrefill('copy'), 'copy' + currentIssue); return; }
+        var wikiNode = ev.target.closest('[data-wiki]');
+        if (wikiNode) {
+            ev.preventDefault();
+            var wid = wikiNode.getAttribute('data-wiki');
+            if (location.hash === '#wiki-' + wid) { renderWiki(wid); }
+            else { location.hash = 'wiki-' + wid; }
+            return;
+        }
+        var row = ev.target.closest('tr[data-issue]');
+        // The tick column is a control of its own; a click there selects the
+        // row rather than leaving the list for it.
+        if (row && !ev.target.closest('a[href]') && !ev.target.closest('.chk')) {
+            // an open inline editor is clicked into, not navigated away from
+            if (ev.target.closest('.pp-ed-in')) { return; }
+            var hash = issueHash(row.getAttribute('data-issue'));
+            // On an editable cell the click waits a moment: a double-click
+            // there edits the cell instead of opening the issue (edCell).
+            if (BULK_ON && ev.target.closest('td[data-ed]')) {
+                clearTimeout(ED_NAV_TIMER);
+                ED_NAV_TIMER = setTimeout(function () { location.hash = hash; }, 280);
+                return;
+            }
+            location.hash = hash;
+        }
+    });
+    document.getElementById('pp-cmt-submit').addEventListener('click', function () { postComment(); });
+    document.getElementById('pp-dockbar').addEventListener('click', function () { ppDockOpen(!ppDockIsOpen()); });
+    document.getElementById('pp-dockclose').addEventListener('click', function () { ppDockOpen(false); });
+    document.getElementById('pp-dockcancel').addEventListener('click', function () {
+        // Cancel drops the unsent work rather than only hiding it: leaving
+        // changed fields behind a closed bar is how the wrong value gets
+        // sent with the next comment. The fields go back to the row too.
+        var text = document.getElementById('pp-cmt-text');
+        if (text) { text.value = ''; }
+        if (currentIssue !== null) { dockDraftClear(currentIssue); }
+        qeReset();
+        cmtPreviewOff();
+        ppDockMsg('', false);
+        var det = currentIssue === null ? null : own(DET, String(currentIssue));
+        if (det && det.issue) { buildDetail(det); }
+        ppDockOpen(false);
+    });
+    document.getElementById('pp-cmt-tools').addEventListener('click', function (ev) {
+        var b = ev.target.closest('button[data-ct]');
+        if (b) { ev.preventDefault(); cmtTool(b.getAttribute('data-ct')); }
+    });
+    document.getElementById('pp-cmt-file').addEventListener('change', function () {
+        cmtUpload(this.files);
+        this.value = '';
+    });
+    document.getElementById('pp-tl-expand').addEventListener('click', function () {
+        var box = document.getElementById('pp-d-timeline');
+        var folded = !!box.querySelector('.txt.clip');
+        box.querySelectorAll('.ent .more').forEach(function (row) {
+            row.parentNode.querySelector('.txt').classList.toggle('clip', !folded);
+            row.querySelector('.pp-cmore').textContent = folded ? L.cmt_less : L.cmt_more;
+        });
+        this.textContent = folded ? L.tl_collapse : L.tl_expand;
+    });
+    document.getElementById('pp-tl-filter').addEventListener('click', function (ev) {
+        var b = ev.target.closest('button[data-tl]');
+        if (!b) { return; }
+        TLF = b.getAttribute('data-tl');
+        try { localStorage.setItem(TL_KEY, TLF); } catch (e) { /* ignore */ }
+        var det = currentIssue === null ? null : own(DET, String(currentIssue));
+        if (det) { renderTimeline(det); }
+    });
+    (function () {
+        var box = cmtBox();
+        var form = document.getElementById('pp-cmtform');
+        box.addEventListener('input', cmtPreviewRefresh);
+        box.addEventListener('input', qeMark);
+        box.addEventListener('input', function () {
+            box._ppCmtOwner = null;
+            // Kept per issue for the life of the tab: a post that fails after
+            // its writer has left the issue has nowhere else to hand it back.
+            if (currentIssue !== null) { dockDraftSave(currentIssue, box.value); }
+        });
+        // Ctrl+Enter posts, the way every comment box does.
+        box.addEventListener('keydown', function (ev) {
+            if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') { ev.preventDefault(); postComment(); }
+        });
+        // A screenshot on the clipboard arrives as a file, not as text -
+        // caught here before the browser pastes its name in as characters.
+        box.addEventListener('paste', function (ev) {
+            var dt = ev.clipboardData;
+            if (!dt) { return; }
+            var files = [];
+            Array.prototype.forEach.call(dt.items || [], function (item) {
+                if (item.kind !== 'file') { return; }
+                var f = item.getAsFile();
+                if (f) { files.push(f); }
+            });
+            if (!files.length) { return; }
+            ev.preventDefault();
+            cmtUpload(files);
+        });
+        ['dragover', 'dragenter'].forEach(function (name) {
+            form.addEventListener(name, function (ev) { ev.preventDefault(); form.classList.add('drag'); });
+        });
+        ['dragleave', 'dragend'].forEach(function (name) {
+            form.addEventListener(name, function () { form.classList.remove('drag'); });
+        });
+        form.addEventListener('drop', function (ev) {
+            ev.preventDefault();
+            form.classList.remove('drag');
+            cmtUpload(ev.dataTransfer && ev.dataTransfer.files);
+        });
+    })();
+    document.getElementById('pp-sttabs').addEventListener('click', function (ev) {
+        var b = ev.target.closest('.bl-sttab');
+        if (b) { FILTER.st = b.getAttribute('data-st'); afterFilterChange(); }
+    });
+    document.getElementById('pp-qchips').addEventListener('click', function (ev) {
+        var b = ev.target.closest('.bl-qchip');
+        if (!b) { return; }
+        // Clicking the chip that is already on turns it off - a chip row with
+        // no way back to "everything" is a trap.
+        var key = b.getAttribute('data-q');
+        FILTER.q = (FILTER.q === key) ? '' : key;
+        afterFilterChange();
+    });
+    [['pp-f-kw', 'kw', 'input'], ['pp-f-as', 'as', 'change'], ['pp-f-ty', 'ty', 'change'],
+     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change']].forEach(function (def) {
+        document.getElementById(def[0]).addEventListener(def[2], function () {
+            FILTER[def[1]] = this.value;
+            afterFilterChange();
+        });
+    });
+    // Clicking the column already in charge turns it around; clicking any
+    // other one takes over, ascending, which is the direction a reader means
+    // by "sort by this".
+    function applySort(by) {
+        if (!own(SORT_COLS, by)) { return; }
+        if (SORT.by === by) {
+            SORT.dir = SORT.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            SORT.by = by;
+            SORT.dir = 'asc';
+        }
+        afterFilterChange();
+    }
+    var issueHead = document.getElementById('pp-issue-head');
+    if (issueHead) {
+        issueHead.addEventListener('click', function (ev) {
+            var th = ev.target.closest('th[data-sort]');
+            if (th) { applySort(th.getAttribute('data-sort')); }
+        });
+        issueHead.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Enter' && ev.key !== ' ') { return; }
+            var th = ev.target.closest('th[data-sort]');
+            if (th) { ev.preventDefault(); applySort(th.getAttribute('data-sort')); }
+        });
+    }
+    document.getElementById('pp-f-clear').addEventListener('click', function () {
+        FILTER_FIELDS.forEach(function (k) { FILTER[k] = ''; });
+        SORT.by = SORT_DEF.by;
+        SORT.dir = SORT_DEF.dir;
+        // The saved default goes with it. Leaving it behind would put the
+        // whole filter back on the next visit, which is the surprise the
+        // button exists to end. Named conditions are not touched: those were
+        // written down on purpose.
+        try { localStorage.removeItem(FILTER_KEY); localStorage.removeItem(SORT_KEY); } catch (e) { /* ignore */ }
+        afterFilterChange();
+        toast(L.f_cleared);
+    });
+    // The old single slot, now a switch inside the saved-conditions menu:
+    // "open this list like this next time".
+    document.getElementById('pp-f-save').addEventListener('change', function () {
+        try {
+            if (this.checked) {
+                localStorage.setItem(FILTER_KEY, JSON.stringify(FILTER));
+                localStorage.setItem(SORT_KEY, JSON.stringify(SORT));
+                toast(L.f_saved);
+            } else {
+                localStorage.removeItem(FILTER_KEY);
+                localStorage.removeItem(SORT_KEY);
+            }
+        } catch (e) { /* ignore */ }
+    });
+    document.getElementById('pp-sf-btn').addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        sfMenu(document.getElementById('pp-sf-menu').hidden);
+    });
+    document.getElementById('pp-sf-menu').addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        var del = ev.target.closest('[data-sf-del]');
+        if (del) { savedDelete(parseInt(del.getAttribute('data-sf-del'), 10)); return; }
+        var item = ev.target.closest('[data-sf]');
+        if (item) { savedApply(parseInt(item.getAttribute('data-sf'), 10)); }
+    });
+    document.getElementById('pp-sf-menu').addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Enter') { return; }
+        if (ev.target.id === 'pp-sf-name') { ev.preventDefault(); savedAdd(); return; }
+        var item = ev.target.closest('[data-sf]');
+        if (item) { ev.preventDefault(); savedApply(parseInt(item.getAttribute('data-sf'), 10)); }
+    });
+    document.getElementById('pp-sf-save').addEventListener('click', savedAdd);
+    document.addEventListener('click', function onSfOutside() {
+        if (!alive()) { document.removeEventListener('click', onSfOutside); return; }
+        sfMenu(false);
+    });
+
+    /* ---- paging ---- */
+    document.getElementById('pp-pg-nav').addEventListener('click', function (ev) {
+        var b = ev.target.closest('button[data-pg]');
+        if (!b || b.disabled) { return; }
+        PAGE.no = parseInt(b.getAttribute('data-pg'), 10) || 1;
+        // Only the page moved, so the filter stays and only the ticks - which
+        // named rows on the page being left - are dropped.
+        clearSelection();
+        renderIssues();
+        filterToUrl();
+    });
+    document.getElementById('pp-pg-size').addEventListener('change', function () {
+        var size = parseInt(this.value, 10);
+        PAGE.size = PAGE_SIZES.indexOf(size) >= 0 ? size : 50;
+        try { localStorage.setItem(PAGE_KEY, String(PAGE.size)); } catch (e) { /* ignore */ }
+        PAGE.no = 1;
+        clearSelection();
+        renderIssues();
+        filterToUrl();
+    });
+
+    /* ---- tree view ---- */
+    // Folding changes which rows are listed, so the ticks go, the same as on
+    // any other change of the list: a bulk edit must not reach a hidden row.
+    function treeRerender(firstPage) {
+        if (firstPage) { PAGE.no = 1; }
+        treeSave();
+        clearSelection();
+        renderIssues();
+    }
+    (function () {
+        var treeBtn = document.getElementById('pp-tree-btn');
+        var treeOpen = document.getElementById('pp-tree-open');
+        var treeClose = document.getElementById('pp-tree-close');
+        if (treeBtn) {
+            treeBtn.addEventListener('click', function () {
+                TREE_ON = !TREE_ON;
+                try { localStorage.setItem(TREE_LAST_KEY, TREE_ON ? '1' : '0'); } catch (e) { /* ignore */ }
+                treeRerender(true);
+            });
+        }
+        if (treeOpen) {
+            treeOpen.addEventListener('click', function () {
+                TREE_FOLD = {};
+                treeRerender(true);
+            });
+        }
+        if (treeClose) {
+            treeClose.addEventListener('click', function () {
+                treeRows(filteredIssues(), true).forEach(function (e) {
+                    if (e.n > 0) { TREE_FOLD['i' + e.i.id] = true; }
+                });
+                treeRerender(true);
+            });
+        }
+    })();
+    // Right-click a row: open, or mark it read / unread like a mail. With
+    // rows ticked for bulk edit, a ticked row's menu acts on all of them.
+    // Shift + right-click keeps the browser's own menu.
+    document.getElementById('pp-issue-rows').addEventListener('contextmenu', function (ev) {
+        if (ev.shiftKey) { return; }
+        var tr = ev.target.closest('tr[data-issue]');
+        if (!tr || ev.target.closest('input, textarea, select, .pp-ied')) { return; }
+        var id = tr.getAttribute('data-issue');
+        var row = issueById(id);
+        if (!row) { return; }
+        ev.preventDefault();
+        var ids = own(SEL, id) ? Object.keys(SEL).filter(function (k) { return own(SEL, k) && issueById(k); }) : [id];
+        var anyUnread = ids.some(function (k) { return !!(issueById(k) || {}).unread; });
+        var items = [];
+        if (ids.length === 1) {
+            items.push({ l: L.ctx_open, i: 'fa-external-link', f: function () { location.hash = issueHash(id); } });
+        }
+        items.push(anyUnread
+            ? { l: L.ctx_read + (ids.length > 1 ? ' (' + ids.length + ')' : ''), i: 'fa-envelope-open-o', f: function () { ids.slice(0, 100).forEach(function (k) { markRead(k, true); }); } }
+            : { l: L.ctx_unread + (ids.length > 1 ? ' (' + ids.length + ')' : ''), i: 'fa-envelope', f: function () { ids.slice(0, 100).forEach(function (k) { markRead(k, false); }); } });
+        if ((D.issues || []).some(function (i) { return !!i.unread; })) {
+            items.push({ l: L.ctx_read_all, i: 'fa-check-square-o', f: readAll });
+        }
+        ctxOpen(ev.clientX, ev.clientY, items);
+    });
+    document.getElementById('pp-issue-rows').addEventListener('click', function (ev) {
+        var tgl = ev.target.closest('.pp-tgl');
+        if (!tgl) { return; }
+        // Not a way into the issue: the row's own click must not see this.
+        ev.preventDefault();
+        ev.stopPropagation();
+        var id = tgl.getAttribute('data-tgl');
+        if (treeFolded(id)) { delete TREE_FOLD['i' + id]; } else { TREE_FOLD['i' + id] = true; }
+        treeRerender(false);
+    });
+    // ---- inline cell edit, like Exment's Excel-style grid (snoro 2026-11-18) ----
+    // Double-click a status / type / priority / milestone / category / start
+    // / due cell: it turns into a picker (dates use the portal's calendar).
+    // Saved through the bulk-edit endpoint for this one issue, so the same
+    // server checks apply (permission per row, values of this project);
+    // Esc or clicking away cancels, a refused save flashes red.
+    var ED_NAV_TIMER = null;
+    function edAttr(f) { return BULK_ON ? ' data-ed="' + f + '" title="ダブルクリックで編集"' : ''; }
+    var ED_SRC = { st: 'pp-bk-st', ty: 'pp-bk-ty', pr: 'pp-bk-pr', ms: 'pp-bk-ms', cat: 'pp-f-cat' };
+    function edOptions(field) {
+        var src = document.getElementById(ED_SRC[field]), out = [];
+        if (!src) { return out; }
+        Array.prototype.forEach.call(src.options, function (o) {
+            if (o.value === '' || o.value === '__none__') { return; }
+            out.push([o.value, o.textContent]);
+        });
+        return out;
+    }
+    function edCurrent(i, f) {
+        if (f === 'cat') { return String((i.cat || [])[0] || ''); }
+        return String(i[f] == null ? '' : i[f]);
+    }
+    function edFail(td, msg) {
+        td.classList.remove('pp-ed-saving');
+        td.classList.add('pp-ed-fail');
+        toast(msg || L.bk_fail, true);
+        setTimeout(function () { if (alive()) { renderIssues(); } }, 800);
+    }
+    function edSave(td, id, f, v) {
+        var set = {};
+        if (f === 'cat') { set.cat = v ? [v] : ''; } else { set[f] = v; }
+        td.classList.add('pp-ed-saving');
+        $.ajax({
+            url: D.urls.bulk, type: 'POST', dataType: 'json',
+            data: { ids: [id], set: set },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!alive()) { return; }
+            if (!res || !res.ok || !res.updated) {
+                var why = res && Array.isArray(res.failed) && res.failed[0] ? res.failed[0].message : null;
+                edFail(td, why || (res && res.denied ? (L.bk_denied ? String(L.bk_denied).replace(':count', 1) : null) : null));
+                return;
+            }
+            refreshData(true);
+        }).fail(function (xhr) {
+            if (alive()) { edFail(td, xhrErr(xhr, L.bk_fail)); }
+        });
+    }
+    function edCell(td) {
+        var tr = td.closest('tr[data-issue]');
+        var id = tr && tr.getAttribute('data-issue');
+        var i = id && issueById(id);
+        if (!i || td.querySelector('.pp-ed-in')) { return; }
+        var f = td.getAttribute('data-ed'), cur = edCurrent(i, f), done = false;
+        function commit(v) {
+            if (done) { return; }
+            done = true;
+            if (String(v) === cur) { renderIssues(); return; }
+            edSave(td, id, f, v);
+        }
+        function cancel() { if (!done) { done = true; renderIssues(); } }
+        td.textContent = '';
+        if (f === 'sd' || f === 'dd') {
+            var inp = document.createElement('input');
+            inp.className = 'pp-ed-in';
+            inp.value = cur;
+            td.appendChild(inp);
+            if (window.ppDateField) { window.ppDateField(inp, 'date'); }
+            inp.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); commit(inp.value.trim()); }
+                else if (e.key === 'Escape') { cancel(); }
+            });
+            inp.addEventListener('change', function () { commit(inp.value.trim()); });
+            if (window.jQuery) { jQuery(inp).on('dp.change', function () { commit(inp.value.trim()); }); }
+            inp.addEventListener('blur', function () {
+                setTimeout(function () {
+                    if (!done && !document.querySelector('.bootstrap-datetimepicker-widget')) { cancel(); }
+                }, 200);
+            });
+            inp.focus();
+            return;
+        }
+        var sel = document.createElement('select');
+        sel.className = 'pp-ed-in';
+        var opts = edOptions(f);
+        if (f === 'ms' || f === 'cat') { opts.unshift(['', '（なし）']); }
+        if (cur !== '' && !opts.some(function (o) { return o[0] === cur; })) { opts.unshift([cur, cur]); }
+        opts.forEach(function (o) {
+            var op = document.createElement('option');
+            op.value = o[0];
+            op.textContent = o[1];
+            if (o[0] === cur) { op.selected = true; }
+            sel.appendChild(op);
+        });
+        td.appendChild(sel);
+        sel.addEventListener('change', function () { commit(sel.value); });
+        sel.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cancel(); } });
+        sel.addEventListener('blur', function () { setTimeout(function () { if (!done) { cancel(); } }, 150); });
+        sel.focus();
+    }
+    document.getElementById('pp-issue-rows').addEventListener('dblclick', function (ev) {
+        if (!BULK_ON) { return; }
+        var td = ev.target.closest('td[data-ed]');
+        if (!td || ev.target.closest('.pp-tgl')) { return; }
+        clearTimeout(ED_NAV_TIMER);
+        ev.preventDefault();
+        ev.stopPropagation();
+        edCell(td);
+    });
+
+    // Double-click a ▼/▶: everything opens or closes (snoro 2026-11-18). The
+    // two clicks before it have put this parent back as it was, so an open
+    // one closes all and a closed one opens all.
+    document.getElementById('pp-issue-rows').addEventListener('dblclick', function (ev) {
+        var tgl = ev.target.closest('.pp-tgl');
+        if (!tgl) { return; }
+        ev.preventDefault();
+        ev.stopPropagation();
+        var btn = document.getElementById(treeFolded(tgl.getAttribute('data-tgl')) ? 'pp-tree-open' : 'pp-tree-close');
+        if (btn) { btn.click(); }
+    });
+
+    /* ---- ticking rows ---- */
+    document.getElementById('pp-issue-rows').addEventListener('change', function (ev) {
+        var box = ev.target.closest('.pp-bchk');
+        if (!box) { return; }
+        var id = box.getAttribute('data-id');
+        if (box.checked) { SEL[id] = true; } else { delete SEL[id]; }
+        var row = box.closest('tr');
+        if (row) { row.classList.toggle('sel', box.checked); }
+        syncBulkBar();
+    });
+    document.getElementById('pp-chk-all').addEventListener('change', function () {
+        // This page only. "Select everything in the project" would be a
+        // different promise, and one the bulk limit could not keep.
+        var on = this.checked;
+        document.querySelectorAll('#pp-issue-rows .pp-bchk').forEach(function (box) {
+            box.checked = on;
+            var id = box.getAttribute('data-id');
+            if (on) { SEL[id] = true; } else { delete SEL[id]; }
+            var row = box.closest('tr');
+            if (row) { row.classList.toggle('sel', on); }
+        });
+        syncBulkBar();
+    });
+    document.getElementById('pp-bk-apply').addEventListener('click', bulkApply);
+    document.getElementById('pp-bk-cancel').addEventListener('click', function () {
+        clearSelection();
+        renderIssues();
+    });
+
+    /* ---- staying current ---- */
+    document.getElementById('pp-projhead').addEventListener('click', function (ev) {
+        if (ev.target.closest('.pp-refresh')) { refreshData(false); }
+    });
+    // Coming back to the tab is the moment the page is most likely to be out
+    // of date and the moment the reader is least likely to be mid-sentence.
+    document.addEventListener('visibilitychange', function onPpVis() {
+        if (!alive()) { document.removeEventListener('visibilitychange', onPpVis); return; }
+        if (!document.hidden) { checkStamp(CHECK_GAP_FOCUS); }
+    });
+    window.addEventListener('focus', function onPpFocus() {
+        if (!alive()) { window.removeEventListener('focus', onPpFocus); return; }
+        checkStamp(CHECK_GAP_FOCUS);
+    });
+    document.getElementById('pp-f-csv').addEventListener('click', exportCsv);
+    document.getElementById('pp-jump').addEventListener('input', function () {
+        FILTER.kw = this.value;
+        if (parseHash().path !== 'issues') {
+            if (!this.value) { return; }
+            // Switching to the list from another tab: the hash change re-routes,
+            // and route() renders and mirrors the filter into the URL from there.
+            location.hash = 'issues';
+            return;
+        }
+        afterFilterChange();
+    });
+    document.getElementById('pp-bd-select').addEventListener('change', function () {
+        renderBurndown(parseInt(this.value, 10) || 0);
+    });
+    document.getElementById('pp-file-input').addEventListener('change', function () { uploadFiles(this.files); });
+    var drop = document.getElementById('pp-drop');
+    ['dragover', 'dragenter'].forEach(function (name) {
+        drop.addEventListener(name, function (ev) { ev.preventDefault(); drop.classList.add('hover'); });
+    });
+    ['dragleave', 'drop'].forEach(function (name) {
+        drop.addEventListener(name, function (ev) { ev.preventDefault(); drop.classList.remove('hover'); });
+    });
+    drop.addEventListener('drop', function (ev) { uploadFiles(ev.dataTransfer.files); });
+    // The drop zone exists only when the server would accept an upload: the
+    // project is unarchived, this user may edit it, and attachments are on.
+    // The server hands back no upload url otherwise, so a dropped file would
+    // only meet a refusal. Read off the payload, never hardcoded.
+    function syncUploadUi() {
+        var can = !!(D.urls && D.urls.upload);
+        if (drop) { drop.hidden = !can; }
+        var input = document.getElementById('pp-file-input');
+        if (input) { input.disabled = !can; }
+    }
+
+    /* ------------------------------------------------ shortcuts --------- */
+    // Backlog's single-key jumps. A held modifier, focus in any field, or an
+    // open form or modal all mean the key belongs to someone else. Clicks go
+    // through the tab itself, so feature gating and routing stay in one
+    // place; a tab hidden by a feature switch reports no offsetParent and
+    // its key does nothing. Unhooks itself once the page is replaced (pjax).
+    var SHORTCUT_TABS = { h: 'home', b: 'board', f: 'issues', g: 'gantt', u: 'burndown', w: 'wiki' };
+    document.addEventListener('keydown', function onPpShortcut(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onPpShortcut); return; }
+        if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey || ev.defaultPrevented) { return; }
+        var t = ev.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) { return; }
+        if (FM.el && !FM.el.hidden) { return; }
+        if (NED.el && !NED.el.hidden) { return; }
+        var k = String(ev.key || '').toLowerCase();
+        if (SHORTCUT_TABS[k]) {
+            var tab = root.querySelector('.bl-tab[data-scr="' + SHORTCUT_TABS[k] + '"]');
+            if (tab && tab.offsetParent !== null) { ev.preventDefault(); tab.click(); }
+            return;
+        }
+        if (k === 'a') {
+            var add = root.querySelector('.bl-addissue');
+            if (add) { ev.preventDefault(); add.click(); }
+            return;
+        }
+        if (ev.key === '/') {
+            var jump = document.getElementById('pp-jump');
+            if (jump) { ev.preventDefault(); jump.focus(); }
+        }
+    });
+
+    // Escape closes the dock. Bound on its own rather than added to the
+    // shortcut handler above, which ignores every key pressed inside a field
+    // - and the dock is nothing but fields.
+    document.addEventListener('keydown', function onPpDockKey(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onPpDockKey); return; }
+        if (ev.key !== 'Escape' || ev.defaultPrevented) { return; }
+        if (NED.el && !NED.el.hidden) { return; }
+        if (!ppDockIsOpen()) { return; }
+        ev.preventDefault();
+        ppDockOpen(false);
+    });
+
+    /* ------------------------------------------------ boot --------------- */
+    // Old-exment style flash: nedSave sets a sessionStorage flag right
+    // before reloading. On boot, if the flag is present, surface it as a
+    // one-shot toast so the user sees "Saved" on the reloaded page
+    // instead of on the pre-reload frame that would flash for 100ms and
+    // vanish. Wrapped in try/catch because private-mode Safari throws
+    // on any sessionStorage access.
+    try {
+        var savedFlash = sessionStorage.getItem('pp-ne-saved-flash');
+        if (savedFlash) {
+            sessionStorage.removeItem('pp-ne-saved-flash');
+            setTimeout(function () { toast(savedFlash); }, 60);
+        }
+    } catch (e) { /* ignore */ }
+    renderHead();
+    renderFormStyleMenu();
+    renderFormStyleBadge();
+    renderHome();
+    renderIssues();
+    renderBurndownSelect();
+    renderWiki();
+    renderFiles();
+    syncUploadUi();
+    nedDraftPurge();
+    route();
+    // Whatever the page we just replaced wanted to warm up is not worth a
+    // request any more; this page's own data goes first.
+    ppQueue.dropLow();
+    // Warming up pays off on the screens the user reads and clicks through.
+    // On the settings screen it is pure server load: nothing there opens an
+    // issue, a create form or the board. Checked when the timer fires, not
+    // when it is set, so landing on #settings and leaving is judged right.
+    function warmAllowed() {
+        var scr = String(location.hash || '').replace(/^#/, '').split('?')[0] || 'home';
+        // A tab nobody is looking at gets nothing warmed either.
+        return alive() && !document.hidden && scr !== 'settings';
+    }
+    setTimeout(function () { if (warmAllowed()) { prefetchDetails(); } }, 600);
+    // Warm the create-form schema so the first click on 課題の追加 / Wiki
+    // 新規 renders instantly. Subsequent opens read straight from cache.
+    setTimeout(function () {
+        if (!warmAllowed()) { return; }
+        nedPrewarmCreateForm(D.issue_table);
+        // ISS00257: the wiki create form is warmed on hover instead.
+    }, 1200);
+    // First-click accelerator: warm the edit forms the user is most
+    // likely to touch next so the very first 編集 / プロジェクト設定 click
+    // is a cache hit instead of a 1-2s cold round-trip. Priority order:
+    //   1. The row addressed by the URL hash (#issue-224 / #wiki-42),
+    //      fired synchronously so it beats an immediate click.
+    //   2. The current project (プロジェクト設定 target).
+    //   3. Top of the visible issue list, deferred to requestIdleCallback
+    //      so it never fights the initial render for the network.
+    // Capped at 5 prewarms total per page load to keep server pressure
+    // negligible, and skipped entirely on 2g / slow-2g connections.
+    (function schedulePrewarmOnLoad() {
+        var conn;
+        try { conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection; }
+        catch (e) { /* Safari private mode / unsupported */ }
+        if (conn && (conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g' || conn.saveData)) { return; }
+        // Nothing speculative for a tab nobody is looking at.
+        if (document.hidden) { return; }
+        // ISS00257: 1 (was 3) - each warm-up is a full framework boot on the server.
+        var MAX = 1;
+        var fired = 0;
+        function fire(table, id) {
+            if (fired >= MAX) { return; }
+            if (!table || id === undefined || id === null || id === '') { return; }
+            var key = table + '::' + id;
+            if (NED.editFormCache[key] || NED.editFormInflight[key]) { return; }
+            fired++;
+            nedPrewarmEditForm(table, id);
+        }
+        var h = String(location.hash || '');
+        var mi = h.match(/^#issue-(\d+)/);
+        var mw = h.match(/^#wiki-(\d+)/);
+        if (mi) { fire(D.issue_table, mi[1]); }
+        else if (mw) { fire(D.wiki_table, mw[1]); }
+        // The board joins the queue here, ahead of everything speculative.
+        // Background work runs one job at a time with a pause between them,
+        // so a board queued behind five row warm-ups does not start for the
+        // better part of ten seconds - long after the click it was meant to
+        // save. It also costs about twice what any of them costs and is a
+        // whole screen one click away, where a row warm-up is a guess about
+        // a row nobody has opened. The row named by the address bar still
+        // goes first: whoever arrived on a link to it is already looking at
+        // it, and the board is not what they asked for.
+        // ISS00257: the board is no longer embedded in advance (the heaviest
+        // server-rendered page); ensureEmbed loads it when its tab is opened.
+        if (D.project && D.project.id) { fire(D.project_table, D.project.id); }
+        var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 300); };
+        idle(function () {
+            if (!alive()) { return; }
+            // Only the rows the user can actually see are worth warming: on
+            // the settings or wiki screen the issue list is not even drawn.
+            var scr = String(location.hash || '').replace(/^#/, '').split('?')[0] || 'home';
+            if (scr !== 'home' && scr !== 'issues' && scr !== 'board') { return; }
+            var rows = D.issues || [];
+            for (var i = 0; i < rows.length && fired < MAX; i++) {
+                fire(D.issue_table, rows[i].id);
+            }
+        });
+    })();
+    // Warm the heavy tabs in the background so the first click on them
+    // draws immediately. Kicked off after the detail prefetch and the form
+    // warm so it never fights them for the network.
+    // ISS00257: the gantt is no longer embedded in advance either; it loads
+    // when its tab is opened (ensureEmbed).
+})();
+</script>
