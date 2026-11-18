@@ -479,8 +479,8 @@
     }
 
     /* ------------------------------------------------ issues ------------ */
-    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', q: '' };
-    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'kw'];
+    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', rd: '', q: '' };
+    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'rd', 'kw'];
     // These were per browser, so a shared machine handed the next person the
     // last one's filters and saved conditions. They are per person now. What
     // is still under the old key is taken over once, by whoever opens the
@@ -680,6 +680,7 @@
         if (k === 'ms') { return own(D.milestones, v) ? v : ''; }
         if (k === 'cat') { return own(D.categories, v) ? v : ''; }
         if (k === 'pr') { return own(D.priorities, v) ? v : ''; }
+        if (k === 'rd') { return (v === 'unread' || v === 'read') ? v : ''; }
         return v;
     }
     try {
@@ -1025,6 +1026,7 @@
         setVal('pp-f-pr', FILTER.pr);
         setVal('pp-f-ms', FILTER.ms);
         setVal('pp-f-cat', FILTER.cat);
+        setVal('pp-f-rd', FILTER.rd);
         setVal('pp-jump', FILTER.kw);
         setVal('pp-pg-size', String(PAGE.size));
         // Offered only when there is something to clear, so the row does not
@@ -1060,6 +1062,8 @@
             if (FILTER.pr && String(i.pr) !== String(FILTER.pr)) { return false; }
             if (FILTER.ms && i.ms !== FILTER.ms) { return false; }
             if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
+            if (FILTER.rd === 'unread' && !i.unread) { return false; }
+            if (FILTER.rd === 'read' && i.unread) { return false; }
             if (kw && (i.key + ' ' + i.subject + ' ' + (i.sub || '')).toLowerCase().indexOf(kw) < 0) { return false; }
 
             return true;
@@ -1965,7 +1969,9 @@
             if (seen && !next) { next = s; }
             if (s.k === i.st) { seen = true; }
         });
-        var head = '<div class="bl-dhead">' + tag(i.ty) +
+        // The way back sits on the head row itself, so it costs no line of
+        // its own above the issue (the same button closes the page too).
+        var head = '<div class="bl-dhead"><a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' + tag(i.ty) +
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' +
             starBtn('star', D.issue_table, i.id, local.star, local.my_star) + issueNav(i) +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
@@ -9306,7 +9312,7 @@
         afterFilterChange();
     });
     [['pp-f-kw', 'kw', 'input'], ['pp-f-as', 'as', 'change'], ['pp-f-ty', 'ty', 'change'],
-     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change']].forEach(function (def) {
+     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change']].forEach(function (def) {
         document.getElementById(def[0]).addEventListener(def[2], function () {
             FILTER[def[1]] = this.value;
             afterFilterChange();

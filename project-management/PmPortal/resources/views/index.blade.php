@@ -8,7 +8,7 @@
         'hc_loading', 'hc_fail', 'hc_norole', 'hc_code', 'hc_orgs', 'hc_assigned',
         'hc_open_overdue', 'hc_no_issue',
         'feed_add', 'feed_chg', 'feed_cmt', 'feed_file', 'feed_wiki', 'feed_wiki_add', 'feed_project',
-        'f_all', 'f_kw', 'f_as', 'f_ty', 'f_ms', 'f_cat', 'f_save', 'f_saved',
+        'f_all', 'f_kw', 'f_as', 'f_ty', 'f_ms', 'f_cat', 'f_rd', 'f_rd_unread', 'f_rd_read', 'f_save', 'f_saved',
         'f_pr', 'f_mine', 'f_clear', 'f_cleared', 'f_csv', 'f_csv_title', 'f_csv_empty',
         'sort_asc', 'sort_desc',
         'q_overdue', 'q_soon', 'q_created', 'q_watch', 'q_unread',
@@ -188,6 +188,7 @@
                     <select id="pp-f-pr"><option value="">{{ $lang['f_pr'] }}: {{ $lang['f_all'] }}</option></select>
                     <select id="pp-f-ms"><option value="">{{ $lang['f_ms'] }}: {{ $lang['f_all'] }}</option></select>
                     <select id="pp-f-cat"><option value="">{{ $lang['f_cat'] }}: {{ $lang['f_all'] }}</option></select>
+                    <select id="pp-f-rd"><option value="">{{ $lang['f_rd'] }}: {{ $lang['f_all'] }}</option><option value="unread">{{ $lang['f_rd'] }}: {{ $lang['f_rd_unread'] }}</option><option value="read">{{ $lang['f_rd'] }}: {{ $lang['f_rd_read'] }}</option></select>
                     <span class="bl-fright">
                         {{-- Tree view (ISS00253): off by default; the two
                              fold links only show while it is on. --}}
@@ -305,7 +306,6 @@
 
         {{-- ============ issue detail ============ --}}
         <section class="bl-screen" id="pp-issue">
-            <p style="margin-bottom:10px;"><a class="bl-dback" href="#issues"><i class="fa fa-angle-left"></i> {{ $lang['back'] }}</a></p>
             <div class="bl-detail">
                 <div class="bl-card-box"><div class="bl-boxbody" id="pp-d-main"><i class="fa fa-spinner fa-spin"></i></div></div>
                 <div class="bl-card-box">
@@ -337,6 +337,9 @@
                     </div>
                 </div>
             </div>
+            {{-- The same way back at the foot, for a reader who scrolled down
+                 through a long body and timeline. --}}
+            <p class="bl-dback-foot"><a class="bl-dback" href="#issues"><i class="fa fa-angle-left"></i> {{ $lang['back'] }}</a></p>
 
             {{-- Backlog's pinned composer: a thin row that stays on screen while
                  the issue is read, and unfolds into the comment box together
