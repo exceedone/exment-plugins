@@ -14,6 +14,23 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 
 - Exment 7.0 or later (PHP 8.2) / Exment 7.0 以降（PHP 8.2）
 
+## Where to get / 入手先
+
+The plugins are provided in two ways. / プラグインは 2 つの所から入手できます。
+
+| | GitHub (this repository) / GitHub（このリポジトリ） | Exment Plugin Market / Exment プラグインマーケット |
+|---|---|---|
+| URL | https://github.com/exceedone/exment-plugins | https://exments.com |
+| What you get / 入手できるもの | Source code / ソースコード | A zip made for your Exment / 自分の Exment 用の zip |
+| PHP files / PHP のファイル | As is (readable) / そのまま（読める） | Encoded with ionCube for your domain; works only there / ionCube で、自分のドメイン専用に暗号化（そのドメインでだけ動く） |
+| For / 向いている人 | On-premises and rental servers, developers / オンプレ・レンタルサーバー・開発者 | Exment SaaS (`*.exments.com`) / Exment SaaS |
+| How to install / 入れ方 | Below / 下の「入れ方」 | In Exment: **Admin → Plugin market → Install** / Exment の **管理 → プラグインマーケット → インストール** |
+
+- The same versions are published to both. A new version is released on GitHub first, then uploaded to the market.
+  どちらも同じ版を出します。新しい版は、まず GitHub に出してから、マーケットに上げます。
+- An encoded zip from the market does not run on other servers. To run a plugin on your own server, use the source from GitHub.
+  マーケットの暗号化された zip は、ほかのサーバーでは動きません。自分のサーバーで動かすときは、GitHub のソースを使ってください。
+
 ## Install / 入れ方
 
 1. Zip the contents of a plugin folder, with `config.json` at the top of the zip (for example `PmPortal/`).
