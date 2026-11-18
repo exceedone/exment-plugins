@@ -43,6 +43,7 @@
         { "method": "post", "uri": "{id}/issue/{issue_id}/comment", "function": "postComment" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/read", "function": "issueRead" },
         { "method": "post", "uri": "{id}/read-all", "function": "projectReadAll" },
+        { "method": "get", "uri": "{id}/archived", "function": "archivedIssues" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/mail", "function": "mailIssue" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/upload", "function": "uploadIssueFile" },
         { "method": "patch", "uri": "{id}/comment/{comment_id}", "function": "updateComment" },

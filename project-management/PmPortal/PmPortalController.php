@@ -1943,10 +1943,17 @@ class PmPortalController extends AdminControllerBase
         $me = \Exment::getUserId();
         $issue_name = $this->issue_table->table_name;
 
-        $issues = $this->issue_table->getValueModel()
-            ->where('parent_id', $project->id)
-            ->where('parent_type', $this->project_table->table_name)
-            ->get();
+        // Without the bodies: the list never shows them, and on a big project
+        // they are most of what the table holds. The few issues whose detail
+        // screens come with the page are read again in full below.
+        // ISS00332: issues finished long ago are left out (see archiveScope)
+        // and come only when the list asks for them.
+        $archive = $this->archiveScope($project);
+        $query = $this->dashboardLean($this->projectIssueQuery($project));
+        if ($archive !== null) {
+            $query->whereRaw($archive['active_sql'], $archive['bindings']);
+        }
+        $issues = $query->get();
         $issue_ids = $issues->pluck('id')->toArray();
         // ISS00257: read shares once - all of this project's issues, and every
         // readable project (each issue's edit check also checks its project) -
@@ -1983,15 +1990,7 @@ class PmPortalController extends AdminControllerBase
         $my_watches = Star::mine(Star::TYPE_WATCH, $issue_name, $issue_ids, $me);
         $unread = $this->unreadIssues($issues, $me);
 
-        $rows = [];
-        foreach ($issues as $issue) {
-            $row = $this->buildIssueRow($project, $issue);
-            $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
-            $row['my_star'] = in_array(strval($issue->id), $my_stars);
-            $row['my_watch'] = in_array(strval($issue->id), $my_watches);
-            $row['unread'] = isset($unread[intval($issue->id)]);
-            $rows[] = $row;
-        }
+        $rows = $this->issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread);
 
         // A switched-off feature costs nothing: the tab is not rendered and
         // the data behind it is not read. Nothing is deleted either - turning
@@ -2017,6 +2016,13 @@ class PmPortalController extends AdminControllerBase
                 return strval($issue->updated_at ?? $issue->created_at);
             })->take($embed_limit)->values()
             : collect();
+        if ($embedded->isNotEmpty()) {
+            // The list was read without bodies; these need theirs.
+            $full = $this->issue_table->getValueModel()->whereIn('id', $embedded->pluck('id')->all())->get()->keyBy('id');
+            $embedded = $embedded->map(function ($issue) use ($full) {
+                return $full->get($issue->id) ?? $issue;
+            })->values();
+        }
         $details = $this->detailsFor($project, $embedded, $me);
 
         $user_ids = collect([intval(array_get($project->value, array_get($pj, 'manager')))])
@@ -2086,7 +2092,8 @@ class PmPortalController extends AdminControllerBase
             'issues' => $rows,
             'details' => (object) $details,
             'feed' => $feed,
-            'burndown' => $features['gantt'] ? $this->buildBurndown($project, $issues, $milestones) : [],
+            'burndown' => $features['gantt'] ? $this->buildBurndown($project, $this->withArchivedOf($project, $issues, $archive, $milestones), $milestones) : [],
+            'archive' => $this->archiveSummary($project, $archive),
             'wiki' => $wiki,
             'files' => $files,
             'issue_table' => $issue_name,
@@ -2258,6 +2265,202 @@ class PmPortalController extends AdminControllerBase
         }
 
         return [$out, (object) $types, $meta];
+    }
+
+    /**
+     * The project's issues, as a query.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    protected function projectIssueQuery($project)
+    {
+        return $this->issue_table->getValueModel()
+            ->where('parent_id', $project->id)
+            ->where('parent_type', $this->project_table->table_name);
+    }
+
+    /**
+     * Days after which a finished issue is archived (ISS00332): left out of
+     * the list the page loads, counted but not sent, fetched on request.
+     * Nothing is written - an issue that is reopened or edited is simply
+     * back. 0 turns it off.
+     */
+    protected function archiveDays(): int
+    {
+        return max(0, intval(config('exment.pmportal.archive_days', 30)));
+    }
+
+    /**
+     * SQL for an issue column's value: its index column when it has one.
+     */
+    protected function issueColumnSql(?string $name): ?string
+    {
+        if (is_nullorempty($name)) {
+            return null;
+        }
+        $column = CustomColumn::getEloquent($name, $this->issue_table);
+        if (!isset($column)) {
+            return null;
+        }
+        if ($column->index_enabled) {
+            return '`' . $column->getIndexColumnName() . '`';
+        }
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $name)) {
+            return null;
+        }
+
+        return "JSON_UNQUOTE(JSON_EXTRACT(`value`, '$.\"" . $name . "\"'))";
+    }
+
+    /**
+     * What archived means for this project, as SQL, or null when archiving
+     * is off or cannot be told (no status column, no done status, a
+     * database without JSON functions).
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function archiveScope($project): ?array
+    {
+        $days = $this->archiveDays();
+        if ($days === 0) {
+            return null;
+        }
+        $driver = $this->issue_table->getValueModel()->getConnection()->getDriverName();
+        if (!in_array($driver, ['mysql', 'mariadb'], true)) {
+            return null;
+        }
+        $status_column = array_get($this->def['issue'], 'status');
+        $st = $this->issueColumnSql($status_column);
+        $done = array_values(array_filter(array_map('strval', (array) $this->doneKeys($project, $status_column)), 'strlen'));
+        if ($st === null || empty($done)) {
+            return null;
+        }
+        $cutoff = \Carbon\Carbon::now()->subDays($days)->format('Y-m-d H:i:s');
+        $marks = implode(',', array_fill(0, count($done), '?'));
+
+        return [
+            'days' => $days,
+            'st' => $st,
+            // updated_at also moves with a comment, so an issue people are
+            // still talking about stays in the list.
+            'active_sql' => '(' . $st . ' IS NULL OR ' . $st . ' NOT IN (' . $marks . ') OR `updated_at` >= ?)',
+            'archived_sql' => '(' . $st . ' IN (' . $marks . ') AND `updated_at` < ?)',
+            'bindings' => array_merge($done, [$cutoff]),
+        ];
+    }
+
+    /**
+     * Counts of the archived issues, so that every number on the screen
+     * still covers the whole project: per status, per milestone, and done
+     * children per parent.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function archiveSummary($project, ?array $archive): ?array
+    {
+        if ($archive === null) {
+            return null;
+        }
+        $is = $this->def['issue'];
+        $ms = $this->issueColumnSql(array_get($is, 'milestone')) ?? 'NULL';
+        $pa = $this->issueColumnSql(array_get($is, 'parent')) ?? 'NULL';
+        $groups = $this->projectIssueQuery($project)->toBase()
+            ->whereRaw($archive['archived_sql'], $archive['bindings'])
+            ->selectRaw($archive['st'] . ' as st, ' . $ms . ' as ms, ' . $pa . ' as pa, count(*) as n')
+            ->groupByRaw($archive['st'] . ', ' . $ms . ', ' . $pa)
+            ->get();
+        $out = ['days' => $archive['days'], 'count' => 0, 'by_status' => [], 'by_ms' => [], 'kids' => []];
+        foreach ($groups as $g) {
+            $n = intval($g->n);
+            $out['count'] += $n;
+            $st = strval($g->st ?? '');
+            $out['by_status'][$st] = ($out['by_status'][$st] ?? 0) + $n;
+            if (!is_nullorempty($g->ms)) {
+                $out['by_ms'][strval($g->ms)] = ($out['by_ms'][strval($g->ms)] ?? 0) + $n;
+            }
+            if (!is_nullorempty($g->pa)) {
+                $out['kids'][strval($g->pa)] = ($out['kids'][strval($g->pa)] ?? 0) + $n;
+            }
+        }
+        $out['by_status'] = (object) $out['by_status'];
+        $out['by_ms'] = (object) $out['by_ms'];
+        $out['kids'] = (object) $out['kids'];
+        $out['url'] = PortalDefinition::url($project->id, 'archived');
+
+        return $out;
+    }
+
+    /**
+     * The issues plus the archived ones in the given milestones - the
+     * burndown draws a milestone's whole history, finished work included.
+     */
+    protected function withArchivedOf($project, $issues, ?array $archive, array $milestones)
+    {
+        $ms = $this->issueColumnSql(array_get($this->def['issue'], 'milestone'));
+        if ($archive === null || $ms === null || empty($milestones)) {
+            return $issues;
+        }
+        $ids = array_map('strval', array_keys($milestones));
+        $more = $this->dashboardLean($this->projectIssueQuery($project))
+            ->whereRaw($archive['archived_sql'], $archive['bindings'])
+            ->whereRaw($ms . ' IN (' . implode(',', array_fill(0, count($ids), '?')) . ')', $ids)
+            ->get();
+
+        return $more->isEmpty() ? $issues : $issues->concat($more)->values();
+    }
+
+    /**
+     * List rows with the reader's stars, watches and unread marks.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread): array
+    {
+        $rows = [];
+        foreach ($issues as $issue) {
+            $row = $this->buildIssueRow($project, $issue);
+            $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
+            $row['my_star'] = in_array(strval($issue->id), $my_stars);
+            $row['my_watch'] = in_array(strval($issue->id), $my_watches);
+            $row['unread'] = isset($unread[intval($issue->id)]);
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The archived issues of a project, as list rows (ISS00332).
+     */
+    public function archivedIssues(Request $request, $id)
+    {
+        if (PortalSetup::needsSetup()) {
+            return $this->messageError(409, 'setup_required');
+        }
+        $project = $this->findProject($id);
+        $archive = $this->archiveScope($project);
+        if ($archive === null) {
+            return response()->json(['ok' => true, 'issues' => [], 'users' => (object) []]);
+        }
+        $me = \Exment::getUserId();
+        $issue_name = $this->issue_table->table_name;
+        $issues = $this->dashboardLean($this->projectIssueQuery($project))
+            ->whereRaw($archive['archived_sql'], $archive['bindings'])
+            ->get();
+        $this->issue_table->setGridAuthoritable($issues);
+        $ids = $issues->pluck('id')->toArray();
+        $rows = $this->issueRowsWith(
+            $project,
+            $issues,
+            Star::counts(Star::TYPE_STAR, $issue_name, $ids),
+            Star::mine(Star::TYPE_STAR, $issue_name, $ids, $me),
+            Star::mine(Star::TYPE_WATCH, $issue_name, $ids, $me),
+            $this->unreadIssues($issues, $me)
+        );
+        $user_ids = collect($rows)->pluck('as')->flatten()->merge(collect($rows)->pluck('by'))->filter()->unique()->values()->toArray();
+
+        return response()->json(['ok' => true, 'issues' => $rows, 'users' => $this->usersFor($user_ids)]);
     }
 
     /**

@@ -182,6 +182,11 @@ class PluginPage extends PluginPageBase
         return $this->portal()->projectReadAll(request(), $id);
     }
 
+    public function archivedIssues($id)
+    {
+        return $this->portal()->archivedIssues(request(), $id);
+    }
+
     public function issueRead($id, $issue_id)
     {
         return $this->portal()->issueRead(request(), $id, $issue_id);

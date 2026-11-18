@@ -427,14 +427,14 @@ window.PmPortalBoot = function () {
         var overdue = open.filter(function (i) { return i.dd && daysTo(i.dd) < 0; });
         var soon = open.filter(function (i) { return i.dd && daysTo(i.dd) >= 0 && daysTo(i.dd) <= 3; });
         document.getElementById('pp-stats').innerHTML =
-            '<div class="bl-stat"><div class="n">' + D.issues.length + '</div><div class="l"><i class="fa fa-tasks"></i>' + L.stat_all + '</div></div>' +
+            '<div class="bl-stat"><div class="n">' + (D.issues.length + arCount()) + '</div><div class="l"><i class="fa fa-tasks"></i>' + L.stat_all + '</div></div>' +
             '<div class="bl-stat"><div class="n">' + open.length + '</div><div class="l"><i class="fa fa-folder-open-o"></i>' + L.stat_open + '</div></div>' +
             '<div class="bl-stat' + (overdue.length ? ' warn' : '') + '"><div class="n">' + overdue.length + '</div><div class="l"><i class="fa fa-exclamation-circle"></i>' + L.stat_overdue + '</div></div>' +
             '<div class="bl-stat"><div class="n">' + soon.length + '</div><div class="l"><i class="fa fa-clock-o"></i>' + L.stat_soon + '</div></div>';
 
         var stack = '', leg = '';
         (D.statuses || []).forEach(function (s) {
-            var n = D.issues.filter(function (i) { return i.st === s.k; }).length;
+            var n = D.issues.filter(function (i) { return i.st === s.k; }).length + arIn('by_status', s.k);
             if (n) { stack += '<i style="flex:' + n + ';background:' + ppColor(s.c) + '" title="' + esc(s.l) + ' ' + n + '"></i>'; }
             leg += '<span><span class="sw" style="background:' + ppColor(s.c) + '"></span>' + esc(s.l) + ' <b>' + n + '</b>' + L.unit_cnt + '</span>';
         });
@@ -445,8 +445,12 @@ window.PmPortalBoot = function () {
         Object.keys(D.milestones || {}).forEach(function (k) {
             var m = D.milestones[k];
             var all = D.issues.filter(function (i) { return i.ms === k; });
-            if (!all.length) { return; }
+            // Archived issues are finished ones.
+            var arN = arIn('by_ms', k);
+            if (!all.length && !arN) { return; }
             var done = all.filter(function (i) { return isDone(i.st); });
+            done = { length: done.length + arN };
+            all = { length: all.length + arN };
             var pct = Math.round(done.length * 100 / all.length);
             var left = m.due ? daysTo(m.due) : null;
             ms += '<div class="row"><span class="nm"><i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:6px;"></i>' + esc(m.l) + '</span>' +
@@ -486,6 +490,43 @@ window.PmPortalBoot = function () {
                 (f.extra ? '<span class="ex">' + esc(f.extra) + '</span>' : '') + '</div>' +
                 '<div class="tm"><i class="fa fa-clock-o"></i> ' + esc(f.at) + '</div></div></div>';
         }).join('') || ('<div style="color:var(--bl-faint);">' + esc(L.empty) + '</div>');
+    }
+
+    /* ------------------------------------------------ archive ----------- */
+    // ISS00332: issues finished more than D.archive.days days ago are not in
+    // the page. D.archive counts them (per status, milestone, parent) so the
+    // numbers still cover the whole project; the rows come on request.
+    var AR = { loaded: false, show: false, busy: null };
+    function arOn() { return !!(D.archive && D.archive.count > 0); }
+    // What D.issues is missing: nothing once the rows are here.
+    function arCount() { return arOn() && !AR.loaded ? Number(D.archive.count) || 0 : 0; }
+    function arIn(map, k) { return arOn() && !AR.loaded ? Number((D.archive[map] || {})[String(k)] || 0) : 0; }
+    function loadArchived() {
+        if (!arOn() || AR.loaded) { return $.Deferred().resolve().promise(); }
+        if (AR.busy) { return AR.busy; }
+        AR.busy = $.getJSON(D.archive.url).then(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            $.extend(D.users, res.users || {});
+            var have = {};
+            (D.issues || []).forEach(function (i) { have[String(i.id)] = true; });
+            (res.issues || []).forEach(function (r) {
+                if (!have[String(r.id)]) { r.ar = true; D.issues.push(r); }
+            });
+            AR.loaded = true;
+        }).always(function () { AR.busy = null; });
+
+        return AR.busy;
+    }
+    function showArchived(on) {
+        AR.show = !!on;
+        if (!on) { PAGE.no = 1; renderIssues(); return; }
+        var note = document.getElementById('pp-ar-note');
+        if (note) { note.textContent = L.ar_loading; }
+        loadArchived().then(function () {
+            if (!alive()) { return; }
+            PAGE.no = 1;
+            renderIssues();
+        }, function () { toast(L.ar_fail, true); renderIssues(); });
     }
 
     /* ------------------------------------------------ issues ------------ */
@@ -958,12 +999,13 @@ window.PmPortalBoot = function () {
 
     function renderIssueFilters() {
         var tabs = '<button class="bl-sttab' + (FILTER.st === '' ? ' active' : '') + '" data-st="">' +
-            esc(L.f_all) + '<span class="ct">' + D.issues.length + '</span></button>';
+            esc(L.f_all) + '<span class="ct">' + (D.issues.length + arCount()) + '</span></button>';
         tabs += '<button class="bl-sttab' + (FILTER.st === ST_NOT_DONE ? ' active' : '') + '" data-st="' + ST_NOT_DONE + '">' +
             esc(L.f_not_done || '完了以外') + '<span class="ct">' +
-            D.issues.filter(function (i) { return stMatch(i.st, ST_NOT_DONE); }).length + '</span></button>';
+            (D.issues.filter(function (i) { return stMatch(i.st, ST_NOT_DONE); }).length +
+                (D.statuses || []).reduce(function (n, s) { return n + (stMatch(s.k, ST_NOT_DONE) ? arIn('by_status', s.k) : 0); }, 0)) + '</span></button>';
         (D.statuses || []).forEach(function (s) {
-            var n = D.issues.filter(function (i) { return i.st === s.k; }).length;
+            var n = D.issues.filter(function (i) { return i.st === s.k; }).length + arIn('by_status', s.k);
             tabs += '<button class="bl-sttab' + (FILTER.st === s.k ? ' active' : '') + '" data-st="' + esc(s.k) + '">' +
                 '<span class="dot" style="background:' + ppColor(s.c) + '"></span>' + esc(s.l) + '<span class="ct">' + n + '</span></button>';
         });
@@ -1081,6 +1123,7 @@ window.PmPortalBoot = function () {
         var quick = FILTER.q ? qchipTest(FILTER.q) : null;
 
         return (D.issues || []).filter(function (i) {
+            if (i.ar && !AR.show) { return false; }
             if (quick && !quick(i)) { return false; }
             if (FILTER.st && !stMatch(i.st, FILTER.st)) { return false; }
             if (FILTER.as && i.as.map(String).indexOf(String(FILTER.as)) < 0) { return false; }
@@ -1127,7 +1170,7 @@ window.PmPortalBoot = function () {
         // tree mode only: a narrow column left of 件名 holds the indent and
         // the ▼/▶ or └ (snoro 2026-11-18), so the subject cell stays clean
         var tHead = document.getElementById('pp-tcol-head');
-        if (tHead) { tHead.hidden = !TREE_ON; }
+        if (tHead) { tHead.hidden = !TREE_ON; tHead.textContent = L.col_tree; }
 
         var onPage = {};
         if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
@@ -1190,7 +1233,8 @@ window.PmPortalBoot = function () {
     function renderPager(total, from, shown, pages, matched) {
         // Two different facts, and the reader wants both: where this page sits
         // inside the filtered list, and how much of the project that list is.
-        var count = fmt(L.cnt_line, typeof matched === 'number' ? matched : total, D.issues.length);
+        var count = fmt(L.cnt_line, typeof matched === 'number' ? matched : total, D.issues.length + arCount());
+        renderArchiveNote();
         document.getElementById('pp-issue-count').textContent = (total === 0 || pages <= 1)
             ? count
             : String(L.pg_range).replace(':from', from + 1).replace(':to', from + shown)
@@ -1210,6 +1254,22 @@ window.PmPortalBoot = function () {
             (PAGE.no >= pages ? ' disabled' : '') + '>' + esc(L.pg_next) + '</button>';
         nav.innerHTML = html;
     }
+    // Under the list: how many finished issues are archived, and the switch.
+    // Only while the status filter could match them (all, or a done status).
+    function renderArchiveNote() {
+        var note = document.getElementById('pp-ar-note');
+        if (!note) { return; }
+        var could = FILTER.st === '' || FILTER.st === ST_NOT_DONE || isDone(FILTER.st);
+        if (!arOn() || !could) { note.innerHTML = ''; return; }
+        note.innerHTML = AR.show
+            ? esc(fmt(L.ar_shown, D.archive.count)) + ' <a href="javascript:void(0);" data-ar="0">' + esc(L.ar_hide) + '</a>'
+            : esc(fmt(L.ar_hidden, D.archive.count, D.archive.days)) + ' <a href="javascript:void(0);" data-ar="1">' + esc(L.ar_show) + '</a>';
+    }
+    $(document).on('click', '#pp-ar-note a[data-ar]', function (ev) {
+        if (!alive()) { return; }
+        ev.preventDefault();
+        showArchived(this.getAttribute('data-ar') === '1');
+    });
     // First, last, and the neighbourhood of the current page; 0 stands for the
     // gap between them. Sixty pages of buttons would be its own kind of
     // unusable.
@@ -1660,6 +1720,11 @@ window.PmPortalBoot = function () {
     // than reloading the page.
     function adoptPayload(next, seq) {
         D = next;
+        // The new payload has no archived rows again; bring them back if they
+        // were on show.
+        AR.loaded = false;
+        AR.busy = null;
+        if (AR.show) { loadArchived().then(function () { if (alive()) { renderIssues(); } }); }
         ST = {};
         ST_RANK = {};
         (D.statuses || []).forEach(function (s, n) { ST[s.k] = s; ST_RANK[s.k] = n; });
@@ -2067,9 +2132,10 @@ window.PmPortalBoot = function () {
                 + '<i class="fa fa-plus"></i> ' + esc(L.child_add) + '</a></div></div>'
             : '');
         // Backlog's childIssueSummary, from what the list already knows.
-        var kidsDone = kids.filter(function (k) { return isDone(k.st); }).length;
+        var kidsAr = arIn('kids', i.id);
+        var kidsDone = kids.filter(function (k) { return isDone(k.st); }).length + kidsAr;
         document.getElementById('pp-d-childsum').textContent =
-            kids.length ? fmt(L.children_done, kidsDone, kids.length) : '';
+            (kids.length + kidsAr) ? fmt(L.children_done, kidsDone, kids.length + kidsAr) : '';
 
         // What the reader had picked in the dock for this same issue outlives
         // the redraw - the status to move it to and who to tell - the way the
@@ -8706,6 +8772,14 @@ window.PmPortalBoot = function () {
         var m = path.match(/^issue-(.+)$/);
         if (m) {
             var id = resolveIssueRef(m[1]);
+            if (id === null && arOn() && !AR.loaded) {
+                // Maybe an archived one: not in the page until asked for. Its
+                // key is the project's key and its id ("KOYAMA-234"), so the
+                // detail can be fetched on its own (fetchDetails asks the
+                // server, which checks it belongs here).
+                var km = String(m[1]).toUpperCase().match(/^(.+)-(\d+)$/);
+                if (km && km[1] === String(D.project.key || '#').toUpperCase()) { id = km[2]; }
+            }
             if (id === null) {
                 // A key this project is not carrying: a stale bookmark, or a
                 // link copied out of a different project. The list is a more
