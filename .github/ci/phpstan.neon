@@ -24,6 +24,10 @@ parameters:
         -
             identifier: staticMethod.notFound
             message: '#^Call to an undefined static method .+::(where|whereIn|whereKey|whereNull|whereNotNull|query|create|find|findOrFail|firstOrCreate|updateOrCreate|insert|select|orderBy|count|with|destroy|max|min|pluck|exists|whereHas|withTrashed|on|lockForUpdate)\(\)\.$#'
+        # Facades (Exment::getUserId(), DB::table() ...) forward static calls at run time.
+        -
+            identifier: staticMethod.notFound
+            message: '#^Call to an undefined static method \S*Facade::#'
         # Exment adds getColumnDefinitions() to the schema builder.
         -
             identifier: staticMethod.notFound
