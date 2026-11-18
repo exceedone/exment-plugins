@@ -52,10 +52,10 @@
     };
 
     // The time an empty time field starts from when its picker is opened:
-    // the end of the working day, rather than 00:00 or whatever minute it
-    // happens to be. The picker cannot show one time while holding none, so
-    // opening it puts this in; the clear button takes it out again.
-    var TIME_VIEW = { hour: 18, minute: 0 };
+    // noon (owner's choice, 2026-11-19), rather than 00:00 or whatever minute
+    // it happens to be. The picker cannot show one time while holding none,
+    // so opening it puts this in; the clear button takes it out again.
+    var TIME_VIEW = { hour: 12, minute: 0 };
 
     // The same icon set Exment passes, so the picker looks like the one on
     // every other screen rather than like a second widget.
