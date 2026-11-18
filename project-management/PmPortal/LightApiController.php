@@ -7,6 +7,7 @@ use Exceedone\Exment\Model\CustomColumn;
 use Exceedone\Exment\Model\CustomRelation;
 use Exceedone\Exment\Model\CustomValueModelScope;
 use Exceedone\Exment\Model\LoginUser;
+use Exceedone\Exment\Model\NotifyNavbar;
 use Exceedone\Exment\Enums\SystemTableName;
 use Exceedone\Exment\Enums\ColumnType;
 use Exceedone\Exment\Enums\ErrorCode;
@@ -860,6 +861,10 @@ class LightApiController
         }
         $filtered = $this->acceptLegacyValues($table, $filtered, $row->parent_id);
         if ($deny = $this->guardIssueLink($table, $filtered)) { return $deny; }
+        // "Also by e-mail" on a new issue: the bells the save rings are the
+        // rows past this mark, and their people get the mail.
+        $mail = $this->wantsIssueMail($request, $table);
+        $bellMark = $mail ? intval(NotifyNavbar::withoutGlobalScopes()->max('id')) : 0;
         try {
             $images = $this->persistRow($table, $row, $filtered);
         } catch (ValidationException $e) {
@@ -869,9 +874,68 @@ class LightApiController
         }
 
         $row->refresh();
+        $this->markWriterRead($table, $row);
+        if ($mail) {
+            $this->mailNewIssue($table, $row, $bellMark);
+        }
         $columns = $this->pickColumns($table, null);
         $out = $this->transformRowsWithLabels(collect([$row]), $columns)[0] ?? [];
         return response()->json(['ok' => true, 'id' => $row->id, 'row' => $out, 'image_urls' => $images]);
+    }
+
+    /**
+     * Whether a new row is an issue whose writer ticked "also send by e-mail".
+     */
+    protected function wantsIssueMail(Request $request, CustomTable $table): bool
+    {
+        if ($table->table_name !== strval(array_get(PortalDefinition::config(), 'issue_table'))) {
+            return false;
+        }
+        $flag = $request->input('notify_mail');
+
+        return is_scalar($flag) && in_array(strval($flag), ['1', 'true', 'on'], true);
+    }
+
+    /**
+     * Whoever saved an issue has seen it as it now stands: their read receipt
+     * moves on, so the list does not show them their own edit as unread news
+     * and the issue does not list them as having read an older version.
+     *
+     * @param mixed $row
+     */
+    protected function markWriterRead(CustomTable $table, $row): void
+    {
+        if ($table->table_name !== strval(array_get(PortalDefinition::config(), 'issue_table'))) {
+            return;
+        }
+        try {
+            Star::markRead($table->table_name, $row->id, \Exment::getUserId());
+        } catch (\Throwable $e) {
+            Log::warning('pm_portal read mark for issue ' . $row->id . ' failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Mail the people a new issue's bells went to (PortalMail), after the
+     * answer is out. A failure here is logged: the issue is saved.
+     *
+     * @param mixed $row
+     */
+    protected function mailNewIssue(CustomTable $table, $row, int $bellMark): void
+    {
+        try {
+            $def = PortalDefinition::config();
+            $key = $this->issueCardKey($row);
+            $subject = strval(array_get($row->value, array_get($def['issue'], 'subject'), ''));
+            $description = strval(array_get($row->value, array_get($def['issue'], 'description'), ''));
+            // The description is editor HTML; the mail carries its text.
+            $description = trim(html_entity_decode(strip_tags(preg_replace('/<br\s*\/?>|<\/p>/i', "\n", $description) ?? ''), ENT_QUOTES, 'UTF-8'));
+            $body = strval(PortalDefinition::trans('mail_new_issue')) . ($description !== '' ? "\n\n" . $description : '');
+            $url = PortalDefinition::url($row->parent_id) . '#issue-' . (strpos($key, '#') === false ? $key : strval($row->id));
+            PortalMail::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), '[' . $key . '] ' . $subject, $body, $url);
+        } catch (\Throwable $e) {
+            Log::error('pm_portal mail for new issue ' . $row->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+        }
     }
 
     /**
@@ -950,6 +1014,7 @@ class LightApiController
         }
 
         $row->refresh();
+        $this->markWriterRead($table, $row);
         $columns = $this->pickColumns($table, null);
         $out = $this->transformRowsWithLabels(collect([$row]), $columns)[0] ?? [];
 

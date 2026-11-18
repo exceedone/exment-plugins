@@ -447,7 +447,7 @@ class PmPortalController extends AdminControllerBase
         $detail = $this->issueDetailData($project, $issue, \Exment::getUserId());
 
         return response()->json(array_merge(['ok' => true], $detail, [
-            'users' => $this->usersFor(collect($detail['timeline'])->pluck('by')->filter()->unique()->values()->toArray()),
+            'users' => $this->usersFor($this->detailUserIds($detail)),
         ]));
     }
 
@@ -483,7 +483,7 @@ class PmPortalController extends AdminControllerBase
             if (!isset($details[$key])) {
                 continue;
             }
-            $user_ids = array_merge($user_ids, collect($details[$key]['timeline'])->pluck('by')->filter()->all());
+            $user_ids = array_merge($user_ids, $this->detailUserIds($details[$key]));
             $details[$key]['issue'] = $this->buildIssueRow($project, $issue);
         }
 
@@ -611,6 +611,8 @@ class PmPortalController extends AdminControllerBase
 
         $watch_counts = Star::counts(Star::TYPE_WATCH, $issue_name, $ids);
         $my_watches = Star::mine(Star::TYPE_WATCH, $issue_name, $ids, $me);
+        // Read receipts: one more indexed read on the same table.
+        $readers = Star::readers($issue_name, $ids);
 
         // An archived project takes no edits and no comment changes (see
         // postComment), so the screen is not offered controls that can only
@@ -692,6 +694,23 @@ class PmPortalController extends AdminControllerBase
                 return strcmp($a['ts'], $b['ts']);
             });
 
+            // Who has opened the issue, latest first. "old" = opened before
+            // its last change, so that reader has not seen the latest yet.
+            $last_change = strval($issue->updated_at ?? $issue->created_at);
+            foreach (($comments[intval($issue->id)] ?? []) as $comment) {
+                if (strval($comment->created_at) > $last_change) {
+                    $last_change = strval($comment->created_at);
+                }
+            }
+            $reads = [];
+            foreach (($readers[strval($issue->id)] ?? []) as $read) {
+                $reads[] = [
+                    'by' => $read['by'],
+                    'at' => $this->fmtAt($read['ts']),
+                    'old' => $read['ts'] < $last_change,
+                ];
+            }
+
             $out[strval($issue->id)] = [
                 'description' => \Exceedone\Exment\ColumnItems\CustomColumns\Editor::replaceImgUrl(
                     strval(array_get($issue->value, array_get($this->def['issue'], 'description'), ''))
@@ -706,6 +725,7 @@ class PmPortalController extends AdminControllerBase
                     return $row;
                 })->values()->all(),
                 'files' => $files,
+                'reads' => $reads,
             ];
             if ($partial) {
                 $out[strval($issue->id)]['partial'] = true;
@@ -849,9 +869,223 @@ class PmPortalController extends AdminControllerBase
             Log::error('pm_portal bells for issue ' . $issue->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
         }
 
+        // The writer has seen what they wrote: their read receipt moves on.
+        Star::markRead($issue_name, $issue->id, \Exment::getUserId());
+
+        // "Also by e-mail": everyone who got a bell for this write, after the
+        // answer has gone out.
+        if ($this->wantsMail($request)) {
+            PortalMail::afterResponse(
+                $issue_name,
+                $issue,
+                $bell_mark,
+                \Exment::getUserId(),
+                '[' . $this->issueKey($project, $issue->id) . '] ' . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
+                implode("\n", $lines),
+                $this->issueUrl($project, $issue->id)
+            );
+        }
+
         // Answer with the refreshed detail so the screen patches itself -
         // a reload would cost another framework boot for data we already have.
         return $this->issueDetailResponse($project, $issue->id);
+    }
+
+    /**
+     * Mark an issue read (opened) or unread for the signed-in user.
+     *
+     * The screen calls this without waiting when an issue is opened, and from
+     * the list's right-click menu. Allowed on archived projects too: it
+     * changes nothing anybody else reads except the read receipts.
+     */
+    public function issueRead(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        $me = \Exment::getUserId();
+        $flag = $request->get('read', '1');
+        $read = !in_array(is_scalar($flag) ? strval($flag) : '1', ['0', 'false'], true);
+
+        Star::markRead($this->issue_table->table_name, $issue->id, $me, $read);
+        // The unread mark counts changes from the first opening on, so that
+        // turning this on does not make every old issue unread at once.
+        $user = \Admin::user();
+        if ($user && is_nullorempty($user->getSettingValue('pmportal.read_since'))) {
+            $user->setSettingValue('pmportal.read_since', \Carbon\Carbon::now()->format('Y-m-d H:i:s'));
+        }
+
+        $readers = Star::readers($this->issue_table->table_name, [$issue->id]);
+        $reads = [];
+        foreach (($readers[strval($issue->id)] ?? []) as $row) {
+            $reads[] = ['by' => $row['by'], 'at' => $this->fmtAt($row['ts'])];
+        }
+
+        return response()->json([
+            'ok' => true,
+            'read' => $read,
+            'reads' => $reads,
+            'users' => $this->usersFor(array_column($reads, 'by')),
+        ]);
+    }
+
+    /**
+     * "Mail this issue": send the issue, with a short note, to the people
+     * picked on the issue screen, now - no comment or edit needed.
+     *
+     * Only people who can open the issue get it, the sender never mails
+     * themselves, and the mails go out after the answer.
+     */
+    public function mailIssue(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        $me = intval(\Exment::getUserId());
+
+        $picked = collect((array) $request->get('users', []))
+            ->filter(function ($v) {
+                return is_numeric($v) && intval($v) > 0;
+            })
+            ->map(function ($v) {
+                return intval($v);
+            })
+            ->unique()
+            ->take(self::NOTIFY_PICK_LIMIT)
+            ->values()
+            ->all();
+        $targets = array_values(array_diff(PortalMembership::filterReaders($issue, $picked), [$me]));
+        if (empty($targets)) {
+            return $this->messageError(400, 'mail_no_target');
+        }
+
+        $note = $request->get('message', '');
+        $note = is_scalar($note) ? mb_substr(trim(strval($note)), 0, 2000) : '';
+        $sender = \Exment::user();
+        $sender_name = $sender && $sender->base_user ? strval($sender->base_user->getLabel()) : '';
+        $description = strval(array_get($issue->value, array_get($this->def['issue'], 'description'), ''));
+        $description = trim(html_entity_decode(strip_tags(preg_replace('/<br\s*\/?>|<\/p>/i', "\n", $description) ?? ''), ENT_QUOTES, 'UTF-8'));
+        if (mb_strlen($description) > 1000) {
+            $description = mb_substr($description, 0, 1000) . '…';
+        }
+
+        $body = strval(PortalDefinition::trans('mail_issue_from', ['name' => $sender_name]));
+        if ($note !== '') {
+            $body .= "\n\n" . $note;
+        }
+        if ($description !== '') {
+            $body .= "\n\n----\n" . $description;
+        }
+
+        PortalMail::afterResponseTo(
+            $targets,
+            $issue,
+            '[' . $this->issueKey($project, $issue->id) . '] ' . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
+            $body,
+            $this->issueUrl($project, $issue->id)
+        );
+
+        // Picked but not able to open the issue: said, not mailed.
+        $skipped = count(array_diff($picked, $targets, [$me]));
+
+        return response()->json(['ok' => true, 'count' => count($targets), 'skipped' => $skipped]);
+    }
+
+    /**
+     * The issues the user has not seen in their latest state: somebody else
+     * changed the issue or commented on it after the user last opened it, or
+     * the user marked it unread by hand.
+     *
+     * Two indexed queries for the whole project whatever its size - the
+     * user's read times and the latest comment by others per issue - and
+     * none at all for a user who has never opened an issue since read
+     * receipts came in.
+     *
+     * @param \Illuminate\Support\Collection $issues
+     * @param mixed $me
+     * @return array<int, true> issue id => true
+     */
+    protected function unreadIssues($issues, $me): array
+    {
+        $user = \Admin::user();
+        $since = $user ? strval($user->getSettingValue('pmportal.read_since')) : '';
+        if ($since === '' || $issues->isEmpty()) {
+            return [];
+        }
+        $issue_name = $this->issue_table->table_name;
+        $ids = $issues->pluck('id')->map(function ($v) {
+            return intval($v);
+        })->all();
+        $reads = Star::readTimes($issue_name, $ids, $me);
+        // Only comments on issues the user can already see (the ids above),
+        // so the table's own scope adds nothing but cost here.
+        $comments = getModelName(SystemTableName::COMMENT)::withoutGlobalScopes()
+            ->whereIn('parent_id', $ids)
+            ->where('parent_type', $issue_name)
+            ->where('created_user_id', '<>', $me)
+            ->groupBy('parent_id')
+            ->selectRaw('parent_id, max(created_at) as last_at')
+            ->pluck('last_at', 'parent_id')
+            ->all();
+
+        $out = [];
+        foreach ($issues as $issue) {
+            $id = intval($issue->id);
+            $read = array_key_exists(strval($id), $reads) ? $reads[strval($id)] : null;
+            if ($read === '') {
+                $out[$id] = true;   // marked unread by hand
+                continue;
+            }
+            $last = '';
+            if (intval($issue->updated_user_id) !== intval($me)) {
+                $last = strval($issue->updated_at ?? $issue->created_at);
+            }
+            $comment_at = strval($comments[$id] ?? '');
+            if ($comment_at > $last) {
+                $last = $comment_at;
+            }
+            if ($last !== '' && $last > $since && ($read === null || $last > $read)) {
+                $out[$id] = true;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Whether the writer ticked "also send by e-mail".
+     */
+    public function wantsMail(Request $request): bool
+    {
+        $flag = $request->input('notify_mail');
+
+        return is_scalar($flag) && in_array(strval($flag), ['1', 'true', 'on'], true);
+    }
+
+    /**
+     * Where one issue opens in the portal, as a full URL for a mail.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @param mixed $issue_id
+     */
+    public function issueUrl($project, $issue_id): string
+    {
+        $key = $this->issueKey($project, $issue_id);
+
+        return PortalDefinition::url($project->id) . '#issue-' . ($key !== '' && strpos($key, '#') === false ? $key : strval($issue_id));
+    }
+
+    /**
+     * Everyone an issue's detail names: the timeline's people and its readers.
+     *
+     * @param array<string, mixed> $detail
+     * @return array<int, int>
+     */
+    protected function detailUserIds(array $detail): array
+    {
+        return collect(array_get($detail, 'timeline', []))->pluck('by')
+            ->merge(collect(array_get($detail, 'reads', []))->pluck('by'))
+            ->filter()->map(function ($v) {
+                return intval($v);
+            })->unique()->values()->all();
     }
 
     /**
@@ -991,7 +1225,7 @@ class PmPortalController extends AdminControllerBase
         $detail['issue']['my_star'] = in_array(strval($issue->id), $my_stars);
 
         return array_merge($detail, [
-            'users' => $this->usersFor(collect($detail['timeline'])->pluck('by')->filter()->unique()->values()->toArray()),
+            'users' => $this->usersFor($this->detailUserIds($detail)),
         ]);
     }
 
@@ -1711,6 +1945,7 @@ class PmPortalController extends AdminControllerBase
         // One more indexed read on the same table the stars come from, so the
         // list can offer ウォッチ中 the way the dashboard does.
         $my_watches = Star::mine(Star::TYPE_WATCH, $issue_name, $issue_ids, $me);
+        $unread = $this->unreadIssues($issues, $me);
 
         $rows = [];
         foreach ($issues as $issue) {
@@ -1718,6 +1953,7 @@ class PmPortalController extends AdminControllerBase
             $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
             $row['my_star'] = in_array(strval($issue->id), $my_stars);
             $row['my_watch'] = in_array(strval($issue->id), $my_watches);
+            $row['unread'] = isset($unread[intval($issue->id)]);
             $rows[] = $row;
         }
 
@@ -1756,6 +1992,7 @@ class PmPortalController extends AdminControllerBase
             ->merge(collect($files['rows'])->pluck('by'))
             ->merge(collect($wiki['pages'])->pluck('upby'))
             ->merge(collect($details)->pluck('timeline')->flatten(1)->pluck('by'))
+            ->merge(collect($details)->pluck('reads')->flatten(1)->pluck('by'))
             ->filter()->unique()->values()->toArray();
 
         list($relations, $relation_types, $related_meta) = $this->buildRelations($project, $issues);

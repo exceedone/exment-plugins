@@ -11,7 +11,7 @@
         'f_all', 'f_kw', 'f_as', 'f_ty', 'f_ms', 'f_cat', 'f_save', 'f_saved',
         'f_pr', 'f_mine', 'f_clear', 'f_cleared', 'f_csv', 'f_csv_title', 'f_csv_empty',
         'sort_asc', 'sort_desc',
-        'q_overdue', 'q_soon', 'q_created', 'q_watch',
+        'q_overdue', 'q_soon', 'q_created', 'q_watch', 'q_unread',
         'pg_size', 'pg_all', 'pg_range', 'pg_prev', 'pg_next', 'pg_page',
         'sf_menu', 'sf_name_ph', 'sf_add', 'sf_none', 'sf_del', 'sf_saved', 'sf_deleted',
         'sf_need_name', 'sf_full',
@@ -24,7 +24,9 @@
         'box_related', 'children_done', 'rel_add', 'rel_none',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
         'lbl_eh', 'lbl_pg', 'lbl_parent', 'lbl_watch', 'watch', 'unwatch', 'star', 'edit', 'to_next',
-        'notify_to', 'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',
+        'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
+        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open',
+        'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',
         'dock_open', 'dock_title', 'dock_close', 'dock_cancel', 'dock_cmt', 'dock_edit', 'dock_keep',
         'dock_draft', 'dock_saving', 'dock_save_fail', 'dock_stale', 'dock_stale_keep', 'dock_empty',
         'qe_unlisted', 'qe_extra',
@@ -391,6 +393,7 @@
                             <div class="bl-boxhead"><i class="fa fa-bell-o"></i>{{ $lang['notify_to'] }}</div>
                             <div class="bl-boxbody">
                                 <div id="pp-notify-chips"></div>
+                                <label class="pp-notify-mail" title="{{ $lang['notify_mail_hint'] }}"><input type="checkbox" id="pp-notify-mail"> <i class="fa fa-envelope-o"></i> {{ $lang['notify_mail'] }}</label>
                             </div>
                         </div>
                         </div>
@@ -495,6 +498,7 @@
                     <span class="pp-ne-key" role="button" tabindex="0" title="{{ $lang['ned_key_copy'] }}"></span>
                     <span class="pp-ne-t"></span>
                     <div class="pp-ne-head-actions">
+                        <label class="pp-ne-mail" hidden title="{{ $lang['notify_mail_hint'] }}"><input type="checkbox"> <i class="fa fa-envelope-o"></i> {{ $lang['notify_mail'] }}</label>
                         <button type="button" class="pp-ne-cancel bl-btn-sub">{{ $lang['ned_back'] }}</button>
                         <button type="button" class="pp-ne-save bl-btn-main"><i class="fa fa-check"></i>&nbsp;<span class="pp-ne-save-label">{{ $lang['ned_save'] }}</span></button>
                         <span class="pp-ne-x" title="{{ $lang['ned_close'] }}"><i class="fa fa-times"></i></span>

@@ -625,7 +625,8 @@
         { k: 'created', l: 'q_created', i: 'fa-pencil', t: function (i) {
             return !!D.me && String(i.by) === String(D.me);
         } },
-        { k: 'watch', l: 'q_watch', i: 'fa-eye', t: function (i) { return !!i.my_watch; } }
+        { k: 'watch', l: 'q_watch', i: 'fa-eye', t: function (i) { return !!i.my_watch; } },
+        { k: 'unread', l: 'q_unread', i: 'fa-envelope', t: function (i) { return !!i.unread; } }
     ];
     function qchipTest(key) {
         for (var n = 0; n < QCHIPS.length; n++) {
@@ -1123,7 +1124,7 @@
                 ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;">' +
                     (tgl || (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '')) + '</span>';
             }
-            var trCls = (own(SEL, i.id) ? 'sel' : '') +
+            var trCls = (own(SEL, i.id) ? 'sel' : '') + (i.unread ? ' pp-unread' : '') +
                 (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
                 (TREE_ON && item.n > 0 ? ' pp-tpar' : '');
             var ms = own(D.milestones, i.ms);
@@ -1875,6 +1876,7 @@
             cmtPreviewOff();
         }
         currentIssue = id;
+        markRead(id, true);
         cmtSetBusy(!!cmtPending[id]);
         var issue = issueById(id);
         // ISS00257: no prewarm of issue.edit_url here - issue edits open in
@@ -1971,6 +1973,7 @@
                 '<i class="fa fa-arrow-right"></i> ' + fmt(esc(L.to_next), esc(next.l)) + '</button>' : '') +
             (res.description ? '<a class="bl-btn-sub pp-quote pp-dquote"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
             (CAN_ADD_ISSUE ? '<a class="bl-btn-sub pp-issuecopy"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
+            '<a class="bl-btn-sub pp-mailbtn"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a></span></div>' +
@@ -1980,7 +1983,8 @@
             '<span class="it"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') || '—') + '</span>' +
-            '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span></div>' +
+            '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
+            '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span></div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
                 : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
@@ -3383,6 +3387,165 @@
         });
     }
 
+    /* ------------------------------------------------ read receipts ----- */
+    // Who has opened an issue, and the list's unread mark (Outlook-style:
+    // bold until opened, and right-click to mark read / unread).
+    //
+    // Opening an issue tells the server without waiting, in the slow lane of
+    // the request queue, and only once per page view: the screen never waits
+    // on it and a busy reader's real requests go first.
+    var READ_SENT = {};
+    function readAv(r) {
+        var u = user(r.by);
+        var title = u.n + '  ' + (r.at || '') + (r.old ? '  (' + L.reads_old + ')' : '');
+        return '<span class="bl-av pp-read' + (r.old ? ' old' : '') + '" style="background:' + ppColor(u.c) + '" title="' + esc(title) + '">' +
+            esc(u.i) + avImg(u) + '</span>';
+    }
+    function readsHtml(reads) {
+        if (reads === undefined || reads === null) { return '<span class="pp-reads-v">…</span>'; }
+        if (!reads.length) { return '<span class="pp-reads-v none">' + esc(L.reads_none) + '</span>'; }
+        var shown = reads.slice(0, 15);
+        return '<span class="pp-reads-v"><span class="pp-reads-n">' + reads.length + '</span>' +
+            shown.map(readAv).join('') +
+            (reads.length > shown.length ? '<span class="pp-reads-more">+' + (reads.length - shown.length) + '</span>' : '') +
+            '</span>';
+    }
+    function paintUnread(id) {
+        var row = issueById(id);
+        var tr = document.querySelector('#pp-issue-rows tr[data-issue="' + String(id).replace(/[^0-9]/g, '') + '"]');
+        if (tr) { tr.classList.toggle('pp-unread', !!(row && row.unread)); }
+    }
+    function markRead(id, read) {
+        if (id === null || id === undefined || !D.urls || !D.urls.base) { return; }
+        var row = issueById(id);
+        var key = String(id);
+        if (read && READ_SENT[key] === true && !(row && row.unread)) { return; }
+        READ_SENT[key] = read;
+        if (row) { row.unread = !read; }
+        paintUnread(id);
+        ppQueue(function () {
+            return $.ajax({
+                url: D.urls.base + '/issue/' + encodeURIComponent(key) + '/read',
+                type: 'POST', dataType: 'json', data: { read: read ? 1 : 0 },
+                headers: { 'X-CSRF-TOKEN': CSRF }
+            });
+        }, true).then(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            $.extend(D.users, res.users || {});
+            var det = own(DET, key);
+            // A reader who just opened it has seen the latest: nobody's mark
+            // in this fresh list is "old" for what this screen shows.
+            if (det) {
+                var before = {};
+                (det.reads || []).forEach(function (r) { before[r.by] = r; });
+                det.reads = (res.reads || []).map(function (r) {
+                    var was = before[r.by];
+                    return { by: r.by, at: r.at, old: !!(was && was.at === r.at && was.old) };
+                });
+            }
+            if (String(currentIssue) === key) {
+                var box = document.querySelector('#pp-d-main .pp-reads .pp-reads-v');
+                if (box) { box.outerHTML = readsHtml(det ? det.reads : res.reads); }
+            }
+        }).catch(function () {
+            // Not worth a message: the next opening tries again.
+            if (READ_SENT[key] === read) { delete READ_SENT[key]; }
+        });
+    }
+    // "Mail this issue": pick people of the project, add a note, send.
+    function mailClose() {
+        var old = document.getElementById('pp-mailbox');
+        if (old) { old.remove(); }
+    }
+    function mailOpen(issueId) {
+        if (issueId === null || issueId === undefined) { return; }
+        mailClose();
+        var p = D.project || {};
+        var ids = [];
+        [p.manager].concat(p.members || [], p.viewers || []).forEach(function (u) {
+            u = Number(u);
+            if (u && ids.indexOf(u) < 0 && String(u) !== String(D.me)) { ids.push(u); }
+        });
+        var issue = issueById(issueId) || {};
+        var box = document.createElement('div');
+        box.id = 'pp-mailbox';
+        box.className = 'pp-mailbox';
+        box.innerHTML = '<div class="pp-mailbox-back"></div><div class="pp-mailbox-panel" role="dialog" aria-modal="true">' +
+            '<div class="pp-mailbox-head"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_title) +
+                '<div class="pp-mailbox-sub">' + esc((issue.key || '') + ' ' + (issue.subject || '')) + '</div></div>' +
+            '<div class="pp-mailbox-k">' + esc(L.mail_to) + '</div>' +
+            '<div class="pp-mailbox-users">' + ids.map(function (u) {
+                return '<label><input type="checkbox" value="' + esc(u) + '">' + avname(u) + '</label>';
+            }).join('') + '</div>' +
+            '<textarea class="pp-mailbox-msg" rows="4" placeholder="' + esc(L.mail_msg_ph) + '"></textarea>' +
+            '<div class="pp-mailbox-note">' + esc(L.mail_note) + '</div>' +
+            '<div class="pp-mailbox-foot"><span class="pp-mailbox-err"></span>' +
+                '<button type="button" class="bl-btn-sub pp-mailbox-cancel">' + esc(L.mail_cancel) + '</button>' +
+                '<button type="button" class="bl-btn-main pp-mailbox-send"><i class="fa fa-paper-plane"></i> ' + esc(L.mail_send) + '</button></div>' +
+            '</div>';
+        root.appendChild(box);
+        var err = box.querySelector('.pp-mailbox-err');
+        box.querySelector('.pp-mailbox-back').addEventListener('click', mailClose);
+        box.querySelector('.pp-mailbox-cancel').addEventListener('click', mailClose);
+        box.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { mailClose(); } });
+        box.querySelector('.pp-mailbox-users').addEventListener('change', function () { err.textContent = ''; });
+        var send = box.querySelector('.pp-mailbox-send');
+        send.addEventListener('click', function () {
+            var users = [].slice.call(box.querySelectorAll('.pp-mailbox-users input:checked')).map(function (c) { return c.value; });
+            if (!users.length) { err.textContent = L.mail_none; return; }
+            send.disabled = true;
+            err.textContent = '';
+            $.ajax({
+                url: D.urls.base + '/issue/' + encodeURIComponent(issueId) + '/mail',
+                type: 'POST', dataType: 'json',
+                data: { users: users, message: box.querySelector('.pp-mailbox-msg').value },
+                headers: { 'X-CSRF-TOKEN': CSRF }
+            }).done(function (res) {
+                if (!res || !res.ok) { send.disabled = false; err.textContent = errText(null, res, L.mail_fail); return; }
+                mailClose();
+                toast(String(L.mail_sent).replace(':count', res.count) +
+                    (res.skipped ? String(L.mail_skipped).replace(':count', res.skipped) : ''));
+            }).fail(function (xhr) {
+                send.disabled = false;
+                err.textContent = xhrErr(xhr, L.mail_fail);
+            });
+        });
+        var first = box.querySelector('.pp-mailbox-users input');
+        if (first) { first.focus(); }
+    }
+    function ctxClose() {
+        var old = document.getElementById('pp-ctx');
+        if (old) { old.remove(); }
+    }
+    function ctxOpen(x, y, items) {
+        ctxClose();
+        var menu = document.createElement('div');
+        menu.id = 'pp-ctx';
+        menu.className = 'pp-ctx';
+        menu.setAttribute('role', 'menu');
+        menu.innerHTML = items.map(function (it, n) {
+            return '<button type="button" role="menuitem" data-n="' + n + '"><i class="fa ' + esc(it.i) + '"></i> ' + esc(it.l) + '</button>';
+        }).join('');
+        root.appendChild(menu);
+        var w = menu.offsetWidth, h = menu.offsetHeight;
+        menu.style.left = Math.max(4, Math.min(x, window.innerWidth - w - 4)) + 'px';
+        menu.style.top = Math.max(4, Math.min(y, window.innerHeight - h - 4)) + 'px';
+        menu.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-n]');
+            if (!b) { return; }
+            ctxClose();
+            items[Number(b.getAttribute('data-n'))].f();
+        });
+        var first = menu.querySelector('button');
+        if (first) { first.focus(); }
+    }
+    document.addEventListener('mousedown', function (ev) {
+        if (!ev.target.closest || !ev.target.closest('#pp-ctx')) { ctxClose(); }
+    }, true);
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { ctxClose(); } });
+    window.addEventListener('scroll', ctxClose, true);
+    window.addEventListener('blur', ctxClose);
+
     /* ------------------------------------------------ writes ------------ */
     // One button, two writes, in the order Backlog puts them in: the fields
     // first, then the comment that explains them.
@@ -3434,6 +3597,8 @@
             if (hasText) { dockDraftSave(issueId, text); }
         }
         var notifyUsers = $('#pp-notify-chips .pp-notify:not(.off)').map(function () { return $(this).data('user'); }).get();
+        var mailBox = document.getElementById('pp-notify-mail');
+        var notifyMail = !!(mailBox && mailBox.checked);
         var current = function () { return detailCurrent(issueId, epoch); };
         var settled = function () {
             if (cmtPending[issueId] === sequence) { delete cmtPending[issueId]; }
@@ -3475,6 +3640,7 @@
         var send = function () {
             var seq = ++DET_SEQ;
             var data = { comment: text, status_to: statusTo || '', notify_users: notifyUsers };
+            if (notifyMail) { data.notify_mail = 1; }
             if (statusTo && statusFrom !== null) { data.status_from = statusFrom; }
             $.ajax({
                 url: base + '/issue/' + issueId + '/comment',
@@ -3507,6 +3673,8 @@
                 var stNow = document.getElementById('pp-cmt-status');
                 if (stNow && statusTo && stNow.value === String(statusTo)) { stNow.value = ''; }
                 document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
+                var mailNow = document.getElementById('pp-notify-mail');
+                if (mailNow) { mailNow.checked = false; }
                 buildDetail(own(DET, String(issueId)) || res);
                 if (!box.value.trim()) { ppDockOpen(false); }
                 if (statusTo) {
@@ -7344,6 +7512,14 @@
     // Update the save button label with a live "(N)" counter of changed
     // fields. Only meaningful in edit mode; create mode always says "保存".
     function nedUpdateChangeCount() {
+        var neMail = NED.el.querySelector('.pp-ne-mail');
+        if (neMail) {
+            var mailOn = NED.mode === 'create' && NED.table === D.issue_table;
+            if (neMail.hidden === mailOn) {
+                neMail.hidden = !mailOn;
+                if (!mailOn) { neMail.querySelector('input').checked = false; }
+            }
+        }
         var labels = NED.el.querySelectorAll('.pp-ne-save-label');
         if (!labels.length) { return; }
         var base = NED.mode === 'create'
@@ -7853,6 +8029,8 @@
         nedPbar('start');
 
         var body = { value: diff };
+        var neMail = NED.el.querySelector('.pp-ne-mail input');
+        if (isCreate && table === D.issue_table && neMail && neMail.checked) { body.notify_mail = 1; }
         // What this form knew when it opened. A save that carries it can be
         // refused; one that does not is the old blind overwrite.
         if (!isCreate && NED.rowUpdatedAt && !NED.force) { body.updated_at = NED.rowUpdatedAt; }
@@ -8984,6 +9162,8 @@
         if (cdel) { cmtDelete(cdel); return; }
         var addChild = ev.target.closest('.pp-addchild');
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
+        var mailBtn = ev.target.closest('.pp-mailbtn');
+        if (mailBtn) { mailOpen(currentIssue); return; }
         var issueCopy = ev.target.closest('.pp-issuecopy');
         if (issueCopy) { openNcreate(D.issue_table, issuePrefill('copy'), 'copy' + currentIssue); return; }
         var wikiNode = ev.target.closest('[data-wiki]');
@@ -9245,6 +9425,28 @@
             });
         }
     })();
+    // Right-click a row: open, or mark it read / unread like a mail. With
+    // rows ticked for bulk edit, a ticked row's menu acts on all of them.
+    // Shift + right-click keeps the browser's own menu.
+    document.getElementById('pp-issue-rows').addEventListener('contextmenu', function (ev) {
+        if (ev.shiftKey) { return; }
+        var tr = ev.target.closest('tr[data-issue]');
+        if (!tr || ev.target.closest('input, textarea, select, .pp-ied')) { return; }
+        var id = tr.getAttribute('data-issue');
+        var row = issueById(id);
+        if (!row) { return; }
+        ev.preventDefault();
+        var ids = own(SEL, id) ? Object.keys(SEL).filter(function (k) { return own(SEL, k) && issueById(k); }) : [id];
+        var anyUnread = ids.some(function (k) { return !!(issueById(k) || {}).unread; });
+        var items = [];
+        if (ids.length === 1) {
+            items.push({ l: L.ctx_open, i: 'fa-external-link', f: function () { location.hash = issueHash(id); } });
+        }
+        items.push(anyUnread
+            ? { l: L.ctx_read + (ids.length > 1 ? ' (' + ids.length + ')' : ''), i: 'fa-envelope-open-o', f: function () { ids.slice(0, 100).forEach(function (k) { markRead(k, true); }); } }
+            : { l: L.ctx_unread + (ids.length > 1 ? ' (' + ids.length + ')' : ''), i: 'fa-envelope', f: function () { ids.slice(0, 100).forEach(function (k) { markRead(k, false); }); } });
+        ctxOpen(ev.clientX, ev.clientY, items);
+    });
     document.getElementById('pp-issue-rows').addEventListener('click', function (ev) {
         var tgl = ev.target.closest('.pp-tgl');
         if (!tgl) { return; }

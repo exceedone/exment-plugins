@@ -1250,4 +1250,45 @@ body.pp-ib-open{overflow:hidden;}
   .pp-top .pp-top-search{max-width:none;flex-basis:100%;margin:0 0 8px;}
 }
 
+/* Unread (read receipts): a row with something the reader has not seen yet -
+   a light tint, a dot before the subject and the subject in bold, like an
+   unread mail. */
+.pmportal .bl-list tbody tr.pp-unread{background:color-mix(in srgb, #2f80ed 6%, var(--bl-box));}
+.pmportal .bl-list tbody tr.pp-unread.sel{background:color-mix(in srgb, var(--bl-accent) 10%, color-mix(in srgb, #2f80ed 6%, var(--bl-box)));}
+.pmportal .bl-list tbody tr.pp-unread td.sub{font-weight:700;}
+.pmportal .bl-list tbody tr.pp-unread td.sub::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:#2f80ed;margin-right:6px;vertical-align:middle;}
+/* Who opened the issue, on the detail's summary line. */
+.pmportal .pp-reads .pp-reads-v{display:inline-flex;align-items:center;gap:2px;flex-wrap:wrap;}
+.pmportal .pp-reads .pp-reads-v.none{color:var(--bl-faint);font-size:12px;}
+.pmportal .pp-reads .pp-reads-n{font-size:12px;color:var(--bl-sub);margin-right:4px;}
+.pmportal .pp-reads .pp-read{width:20px;height:20px;font-size:10px;line-height:20px;}
+.pmportal .pp-reads .pp-read.old{opacity:.4;}
+.pmportal .pp-reads .pp-reads-more{font-size:11px;color:var(--bl-sub);margin-left:3px;}
+/* Right-click menu of the issue list. */
+.pmportal .pp-ctx{position:fixed;z-index:3000;min-width:160px;padding:4px 0;background:var(--bl-box);color:var(--bl-ink);
+  border:1px solid var(--bl-line);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.18);}
+.pmportal .pp-ctx button{display:block;width:100%;text-align:left;padding:7px 14px;border:0;background:none;color:inherit;font-size:13px;cursor:pointer;}
+.pmportal .pp-ctx button:hover,.pmportal .pp-ctx button:focus{background:var(--bl-hover);outline:none;}
+.pmportal .pp-ctx button i{width:16px;color:var(--bl-sub);}
+/* "Also by e-mail" on the comment form and the new-issue form. */
+.pmportal .pp-notify-mail{display:flex;align-items:center;gap:4px;margin:8px 0 0;font-size:12px;font-weight:400;color:var(--bl-sub);cursor:pointer;}
+.pmportal .pp-ne-mail{display:inline-flex;align-items:center;gap:4px;margin:0 6px 0 0;font-size:12px;font-weight:400;color:var(--bl-sub);cursor:pointer;white-space:nowrap;}
+.pmportal .pp-ne-mail[hidden]{display:none;}
+
+/* "Mail this issue" dialog. */
+.pmportal .pp-mailbox{position:fixed;inset:0;z-index:2900;display:flex;align-items:center;justify-content:center;padding:16px;}
+.pmportal .pp-mailbox-back{position:absolute;inset:0;background:rgba(0,0,0,.35);}
+.pmportal .pp-mailbox-panel{position:relative;width:100%;max-width:520px;max-height:calc(100vh - 32px);overflow:auto;background:var(--bl-box);color:var(--bl-ink);
+  border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:16px 18px;}
+.pmportal .pp-mailbox-head{font-weight:700;font-size:15px;margin-bottom:10px;}
+.pmportal .pp-mailbox-sub{font-weight:400;font-size:12px;color:var(--bl-sub);margin-top:2px;}
+.pmportal .pp-mailbox-k{font-size:12px;color:var(--bl-sub);margin:6px 0 4px;}
+.pmportal .pp-mailbox-users{display:flex;flex-wrap:wrap;gap:6px 14px;max-height:180px;overflow:auto;padding:6px 0;}
+.pmportal .pp-mailbox-users label{display:flex;align-items:center;gap:4px;font-weight:400;cursor:pointer;margin:0;}
+.pmportal .pp-mailbox-msg{width:100%;margin-top:8px;border:1px solid var(--bl-line);border-radius:4px;padding:6px 8px;background:var(--bl-box);color:var(--bl-ink);}
+.pmportal .pp-mailbox-note{font-size:11px;color:var(--bl-faint);margin-top:6px;}
+.pmportal .pp-mailbox-foot{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:12px;}
+.pmportal .pp-mailbox-err{margin-right:auto;color:var(--bl-red);font-size:12px;}
+
 </style>
