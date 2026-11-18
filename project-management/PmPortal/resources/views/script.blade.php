@@ -1,5 +1,10 @@
 <script>
-(function () {
+// Run from index.blade.php's inline call as well: Exment swaps pages through
+// pjax, which does not run a script file the page has already loaded, so a
+// project opened from another project's page would otherwise get no script
+// at all (empty issue list until F5). The ppBound check makes a second call
+// for the same page a no-op.
+window.PmPortalBoot = function () {
     'use strict';
     var root = document.getElementById('pmportal');
     if (!root || root.dataset.ppBound) { return; }
@@ -663,6 +668,7 @@
     // Every filter, sort or page-size change goes through here, so the page
     // number and the selection can never be left describing the old list.
     function afterFilterChange() {
+        FILTER_CARRIED = false;
         PAGE.no = 1;
         clearSelection();
         renderIssues();
@@ -679,6 +685,20 @@
     // Only what means the same in every project is carried over: status ids,
     // types, milestones and categories are per project, so a value from
     // another project is kept only if this project has it too.
+    // Set while the filter in use is the one brought over from another
+    // project. If it shows nothing here, it is dropped (see renderIssues):
+    // a keyword, an assignee or 未読 from the last project can easily match
+    // nothing in this one, and an empty list read as "the issues are gone".
+    var FILTER_CARRIED = false;
+    function dropCarriedFilterIfEmpty() {
+        if (!FILTER_CARRIED || !(D.issues || []).length) { return; }
+        FILTER_CARRIED = false;
+        if (filteredIssues().length > 0) { return; }
+        FILTER_FIELDS.forEach(function (k) { FILTER[k] = ''; });
+        syncFilterControls();
+        rememberLastFilter();
+        toast(L.f_carried_cleared);
+    }
     function carriedFilterValue(k, v) {
         if (k === 'st') { return (v === '!done' || own(ST, v)) ? v : ''; }
         if (k === 'ty') { return own(D.types, v) ? v : ''; }
@@ -704,6 +724,7 @@
                     var v = own(last.f, k);
                     if (typeof v === 'string' || typeof v === 'number') { FILTER[k] = carriedFilterValue(k, String(v)); }
                 });
+                FILTER_CARRIED = true;
             }
         }
     } catch (e) { /* ignore */ }
@@ -1075,6 +1096,7 @@
         }).sort(sortCmp());
     }
     function renderIssues() {
+        dropCarriedFilterIfEmpty();
         renderIssueFilters();
         renderSortHead();
 
@@ -9848,5 +9870,6 @@
     // warm so it never fights them for the network.
     // ISS00257: the gantt is no longer embedded in advance either; it loads
     // when its tab is opened (ensureEmbed).
-})();
+};
+window.PmPortalBoot();
 </script>

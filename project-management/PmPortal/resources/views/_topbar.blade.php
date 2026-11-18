@@ -78,7 +78,7 @@
 /* project menu - the dashboard's project panel, in a dropdown ---------- */
 /* The header, the filter box and プロジェクトの追加 stay put; only the
    list moves, so the box you are typing in never scrolls away. */
-.pp-top .pp-top-pjmenu{width:560px;min-width:0;max-width:calc(100vw - 32px);
+.pp-top .pp-top-pjmenu{width:720px;min-width:0;max-width:calc(100vw - 32px);
     max-height:none;overflow:hidden;}
 /* As tall as the window allows: the script sets the exact height when the
    menu opens; this is what holds until then (and without javascript). */
@@ -118,24 +118,29 @@
 .pp-top .pp-pjm-row.drop-before{box-shadow:inset 0 3px 0 var(--bl-accent,#4cae93);}
 .pp-top .pp-pjm-row.drop-after{box-shadow:inset 0 -3px 0 var(--bl-accent,#4cae93);}
 .pp-top .pp-pjm-row .mn{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;}
-.pp-top .pp-pjm-row .l1{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;}
-.pp-top .pp-pjm-row .nm{flex:0 1 auto;min-width:40px;font-size:13px;font-weight:700;
+.pp-top .pp-pjm-row .l1{flex:1 1 0;min-width:90px;display:flex;align-items:center;gap:6px;}
+.pp-top .pp-pjm-row .nm{flex:0 1 auto;min-width:0;font-size:13px;font-weight:700;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pp-top .pp-pjm-row .nm:hover{text-decoration:underline;}
 .pp-top .pp-pjm-row.cur{background:var(--bl-chip,#eef3f6);box-shadow:inset 3px 0 0 var(--bl-accent,#4cae93);}
 .pp-top .pp-pjm-row.cur .nm{color:var(--bl-accent-d,#3d9a80);}
 .pp-top .pp-pjm-row .up{flex:0 2 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     font-size:10.5px;color:var(--bl-sub,#8a97a3);}
-.pp-top .pp-pjm-row .cd{flex:0 3 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.pp-top .pp-pjm-row .cd{flex:none;width:104px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     background:var(--bl-chip,#eef3f6);border-radius:3px;padding:0 6px;
     font-size:10.5px;font-weight:700;color:var(--bl-sub,#51616f);font-family:Menlo,Consolas,monospace;}
-.pp-top .pp-pjm-row .pill{flex:none;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;font-weight:700;line-height:1.6;}
+.pp-top .pp-pjm-row .cd.none{background:none;}
+.pp-top .pp-pjm-row .ps{flex:none;width:52px;text-align:center;}
+.pp-top .pp-pjm-row .pill{display:inline-block;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;font-weight:700;line-height:1.6;}
 .pp-top .pp-pjm-row .ar{flex:none;background:#7f8c8d;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;}
 .pp-top .pp-pjm-row .mt{flex:none;display:flex;align-items:center;gap:7px;font-size:11px;white-space:nowrap;
     color:var(--bl-sub,#8a97a3);font-variant-numeric:tabular-nums;}
 .pp-top .pp-pjm-row .mt .bar{flex:none;width:44px;height:5px;border-radius:3px;background:#e6ecf0;overflow:hidden;}
 .pp-top .pp-pjm-row .mt .bar i{display:block;height:100%;background:var(--bl-accent,#4cae93);}
-.pp-top .pp-pjm-row .mt .pc{min-width:28px;text-align:right;}
+.pp-top .pp-pjm-row .mt .pc{min-width:30px;text-align:right;}
+.pp-top .pp-pjm-row .mt .op{min-width:62px;text-align:right;}
+.pp-top .pp-pjm-row .mt .od{min-width:64px;}
+.pp-top .pp-pjm-row .mt .mi{min-width:50px;}
 .pp-top .pp-pjm-row .mt .od{color:var(--bl-red,#e5544b);font-weight:700;}
 .pp-top .pp-pjm-row .mt .mi{color:var(--bl-accent-d,#3d9a80);font-weight:700;}
 .pp-top .pp-pjm-row:hover,.pp-top .pp-pjm-row:focus-within{background:var(--bl-hover,#f2f8f5);}
@@ -148,7 +153,8 @@
 /* Narrow menu: the bar and the percentage go first, the counts stay. */
 @media (max-width:560px){
     .pp-top .pp-pjm-row .mt .bar,.pp-top .pp-pjm-row .mt .pc{display:none;}
-    .pp-top .pp-pjm-row .cd{display:none;}
+    .pp-top .pp-pjm-row .cd,.pp-top .pp-pjm-row .ps{display:none;}
+    .pp-top .pp-pjm-row .mt .od:empty,.pp-top .pp-pjm-row .mt .mi:empty{display:none;}
 }
 .pp-top .pp-pjm-foot{border-top:1px solid var(--bl-line,#dfe5ea);}
 
@@ -732,12 +738,6 @@
         var name = el('a', 'nm', p.name);
         name.href = url;
         l1.appendChild(name);
-        if (p.key) { l1.appendChild(el('span', 'cd', p.key)); }
-        if (p.status && p.status.l) {
-            var pill = el('span', 'pill', p.status.l);
-            pill.style.background = String(p.status.c || '#8a97a3');
-            l1.appendChild(pill);
-        }
         if (p.archived) { l1.appendChild(el('span', 'ar', LANG.archived_tag)); }
         // nested rows already show their parent by position; only a top-level
         // row whose parent is not listed keeps the "↪ parent" hint
@@ -749,6 +749,19 @@
             l1.appendChild(up);
         }
         main.appendChild(l1);
+        // Key and status sit in fixed columns right of the name, so they line
+        // up from row to row whatever the name's length or indent
+        // (snoro 2026-11-19). An empty slot keeps the column when one is missing.
+        var key = el('span', 'cd' + (p.key ? '' : ' none'), p.key || '');
+        if (p.key) { key.title = String(p.key); }
+        main.appendChild(key);
+        var slot = el('span', 'ps');
+        if (p.status && p.status.l) {
+            var pill = el('span', 'pill', p.status.l);
+            pill.style.background = String(p.status.c || '#8a97a3');
+            slot.appendChild(pill);
+        }
+        main.appendChild(slot);
 
         var meta = el('div', 'mt');
         var track = el('span', 'bar');
@@ -758,9 +771,10 @@
         track.appendChild(fill);
         meta.appendChild(track);
         meta.appendChild(el('span', 'pc', String(p.progress || 0) + '%'));
-        meta.appendChild(el('span', '', count(LANG.pj_open, p.open || 0)));
-        if (p.overdue > 0) { meta.appendChild(el('span', 'od', count(LANG.pj_overdue, p.overdue))); }
-        if (p.mine > 0) { meta.appendChild(el('span', 'mi', count(LANG.pj_mine, p.mine))); }
+        meta.appendChild(el('span', 'op', count(LANG.pj_open, p.open || 0)));
+        // Always there, empty at zero, so the columns stay put.
+        meta.appendChild(el('span', 'od', p.overdue > 0 ? count(LANG.pj_overdue, p.overdue) : ''));
+        meta.appendChild(el('span', 'mi', p.mine > 0 ? count(LANG.pj_mine, p.mine) : ''));
         main.appendChild(meta);
 
         // No launch line any more (snoro 2026-11-18): one project per line,
