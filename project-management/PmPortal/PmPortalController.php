@@ -932,8 +932,8 @@ class PmPortalController extends AdminControllerBase
      * "Mail this issue": send the issue, with a short note, to the people
      * picked on the issue screen, now - no comment or edit needed.
      *
-     * Only people who can open the issue get it, the sender never mails
-     * themselves, and the mails go out after the answer.
+     * Only people who can open the issue get it, and the mails go out after
+     * the answer. The sender may pick themselves, to keep a copy.
      */
     public function mailIssue(Request $request, $id, $issue_id)
     {
@@ -952,7 +952,7 @@ class PmPortalController extends AdminControllerBase
             ->take(self::NOTIFY_PICK_LIMIT)
             ->values()
             ->all();
-        $targets = array_values(array_diff(PortalMembership::filterReaders($issue, $picked), [$me]));
+        $targets = array_values(PortalMembership::filterReaders($issue, $picked));
         if (empty($targets)) {
             return $this->messageError(400, 'mail_no_target');
         }

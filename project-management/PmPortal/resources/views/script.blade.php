@@ -3461,10 +3461,11 @@
         if (issueId === null || issueId === undefined) { return; }
         mailClose();
         var p = D.project || {};
+        // The sender comes first, so a copy to oneself is one tick away.
         var ids = [];
-        [p.manager].concat(p.members || [], p.viewers || []).forEach(function (u) {
+        [D.me, p.manager].concat(p.members || [], p.viewers || []).forEach(function (u) {
             u = Number(u);
-            if (u && ids.indexOf(u) < 0 && String(u) !== String(D.me)) { ids.push(u); }
+            if (u && ids.indexOf(u) < 0) { ids.push(u); }
         });
         var issue = issueById(issueId) || {};
         var box = document.createElement('div');
