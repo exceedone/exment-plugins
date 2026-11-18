@@ -37,6 +37,7 @@ class PmPortalController extends AdminControllerBase
     use PortalTopbarTrait;
     use PortalProjectTrait;
     use PortalAiTrait;
+    use PortalRankingTrait;
 
     /**
      * How many issues one bulk edit may touch.
