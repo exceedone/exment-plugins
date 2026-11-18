@@ -383,7 +383,8 @@ window.PmPortalBoot = function () {
     }
     function starBtn(type, targetType, targetId, count, on, extraCls) {
         return '<span class="bl-star pp-star' + (on ? ' on' : '') + (extraCls ? ' ' + extraCls : '') +
-            '" data-star-type="' + esc(type) + '" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' +
+            '" title="' + esc(on ? L.star_off_tip : L.star_on_tip) + '"' +
+            ' data-star-type="' + esc(type) + '" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' +
             '<i class="fa ' + (on ? 'fa-star' : 'fa-star-o') + '"></i><span class="ct">' + (count ? ' ' + esc(count) : '') + '</span></span>';
     }
     /* ------------------------------------------------ reactions -------- */
@@ -434,6 +435,15 @@ window.PmPortalBoot = function () {
             bar.dataset.busy = '';
             toast(xhrErr(xhr, L.rx_fail), true);
         });
+    }
+    // ★ on the issue detail: a labelled button beside ウォッチ (Fable's review,
+    // snoro 2026-11-19). ★ is 注目度 - how many people care - counted, not
+    // named; the reactions are where people are named.
+    function starDetailBtn(issueId, count, on) {
+        return '<a class="bl-btn-sub pp-star pp-star-d' + (on ? ' on' : '') + '" title="' + esc(on ? L.star_off_tip : L.star_on_tip) + '"' +
+            ' data-star-type="star" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(issueId) + '">' +
+            '<i class="fa ' + (on ? 'fa-star' : 'fa-star-o') + '"></i> <span class="lb">' + esc(on ? L.star_on : L.star_label) + '</span>' +
+            ' <span class="ct">' + esc(count || 0) + '</span></a>';
     }
     function issueById(id) {
         var found = null;
@@ -2133,13 +2143,14 @@ window.PmPortalBoot = function () {
         // its own above the issue (the same button closes the page too).
         var head = '<div class="bl-dhead"><a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' + tag(i.ty) +
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' +
-            starBtn('star', D.issue_table, i.id, local.star, local.my_star) + issueNav(i) +
+            issueNav(i) +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
                 '<i class="fa fa-arrow-right"></i> ' + fmt(esc(L.to_next), esc(next.l)) + '</button>' : '') +
             (res.description ? '<a class="bl-btn-sub pp-quote pp-dquote"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
             (CAN_ADD_ISSUE ? '<a class="bl-btn-sub pp-issuecopy"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
             '<a class="bl-btn-sub pp-mailbtn"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
+            starDetailBtn(i.id, local.star, local.my_star) +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             (res.movable ? '<a class="bl-btn-sub pp-issuemove"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
@@ -9495,7 +9506,15 @@ window.PmPortalBoot = function () {
             }).done(function (res) {
                 star.classList.toggle('on', res.on);
                 star.querySelector('i').className = 'fa ' + (res.on ? 'fa-star' : 'fa-star-o');
-                star.querySelector('.ct').textContent = res.count ? ' ' + res.count : '';
+                star.title = res.on ? L.star_off_tip : L.star_on_tip;
+                if (star.classList.contains('pp-star-d')) {
+                    // The detail's button keeps its count even at 0, and says
+                    // which way it is.
+                    star.querySelector('.ct').textContent = String(res.count || 0);
+                    star.querySelector('.lb').textContent = res.on ? L.star_on : L.star_label;
+                } else {
+                    star.querySelector('.ct').textContent = res.count ? ' ' + res.count : '';
+                }
                 if (star.dataset.targetType === D.issue_table && star.dataset.starType === 'star') {
                     var issue = issueById(star.dataset.targetId);
                     if (issue) { issue.star = res.count; issue.my_star = res.on; }
