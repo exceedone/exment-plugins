@@ -20,6 +20,11 @@ class Star extends ModelBase
 {
     public const TYPE_STAR = 'star';
     public const TYPE_WATCH = 'watch';
+    /**
+     * "This user has opened this issue", kept by the time of the last opening
+     * (updated_at). Read receipts and the list's unread mark come from it.
+     */
+    public const TYPE_READ = 'read';
 
     protected $table = 'exment_stars';
 
@@ -152,5 +157,95 @@ class Star extends ModelBase
                 return intval($v);
             })
             ->toArray();
+    }
+
+    /**
+     * Note that the user has read the target now, or mark it unread again.
+     *
+     * One row per user and target: reading again moves its time on. "Unread"
+     * keeps the row with no time, the way a mail client keeps a message it
+     * was told to show as new - the list then shows it unread however old
+     * its last change is.
+     *
+     * @param string $target_type
+     * @param mixed $target_id
+     * @param mixed $user_id
+     * @param bool $read
+     * @return void
+     */
+    public static function markRead(string $target_type, $target_id, $user_id, bool $read = true): void
+    {
+        $query = static::target(self::TYPE_READ, $target_type, $target_id)->where('user_id', $user_id);
+        $at = $read ? \Carbon\Carbon::now() : null;
+        if ($query->update(['updated_at' => $at]) > 0) {
+            return;
+        }
+        try {
+            $row = new static();
+            $row->star_type = self::TYPE_READ;
+            $row->target_type = $target_type;
+            $row->target_id = strval($target_id);
+            $row->user_id = $user_id;
+            $row->save();
+            if (!$read) {
+                static::target(self::TYPE_READ, $target_type, $target_id)->where('user_id', $user_id)->update(['updated_at' => null]);
+            }
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Two tabs opening the same issue at once: the other one wrote it.
+            static::target(self::TYPE_READ, $target_type, $target_id)->where('user_id', $user_id)->update(['updated_at' => $at]);
+        }
+    }
+
+    /**
+     * target_id => when this user last read it, over many targets at once;
+     * '' for one marked unread by hand, nothing for one never opened.
+     *
+     * @param string $target_type
+     * @param array<int, mixed> $target_ids
+     * @param mixed $user_id
+     * @return array<string, string>
+     */
+    public static function readTimes(string $target_type, array $target_ids, $user_id): array
+    {
+        if (empty($target_ids)) {
+            return [];
+        }
+
+        return static::where('star_type', self::TYPE_READ)
+            ->where('target_type', $target_type)
+            ->where('user_id', $user_id)
+            ->whereIn('target_id', array_map('strval', $target_ids))
+            ->pluck('updated_at', 'target_id')
+            ->map(function ($v) {
+                // '' = marked unread by hand
+                return $v === null ? '' : strval($v);
+            })
+            ->toArray();
+    }
+
+    /**
+     * Who read which target and when, over many targets at once.
+     *
+     * @param string $target_type
+     * @param array<int, mixed> $target_ids
+     * @return array<string, array<int, array{by: int, ts: string}>> target_id => readers, latest first
+     */
+    public static function readers(string $target_type, array $target_ids): array
+    {
+        if (empty($target_ids)) {
+            return [];
+        }
+        $out = [];
+        $rows = static::where('star_type', self::TYPE_READ)
+            ->where('target_type', $target_type)
+            ->whereIn('target_id', array_map('strval', $target_ids))
+            ->whereNotNull('updated_at')
+            ->orderBy('updated_at', 'desc')
+            ->get(['target_id', 'user_id', 'updated_at']);
+        foreach ($rows as $row) {
+            $out[strval($row->target_id)][] = ['by' => intval($row->user_id), 'ts' => strval($row->updated_at)];
+        }
+
+        return $out;
     }
 }

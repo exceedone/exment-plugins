@@ -40,6 +40,8 @@
         { "method": "post", "uri": "{id}/issues/bulk", "function": "bulkUpdate" },
         { "method": "get", "uri": "{id}/issue/{issue_id}", "function": "issueDetail" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/comment", "function": "postComment" },
+        { "method": "post", "uri": "{id}/issue/{issue_id}/read", "function": "issueRead" },
+        { "method": "post", "uri": "{id}/issue/{issue_id}/mail", "function": "mailIssue" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/upload", "function": "uploadIssueFile" },
         { "method": "patch", "uri": "{id}/comment/{comment_id}", "function": "updateComment" },
         { "method": "delete", "uri": "{id}/comment/{comment_id}", "function": "deleteComment" },
