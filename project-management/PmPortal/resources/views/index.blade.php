@@ -19,7 +19,7 @@
         'bk_nothing', 'bk_done', 'bk_denied', 'bk_missing', 'bk_fail', 'bk_failed', 'bk_failed_title',
         'rf_button', 'rf_working', 'rf_done', 'rf_fail', 'rf_stale', 'rf_at',
         'col_ty', 'col_key', 'col_subject', 'col_as', 'col_st', 'col_pr', 'col_ms', 'col_cat',
-        'col_sd', 'col_dd', 'col_rc', 'rc_daily', 'rc_weekdays', 'rc_weekly', 'rc_monthly', 'rc_yearly', 'col_pg', 'col_up', 'cnt_line', 'overdue_d', 'left_d',
+        'col_sd', 'col_dd', 'col_dt', 'col_rc', 'rc_daily', 'rc_weekdays', 'rc_weekly', 'rc_monthly', 'rc_yearly', 'col_pg', 'col_up', 'cnt_line', 'overdue_d', 'left_d',
         'back', 'box_props', 'box_children', 'box_timeline', 'added',
         'box_related', 'children_done', 'rel_add', 'rel_none',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',

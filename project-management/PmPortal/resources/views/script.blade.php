@@ -345,18 +345,32 @@ window.PmPortalBoot = function () {
         if (!s) { return null; }
         return Math.round((new Date(s + 'T00:00:00') - new Date(D.today + 'T00:00:00')) / 86400000);
     }
+    // The due date with its time (schema 22), e.g. 11/20 15:00.
+    function dueText(iss) { return d2(iss.dd) + (iss.dt ? ' ' + iss.dt : ''); }
+    // The clock now, HH:MM, on this computer.
+    function nowHM() {
+        var n = new Date();
+        return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2);
+    }
+    // Past due: a day before today, or today with a time that has gone by.
+    // An issue without a time is due at the end of its day, as before.
+    function dueOver(iss) {
+        if (!iss || !iss.dd) { return false; }
+        var days = daysTo(iss.dd);
+        return days < 0 || (days === 0 && !!iss.dt && nowHM() > iss.dt);
+    }
     function dueCell(iss) {
         if (!iss.dd) { return '<span class="bl-due">—</span>'; }
         var days = daysTo(iss.dd);
-        if (!isDone(iss.st) && days < 0) {
-            return '<span class="bl-due over"><span class="bl-due-part"><i class="fa fa-exclamation-circle"></i> ' + esc(d2(iss.dd)) + '</span> ' +
-                '<span class="bl-due-part">(' + esc(fmt(L.overdue_d, -days)) + ')</span></span>';
+        if (!isDone(iss.st) && dueOver(iss)) {
+            return '<span class="bl-due over"><span class="bl-due-part"><i class="fa fa-exclamation-circle"></i> ' + esc(dueText(iss)) + '</span> ' +
+                '<span class="bl-due-part">(' + esc(fmt(L.overdue_d, Math.max(-days, 0))) + ')</span></span>';
         }
         if (!isDone(iss.st) && days <= 3) {
-            return '<span class="bl-due soon"><span class="bl-due-part"><i class="fa fa-clock-o"></i> ' + esc(d2(iss.dd)) + '</span> ' +
+            return '<span class="bl-due soon"><span class="bl-due-part"><i class="fa fa-clock-o"></i> ' + esc(dueText(iss)) + '</span> ' +
                 '<span class="bl-due-part">(' + esc(fmt(L.left_d, days)) + ')</span></span>';
         }
-        return '<span class="bl-due">' + esc(d2(iss.dd)) + '</span>';
+        return '<span class="bl-due">' + esc(dueText(iss)) + '</span>';
     }
     function pbar(pg) {
         if (pg === null || pg === undefined || pg === '') { return '—'; }
@@ -424,8 +438,8 @@ window.PmPortalBoot = function () {
     /* ------------------------------------------------ home -------------- */
     function renderHome() {
         var open = (D.issues || []).filter(function (i) { return !isDone(i.st); });
-        var overdue = open.filter(function (i) { return i.dd && daysTo(i.dd) < 0; });
-        var soon = open.filter(function (i) { return i.dd && daysTo(i.dd) >= 0 && daysTo(i.dd) <= 3; });
+        var overdue = open.filter(function (i) { return dueOver(i); });
+        var soon = open.filter(function (i) { return i.dd && !dueOver(i) && daysTo(i.dd) <= 3; });
         document.getElementById('pp-stats').innerHTML =
             '<div class="bl-stat"><div class="n">' + (D.issues.length + arCount()) + '</div><div class="l"><i class="fa fa-tasks"></i>' + L.stat_all + '</div></div>' +
             '<div class="bl-stat"><div class="n">' + open.length + '</div><div class="l"><i class="fa fa-folder-open-o"></i>' + L.stat_open + '</div></div>' +
@@ -666,10 +680,10 @@ window.PmPortalBoot = function () {
             return !!D.me && i.as.map(String).indexOf(String(D.me)) >= 0;
         } },
         { k: 'overdue', l: 'q_overdue', i: 'fa-exclamation-circle', warn: true, t: function (i) {
-            return !isDone(i.st) && !!i.dd && daysTo(i.dd) < 0;
+            return !isDone(i.st) && dueOver(i);
         } },
         { k: 'soon', l: 'q_soon', i: 'fa-clock-o', t: function (i) {
-            if (isDone(i.st) || !i.dd) { return false; }
+            if (isDone(i.st) || !i.dd || dueOver(i)) { return false; }
             var d = daysTo(i.dd);
             return d >= 0 && d <= 1;
         } },
@@ -826,7 +840,7 @@ window.PmPortalBoot = function () {
         ms: { t: true, v: function (i) { return msSortKey(i.ms); } },
         cat: { t: true, v: function (i) { return (i.cat && i.cat.length) ? String(own(D.categories, i.cat[0]) || '') : ''; } },
         sd: { t: false, v: function (i) { return i.sd || ''; } },
-        dd: { t: false, v: function (i) { return i.dd || ''; } },
+        dd: { t: false, v: function (i) { return i.dd ? i.dd + ' ' + (i.dt || '99:99') : ''; } },
         pg: { t: false, v: function (i) { return (i.pg === null || i.pg === undefined) ? null : Number(i.pg); } },
         up: { t: false, v: function (i) { return String(i.up || ''); } }
     };
@@ -2209,7 +2223,7 @@ window.PmPortalBoot = function () {
     // is stored under.
     var QE_COLS = {
         pr: 'priority', as: 'assignees', ms: 'milestone', cat: 'category',
-        sd: 'start', dd: 'due', eh: 'estimate', ah: 'actual', pg: 'progress'
+        sd: 'start', dd: 'due', dt: 'due_time', eh: 'estimate', ah: 'actual', pg: 'progress'
     };
     // Column names live in the def map, not in this file: an install that
     // renamed one overrides the map instead of patching code.
@@ -2346,7 +2360,7 @@ window.PmPortalBoot = function () {
             as: (i.as || []).map(String),
             ms: i.ms == null ? '' : String(i.ms),
             cat: (i.cat || []).map(String),
-            sd: i.sd || '', dd: i.dd || '',
+            sd: i.sd || '', dd: i.dd || '', dt: i.dt || '',
             eh: i.eh == null ? '' : String(i.eh),
             ah: i.ah == null ? '' : String(i.ah),
             pg: i.pg == null ? '' : String(i.pg)
@@ -2401,6 +2415,7 @@ window.PmPortalBoot = function () {
         box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat)));
         box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd)));
         box.appendChild(qeRow(L.col_dd, qeInput('dd', 'date', QE.base.dd)));
+        box.appendChild(qeRow(L.col_dt, qeInput('dt', 'time', QE.base.dt)));
         box.appendChild(qeRow(L.lbl_eh_only, qeInput('eh', 'number', QE.base.eh, { min: '0', step: '0.5' })));
         box.appendChild(qeRow(L.lbl_ah_only, qeInput('ah', 'number', QE.base.ah, { min: '0', step: '0.5' })));
         box.appendChild(qeRow(L.lbl_pg, qeInput('pg', 'number', QE.base.pg, { min: '0', max: '100', step: '1' })));
@@ -3893,6 +3908,10 @@ window.PmPortalBoot = function () {
         if (key === 'sd' || key === 'dd') {
             var day = String(v == null ? '' : v).slice(0, 10);
             return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+        }
+        if (key === 'dt') {
+            var hm = /^(\d{1,2}):(\d{2})/.exec(String(v == null ? '' : v));
+            return hm ? ('0' + hm[1]).slice(-2) + ':' + hm[2] : '';
         }
         if (key === 'pg') {
             return (v === null || v === undefined || v === '' || !isFinite(Number(v))) ? null : Number(v);
@@ -9074,7 +9093,7 @@ window.PmPortalBoot = function () {
             all++;
             if (isDone(i.st)) { return; }
             open++;
-            if (i.dd && D.today && i.dd < D.today) { over++; }
+            if (D.today && dueOver(i)) { over++; }
         });
 
         return { all: all, open: open, over: over };

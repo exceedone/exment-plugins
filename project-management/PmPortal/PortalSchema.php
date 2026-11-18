@@ -71,8 +71,12 @@ class PortalSchema
      * 20: issues get recurrence (daily, weekdays, weekly, monthly, yearly).
      * When the next turn comes, PortalRecurrence makes the next issue and
      * moves the setting to it.
+     *
+     * 22: issues get due_time, an optional time on the due date (ISS00299).
+     * Empty means the whole day, as before. (21 is ISS00333's member_orgs /
+     * viewer_orgs on another branch; whichever merges second takes max+1.)
      */
-    const VERSION = 20;
+    const VERSION = 22;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -111,6 +115,8 @@ class PortalSchema
         'subject_sub' => 'subject_sub',
         // Schema 20: repeat the issue (PortalRecurrence).
         'recurrence' => 'recurrence',
+        // Schema 22: the time on the due date, or empty for the whole day.
+        'due_time' => 'due_time',
     ];
 
     /**
@@ -622,6 +628,12 @@ class PortalSchema
                     'select_item_valtext' => static::valtext(PortalRecurrence::KINDS, 'issue.recurrences.'),
                     'help' => PortalDefinition::trans('schema.help.recurrence'),
                 ], 23),
+                // Schema 22: a time column of its own beside the due date, so
+                // the date stays a date for the gantt, the board, CSV and the
+                // API, and an issue without a time is exactly what it was.
+                static::column($ic['due_time'], 'issue.due_time', 'time', [
+                    'help' => PortalDefinition::trans('schema.help.due_time'),
+                ], 24),
             ],
         ];
     }
