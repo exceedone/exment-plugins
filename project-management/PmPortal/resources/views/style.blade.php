@@ -413,6 +413,25 @@
    issue is long, and a composer that has to be scrolled to is a composer that
    is not used. Collapsed it is one row; opened it grows upwards and its own
    body scrolls, so the sheet can never be taller than the screen. */
+/* ISS00336: the issue's own line, pinned while a long issue is read. Only
+   shown once the title is out of sight, so it never repeats what is on
+   screen. Fixed rather than sticky: it takes no room until it is needed. */
+.pmportal .pp-dbar{position:fixed;top:var(--pp-stick-top,0px);left:var(--pp-dbar-l,0);width:var(--pp-dbar-w,100%);z-index:930;
+  display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;box-sizing:border-box;
+  background:var(--bl-box);border-bottom:1px solid var(--bl-line);box-shadow:0 2px 6px rgba(0,0,0,.06);font-size:13px;}
+.pmportal .pp-dbar[hidden]{display:none;}
+/* A phone has no height to spare; the comment dock is enough there. */
+@media (max-width:760px){.pmportal .pp-dbar{display:none !important;}}
+.pmportal .pp-dbar .bl-key{flex:none;}
+.pmportal .pp-dbar .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;cursor:pointer;color:var(--bl-ink);}
+/* A jump to a comment or a heading must not land under the pinned line
+   (wide screens only - a phone has no pinned line). */
+@media (min-width:761px){.pmportal #pp-issue [id]{scroll-margin-top:calc(var(--pp-stick-top,0px) + 56px);}}
+.pmportal .pp-dbar .t:focus-visible{outline:2px solid var(--bl-accent);outline-offset:2px;border-radius:3px;}
+@media print{
+  .pmportal .pp-dbar{display:none !important;}
+  .pmportal .bl-wiki > .bl-card-box.pp-pinned{position:static !important;max-height:none !important;width:auto !important;}
+}
 .pmportal .bl-cmtdock{position:fixed;left:var(--pp-dock-l,0);width:var(--pp-dock-w,100%);bottom:0;z-index:940;
   background:var(--bl-box);border-top:1px solid var(--bl-line);box-shadow:0 -6px 18px rgba(15,42,60,.10);
   display:flex;flex-direction:column;max-height:64vh;}
@@ -646,6 +665,13 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 
 /* ---- wiki / files ---- */
 .pmportal .bl-wiki{display:grid;grid-template-columns:260px 1fr;gap:12px;align-items:start;}
+/* ISS00336: the page list stays beside a long article (PC only). Pinned
+   from script (ppWtreeFit), not with position:sticky - AdminLTE's .wrapper
+   has overflow:hidden, and sticky does nothing under such a box. The
+   article keeps its column while the list is out of the grid's flow. */
+.pmportal .bl-wiki.pp-wtree-pinned > .bl-card-box:nth-child(2){grid-column:2;}
+.pmportal .bl-wiki > .bl-card-box.pp-pinned{position:fixed;z-index:20;overflow:hidden;margin:0;}
+.pmportal .bl-wiki > .bl-card-box.pp-pinned .bl-wtree{overflow:auto;}
 .pmportal .bl-wtree .nd{padding:5px 8px;border-radius:var(--bl-radius-s,4px);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pmportal .bl-wtree .nd:hover{background:var(--bl-hover);}
 .pmportal .bl-wtree .nd.on{background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));color:var(--bl-accent-d);font-weight:700;}
@@ -1289,7 +1315,66 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .bl-dsum{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:12px;padding:9px 12px;
   background:var(--bl-box2);border:1px solid var(--bl-line2);border-radius:var(--bl-radius);}
 .pmportal .bl-dsum .it{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
+/* Issue detail, kept short (ISS00336): the fields as a grid of as many
+   columns as the width takes, rather than one field per line. */
+.pmportal .bl-props{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));column-gap:28px;}
+.pmportal .bl-dsum .pp-tocmt{margin-left:auto;font-weight:700;color:var(--bl-accent-d);white-space:nowrap;cursor:pointer;}
+.pmportal .pp-dbar .pp-tocmt{flex:none;font-weight:700;color:var(--bl-accent-d);white-space:nowrap;cursor:pointer;}
+.pmportal .bl-reladd-open{color:var(--bl-accent-d);font-weight:600;}
 .pmportal .bl-dsum .k{color:var(--bl-sub);font-size:var(--bl-fs-xs);font-weight:700;white-space:nowrap;}
+/* How many comments wait below, on the links that lead to them and on the
+   timeline's own head. */
+.pmportal .pp-tocmt .n:not(:empty),.pmportal #pp-d-tlsum:not(:empty){display:inline-block;margin-left:6px;padding:0 7px;min-width:20px;
+  box-sizing:border-box;text-align:center;border-radius:var(--bl-radius-pill,10px);font-size:11px;line-height:18px;font-weight:700;
+  background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));color:var(--bl-accent-d);}
+/* The issue's head: three or four buttons and one menu for the rest. */
+.pmportal .bl-dhead .bl-btn-sub,.pmportal .bl-dhead .bl-btn-main{white-space:nowrap;}
+.pmportal .pp-more{position:relative;display:inline-flex;}
+.pmportal .pp-more > .m{position:absolute;right:0;top:calc(100% + 4px);z-index:40;min-width:190px;padding:4px 0;
+  background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius,6px);box-shadow:0 6px 18px rgba(15,42,60,.14);}
+.pmportal .pp-more > .m[hidden]{display:none;}
+.pmportal .pp-more > .m a{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:13px;color:var(--bl-ink);
+  white-space:nowrap;text-decoration:none;cursor:pointer;}
+.pmportal .pp-more > .m a .fa{width:14px;text-align:center;color:var(--bl-sub);}
+.pmportal .pp-more > .m a:hover,.pmportal .pp-more > .m a:focus-visible{background:var(--bl-hover);outline:0;}
+.pmportal .pp-more > .m a.pp-issuedel{margin-top:4px;padding-top:9px;border-top:1px solid var(--bl-line2);color:var(--bl-red,#d9534f);}
+.pmportal .pp-more > .m a.pp-issuedel .fa{color:inherit;}
+.pmportal .pp-more > .m a.pp-issuedel[data-armed="1"]{background:color-mix(in srgb, var(--bl-red,#d9534f) 12%, var(--bl-box));font-weight:700;}
+/* On a phone the button may sit anywhere in a wrapped row: the menu hangs
+   from the head as a whole instead, so it can never leave the screen. */
+@media (max-width:760px){
+  .pmportal .bl-dhead{position:relative;}
+  .pmportal .pp-more{position:static;}
+  .pmportal .pp-more > .m{left:0;right:0;top:100%;}
+}
+/* A wide screen has room beside the text: the boxes about the issue (fields,
+   children, files, related) stand in a column on the right, and the comments
+   follow the description with nothing in between. .pp-two is set by
+   ppSideFit() only while there is a box to show. The second row takes any
+   height the column needs beyond the description, so no gap opens above the
+   comments. */
+@media (min-width:1800px){
+  .pmportal .bl-detail.pp-two{display:grid;grid-template-columns:minmax(0,1fr) clamp(340px,24%,440px);grid-template-rows:auto 1fr;
+    column-gap:12px;align-items:start;}
+  .pmportal .bl-detail.pp-two > *{grid-column:1;min-width:0;}
+  .pmportal .bl-detail.pp-two > #pp-d-tlbox{grid-row:2;}
+  .pmportal .bl-detail.pp-two > .bl-dside{grid-column:2;grid-row:1 / span 2;}
+  .pmportal .bl-detail.pp-two > .bl-dside > .bl-card-box:last-child{margin-bottom:0;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-props{grid-template-columns:minmax(0,1fr);}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-rows > .row > .k,
+  .pmportal .bl-detail.pp-two .bl-dside .bl-props .k{width:84px;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-children .row > .k{width:auto;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-reladd{flex-wrap:wrap;}
+  /* A related issue in the narrow column: the kind of relation above, the
+     subject on as many lines as it needs - a subject cut after ten
+     characters says nothing. */
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related > .row{flex-wrap:wrap;gap:2px 8px;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related > .row > .k{width:100%;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related > .row > .k:empty{display:none;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related .v{flex:1 1 100%;align-items:flex-start;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related .v .tx{white-space:normal;overflow-wrap:anywhere;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-children .v > .bl-issuelink{white-space:normal;overflow-wrap:anywhere;}
+}
 
 /* ---- hover / focus ---- */
 .pmportal .bl-btn-main,.pmportal .bl-btn-sub,.pmportal .bl-sttab,.pmportal .bl-qchip,.pmportal .bl-fmine,
@@ -1437,6 +1522,19 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .bl-tabs{margin-bottom:8px;}
 .pmportal .bl-tab{padding:8px 13px;}
 .pmportal .bl-addissue{padding:5px 14px;}
+/* The tab row stays one line on a laptop: the search box gives up width
+   before the add button is pushed down to a second row. */
+@media (min-width:761px){
+  /* A small basis that grows: a wrapping row breaks on the basis, before
+     anything is asked to shrink. */
+  .pmportal .bl-tabs .bl-tabsearch{flex:1 1 110px;max-width:210px;margin-right:8px;}
+  .pmportal .bl-tabs .bl-tabsearch input{width:100%;box-sizing:border-box;}
+  .pmportal .bl-tabs .bl-tab,.pmportal .bl-tabs .bl-addissue{white-space:nowrap;flex:none;}
+  .pmportal .bl-tabs .bl-addissue{margin-left:auto;}
+}
+/* ---- wiki with no pages: only the list card, no empty article frame ---- */
+.pmportal .bl-wiki.pp-wempty{grid-template-columns:minmax(260px,420px);}
+.pmportal .bl-wiki.pp-wempty > .bl-card-box:nth-child(2){display:none;}
 /* ---- issue toolbar: status tabs and quick chips share one wrapping row ---- */
 .pmportal .bl-toolbar{padding:8px 12px;margin-bottom:8px;}
 .pmportal .bl-pillrow{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-bottom:7px;}

@@ -2147,15 +2147,25 @@ window.PmPortalBoot = function () {
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
                 '<i class="fa fa-arrow-right"></i> ' + fmt(esc(L.to_next), esc(next.l)) + '</button>' : '') +
-            (res.description ? '<a class="bl-btn-sub pp-quote pp-dquote"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
-            (CAN_ADD_ISSUE ? '<a class="bl-btn-sub pp-issuecopy"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
-            '<a class="bl-btn-sub pp-mailbtn"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
+            // What is used every day stays a button; what is used now and
+            // then waits in one menu, so the row is one line and the
+            // delete button is not a neighbour of the edit button.
+            // With no children yet the 子課題 box stays away; its one button
+            // waits up here instead of costing a box of its own.
+            (res.editable && CAN_ADD_ISSUE && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
+                ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
-            (res.movable ? '<a class="bl-btn-sub pp-issuemove"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
-            (res.deletable ? '<a class="bl-btn-sub pp-issuedel"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
-            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a></span></div>' +
+            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
+            '<span class="pp-more"><a class="bl-btn-sub pp-morebtn" href="javascript:void(0);" role="button" aria-haspopup="true" aria-expanded="false">' +
+                '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) + '</a><span class="m" hidden>' +
+            (res.description ? '<a class="pp-quote pp-dquote" href="javascript:void(0);"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
+            (CAN_ADD_ISSUE ? '<a class="pp-issuecopy" href="javascript:void(0);"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
+            '<a class="pp-mailbtn" href="javascript:void(0);"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
+            (res.movable ? '<a class="pp-issuemove" href="javascript:void(0);"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
+            (res.deletable ? '<a class="pp-issuedel" href="javascript:void(0);"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
+            '</span></span></span></div>' +
             '<div class="pp-move" hidden></div>' +
             '<div class="bl-dtitle">' + esc(i.subject) + '</div>' +
             (i.sub ? '<div class="pp-dsubsub">' + esc(i.sub) + '</div>' : '') +
@@ -2164,11 +2174,13 @@ window.PmPortalBoot = function () {
             '<span class="it"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') || '—') + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
-            '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span></div>' +
+            '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
                 : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>' +
             '<div class="pp-rxrow">' + rxBar(D.issue_table, i.id, res.reactions) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
+        ppDbarFill(i);
         linkifyIssueRefs(document.querySelector('#pp-d-main .bl-desc'));
         // The quote button carries the description as words, not markup, and
         // the rendered block is the shortest way to those words.
@@ -2190,16 +2202,33 @@ window.PmPortalBoot = function () {
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#issue-' + esc(parentIssue.id) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_watch, '<i class="fa fa-eye" style="color:var(--bl-faint);"></i> ' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people))]
         ];
-        document.getElementById('pp-d-props').innerHTML = props.map(function (p) {
+        // Status, priority, assignees and the due date are on the summary row
+        // above the description, and the watch count on its button: said
+        // once is enough. Of the rest, only what is set - a column of dashes
+        // only pushed the comments further down. Nothing set, no box.
+        var shown = [L.col_st, L.col_pr, L.col_as, L.col_dd, L.lbl_watch];
+        var setProps = props.filter(function (p) {
+            if (shown.indexOf(p[0]) >= 0) { return false; }
+            var v = String(p[1] === null || p[1] === undefined ? '' : p[1]);
+            if (p[0] === L.lbl_eh) { return i.eh !== null && i.eh !== undefined && i.eh !== '' || i.ah !== null && i.ah !== undefined && i.ah !== ''; }
+            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0; }
+            return v !== '' && v !== '—' && v !== esc('—');
+        });
+        document.getElementById('pp-d-props').innerHTML = setProps.map(function (p) {
             return '<div class="row"><span class="k">' + esc(p[0]) + '</span><span class="v">' + p[1] + '</span></div>';
         }).join('');
+        var propBox = document.getElementById('pp-d-propbox');
+        // Left alone while the inline editor has stood it aside: the editor
+        // brings its own fields, and puts this box back as it was on close.
+        var mainBox = document.getElementById('pp-d-main').closest('.bl-card-box');
+        var editingNow = mainBox && mainBox.style.display === 'none';
+        if (propBox && !editingNow) { propBox.style.display = setProps.length ? '' : 'none'; }
 
         var kids = (D.issues || []).filter(function (x) { return String(x.parent) === String(i.id); });
         // A child is a new issue: editing this one is not enough on its own.
         var canAddChild = res.editable && CAN_ADD_ISSUE;
-        // The box stays up with no children in it when the user may add one:
-        // that button is the only way to say "this belongs under that".
-        document.getElementById('pp-d-childbox').style.display = (kids.length || canAddChild) ? '' : 'none';
+        // No children, no box: the add button moved up to the issue's head.
+        document.getElementById('pp-d-childbox').style.display = kids.length ? '' : 'none';
         document.getElementById('pp-d-children').innerHTML = kids.map(function (k) {
             return '<div class="row"><div class="k"><span class="bl-key">' + esc(k.key) + '</span></div>' +
                 '<div class="v"><a class="bl-issuelink" href="#issue-' + esc(k.id) + '">' + esc(k.subject) + '</a>'
@@ -2694,6 +2723,194 @@ window.PmPortalBoot = function () {
         document.body.classList.add('pp-dock-on');
     }
     window.ppDockFit = ppDockFit;
+    // ISS00336. How far down the window a pinned line has to start: below
+    // Exment's own header when the theme fixes it to the window, else at the
+    // very top. Measured, for the same reason the dock is.
+    function ppStickTop() {
+        var top = 0;
+        var hdr = document.querySelector('.main-header');
+        if (hdr) {
+            var pos = window.getComputedStyle(hdr).position;
+            if (pos === 'fixed' || pos === 'sticky') {
+                top = Math.max(0, Math.round(hdr.getBoundingClientRect().bottom));
+            }
+        }
+        if (root._ppStickTop !== top) {
+            root._ppStickTop = top;
+            root.style.setProperty('--pp-stick-top', top + 'px');
+        }
+        return top;
+    }
+    // The issue's line: on screen only while an issue is open and its title
+    // has scrolled up out of sight.
+    function ppDbarFit(top) {
+        var bar = document.getElementById('pp-dbar');
+        var screen = document.getElementById('pp-issue');
+        if (!bar || !screen) { return; }
+        if (top === undefined) { top = ppStickTop(); }
+        var title = document.querySelector('#pp-d-main .bl-dtitle');
+        // offsetParent is null while the issue's card is swapped out for the
+        // inline editor: its title then measures 0 and would read as
+        // "scrolled away", putting a way out on top of a half-written edit.
+        var on = String(currentScreen) === 'issue' && !!title && !!bar.dataset.id
+            && title.offsetParent !== null
+            && title.getBoundingClientRect().bottom < top;
+        if (on) {
+            var host = screen.parentNode && screen.parentNode.getBoundingClientRect ? screen.parentNode : screen;
+            var r = host.getBoundingClientRect();
+            bar.style.setProperty('--pp-dbar-l', Math.round(r.left) + 'px');
+            bar.style.setProperty('--pp-dbar-w', Math.round(r.width) + 'px');
+        }
+        if (bar.hidden === on) { bar.hidden = !on; }
+    }
+    // The wiki's page list, held beside a long article on a wide screen.
+    // Fixed once the grid's top has gone above the pinned line, and pushed
+    // up with the grid's bottom so it never runs over the footer.
+    var WIDE = window.matchMedia ? window.matchMedia('(min-width:761px) and (min-height:560px)') : null;
+    function ppWtreeFit(top) {
+        var grid = document.querySelector('#pp-wiki .bl-wiki');
+        var card = grid ? grid.firstElementChild : null;
+        if (!card) { return; }
+        var unpin = function () {
+            if (!card.classList.contains('pp-pinned')) { return; }
+            card.classList.remove('pp-pinned');
+            grid.classList.remove('pp-wtree-pinned');
+            ['top', 'left', 'width', 'max-height'].forEach(function (k) { card.style.removeProperty(k); });
+            var body = card.querySelector('.bl-wtree');
+            if (body) { body.style.removeProperty('max-height'); }
+        };
+        if (String(currentScreen) !== 'wiki' || (WIDE && !WIDE.matches)) { unpin(); return; }
+        // Only beside an article longer than the list: pinning a list that
+        // is the taller of the two would shorten the page under the reader.
+        var article = card.nextElementSibling;
+        var listH = card.classList.contains('pp-pinned') ? card.scrollHeight : card.offsetHeight;
+        if (!article || article.offsetHeight <= listH) { unpin(); return; }
+        top = (top === undefined ? ppStickTop() : top) + 8;
+        var g = grid.getBoundingClientRect();
+        if (g.top >= top) { unpin(); return; }
+        var cols = String(window.getComputedStyle(grid).gridTemplateColumns || '').split(' ');
+        var w = parseFloat(cols[0]) || 260;
+        var maxH = Math.max(120, window.innerHeight - top - 8);
+        card.classList.add('pp-pinned');
+        grid.classList.add('pp-wtree-pinned');
+        card.style.width = Math.round(w) + 'px';
+        card.style.left = Math.round(g.left) + 'px';
+        // The list scrolls inside, under its own heading (and its add link),
+        // rather than the heading scrolling away with it.
+        var body = card.querySelector('.bl-wtree');
+        var headH = body ? card.offsetHeight - body.offsetHeight : 0;
+        if (body) { body.style.maxHeight = Math.max(80, maxH - headH) + 'px'; }
+        var h = Math.min(card.offsetHeight, maxH);
+        card.style.top = Math.round(Math.min(top, g.bottom - h - 12)) + 'px';
+    }
+    // Down to the comments, from the summary row or the pinned line.
+    root.addEventListener('click', function (ev) {
+        if (!(ev.target.closest && ev.target.closest('.pp-tocmt'))) { return; }
+        ev.preventDefault();
+        var tl = document.getElementById('pp-d-tlbox');
+        if (tl) { tl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+    // Boxes folded on an earlier visit come back folded.
+    Array.prototype.forEach.call(root.querySelectorAll('.bl-card-box[id]'), function (card) {
+        if (!card.querySelector('.bl-boxhead[data-collapse]')) { return; }
+        try {
+            if (localStorage.getItem('pmportal.fold.' + card.id) === '1') { card.classList.add('bl-collapsed'); }
+        } catch (e) { /* ignore */ }
+    });
+    // The boxes about the issue stand beside its text on a wide screen
+    // (.pp-two in the stylesheet) - but only while there is a box to show
+    // and the text itself is on screen: with every box hidden the column
+    // would be an empty strip, and the inline editor (which hides the main
+    // card) wants the whole width. Each box is shown and hidden through its
+    // style by whoever draws it, so that is what is watched.
+    function ppSideFit() {
+        var side = document.getElementById('pp-d-side');
+        var main = document.getElementById('pp-d-main');
+        var mainCard = main ? main.closest('.bl-card-box') : null;
+        if (!side || !mainCard || !side.parentNode) { return; }
+        var any = Array.prototype.some.call(side.children, function (c) { return c.style.display !== 'none'; });
+        var two = any && mainCard.style.display !== 'none';
+        if (side.hidden === any) { side.hidden = !any; }
+        if (side.parentNode.classList.contains('pp-two') !== two) { side.parentNode.classList.toggle('pp-two', two); }
+    }
+    (function () {
+        var side = document.getElementById('pp-d-side');
+        var main = document.getElementById('pp-d-main');
+        var mainCard = main ? main.closest('.bl-card-box') : null;
+        if (!side || !mainCard) { return; }
+        ppSideFit();
+        if (!window.MutationObserver) { return; }
+        var mo = new MutationObserver(ppSideFit);
+        [mainCard].concat(Array.prototype.slice.call(side.children)).forEach(function (el) {
+            mo.observe(el, { attributes: true, attributeFilter: ['style'] });
+        });
+    })();
+    // The issue's menu also closes on a click outside the portal (the admin
+    // sidebar, the header) and on Escape; clicks inside are the root
+    // listener's business.
+    function ppMoreClose() {
+        Array.prototype.forEach.call(root.querySelectorAll('.pp-more'), function (w) {
+            var m = w.querySelector('.m');
+            var b = w.querySelector('.pp-morebtn');
+            if (m) { m.hidden = true; }
+            if (b) { b.setAttribute('aria-expanded', 'false'); }
+        });
+    }
+    document.addEventListener('click', function onPpMoreDoc(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpMoreDoc); return; }
+        if (!root.contains(ev.target)) { ppMoreClose(); }
+    });
+    document.addEventListener('keydown', function onPpMoreKey(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onPpMoreKey); return; }
+        if (ev.key === 'Escape') { ppMoreClose(); }
+    });
+    // Both pinned things, measured once per frame.
+    function ppPinFit() {
+        var top = ppStickTop();
+        ppDbarFit(top);
+        ppWtreeFit(top);
+    }
+    function ppDbarFill(i) {
+        var bar = document.getElementById('pp-dbar');
+        if (!bar) { return; }
+        bar.dataset.id = String(i.id);
+        bar.innerHTML = '<a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' +
+            '<span class="bl-key">' + esc(i.key) + '</span>' +
+            '<span class="t" role="button" tabindex="0" title="' + esc(i.subject) + '">' + esc(i.subject) + '</span>' + pill(i.st) +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>';
+        ppDbarFit();
+    }
+    // The title takes you back up to the whole head of the issue. Scrolled
+    // into view rather than window.scrollTo: on this admin theme the window
+    // itself may not be what scrolls (see SCROLL_POS below).
+    var ppDbarEl = document.getElementById('pp-dbar');
+    var ppDbarTop = function (ev) {
+        if (!(ev.target.closest && ev.target.closest('.t'))) { return; }
+        if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') { return; }
+        ev.preventDefault();
+        var main = document.getElementById('pp-d-main');
+        if (main) { main.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    };
+    if (ppDbarEl) {
+        ppDbarEl.addEventListener('click', ppDbarTop);
+        ppDbarEl.addEventListener('keydown', ppDbarTop);
+    }
+    // Listened for on the document, in the capture phase, so the scroll is
+    // heard whichever box does the scrolling - the window, or an admin
+    // wrapper when the theme pins html and body to the window's height.
+    var ppPinPending = false;
+    document.addEventListener('scroll', function onPpPin() {
+        if (!alive()) { document.removeEventListener('scroll', onPpPin, true); return; }
+        if (ppPinPending) { return; }
+        ppPinPending = true;
+        window.requestAnimationFrame(function () { ppPinPending = false; if (alive()) { ppPinFit(); } });
+    }, { capture: true, passive: true });
+    // Folding Exment's sidebar moves the content area without a resize.
+    document.addEventListener('click', function onPpSidebar(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpSidebar); return; }
+        if (!(ev.target.closest && ev.target.closest('.sidebar-toggle'))) { return; }
+        setTimeout(function () { if (alive()) { ppDockFit(); ppPinFit(); } }, 350);
+    });
     // On screen only while an issue is: every other screen has its own way in
     // to writing, and a composer pinned under a wiki page means nothing.
     function ppDockShow(on) {
@@ -2740,6 +2957,8 @@ window.PmPortalBoot = function () {
     // composer floating over it belongs to the issue it just replaced.
     function ppDetailEditing(on) {
         if (on) { detailEpoch++; cmtSetBusy(false); }
+        // The pinned line follows the issue's card in and out of the editor.
+        setTimeout(function () { if (alive()) { ppDbarFit(); } }, 0);
         var dock = document.getElementById('pp-cmtdock');
         if (!dock) { return; }
         if (on) {
@@ -2755,7 +2974,7 @@ window.PmPortalBoot = function () {
     window.addEventListener('resize', function onPpFit() {
         if (!alive()) { window.removeEventListener('resize', onPpFit); return; }
         if (ppFitPending) { return; }
-        ppFitPending = setTimeout(function () { ppFitPending = null; if (alive()) { ppDockFit(); } }, 120);
+        ppFitPending = setTimeout(function () { ppFitPending = null; if (alive()) { ppDockFit(); ppPinFit(); } }, 120);
     });
     // Backlog shows the stream two ways: everything that happened, or the
     // comments on their own. The choice belongs to the person, not to the
@@ -2773,6 +2992,15 @@ window.PmPortalBoot = function () {
         // refresh, a comment posted or deleted. Each open editor is put back
         // on its comment afterwards, text and caret as they were.
         var editing = cmtEditsOpen();
+        // How many comments there are, on the box's head and on the links
+        // that lead down to it: whether the trip is worth making.
+        var cmtN = res.timeline === null ? 0
+            : (res.timeline || []).filter(function (e) { return e.tp === 'cmt'; }).length;
+        var tlSum = document.getElementById('pp-d-tlsum');
+        if (tlSum) { tlSum.textContent = cmtN ? String(cmtN) : ''; }
+        Array.prototype.forEach.call(root.querySelectorAll('#pp-issue .pp-tocmt .n'), function (n) {
+            n.textContent = cmtN ? String(cmtN) : '';
+        });
         if (res.timeline === null) { box.innerHTML = skel(4); return; }
         var rows = (res.timeline || []).filter(function (e) { return TLF !== 'cmt' || e.tp === 'cmt'; });
         box.innerHTML = rows.map(function (e) {
@@ -3413,6 +3641,10 @@ window.PmPortalBoot = function () {
         var rows = relationsOf(i.id);
         var canEdit = !!(D.related_table && res.editable);
         if (!rows.length && !canEdit) { box.style.display = 'none'; return; }
+        // The add form costs a whole row on every issue that is read far more
+        // often than it is linked; it opens from a link, and stays open for
+        // the issue it was opened on.
+        var relOpen = box.dataset.addFor === String(i.id);
         box.style.display = '';
         var html = rows.map(function (r) {
             var incoming = String(r.t) === String(i.id) && String(r.f) !== String(i.id);
@@ -3430,11 +3662,12 @@ window.PmPortalBoot = function () {
                 (canEdit ? '<a href="javascript:void(0);" class="pp-rel-del" data-rel="' + esc(r.id) + '" title="' + esc(L.del) + '"><i class="fa fa-times"></i></a>' : '') +
                 '</div></div>';
         }).join('');
-        if (!rows.length) {
-            html = '<div class="row"><div class="k"></div><div class="v bl-relempty">' + esc(L.rel_none) + '</div></div>';
+        if (canEdit && !relOpen) {
+            html += '<div class="row"><div class="k"></div><div class="v">' +
+                '<a href="javascript:void(0);" class="bl-reladd-open" data-issue="' + esc(i.id) + '"><i class="fa fa-plus"></i> ' + esc(L.rel_add_open) + '</a></div></div>';
         }
         if (canEdit) {
-            html += '<div class="row"><div class="k"></div><div class="v bl-reladd">' +
+            html += '<div class="row"' + (relOpen ? '' : ' hidden') + '><div class="k"></div><div class="v bl-reladd">' +
                 '<select id="pp-rel-type">' +
                 Object.keys(D.relation_types || {}).map(function (key) {
                     return '<option value="' + esc(key) + '">' + esc(D.relation_types[key].l) + '</option>';
@@ -3443,6 +3676,17 @@ window.PmPortalBoot = function () {
                 '<button type="button" class="bl-btn-sub" id="pp-rel-add"><i class="fa fa-plus"></i> ' + esc(L.rel_add) + '</button></div></div>';
         }
         document.getElementById('pp-d-related').innerHTML = html;
+        var relOpener = box.querySelector('.bl-reladd-open');
+        if (relOpener) {
+            relOpener.addEventListener('click', function () {
+                box.dataset.addFor = String(i.id);
+                var form = box.querySelector('.bl-reladd');
+                var row = form ? form.closest('.row') : null;
+                if (row) { row.hidden = false; }
+                var openerRow = relOpener.closest('.row');
+                if (openerRow) { openerRow.parentNode.removeChild(openerRow); }
+            });
+        }
         Array.prototype.forEach.call(box.querySelectorAll('.pp-rel-del'), function (btn) {
             btn.addEventListener('click', onRelDel);
         });
@@ -3519,6 +3763,10 @@ window.PmPortalBoot = function () {
     var currentWiki = null;
     function renderWiki(selectId) {
         var wiki = D.wiki || { enabled: false, pages: [] };
+        // With no page to show, the article card is an empty frame: it steps
+        // aside (.pp-wempty) until there is something to put in it.
+        var wgrid = document.querySelector('#pp-wiki .bl-wiki');
+        if (wgrid) { wgrid.classList.toggle('pp-wempty', !wiki.enabled || !wiki.pages.length); }
         if (!wiki.enabled) {
             document.getElementById('pp-wtree').innerHTML = '<div style="color:var(--bl-faint);white-space:normal;">' + esc(L.wiki_none) + '</div>';
             document.getElementById('pp-whead').innerHTML = '';
@@ -3594,6 +3842,18 @@ window.PmPortalBoot = function () {
                 return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a> ';
             }).join('') + '</p>' : '');
         linkifyIssueRefs(document.getElementById('pp-wbody'));
+        // Opened from the pinned list half way down a long article, the next
+        // page would otherwise start where the last one was being read.
+        // Only when another page was opened: a save that redraws the same
+        // page leaves the reader where they were.
+        var wgrid = document.querySelector('#pp-wiki .bl-wiki');
+        var wnow = String(currentWiki);
+        if (wgrid && root._ppWikiShown !== undefined && root._ppWikiShown !== wnow
+            && wgrid.getBoundingClientRect().top < ppStickTop()) {
+            wgrid.scrollIntoView({ block: 'start' });
+        }
+        root._ppWikiShown = wnow;
+        ppWtreeFit();
         // ISS00257: wiki edits open in the native NED form; no iframe prewarm.
     }
 
@@ -8895,6 +9155,7 @@ window.PmPortalBoot = function () {
             // left edge and its width from a content area that has no
             // measurable box until the screen it belongs to has been laid out.
             if (scr === 'issue') { ppDockFit(); }
+            ppPinFit();
         });
     }
     // Coming out of a ticket used to land you at the top of the issue list
@@ -9452,7 +9713,14 @@ window.PmPortalBoot = function () {
         var collapseHead = ev.target.closest('.bl-boxhead[data-collapse]');
         if (collapseHead && !ev.target.closest('a, button, input, select, textarea')) {
             var card = collapseHead.closest('.bl-card-box');
-            if (card) { card.classList.toggle('bl-collapsed'); return; }
+            if (card) {
+                card.classList.toggle('bl-collapsed');
+                // Folded stays folded, on the next issue and the next visit.
+                if (card.id) {
+                    try { localStorage.setItem('pmportal.fold.' + card.id, card.classList.contains('bl-collapsed') ? '1' : '0'); } catch (e) { /* ignore */ }
+                }
+                return;
+            }
         }
         var mlink = ev.target.closest('.pp-mlink');
         if (mlink) {
@@ -9479,6 +9747,20 @@ window.PmPortalBoot = function () {
             if (m !== wanted) { m.hidden = true; }
         });
         if (cmenuBtn) { wanted.hidden = !wanted.hidden; return; }
+        // The issue's own menu (その他) works the same way. The delete entry
+        // asks a second time in place, so the first click on it must leave
+        // the menu open for the question to be read.
+        var moreBtn = ev.target.closest('.pp-morebtn');
+        var moreKeep = moreBtn || ev.target.closest('.pp-more .pp-issuedel');
+        Array.prototype.forEach.call(root.querySelectorAll('.pp-more'), function (w) {
+            var m = w.querySelector('.m');
+            var b = w.querySelector('.pp-morebtn');
+            if (!m || !b) { return; }
+            if (moreBtn === b) { m.hidden = !m.hidden; }
+            else if (!(moreKeep && w.contains(moreKeep))) { m.hidden = true; }
+            b.setAttribute('aria-expanded', m.hidden ? 'false' : 'true');
+        });
+        if (moreBtn) { return; }
         var rxAdd = ev.target.closest('.pp-rxadd');
         if (rxAdd) {
             ev.stopPropagation();
