@@ -187,7 +187,7 @@
      data-project-table="{{ $topbar['project_table'] }}"
      data-current="{{ $topbar['current'] }}"
      aria-label="{{ PortalDefinition::trans('title') }}">
-    <a class="pp-top-home {{ $topbar['current'] === null ? 'on' : '' }}" href="{{ $topbar['dashboard_url'] }}">
+    <a class="pp-top-home {{ $topbar['current'] === null && ($topbar['page'] ?? '') !== 'ranking' ? 'on' : '' }}" href="{{ $topbar['dashboard_url'] }}">
         <i class="fa fa-home"></i><span>{{ $tt('dashboard') }}</span>
     </a>
 
@@ -244,6 +244,10 @@
             @endif
         </div>
     </div>
+
+    <a class="pp-top-home {{ ($topbar['page'] ?? '') === 'ranking' ? 'on' : '' }}" href="{{ $topbar['ranking_url'] ?? '' }}">
+        <i class="fa fa-trophy"></i><span>{{ $tt('ranking') }}</span>
+    </a>
 
     <div class="pp-top-dd">
         <button type="button" aria-haspopup="true" aria-expanded="false">

@@ -257,6 +257,11 @@ class PluginPage extends PluginPageBase
         return $this->portal()->topbarProjects(request());
     }
 
+    public function ranking()
+    {
+        return $this->respond($this->portal()->ranking(request(), new Content()));
+    }
+
     public function gitRepo($id)
     {
         return $this->portal()->gitRepo(request(), $id);

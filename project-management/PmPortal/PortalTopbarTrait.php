@@ -154,6 +154,8 @@ trait PortalTopbarTrait
             'dashboard_url' => PortalDefinition::url(),
             'search_url' => PortalDefinition::url('search'),
             'projects_url' => PortalDefinition::url('projects'),
+            // ISS00337: the ranking, beside the dashboard and the projects.
+            'ranking_url' => PortalDefinition::url('ranking'),
             'project_table' => isset($this->project_table) ? $this->project_table->table_name : '',
             // Backlog offers プロジェクトの追加 only to who may actually add;
             // the entry links to the dashboard, whose modal does the work.

@@ -33,6 +33,7 @@
 
         { "method": "get", "uri": "search", "function": "searchIssues" },
         { "method": "get", "uri": "projects", "function": "topbarProjects" },
+        { "method": "get", "uri": "ranking", "function": "ranking" },
         { "method": "get", "uri": "{id}", "function": "show" },
         { "method": "get", "uri": "{id}/embed/{kind}", "function": "embed" },
         { "method": "get", "uri": "{id}/issue_details", "function": "issueDetails" },
