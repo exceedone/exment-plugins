@@ -907,12 +907,6 @@ class PmPortalController extends AdminControllerBase
         $read = !in_array(is_scalar($flag) ? strval($flag) : '1', ['0', 'false'], true);
 
         Star::markRead($this->issue_table->table_name, $issue->id, $me, $read);
-        // The unread mark counts changes from the first opening on, so that
-        // turning this on does not make every old issue unread at once.
-        $user = \Admin::user();
-        if ($user && is_nullorempty($user->getSettingValue('pmportal.read_since'))) {
-            $user->setSettingValue('pmportal.read_since', \Carbon\Carbon::now()->format('Y-m-d H:i:s'));
-        }
 
         $readers = Star::readers($this->issue_table->table_name, [$issue->id]);
         $reads = [];
@@ -926,6 +920,22 @@ class PmPortalController extends AdminControllerBase
             'reads' => $reads,
             'users' => $this->usersFor(array_column($reads, 'by')),
         ]);
+    }
+
+    /**
+     * "Mark all read": every issue of the project the user can see.
+     */
+    public function projectReadAll(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+        $ids = $this->issue_table->getValueModel()
+            ->where('parent_id', $project->id)
+            ->where('parent_type', $this->project_table->table_name)
+            ->pluck('id')
+            ->all();
+        $count = Star::markReadMany($this->issue_table->table_name, $ids, \Exment::getUserId());
+
+        return response()->json(['ok' => true, 'count' => $count]);
     }
 
     /**
@@ -990,14 +1000,14 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
-     * The issues the user has not seen in their latest state: somebody else
-     * changed the issue or commented on it after the user last opened it, or
-     * the user marked it unread by hand.
+     * The issues the user has not seen in their latest state: one they have
+     * never opened that somebody else wrote, changed or commented on; one
+     * somebody else changed or commented on after the user last opened it;
+     * or one the user marked unread by hand. An issue only the user has
+     * touched counts as read - they wrote it.
      *
-     * Two indexed queries for the whole project whatever its size - the
-     * user's read times and the latest comment by others per issue - and
-     * none at all for a user who has never opened an issue since read
-     * receipts came in.
+     * Two indexed queries for the whole project whatever its size: the
+     * user's read times and the latest comment by others per issue.
      *
      * @param \Illuminate\Support\Collection $issues
      * @param mixed $me
@@ -1005,9 +1015,7 @@ class PmPortalController extends AdminControllerBase
      */
     protected function unreadIssues($issues, $me): array
     {
-        $user = \Admin::user();
-        $since = $user ? strval($user->getSettingValue('pmportal.read_since')) : '';
-        if ($since === '' || $issues->isEmpty()) {
+        if ($issues->isEmpty()) {
             return [];
         }
         $issue_name = $this->issue_table->table_name;
@@ -1042,7 +1050,7 @@ class PmPortalController extends AdminControllerBase
             if ($comment_at > $last) {
                 $last = $comment_at;
             }
-            if ($last !== '' && $last > $since && ($read === null || $last > $read)) {
+            if ($last !== '' && ($read === null || $last > $read)) {
                 $out[$id] = true;
             }
         }

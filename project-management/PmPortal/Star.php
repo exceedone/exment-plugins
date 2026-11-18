@@ -197,6 +197,56 @@ class Star extends ModelBase
     }
 
     /**
+     * Mark many targets read now for one user ("mark all read"): one update
+     * for the rows already there and one insert per chunk for the rest,
+     * instead of two queries per target.
+     *
+     * @param string $target_type
+     * @param array<int, mixed> $target_ids
+     * @param mixed $user_id
+     * @return int how many targets were marked
+     */
+    public static function markReadMany(string $target_type, array $target_ids, $user_id): int
+    {
+        $ids = array_values(array_unique(array_map('strval', $target_ids)));
+        $now = \Carbon\Carbon::now();
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $base = static::where('star_type', self::TYPE_READ)
+                ->where('target_type', $target_type)
+                ->where('user_id', $user_id)
+                ->whereIn('target_id', $chunk);
+            $have = (clone $base)->pluck('target_id')->map(function ($v) {
+                return strval($v);
+            })->all();
+            (clone $base)->update(['updated_at' => $now]);
+            $missing = array_values(array_diff($chunk, $have));
+            if (empty($missing)) {
+                continue;
+            }
+            $rows = array_map(function ($id) use ($target_type, $user_id, $now) {
+                return [
+                    'star_type' => self::TYPE_READ,
+                    'target_type' => $target_type,
+                    'target_id' => $id,
+                    'user_id' => $user_id,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }, $missing);
+            try {
+                static::insert($rows);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Another tab opened one of them meanwhile: go one by one.
+                foreach ($missing as $id) {
+                    static::markRead($target_type, $id, $user_id);
+                }
+            }
+        }
+
+        return count($ids);
+    }
+
+    /**
      * target_id => when this user last read it, over many targets at once;
      * '' for one marked unread by hand, nothing for one never opened.
      *

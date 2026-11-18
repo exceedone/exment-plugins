@@ -3415,6 +3415,22 @@
         var tr = document.querySelector('#pp-issue-rows tr[data-issue="' + String(id).replace(/[^0-9]/g, '') + '"]');
         if (tr) { tr.classList.toggle('pp-unread', !!(row && row.unread)); }
     }
+    // Every issue of the project, in one request - not one per row.
+    function readAll() {
+        if (!D.urls || !D.urls.base) { return; }
+        $.ajax({
+            url: D.urls.base + '/read-all',
+            type: 'POST', dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).then(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            (D.issues || []).forEach(function (i) {
+                if (i.unread) { i.unread = false; paintUnread(i.id); }
+                READ_SENT[String(i.id)] = true;
+            });
+            toast(String(L.read_all_done).replace(':count', res.count));
+        }, function (xhr) { toast(xhrErr(xhr, L.read_all_fail), true); });
+    }
     function markRead(id, read) {
         if (id === null || id === undefined || !D.urls || !D.urls.base) { return; }
         var row = issueById(id);
@@ -9446,6 +9462,9 @@
         items.push(anyUnread
             ? { l: L.ctx_read + (ids.length > 1 ? ' (' + ids.length + ')' : ''), i: 'fa-envelope-open-o', f: function () { ids.slice(0, 100).forEach(function (k) { markRead(k, true); }); } }
             : { l: L.ctx_unread + (ids.length > 1 ? ' (' + ids.length + ')' : ''), i: 'fa-envelope', f: function () { ids.slice(0, 100).forEach(function (k) { markRead(k, false); }); } });
+        if ((D.issues || []).some(function (i) { return !!i.unread; })) {
+            items.push({ l: L.ctx_read_all, i: 'fa-check-square-o', f: readAll });
+        }
         ctxOpen(ev.clientX, ev.clientY, items);
     });
     document.getElementById('pp-issue-rows').addEventListener('click', function (ev) {

@@ -172,6 +172,11 @@ class PluginPage extends PluginPageBase
         return $this->portal()->mailIssue(request(), $id, $issue_id);
     }
 
+    public function projectReadAll($id)
+    {
+        return $this->portal()->projectReadAll(request(), $id);
+    }
+
     public function issueRead($id, $issue_id)
     {
         return $this->portal()->issueRead(request(), $id, $issue_id);
