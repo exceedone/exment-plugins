@@ -413,6 +413,25 @@
    issue is long, and a composer that has to be scrolled to is a composer that
    is not used. Collapsed it is one row; opened it grows upwards and its own
    body scrolls, so the sheet can never be taller than the screen. */
+/* ISS00336: the issue's own line, pinned while a long issue is read. Only
+   shown once the title is out of sight, so it never repeats what is on
+   screen. Fixed rather than sticky: it takes no room until it is needed. */
+.pmportal .pp-dbar{position:fixed;top:var(--pp-stick-top,0px);left:var(--pp-dbar-l,0);width:var(--pp-dbar-w,100%);z-index:930;
+  display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;box-sizing:border-box;
+  background:var(--bl-box);border-bottom:1px solid var(--bl-line);box-shadow:0 2px 6px rgba(0,0,0,.06);font-size:13px;}
+.pmportal .pp-dbar[hidden]{display:none;}
+/* A phone has no height to spare; the comment dock is enough there. */
+@media (max-width:760px){.pmportal .pp-dbar{display:none !important;}}
+.pmportal .pp-dbar .bl-key{flex:none;}
+.pmportal .pp-dbar .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;cursor:pointer;color:var(--bl-ink);}
+/* A jump to a comment or a heading must not land under the pinned line
+   (wide screens only - a phone has no pinned line). */
+@media (min-width:761px){.pmportal #pp-issue [id]{scroll-margin-top:calc(var(--pp-stick-top,0px) + 56px);}}
+.pmportal .pp-dbar .t:focus-visible{outline:2px solid var(--bl-accent);outline-offset:2px;border-radius:3px;}
+@media print{
+  .pmportal .pp-dbar{display:none !important;}
+  .pmportal .bl-wiki > .bl-card-box.pp-pinned{position:static !important;max-height:none !important;width:auto !important;}
+}
 .pmportal .bl-cmtdock{position:fixed;left:var(--pp-dock-l,0);width:var(--pp-dock-w,100%);bottom:0;z-index:940;
   background:var(--bl-box);border-top:1px solid var(--bl-line);box-shadow:0 -6px 18px rgba(15,42,60,.10);
   display:flex;flex-direction:column;max-height:64vh;}
@@ -646,6 +665,13 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 
 /* ---- wiki / files ---- */
 .pmportal .bl-wiki{display:grid;grid-template-columns:260px 1fr;gap:12px;align-items:start;}
+/* ISS00336: the page list stays beside a long article (PC only). Pinned
+   from script (ppWtreeFit), not with position:sticky - AdminLTE's .wrapper
+   has overflow:hidden, and sticky does nothing under such a box. The
+   article keeps its column while the list is out of the grid's flow. */
+.pmportal .bl-wiki.pp-wtree-pinned > .bl-card-box:nth-child(2){grid-column:2;}
+.pmportal .bl-wiki > .bl-card-box.pp-pinned{position:fixed;z-index:20;overflow:hidden;margin:0;}
+.pmportal .bl-wiki > .bl-card-box.pp-pinned .bl-wtree{overflow:auto;}
 .pmportal .bl-wtree .nd{padding:5px 8px;border-radius:var(--bl-radius-s,4px);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pmportal .bl-wtree .nd:hover{background:var(--bl-hover);}
 .pmportal .bl-wtree .nd.on{background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));color:var(--bl-accent-d);font-weight:700;}
@@ -1289,6 +1315,12 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .bl-dsum{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:12px;padding:9px 12px;
   background:var(--bl-box2);border:1px solid var(--bl-line2);border-radius:var(--bl-radius);}
 .pmportal .bl-dsum .it{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
+/* Issue detail, kept short (ISS00336): the fields as a grid of as many
+   columns as the width takes, rather than one field per line. */
+.pmportal .bl-props{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));column-gap:28px;}
+.pmportal .bl-dsum .pp-tocmt{margin-left:auto;font-weight:700;color:var(--bl-accent-d);white-space:nowrap;cursor:pointer;}
+.pmportal .pp-dbar .pp-tocmt{flex:none;font-weight:700;color:var(--bl-accent-d);white-space:nowrap;cursor:pointer;}
+.pmportal .bl-reladd-open{color:var(--bl-accent-d);font-weight:600;}
 .pmportal .bl-dsum .k{color:var(--bl-sub);font-size:var(--bl-fs-xs);font-weight:700;white-space:nowrap;}
 
 /* ---- hover / focus ---- */

@@ -356,6 +356,8 @@ return [
     'children_done' => '%s / %s 完了',
     'rel_add' => '追加',
     'rel_none' => '関連課題はまだありません。',
+    'rel_add_open' => '関連課題を追加',
+    'to_comments' => 'コメントへ',
     'rel_self' => '自分自身とは関連付けられません。',
     'rel_dup' => 'この課題とはすでに関連付けられています。',
     'rel_fail' => '関連課題を追加できませんでした。',

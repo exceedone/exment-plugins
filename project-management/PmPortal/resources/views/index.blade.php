@@ -314,9 +314,12 @@
 
         {{-- ============ issue detail ============ --}}
         <section class="bl-screen" id="pp-issue">
+            {{-- ISS00336: one line that stays at the top once the title has
+                 scrolled away - which issue this is, and the way back. --}}
+            <div class="pp-dbar" id="pp-dbar" hidden></div>
             <div class="bl-detail">
                 <div class="bl-card-box"><div class="bl-boxbody" id="pp-d-main"><i class="fa fa-spinner fa-spin"></i></div></div>
-                <div class="bl-card-box">
+                <div class="bl-card-box" id="pp-d-propbox">
                     <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sliders"></i>{{ $lang['box_props'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
                     <div class="bl-boxbody bl-rows bl-props" id="pp-d-props"></div>
                 </div>
