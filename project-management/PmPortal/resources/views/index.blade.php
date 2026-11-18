@@ -38,6 +38,7 @@
         'cmt_hint', 'cmt_drop', 'ct_attach', 'ct_bold', 'ct_italic', 'ct_strike',
         'ct_ul', 'ct_ol', 'ct_quote', 'ct_code', 'ct_link', 'ct_preview', 'ct_write',
         'ct_link_label', 'cmt_uploading', 'cmt_up_ok', 'cmt_up_fail', 'cmt_menu',
+        'rx_add', 'rx_fail', 'rx_like', 'rx_heart', 'rx_haha', 'rx_wow', 'rx_sad', 'rx_angry', 'rx_thanks', 'rx_clap', 'rx_party', 'rx_eyes', 'rx_ok',
         'cmt_edit', 'cmt_copy', 'cmt_copied', 'cmt_save', 'cmt_cancel', 'cmt_saved',
         'cmt_del_ask', 'cmt_deleted', 'cmt_del_fail',
         'wiki_pages', 'wiki_add', 'wiki_edit', 'wiki_hist', 'wiki_files', 'wiki_meta', 'wiki_none', 'wiki_empty',

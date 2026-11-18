@@ -1335,6 +1335,19 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-move-in .pp-move-sel{max-width:100%;margin:0 6px;padding:4px 6px;}
 .pmportal .pp-move-note{margin-top:6px;color:var(--bl-sub);font-size:12px;}
 .pmportal .pp-issuedel{color:#c0392b;}
+/* Reactions on an issue and a comment (ISS00259). */
+.pmportal .pp-rxrow{margin:8px 0 4px;}
+.pmportal .pp-rxbar{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px;position:relative;margin-right:8px;vertical-align:middle;}
+.pmportal .pp-rx{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border:1px solid var(--bl-line);border-radius:12px;background:var(--bl-box);font-size:13px;line-height:20px;cursor:pointer;user-select:none;}
+.pmportal .pp-rx .n{font-size:11px;color:var(--bl-sub);}
+.pmportal .pp-rx.on{border-color:#2f80ed;background:color-mix(in srgb, #2f80ed 10%, var(--bl-box));}
+.pmportal .pp-rx.on .n{color:#2f80ed;font-weight:700;}
+.pmportal .pp-rxadd{display:inline-flex;align-items:center;gap:1px;padding:1px 6px;border:1px dashed var(--bl-line);border-radius:12px;font-size:12px;line-height:20px;color:var(--bl-sub);cursor:pointer;user-select:none;}
+.pmportal .pp-rxadd:hover{color:var(--bl-text, inherit);border-style:solid;}
+.pmportal .pp-rxpick{position:absolute;left:0;top:100%;margin-top:4px;z-index:50;display:flex;flex-wrap:wrap;gap:2px;max-width:260px;padding:6px;border:1px solid var(--bl-line);border-radius:8px;background:var(--bl-box);box-shadow:0 4px 14px rgba(0,0,0,.15);}
+.pmportal .pp-rxpick[hidden]{display:none;}
+.pmportal .pp-rxopt{font-size:20px;line-height:28px;width:30px;text-align:center;border-radius:6px;cursor:pointer;}
+.pmportal .pp-rxopt:hover{background:var(--bl-hover, rgba(0,0,0,.06));transform:scale(1.15);}
 /* Who opened the issue, on the detail's summary line. */
 .pmportal .pp-reads .pp-reads-v{display:inline-flex;align-items:center;gap:2px;flex-wrap:wrap;}
 .pmportal .pp-reads .pp-reads-v.none{color:var(--bl-faint);font-size:12px;}

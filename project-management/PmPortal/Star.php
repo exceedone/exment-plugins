@@ -29,6 +29,57 @@ class Star extends ModelBase
     protected $table = 'exment_stars';
 
     /**
+     * Reactions (ISS00259): one row per user, kind and target, stored as
+     * star_type "r:<kind>" (the column holds 10 characters). Several kinds
+     * per user, the way Slack and Teams do it: 👀 when you start reading,
+     * ✅ when it is done.
+     */
+    public const REACTION_PREFIX = 'r:';
+
+    /** The kinds, in the order the picker shows them. */
+    public const REACTIONS = ['like', 'heart', 'haha', 'wow', 'sad', 'angry', 'thanks', 'clap', 'party', 'eyes', 'ok'];
+
+    /**
+     * Whether a star_type is one of the reactions.
+     */
+    public static function isReaction(string $star_type): bool
+    {
+        return strpos($star_type, self::REACTION_PREFIX) === 0
+            && in_array(substr($star_type, strlen(self::REACTION_PREFIX)), self::REACTIONS, true);
+    }
+
+    /**
+     * Who reacted with what, over many targets at once:
+     * target id => kind => user ids, in the order they reacted.
+     *
+     * @param string $target_type
+     * @param array<int, mixed> $target_ids
+     * @return array<string, array<string, array<int, int>>>
+     */
+    public static function reactions(string $target_type, array $target_ids): array
+    {
+        if (empty($target_ids)) {
+            return [];
+        }
+        $rows = static::where('star_type', 'like', self::REACTION_PREFIX . '%')
+            ->where('target_type', $target_type)
+            ->whereIn('target_id', array_map('strval', $target_ids))
+            ->orderBy('id')
+            ->get(['star_type', 'target_id', 'user_id']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            if (!static::isReaction(strval($row->star_type))) {
+                continue;
+            }
+            $kind = substr(strval($row->star_type), strlen(self::REACTION_PREFIX));
+            $out[strval($row->target_id)][$kind][] = intval($row->user_id);
+        }
+
+        return $out;
+    }
+
+    /**
      * Base query for one target.
      *
      * @param string $star_type
