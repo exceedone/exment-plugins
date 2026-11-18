@@ -2333,7 +2333,8 @@ class PmPortalController extends AdminControllerBase
             'issue_table' => $issue_name,
             // The column names behind the short keys the rows use, so the
             // screen can build a create form that starts from an issue.
-            'issue_cols' => $this->def['issue'],
+            // The quick edit saves the due time by the same role map.
+            'issue_cols' => $this->def['issue'] + ['due_time' => strval(array_get($this->def, 'issue_extra.due_time', 'due_time'))],
             // The columns the schema upgrade added. Named separately because
             // an install that has not run the upgrade simply has not got them,
             // and the form has to lay out whatever is actually there.
@@ -2698,6 +2699,20 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * The due time as HH:MM, or '' when the issue has none (a whole-day due
+     * date, and every issue from before schema 22).
+     *
+     * @param mixed $value the issue's value array
+     * @return string
+     */
+    protected function dueTime($value): string
+    {
+        $raw = strval(array_get((array) $value, strval(array_get($this->def, 'issue_extra.due_time', 'due_time')), ''));
+
+        return preg_match('/^(\d{1,2}):(\d{2})/', $raw, $m) ? sprintf('%02d:%s', intval($m[1]), $m[2]) : '';
+    }
+
+    /**
      * One issue as the list row / detail head sees it.
      *
      * @param \Exceedone\Exment\Model\CustomValue $project
@@ -2727,6 +2742,8 @@ class PmPortalController extends AdminControllerBase
             'cat' => collect((array) array_get($v, array_get($is, 'category'), []))->map('strval')->values(),
             'sd' => $this->rawDate(array_get($v, array_get($is, 'start'))),
             'dd' => $this->rawDate(array_get($v, array_get($is, 'due'))),
+            // Schema 22: HH:MM on the due date, or '' for the whole day.
+            'dt' => $this->dueTime($v),
             'pg' => is_numeric(array_get($v, array_get($is, 'progress'))) ? floatval(array_get($v, array_get($is, 'progress'))) : null,
             // Numbers or nothing, like the progress above: the screen prints
             // the hours straight into the page, and a column that is not a
