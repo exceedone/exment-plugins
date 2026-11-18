@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * The manager / members / viewers columns are share columns: saving a project
  * hands everyone they name a custom_value share on the project row, and the
  * project's issues and wiki pages inherit it. The member_orgs / viewer_orgs
- * columns (schema 21, ISS00333) do the same for organizations: one share on
+ * columns (schema 23, ISS00333) do the same for organizations: one share on
  * the project row for the organization, reaching everyone in it. Exment only
  * ever adds, though.
  * Take a name off the project and the share it was given stays behind, along
@@ -149,7 +149,7 @@ class PortalMembership
     /**
      * The organizations the organization columns name, and in which role.
      * One named in both keeps the stronger. Empty on an install without the
-     * columns (schema 21) or with organizations switched off.
+     * columns (schema 23) or with organizations switched off.
      *
      * @param array<string, mixed>|null $value a project row's value
      * @return array<int, string> organization id => role

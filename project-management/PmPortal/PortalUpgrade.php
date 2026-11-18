@@ -344,7 +344,7 @@ class PortalUpgrade
                 $steps[] = PortalDefinition::trans('upgrade.step_table_options', ['count' => $optioned]);
             }
 
-            // Schema 21: the organization columns become share columns.
+            // Schema 23: the organization columns become share columns.
             // Idempotent, so no version gate.
             $shared = static::syncShareSettings($names);
             if ($shared > 0) {

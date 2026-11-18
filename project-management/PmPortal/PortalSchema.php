@@ -73,7 +73,10 @@ class PortalSchema
      * When the next turn comes, PortalRecurrence makes the next issue and
      * moves the setting to it.
      *
-     * 21: projects get member_orgs and viewer_orgs (ISS00333), organization
+     * 22: issues get due_time, an optional time on the due date (ISS00299).
+     * Empty means the whole day, as before.
+     *
+     * 23: projects get member_orgs and viewer_orgs (ISS00333), organization
      * columns that work like members and viewers: each is a share column, so
      * an organization named in one gets a share on the project and everyone
      * in it can write (or read) the project's issues and wiki. The share
@@ -81,7 +84,7 @@ class PortalSchema
      * the template, whose import deletes every share setting a table has
      * before it writes its own.
      */
-    const VERSION = 21;
+    const VERSION = 23;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -120,6 +123,8 @@ class PortalSchema
         'subject_sub' => 'subject_sub',
         // Schema 20: repeat the issue (PortalRecurrence).
         'recurrence' => 'recurrence',
+        // Schema 22: the time on the due date, or empty for the whole day.
+        'due_time' => 'due_time',
     ];
 
     /**
@@ -147,7 +152,7 @@ class PortalSchema
         'ai_assign' => 'ai_assign',
         // Schema 18: the order an administrator dragged the projects into.
         'display_order' => 'display_order',
-        // Schema 21: organizations on the project (ISS00333).
+        // Schema 23: organizations on the project (ISS00333).
         'member_orgs' => 'member_orgs',
         'viewer_orgs' => 'viewer_orgs',
     ];
@@ -634,6 +639,12 @@ class PortalSchema
                     'select_item_valtext' => static::valtext(PortalRecurrence::KINDS, 'issue.recurrences.'),
                     'help' => PortalDefinition::trans('schema.help.recurrence'),
                 ], 23),
+                // Schema 22: a time column of its own beside the due date, so
+                // the date stays a date for the gantt, the board, CSV and the
+                // API, and an issue without a time is exactly what it was.
+                static::column($ic['due_time'], 'issue.due_time', 'time', [
+                    'help' => PortalDefinition::trans('schema.help.due_time'),
+                ], 24),
             ],
         ];
     }
@@ -684,7 +695,7 @@ class PortalSchema
             'index_enabled' => '1',
         ], 40);
 
-        // Schema 21: organizations as members and as viewers, placed with the
+        // Schema 23: organizations as members and as viewers, placed with the
         // people columns (same order as members / viewers; Exment then
         // orders by creation, so each lands right after its user column).
         $columns[] = static::column($pc['member_orgs'], 'project.member_orgs', 'organization', [
