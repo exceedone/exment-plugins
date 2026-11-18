@@ -2709,7 +2709,13 @@ class PmPortalController extends AdminControllerBase
     {
         $raw = strval(array_get((array) $value, strval(array_get($this->def, 'issue_extra.due_time', 'due_time')), ''));
 
-        return preg_match('/^(\d{1,2}):(\d{2})/', $raw, $m) ? sprintf('%02d:%s', intval($m[1]), $m[2]) : '';
+        if (!preg_match('/^(\d{1,2}):(\d{2})/', $raw, $m)) {
+            return '';
+        }
+        $time = sprintf('%02d:%s', intval($m[1]), $m[2]);
+
+        // 00:00 is no time: see PluginEvent::clearMidnightDueTime().
+        return $time === '00:00' ? '' : $time;
     }
 
     /**
