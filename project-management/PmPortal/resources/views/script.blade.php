@@ -7154,6 +7154,9 @@ window.PmPortalBoot = function () {
             // touched it, and was written back each time.
             var v = String(value == null ? '' : value);
             if (col.type === 'date') { v = v.slice(0, 10); }
+            // The picker writes hours and minutes (see _datepicker); a stored
+            // 14:30:00 is shown as 14:30.
+            if (col.type === 'time') { v = v.slice(0, 5); }
             input.value = v;
             if (readonly) { input.readOnly = true; }
             if (window.ppDateField) { window.ppDateField(input, col.type); }
