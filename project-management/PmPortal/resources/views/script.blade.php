@@ -1146,7 +1146,7 @@
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
                 // stacked to its right so both lines start at the same place
                 (TREE_ON ? '<td class="pp-tcol">' + ind + '</td>' : '') +
-                '<td class="sub">' + parent + esc(i.subject) +
+                '<td class="sub">' + parent + rcMark(i) + esc(i.subject) +
                     (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
                 '<td' + edAttr('st') + '>' + pill(i.st) + '</td>' +
@@ -1873,6 +1873,11 @@
             timeline: null
         };
     }
+    // A small repeat mark after the subject of a recurring issue.
+    function rcMark(i) {
+        if (!i.rc) { return ''; }
+        return '<i class="fa fa-repeat pp-rc" title="' + esc(L.col_rc + ': ' + (L['rc_' + i.rc] || i.rc)) + '"></i> ';
+    }
     function renderDetail(id) {
         var epoch = ++detailEpoch;
         cmtSetBusy(false);
@@ -2014,6 +2019,7 @@
             [L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:5px;"></i>' + esc(ms.l) : '—'],
             [L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
+            [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
             [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
             [L.lbl_pg, pbar(i.pg)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#issue-' + esc(parentIssue.id) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
@@ -5444,6 +5450,7 @@
             [c.priority || null, c.milestone || null],
             [c.category || null, x.versions || null],
             [c.start || null, c.due || null],
+            [x.recurrence || null],
             [c.estimate || null, c.actual || null],
             [c.progress || null, x.resolution || null],
             [x.notified_users || null]

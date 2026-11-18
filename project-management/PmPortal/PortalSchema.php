@@ -67,8 +67,12 @@ class PortalSchema
      * 19: issues get subject_sub, a second subject line (ex1task keeps the
      * Vietnamese subject there), shown under the subject in the list and
      * the detail. The sidebar menu is a single entry (menus()).
+     *
+     * 20: issues get recurrence (daily, weekdays, weekly, monthly, yearly).
+     * When the next turn comes, PortalRecurrence makes the next issue and
+     * moves the setting to it.
      */
-    const VERSION = 19;
+    const VERSION = 20;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -105,6 +109,8 @@ class PortalSchema
         'notified_users' => 'notified_users',
         // Schema 19: second subject line (e.g. the subject in Vietnamese).
         'subject_sub' => 'subject_sub',
+        // Schema 20: repeat the issue (PortalRecurrence).
+        'recurrence' => 'recurrence',
     ];
 
     /**
@@ -609,6 +615,13 @@ class PortalSchema
                 static::column($ic['subject_sub'], 'issue.subject_sub', 'text', [
                     'help' => PortalDefinition::trans('schema.help.subject_sub'),
                 ], 2),
+                // Schema 20: indexed, so a run finds the few recurring issues
+                // without reading every row.
+                static::column($ic['recurrence'], 'issue.recurrence', 'select_valtext', [
+                    'index_enabled' => '1',
+                    'select_item_valtext' => static::valtext(PortalRecurrence::KINDS, 'issue.recurrences.'),
+                    'help' => PortalDefinition::trans('schema.help.recurrence'),
+                ], 23),
             ],
         ];
     }

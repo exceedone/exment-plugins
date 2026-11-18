@@ -341,6 +341,13 @@
         if (ev.target.closest('.pp-top-menu a')) { closeAll(); }
     });
     bar.querySelectorAll('.pp-top-dd > button').forEach(function (btn) {
+        // Start fetching the project list as soon as the pointer is on its
+        // button, so the answer is usually there by the time of the click.
+        if (btn.parentElement.querySelector('.pp-top-menu[data-projects]')) {
+            ['pointerenter', 'focus', 'touchstart'].forEach(function (type) {
+                btn.addEventListener(type, function () { loadProjects(); }, { passive: true });
+            });
+        }
         btn.addEventListener('click', function (ev) {
             ev.stopPropagation();
             var menu = btn.parentElement.querySelector('.pp-top-menu');
@@ -418,10 +425,30 @@
     var pjClear = document.getElementById('pp-pjm-clear');
     var pjState = { done: false, busy: false, table: '' };
 
+    // The menu used to open on the plain server-rendered list and redraw a
+    // moment later, once the fetch landed - a flash of an unstyled list. The
+    // last answer is kept for this tab (sessionStorage, 10 minutes) and drawn
+    // straight away; the fetch still runs and redraws only if it differs.
+    var PJ_CACHE_MS = 10 * 60 * 1000;
+    function pjCacheKey(url) { return 'pp_pjm:' + url; }
+    function pjCacheRead(url) {
+        try {
+            var hit = JSON.parse(sessionStorage.getItem(pjCacheKey(url)) || 'null');
+            if (hit && hit.t && Date.now() - hit.t < PJ_CACHE_MS && hit.j && Array.isArray(hit.j.items)) { return hit; }
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+    function pjApply(json) {
+        pjState.table = String((json && json.table) || '');
+        pjState.reorderUrl = String((json && json.reorder_url) || '');
+        paintProjects((json && Array.isArray(json.items)) ? json.items : []);
+    }
     function loadProjects() {
         if (pjState.done || pjState.busy || !pjList) { return; }
         var url = bar.getAttribute('data-projects-url');
         if (!url) { return; }
+        var cached = pjState.painted ? null : pjCacheRead(url);
+        if (cached) { pjApply(cached.j); pjState.painted = JSON.stringify(cached.j); }
         pjState.busy = true;
         fetch(url, {
             credentials: 'same-origin',
@@ -431,9 +458,10 @@
             return r.json();
         }).then(function (json) {
             pjState.done = true;
-            pjState.table = String((json && json.table) || '');
-            pjState.reorderUrl = String((json && json.reorder_url) || '');
-            paintProjects((json && Array.isArray(json.items)) ? json.items : []);
+            var text = JSON.stringify(json || {});
+            try { sessionStorage.setItem(pjCacheKey(url), JSON.stringify({ t: Date.now(), j: json })); } catch (e) { /* ignore */ }
+            if (pjState.painted !== text) { pjApply(json); }
+            pjState.painted = text;
         }).catch(function () {
             // Leave the plain list alone - it links to the same projects.
         }).then(function () {

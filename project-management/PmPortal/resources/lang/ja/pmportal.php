@@ -299,6 +299,12 @@ return [
     'col_cat' => 'カテゴリー',
     'col_sd' => '開始日',
     'col_dd' => '期限日',
+    'col_rc' => '繰り返し',
+    'rc_daily' => '毎日',
+    'rc_weekdays' => '平日（月〜金）',
+    'rc_weekly' => '毎週',
+    'rc_monthly' => '毎月',
+    'rc_yearly' => '毎年',
     'col_pg' => '進捗',
     'col_up' => '更新',
     'cnt_line' => '%s 件を表示（全 %s 件）',
@@ -760,6 +766,7 @@ return [
                 'versions' => '発生バージョン',
                 'notified_users' => 'お知らせ先',
                 'subject_sub' => '件名サブ',
+                'recurrence' => '繰り返し',
             ],
             'project' => [
                 'archived' => 'アーカイブ済み',
@@ -785,6 +792,16 @@ return [
             'versions' => 'この課題が影響するバージョンやマイルストーンを選びます。',
             'notified_users' => '担当者以外で更新を知らせたいユーザーを選びます。',
             'subject_sub' => '件名の 2 行目（例: ベトナム語の件名）。一覧と詳細で件名の下に小さく表示します。',
+            'recurrence' => '選ぶと、次の回の課題を自動で作ります。開始日があれば次の開始日に、期限日だけなら期限日の翌日に作ります。繰り返しの設定は新しい課題に移ります。',
+        ],
+        'issue' => [
+            'recurrences' => [
+                'daily' => '毎日',
+                'weekdays' => '平日（月〜金）',
+                'weekly' => '毎週',
+                'monthly' => '毎月',
+                'yearly' => '毎年',
+            ],
         ],
         'related' => [
             'types' => [
@@ -1205,6 +1222,8 @@ return [
     // What the AI batch (exment:batch) prints for the operator.
     'batch' => [
         'no_tables' => 'ポータルのテーブルがインストールされていません。',
+        'recur' => '繰り返しの課題を :count 件作りました。',
+        'recur_dry' => 'ドライラン：繰り返しの課題を :count 件作る予定です。',
         'no_key' => 'TypeSafe の API キーがありません（環境変数 TYPESAFE_KEY またはプラグインの設定）。',
         'no_projects' => '自動入力の対象になるプロジェクトがありません（AI 自動入力はオンになっていますか）。',
         'not_found' => 'プロジェクト :target が見つかりません。',

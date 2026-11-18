@@ -107,6 +107,8 @@ class PmPortalController extends AdminControllerBase
         if (PortalSetup::needsSetup()) {
             return redirect(PortalDefinition::url('setup'));
         }
+        // Recurring issues whose turn has come (at most every few minutes).
+        PortalRecurrence::tick();
 
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
@@ -354,6 +356,7 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::url('setup'));
         }
 
+        PortalRecurrence::tick();
         $project = $this->findProject($id);
 
         $this->setPageInfo(
@@ -2277,6 +2280,8 @@ class PmPortalController extends AdminControllerBase
             'subject' => strval(array_get($v, array_get($is, 'subject'), '')),
             // Schema 19: the second subject line (empty before the upgrade).
             'sub' => strval(array_get($v, 'subject_sub', '')),
+            // Schema 20: daily / weekdays / weekly / monthly / yearly, or ''.
+            'rc' => strval(array_get($v, PortalRecurrence::columnName(), '')),
             'ty' => strval(array_get($v, array_get($is, 'type'), '')),
             'st' => strval(array_get($v, array_get($is, 'status'), '')),
             'pr' => strval(array_get($v, array_get($is, 'priority'), '')),

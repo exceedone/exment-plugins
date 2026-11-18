@@ -1209,6 +1209,7 @@ body.pp-ib-open{overflow:hidden;}
   border-radius:var(--bl-radius-s);padding:7px 16px;color:#fff;font-weight:700;box-shadow:var(--bl-shadow-s);}
 .pmportal .bl-dback:hover,.pmportal .bl-dback:focus{border-color:var(--bl-accent-d);color:#fff;background:var(--bl-accent-d);text-decoration:none;}
 .pmportal .bl-dhead > span:last-child{flex-wrap:wrap;justify-content:flex-end;}
+.pmportal .pp-rc { color: var(--bl-accent-d); font-size: 11px; margin-right: 2px; }
 .pmportal .bl-dback-foot{margin:14px 0 4px;}
 .pmportal .bl-dback.bl-dback-s{padding:4px 12px;font-size:12px;}
 .pmportal .bl-dsum{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:12px;padding:9px 12px;
