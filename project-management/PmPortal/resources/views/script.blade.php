@@ -1299,6 +1299,7 @@ window.PmPortalBoot = function () {
         document.getElementById('pp-issue-rows').innerHTML = rows;
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
+        ppListFit();
     }
 
     // `matched` is how many issues pass the filters; in tree mode `total` is
@@ -2864,6 +2865,27 @@ window.PmPortalBoot = function () {
         if (!alive()) { document.removeEventListener('keydown', onPpMoreKey); return; }
         if (ev.key === 'Escape') { ppMoreClose(); }
     });
+    // The issue list scrolls inside its own frame on a wide screen, so its
+    // column heads can stay at the frame's top (position:sticky only works
+    // inside the box that scrolls). A fixed max-height (100vh - 70px) left
+    // the page scrolling too wherever the head of the portal is taller than
+    // that guess - and then the frame, heads and all, scrolled out of sight.
+    // So the frame gets exactly the room left under it on screen, measured.
+    function ppListFit() {
+        var wrap = document.querySelector('#pp-issue-head') ? document.querySelector('#pp-issue-head').closest('.bl-tablewrap') : null;
+        if (!wrap) { return; }
+        if (String(currentScreen) !== 'issues' || (WIDE && !WIDE.matches)) {
+            wrap.style.removeProperty('max-height');
+            return;
+        }
+        var se = document.scrollingElement || document.documentElement;
+        var top = wrap.getBoundingClientRect().top + (se ? se.scrollTop : 0);
+        // Whatever stays below it on the page: Exment's footer where there
+        // still is one, and the frame's own margin.
+        var foot = document.querySelector('.main-footer');
+        var below = (foot ? foot.offsetHeight : 0) + 16;
+        wrap.style.maxHeight = Math.max(240, Math.floor(window.innerHeight - top - below)) + 'px';
+    }
     // Both pinned things, measured once per frame.
     function ppPinFit() {
         var top = ppStickTop();
@@ -2974,7 +2996,7 @@ window.PmPortalBoot = function () {
     window.addEventListener('resize', function onPpFit() {
         if (!alive()) { window.removeEventListener('resize', onPpFit); return; }
         if (ppFitPending) { return; }
-        ppFitPending = setTimeout(function () { ppFitPending = null; if (alive()) { ppDockFit(); ppPinFit(); } }, 120);
+        ppFitPending = setTimeout(function () { ppFitPending = null; if (alive()) { ppDockFit(); ppPinFit(); ppListFit(); } }, 120);
     });
     // Backlog shows the stream two ways: everything that happened, or the
     // comments on their own. The choice belongs to the person, not to the
@@ -9156,6 +9178,7 @@ window.PmPortalBoot = function () {
             // measurable box until the screen it belongs to has been laid out.
             if (scr === 'issue') { ppDockFit(); }
             ppPinFit();
+            ppListFit();
         });
     }
     // Coming out of a ticket used to land you at the top of the issue list
