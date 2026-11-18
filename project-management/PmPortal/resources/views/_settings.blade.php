@@ -590,7 +590,7 @@
             // nobody fills the pickers in only to be told so on save.
             var locked = !S.can_people;
             if (locked) { frag.appendChild(el('div', 'pp-set-note', L.people_locked)); }
-            ['manager', 'members', 'viewers'].forEach(function (role) {
+            ['manager', 'members', 'viewers', 'member_orgs', 'viewer_orgs'].forEach(function (role) {
                 var col = colOf(MAP[role]);
                 if (col) { frag.appendChild(field(col, null, locked)); }
             });

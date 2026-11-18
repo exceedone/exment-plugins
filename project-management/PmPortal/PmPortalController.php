@@ -2259,9 +2259,23 @@ class PmPortalController extends AdminControllerBase
         }
         $details = $this->detailsFor($project, $embedded, $me);
 
+        // Members and viewers as the screen uses them - to offer assignees
+        // and to name people: those the columns name first, in their order,
+        // then whoever the organization columns bring (ISS00333).
+        $named = function ($key) use ($project, $pj) {
+            return collect((array) array_get($project->value, array_get($pj, $key), []))->map(function ($v) { return intval($v); });
+        };
+        $roles = collect(PortalMembership::roles((array) $project->value));
+        $member_ids = $named('members')->merge($roles->filter(function ($role) {
+            return $role === PortalMembership::MEMBER;
+        })->keys())->map(function ($v) { return intval($v); })->unique()->values();
+        $viewer_ids = $named('viewers')->merge($roles->filter(function ($role) {
+            return $role === PortalMembership::VIEWER;
+        })->keys())->map(function ($v) { return intval($v); })->unique()->values();
+
         $user_ids = collect([intval(array_get($project->value, array_get($pj, 'manager')))])
-            ->merge(collect((array) array_get($project->value, array_get($pj, 'members'), []))->map(function ($v) { return intval($v); }))
-            ->merge(collect((array) array_get($project->value, array_get($pj, 'viewers'), []))->map(function ($v) { return intval($v); }))
+            ->merge($member_ids)
+            ->merge($viewer_ids)
             ->merge(collect($rows)->pluck('as')->flatten())
             ->merge(collect($rows)->pluck('by'))
             ->merge(collect($feed)->pluck('by'))
@@ -2287,8 +2301,8 @@ class PmPortalController extends AdminControllerBase
                 'start' => strval(array_get($project->value, array_get($pj, 'start'), '')),
                 'end' => strval(array_get($project->value, array_get($pj, 'end'), '')),
                 'manager' => intval(array_get($project->value, array_get($pj, 'manager'))),
-                'members' => collect((array) array_get($project->value, array_get($pj, 'members'), []))->map(function ($v) { return intval($v); })->values(),
-                'viewers' => collect((array) array_get($project->value, array_get($pj, 'viewers'), []))->map(function ($v) { return intval($v); })->values(),
+                'members' => $member_ids,
+                'viewers' => $viewer_ids,
                 'edit_url' => admin_url('data', [$this->project_table->table_name, $project->id, 'edit']),
                 'features' => $features,
                 // Read-only while archived: the comment, attachment and bulk
@@ -3949,7 +3963,8 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
-     * The project columns that say who is on it: manager, members, viewers.
+     * The project columns that say who is on it: manager, members, viewers,
+     * and the member and viewer organizations.
      *
      * @return array<int, string>
      */
@@ -3961,6 +3976,8 @@ class PmPortalController extends AdminControllerBase
             array_get($pj, 'manager'),
             array_get($pj, 'members'),
             array_get($pj, 'viewers'),
+            array_get($pj, 'member_orgs'),
+            array_get($pj, 'viewer_orgs'),
         ])));
     }
 

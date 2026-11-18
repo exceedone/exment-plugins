@@ -5,6 +5,7 @@ namespace App\Plugins\PmPortal;
 use Exceedone\Exment\Enums\NotifyAction;
 use Exceedone\Exment\Enums\NotifyTrigger;
 use Exceedone\Exment\Enums\PluginEventTrigger;
+use Exceedone\Exment\Enums\SharePermission;
 
 /**
  * The Backlog shaped database the portal wants, expressed once.
@@ -72,11 +73,22 @@ class PortalSchema
      * When the next turn comes, PortalRecurrence makes the next issue and
      * moves the setting to it.
      *
+     * 21: not used. It was taken by ISS00333 while it was on its own branch,
+     * which landed after 22 and so became 23. The number stays used so the
+     * history reads in order.
+     *
      * 22: issues get due_time, an optional time on the due date (ISS00299).
-     * Empty means the whole day, as before. (21 is ISS00333's member_orgs /
-     * viewer_orgs on another branch; whichever merges second takes max+1.)
+     * Empty means the whole day, as before.
+     *
+     * 23: projects get member_orgs and viewer_orgs (ISS00333), organization
+     * columns that work like members and viewers: each is a share column, so
+     * an organization named in one gets a share on the project and everyone
+     * in it can write (or read) the project's issues and wiki. The share
+     * settings are added by PortalUpgrade::syncShareSettings(), not through
+     * the template, whose import deletes every share setting a table has
+     * before it writes its own.
      */
-    const VERSION = 22;
+    const VERSION = 23;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -144,6 +156,9 @@ class PortalSchema
         'ai_assign' => 'ai_assign',
         // Schema 18: the order an administrator dragged the projects into.
         'display_order' => 'display_order',
+        // Schema 23: organizations on the project (ISS00333).
+        'member_orgs' => 'member_orgs',
+        'viewer_orgs' => 'viewer_orgs',
     ];
 
     /** Menu node names, prefixed per install the same way tables are. */
@@ -684,7 +699,37 @@ class PortalSchema
             'index_enabled' => '1',
         ], 40);
 
+        // Schema 23: organizations as members and as viewers, placed with the
+        // people columns (same order as members / viewers; Exment then
+        // orders by creation, so each lands right after its user column).
+        $columns[] = static::column($pc['member_orgs'], 'project.member_orgs', 'organization', [
+            'multiple_enabled' => '1',
+            'help' => PortalDefinition::trans('schema.help.member_orgs'),
+        ], 6);
+        $columns[] = static::column($pc['viewer_orgs'], 'project.viewer_orgs', 'organization', [
+            'multiple_enabled' => '1',
+            'help' => PortalDefinition::trans('schema.help.viewer_orgs'),
+        ], 7);
+
         return ['table_name' => $n['project_table'], 'custom_columns' => $columns];
+    }
+
+    /**
+     * The share columns the schema adds to an existing table, with the
+     * permission each one grants - the same shape the bundled template gives
+     * members (edit) and viewers (view). Triggered on create and on update.
+     *
+     * @param array<string, string> $n
+     * @return array<int, array{table: string, column: string, permission: string}>
+     */
+    public static function shareSettings(array $n): array
+    {
+        $pc = self::PROJECT_COLUMNS;
+
+        return [
+            ['table' => $n['project_table'], 'column' => $pc['member_orgs'], 'permission' => SharePermission::EDIT],
+            ['table' => $n['project_table'], 'column' => $pc['viewer_orgs'], 'permission' => SharePermission::VIEW],
+        ];
     }
 
     /**
