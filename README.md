@@ -8,7 +8,7 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 
 | Folder | Name | Description | Status |
 |---|---|---|---|
-| [`project-management/`](project-management/) | Exment Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification) / プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知） | In use on Exment SaaS / Exment SaaS で利用中 |
+| [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification) / プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知） | In use on Exment SaaS / Exment SaaS で利用中 |
 
 ## Requirements / 動作環境
 
