@@ -3653,6 +3653,39 @@ window.PmPortalBoot = function () {
         if (!incoming) { return t.l; }
         return (own(types, t.inv) || {}).l || t.l;
     }
+    // Issues of other projects named in related rows, by id: the card
+    // endpoint's answer, or false while it is being asked.
+    var REL_FAR = {};
+    function relFarText(id) {
+        var c = REL_FAR[id];
+        return c ? esc(c.key || ('#' + id)) + ' ' + esc(c.subject || '') : '#' + esc(id);
+    }
+    function relFarPaint(a) {
+        var c = REL_FAR[a.dataset.issue];
+        if (!c || !a.isConnected) { return; }
+        a.innerHTML = relFarText(a.dataset.issue);
+        var tx = a.parentNode;
+        if (c.st_l && tx && !(tx.nextElementSibling && tx.nextElementSibling.classList.contains('pp-relfar-st'))) {
+            // Its own project's status label, in the neutral colour: this
+            // project's status colours do not apply to another's rows.
+            var st = document.createElement('span');
+            st.className = 'bl-pill pp-relfar-st';
+            st.style.background = '#95a5a6';
+            st.textContent = c.st_l;
+            tx.insertAdjacentElement('afterend', st);
+        }
+    }
+    function relFarFill(a) {
+        var id = a.dataset.issue;
+        if (REL_FAR[id]) { relFarPaint(a); return; }
+        if (REL_FAR[id] === false) { return; }
+        REL_FAR[id] = false;
+        hcFetch('issue', id, function (res) {
+            if (!res || !res.ok) { delete REL_FAR[id]; return; }
+            REL_FAR[id] = res;
+            Array.prototype.forEach.call(document.querySelectorAll('.pp-relfar[data-issue="' + id + '"]'), relFarPaint);
+        });
+    }
     // One link being added at a time. The duplicate check reads the links
     // the page holds, which only learn about this one when its answer is
     // back - so a double click used to file the same link twice.
@@ -3677,7 +3710,7 @@ window.PmPortalBoot = function () {
                 // An issue this project is not carrying - one that was related
                 // across projects, or has since moved. All the row can say by
                 // itself is the number; the card behind it says the rest.
-                : '<a class="bl-issuelink pp-card" href="' + esc(D.urls.data_base + '/' + D.issue_table + '/' + otherId) + '" data-issue="' + esc(otherId) + '">#' + esc(otherId) + '</a>';
+                : '<a class="bl-issuelink pp-card pp-relfar" href="' + esc(D.urls.data_base + '/' + D.issue_table + '/' + otherId) + '" data-issue="' + esc(otherId) + '">' + relFarText(otherId) + '</a>';
             return '<div class="row"><div class="k">' + esc(relTypeLabel(r.rt, incoming)) + '</div>' +
                 '<div class="v"><span class="tx">' + link + '</span>' +
                 (other ? pill(other.st) : '') +
@@ -3698,6 +3731,12 @@ window.PmPortalBoot = function () {
                 '<button type="button" class="bl-btn-sub" id="pp-rel-add"><i class="fa fa-plus"></i> ' + esc(L.rel_add) + '</button></div></div>';
         }
         document.getElementById('pp-d-related').innerHTML = html;
+        // An issue of another project: the row starts with its number and is
+        // filled in with its key, subject and status from the card endpoint
+        // (ISS00258) - the same answer the hover card shows.
+        Array.prototype.forEach.call(box.querySelectorAll('.pp-relfar'), function (a) {
+            relFarFill(a);
+        });
         var relOpener = box.querySelector('.bl-reladd-open');
         if (relOpener) {
             relOpener.addEventListener('click', function () {
