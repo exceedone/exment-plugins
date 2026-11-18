@@ -42,11 +42,20 @@
     // the value an input holds here is posted straight to the API and read
     // back by the same code: changing the shape of the string would change
     // what the server stores.
+    // The one exception is time: hours and minutes only. Nobody sets a due
+    // time to the second, and Exment's time column takes HH:mm as well as
+    // HH:mm:ss (Validator\TimeRule), so the stored value stays valid.
     var FORMATS = {
         date: 'YYYY-MM-DD',
         datetime: 'YYYY-MM-DD HH:mm:ss',
-        time: 'HH:mm:ss'
+        time: 'HH:mm'
     };
+
+    // The time an empty time field starts from when its picker is opened:
+    // the end of the working day, rather than 00:00 or whatever minute it
+    // happens to be. The picker cannot show one time while holding none, so
+    // opening it puts this in; the clear button takes it out again.
+    var TIME_VIEW = { hour: 18, minute: 0 };
 
     // The same icon set Exment passes, so the picker looks like the one on
     // every other screen rather than like a second widget.
@@ -169,6 +178,13 @@
             showTodayButton: type !== 'time',
             showClose: true
         });
+        if (type === 'time') {
+            $input.on('dp.show', function () {
+                if (!String(input.value || '').trim()) {
+                    $input.data('DateTimePicker').date(window.moment(TIME_VIEW));
+                }
+            });
+        }
 
         // dp.show is the library's last step, after it has placed the widget
         // itself - so this is where its answer gets replaced rather than
