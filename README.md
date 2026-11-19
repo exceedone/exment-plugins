@@ -14,14 +14,15 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 
 | Folder | Name | What it does | Status |
 |---|---|---|---|
-| [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification) | In use on Exment SaaS |
+| [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification, data migration) | In use on Exment SaaS |
 
-Exment Plugin Project Management is a set of two Exment plugins:
+Exment Plugin Project Management is one Exment plugin:
 
 | Folder | Plugin | What it does | Download (for your own server) |
 |---|---|---|---|
-| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal | The project and ticket portal | [PmPortal-1.1.0.zip](https://github.com/exceedone/exment-plugins/releases/download/PmPortal-v1.1.0/PmPortal-1.1.0.zip) |
-| [`project-management/PmMigrate/`](project-management/PmMigrate/) | PmMigrate | Moves a project to another Exment | [PmMigrate-1.0.1.zip](https://github.com/exceedone/exment-plugins/releases/download/PmMigrate-v1.0.1/PmMigrate-1.0.1.zip) |
+| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal — プロジェクト管理 (Exment Project Management) | Projects and tickets, and moving a project to another Exment (**⚙ Settings → データ移行**) | [PmPortal-1.2.0.zip](https://github.com/exceedone/exment-plugins/releases/download/PmPortal-v1.2.0/PmPortal-1.2.0.zip) |
+
+Data migration used to be the separate PmMigrate plugin. Since PmPortal 1.2.0 it is part of PmPortal (**⚙ Settings → データ移行**, system administrators only), so PmMigrate is retired: after updating PmPortal you can delete PmMigrate in **Admin settings → Plugins**. Its last version stays on [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1).
 
 Details are in the [README of the set](project-management/README.md).
 
@@ -47,7 +48,7 @@ In Exment, open **Admin → Plugin market → Install**.
 **Download**
 
 1. Open **[Releases](https://github.com/exceedone/exment-plugins/releases)** (right side of this page).
-2. Under the newest release of the plugin (for example **PmPortal 1.1.0**), click the zip in **Assets** (for example `PmPortal-1.1.0.zip`). Do not unzip it.
+2. Under the newest release of the plugin (for example **PmPortal 1.2.0**), click the zip in **Assets** (for example `PmPortal-1.2.0.zip`). Do not unzip it.
 
 Do not use the green **Code → Download ZIP** button: that is the whole repository, and Exment cannot read it.
 
@@ -56,12 +57,12 @@ Do not use the green **Code → Download ZIP** button: that is the whole reposit
 1. Log in to Exment as an administrator.
 2. Open **Admin settings → Plugins**.
 3. In **Plugin upload**, choose the zip you downloaded and send it.
-4. Follow the plugin's own README (for example the first-time setup of the project portal).
+4. Follow the plugin's own README (for example the first-time setup of Project Management).
 
 **Update to a newer version**
 
 1. Download the newer zip from Releases and upload it the same way. The plugin is replaced; your data stays.
-2. For the project portal: open it and press **⚙ Settings → Update data structure** if it asks.
+2. For Project Management (PmPortal): open it and press **⚙ Settings → Update data structure** if it asks.
 
 ### GitHub and the market: what is different
 
@@ -135,14 +136,15 @@ cd .github/ci && composer update --ignore-platform-req='ext-*' && vendor/bin/php
 
 | フォルダ | 名前 | できること | 状態 |
 |---|---|---|---|
-| [`project-management/`](project-management/) | Exment Plugin Project Management | プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知） | Exment SaaS で利用中 |
+| [`project-management/`](project-management/) | Exment Plugin Project Management | プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知・データ移行） | Exment SaaS で利用中 |
 
-Exment Plugin Project Management は、2 つの Exment プラグインでできています。
+Exment Plugin Project Management は、1 つの Exment プラグインです。
 
 | フォルダ | プラグイン | できること | ダウンロード（自分のサーバー用） |
 |---|---|---|---|
-| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal | プロジェクトとチケットのポータル | [PmPortal-1.1.0.zip](https://github.com/exceedone/exment-plugins/releases/download/PmPortal-v1.1.0/PmPortal-1.1.0.zip) |
-| [`project-management/PmMigrate/`](project-management/PmMigrate/) | PmMigrate | プロジェクトを別の Exment に移す | [PmMigrate-1.0.1.zip](https://github.com/exceedone/exment-plugins/releases/download/PmMigrate-v1.0.1/PmMigrate-1.0.1.zip) |
+| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal — プロジェクト管理 (Exment Project Management) | プロジェクトとチケットの管理、プロジェクトを別の Exment に移す（**⚙ 設定 → データ移行**） | [PmPortal-1.2.0.zip](https://github.com/exceedone/exment-plugins/releases/download/PmPortal-v1.2.0/PmPortal-1.2.0.zip) |
+
+データ移行は、前は別のプラグイン PmMigrate でした。PmPortal 1.2.0 からは PmPortal の **⚙ 設定 → データ移行**（システム管理者だけ）に入ったので、PmMigrate は使い終わりです。PmPortal を新しくしたあと、**管理者設定 → プラグイン** で PmMigrate を消してかまいません。PmMigrate の最後の版は [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1) に残っています。
 
 くわしくは [このセットの README](project-management/README.md) を見てください。
 
@@ -168,7 +170,7 @@ Exment の **管理 → プラグインマーケット → インストール** 
 **ダウンロード**
 
 1. このページの右側にある **[Releases](https://github.com/exceedone/exment-plugins/releases)** を開きます。
-2. 入れたいプラグインのいちばん新しい版（例: **PmPortal 1.1.0**）の **Assets** にある zip（例: `PmPortal-1.1.0.zip`）をクリックして保存します。zip は展開しません。
+2. 入れたいプラグインのいちばん新しい版（例: **PmPortal 1.2.0**）の **Assets** にある zip（例: `PmPortal-1.2.0.zip`）をクリックして保存します。zip は展開しません。
 
 緑の **Code → Download ZIP** ボタンは使わないでください。リポジトリ全体の zip なので、Exment は読めません。
 
@@ -177,12 +179,12 @@ Exment の **管理 → プラグインマーケット → インストール** 
 1. Exment に管理者でログインします。
 2. **管理者設定 → プラグイン** を開きます。
 3. **プラグインアップロード** で、ダウンロードした zip を選んで送ります。
-4. そのあとは、各プラグインの README に従います（例: プロジェクトポータルの初期設定）。
+4. そのあとは、各プラグインの README に従います（例: プロジェクト管理の初期設定）。
 
 **新しい版にする**
 
 1. Releases から新しい版の zip をダウンロードし、同じようにアップロードします。プラグインが置きかわります。データは消えません。
-2. プロジェクトポータルの場合: ポータルを開き、言われたら **⚙ 設定 → データ構造の更新** を押します。
+2. プロジェクト管理（PmPortal）の場合: 画面を開き、言われたら **⚙ 設定 → データ構造の更新** を押します。
 
 ### GitHub とマーケットの違い
 

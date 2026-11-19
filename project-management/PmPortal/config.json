@@ -1,10 +1,10 @@
 {
     "plugin_name": "PmPortal",
     "uuid": "00da3e93-1a24-4f44-b993-d61367e43649",
-    "plugin_view_name": "プロジェクトポータル",
-    "description": "Backlog 風のプロジェクトポータル。Exment の標準テーブル上に構築し、画面が使う軽量 API を含みます。",
+    "plugin_view_name": "プロジェクト管理",
+    "description": "Backlog 風のプロジェクト管理（課題・ボード・ガントチャート・Wiki・ファイル・データ移行）。Exment の標準テーブル上に構築します。",
     "author": "Exceedone",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "plugin_type": "page,validator,event,batch",
     "event_triggers": ["saving", "saved"],
     "batch_hour": -1,
@@ -15,6 +15,8 @@
         { "method": "post", "uri": "setup", "function": "postSetup" },
         { "method": "get", "uri": "settings", "function": "settings" },
         { "method": "post", "uri": "settings/upgrade", "function": "postUpgrade" },
+        { "method": "post", "uri": "settings/migrate/export", "function": "postMigrateExport" },
+        { "method": "post", "uri": "settings/migrate/import", "function": "postMigrateImport" },
         { "method": "post", "uri": "form-style", "function": "postFormStyle" },
 
         { "method": "get", "uri": "asset/{name}", "function": "asset", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },

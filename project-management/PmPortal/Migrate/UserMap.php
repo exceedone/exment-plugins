@@ -1,8 +1,11 @@
 <?php
 
-namespace App\Plugins\PmMigrate;
+namespace App\Plugins\PmPortal\Migrate;
 
 /**
+ * Data migration, originally written by TTM as the separate PmMigrate plugin
+ * and folded into PmPortal in 1.2.0.
+ *
  * Rewrites the user ids a bundle carries.
  *
  * A user id here is the id of a row on the user table (the custom value), the

@@ -390,4 +390,16 @@ class PluginPage extends PluginPageBase
     {
         return $this->settingsController()->upgrade(request());
     }
+
+    // Data migration: a ZIP download on success, otherwise the settings page
+    // again with the error or the import report in its migration card.
+    public function postMigrateExport()
+    {
+        return $this->respond($this->settingsController()->migrateExport(request(), new Content()));
+    }
+
+    public function postMigrateImport()
+    {
+        return $this->respond($this->settingsController()->migrateImport(request(), new Content()));
+    }
 }

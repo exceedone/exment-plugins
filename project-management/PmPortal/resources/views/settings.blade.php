@@ -2,8 +2,8 @@
 use App\Plugins\PmPortal\PortalDefinition as PD;
 @endphp
 
-{{-- The space-wide settings: the lists every project shares, and the schema
-     upgrade. What belongs to one project is on that project's 設定 tab
+{{-- The space-wide settings: the lists every project shares, the schema
+     upgrade, and data migration to or from another Exment. What belongs to one project is on that project's 設定 tab
      (_settings.blade.php) and is deliberately not repeated here.
 
      The page sits in Exment's own frame, outside .pmportal, so it names the
@@ -103,6 +103,26 @@ use App\Plugins\PmPortal\PortalDefinition as PD;
             background: var(--bl-chip); border-radius: 4px; padding: 9px 12px; white-space: pre-line; }
         #pp-settings .pp-cfg-log .res.err { border-left-color: var(--bl-red); }
         #pp-settings .pp-cfg-log ul { margin: 10px 0; padding-left: 20px; color: var(--bl-sub); }
+
+        /* data migration */
+        #pp-settings .pp-mig-tbl .c-check { width: 28px; }
+        #pp-settings .pp-mig-tbl label { font-weight: normal; margin: 0; cursor: pointer; }
+        #pp-settings .pp-mig-foot { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        #pp-settings .pp-mig-field { margin: 0 0 12px; }
+        #pp-settings .pp-mig-field > label { display: block; font-weight: 700; font-size: 12.5px; margin: 0 0 5px; }
+        #pp-settings .pp-mig-field > label.pp-mig-opt { font-weight: normal; }
+        #pp-settings .pp-mig-field .pp-cfg-hint { margin: 6px 0 0; }
+        #pp-settings .pp-mig-map { font-family: monospace; resize: vertical; }
+        #pp-settings .pp-mig-danger { border-color: var(--bl-red); color: var(--bl-red); }
+        #pp-settings .pp-mig-danger:hover { background: var(--bl-red); color: #fff; }
+        #pp-settings .pp-mig-report { margin-top: 14px; }
+        #pp-settings .pp-mig-report h4 { font-size: 13px; font-weight: 700; margin: 16px 0 6px; }
+        #pp-settings .pp-mig-line { border: 1px solid var(--bl-line); border-left: 3px solid var(--bl-accent);
+            background: var(--bl-chip); border-radius: 4px; padding: 7px 12px; margin: 0 0 6px; font-size: 12.5px; line-height: 1.7; }
+        #pp-settings .pp-mig-line.warn { border-left-color: var(--bl-amber); }
+        #pp-settings .pp-mig-line.err { border-left-color: var(--bl-red); }
+        #pp-settings .pp-mig-counts { max-width: 420px; }
+        #pp-settings .pp-mig-bad { color: var(--bl-red); }
 
         @media (max-width: 640px) {
             #pp-settings .pp-cfg-guide { flex-wrap: wrap; }
@@ -204,7 +224,169 @@ use App\Plugins\PmPortal\PortalDefinition as PD;
             </div>
         </section>
     </div>
+
+    {{-- Data migration (Migrate/*, formerly the PmMigrate plugin). Plain
+         forms posting to their own routes: the export answers with a ZIP the
+         browser saves, the import with this page again, its report below.
+         The whole page is admin-only, and both routes check again. --}}
+    <div class="pp-cfg-group" id="pp-migrate">
+        <div class="pp-cfg-gh">
+            <h2>{{ PD::trans('migrate.group') }}</h2>
+            <p>{{ PD::trans('migrate.group_note') }}</p>
+        </div>
+
+        @if($migrate['error'])
+        <div class="pp-cfg-warn"><i class="fa fa-exclamation-triangle"></i>{{ $migrate['error'] }}</div>
+        @endif
+
+        <div class="pp-cfg-grid">
+            <section class="pp-cfg-card">
+                <div class="pp-cfg-head">
+                    <i class="fa fa-download"></i>
+                    <h3>{{ PD::trans('migrate.export_title') }}</h3>
+                </div>
+                <form class="pp-cfg-body" method="post" action="{{ $urls['migrate_export'] }}">
+                    {{ csrf_field() }}
+                    @if(empty($migrate['projects']))
+                    <p class="pp-cfg-hint">{{ PD::trans('migrate.no_projects') }}</p>
+                    @else
+                    <p class="pp-cfg-hint">{{ PD::trans('migrate.export_hint') }}</p>
+                    <table class="pp-cfg-tbl pp-mig-tbl">
+                        <tbody>
+                            @foreach($migrate['projects'] as $p)
+                            <tr>
+                                <td class="c-check"><input type="checkbox" name="projects[]" value="{{ $p['id'] }}" id="pp-mig-p{{ $p['id'] }}"></td>
+                                <td><label for="pp-mig-p{{ $p['id'] }}">{{ $p['name'] }}</label></td>
+                                <td><code>{{ $p['code'] }}</code></td>
+                                <td class="c-act">@if($p['archived'])<span class="pp-cfg-count">{{ PD::trans('migrate.archived') }}</span>@endif</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    @endif
+                    <div class="pp-mig-foot">
+                        <button type="submit" class="pp-cfg-btn main" @if(empty($migrate['projects'])) disabled @endif>
+                            <i class="fa fa-file-archive-o"></i> {{ PD::trans('migrate.export_button') }}
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="pp-cfg-card">
+                <div class="pp-cfg-head">
+                    <i class="fa fa-upload"></i>
+                    <h3>{{ PD::trans('migrate.import_title') }}</h3>
+                </div>
+                <form class="pp-cfg-body" method="post" action="{{ $urls['migrate_import'] }}" enctype="multipart/form-data">
+                    {{ csrf_field() }}
+                    <div class="pp-mig-field">
+                        <label for="pp-mig-bundle">{{ PD::trans('migrate.bundle') }}</label>
+                        <input type="file" name="bundle" id="pp-mig-bundle" accept=".zip">
+                    </div>
+                    <div class="pp-mig-field">
+                        <label for="pp-mig-map">{{ PD::trans('migrate.user_map') }}</label>
+                        <textarea name="user_map" id="pp-mig-map" class="pp-cfg-in pp-mig-map" rows="5"
+                            placeholder="{{ PD::trans('migrate.user_map_placeholder') }}">{{ $migrate['user_map'] }}</textarea>
+                        <p class="pp-cfg-hint">{{ PD::trans('migrate.user_map_help') }}</p>
+                    </div>
+                    <div class="pp-mig-field">
+                        <label>{{ PD::trans('migrate.master') }}</label>
+                        <label class="pp-mig-opt"><input type="radio" name="master_mode" value="abort" @if($migrate['master_mode'] !== 'replace') checked @endif> {{ PD::trans('migrate.master_abort') }}</label>
+                        <label class="pp-mig-opt"><input type="radio" name="master_mode" value="replace" @if($migrate['master_mode'] === 'replace') checked @endif> {{ PD::trans('migrate.master_replace') }}</label>
+                    </div>
+                    <div class="pp-mig-field">
+                        <label class="pp-mig-opt"><input type="checkbox" name="confirm" value="1"> {{ PD::trans('migrate.confirm') }}</label>
+                    </div>
+                    <div class="pp-mig-foot">
+                        <button type="submit" name="action" value="dry" class="pp-cfg-btn main">
+                            <i class="fa fa-search"></i> {{ PD::trans('migrate.dry_button') }}
+                        </button>
+                        <button type="submit" name="action" value="execute" class="pp-cfg-btn pp-mig-danger">
+                            <i class="fa fa-play"></i> {{ PD::trans('migrate.execute_button') }}
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        @if($migrate['report'])
+        @php
+            $report = $migrate['report'];
+            $labels = (array) PD::trans('migrate.dataset');
+            if ($report['executed']) {
+                $title = PD::trans('migrate.result_executed');
+            } elseif ($migrate['ran'] === 'execute') {
+                $title = PD::trans('migrate.result_not_executed');
+            } elseif ($report['ok']) {
+                $title = PD::trans('migrate.result_ok');
+            } else {
+                $title = PD::trans('migrate.result_error');
+            }
+        @endphp
+        <section class="pp-cfg-card pp-mig-report" id="pp-migrate-report">
+            <div class="pp-cfg-head">
+                <i class="fa {{ $report['ok'] ? 'fa-check-circle' : 'fa-exclamation-circle' }}"></i>
+                <h3>{{ $title }}</h3>
+            </div>
+            <div class="pp-cfg-body">
+                @foreach($report['errors'] as $line)
+                <div class="pp-mig-line err">{{ $line }}</div>
+                @endforeach
+                @foreach($report['warnings'] as $line)
+                <div class="pp-mig-line warn">{{ $line }}</div>
+                @endforeach
+                @foreach($report['info'] as $line)
+                <div class="pp-mig-line">{{ $line }}</div>
+                @endforeach
+
+                @if(!empty($report['projects']))
+                <h4>{{ PD::trans('migrate.projects') }}</h4>
+                <ul>
+                    @foreach($report['projects'] as $p)
+                    <li>{{ $p['name'] }} <code>{{ $p['code'] }}</code></li>
+                    @endforeach
+                </ul>
+                @endif
+
+                @if(!empty($report['counts']))
+                <h4>{{ $report['executed'] ? PD::trans('migrate.counts_done') : PD::trans('migrate.counts_plan') }}</h4>
+                <table class="pp-cfg-tbl pp-mig-counts">
+                    @foreach($report['counts'] as $name => $count)
+                    <tr><td>{{ $labels[$name] ?? $name }}</td><td class="c-act">{{ number_format($count) }}</td></tr>
+                    @endforeach
+                </table>
+                @endif
+
+                @if(!empty($report['users']))
+                <h4>{{ PD::trans('migrate.users') }}</h4>
+                <table class="pp-cfg-tbl">
+                    <thead><tr><th>{{ PD::trans('migrate.user_from') }}</th><th>{{ PD::trans('migrate.user_to') }}</th></tr></thead>
+                    <tbody>
+                        @foreach($report['users'] as $u)
+                        <tr>
+                            <td>{{ $u['user_name'] ?? '—' }} <code>{{ $u['user_code'] ?? 'ID ' . $u['id'] }}</code></td>
+                            <td>@if($u['mapped'])<code>{{ $u['mapped'] }}</code>@else<span class="pp-mig-bad">{{ PD::trans('migrate.unmapped') }}</span>@endif</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                @endif
+            </div>
+        </section>
+        @endif
+    </div>
 </div>
+
+@if($migrate['report'] || $migrate['error'])
+{{-- The answer to a migration POST is at the bottom of a long page: take the
+     administrator to it rather than leave them looking at the lists. --}}
+<script>
+(function () {
+    var target = document.getElementById('pp-migrate');
+    if (target && target.scrollIntoView) { target.scrollIntoView(); }
+})();
+</script>
+@endif
 
 <script>
 (function () {

@@ -7,6 +7,7 @@ use Exceedone\Exment\Enums\Permission;
 use Exceedone\Exment\Model\CustomTable;
 use ExmentAdminCore\Admin\Layout\Content;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The portal's own settings screen: what the whole space shares.
@@ -22,6 +23,11 @@ use Illuminate\Http\Request;
  * exactly one code path that writes a portal row and exactly one place where
  * permission is enforced. This controller decides what a user is offered; the
  * API decides what they are allowed to do, and does not trust this screen.
+ *
+ * The one exception is data migration (Migrate/*, formerly the separate
+ * PmMigrate plugin): it reads and writes the tables directly and moves files
+ * both ways, so it is two form POSTs of its own, each checking for a system
+ * administrator again.
  */
 class PortalSettingsController extends AdminControllerBase
 {
@@ -35,8 +41,11 @@ class PortalSettingsController extends AdminControllerBase
 
     /**
      * The settings screen.
+     *
+     * @param array<string, mixed> $migrate what a data migration POST has to
+     *     show on the page it answers with: an error, or the import report
      */
-    public function index(Request $request, Content $content)
+    public function index(Request $request, Content $content, array $migrate = [])
     {
         if (PortalSetup::needsSetup()) {
             return redirect(PortalDefinition::url('setup'));
@@ -63,12 +72,152 @@ class PortalSettingsController extends AdminControllerBase
         return $this->AdminContent($content)->body(view(PortalDefinition::view('settings'), [
             'sections' => $this->sections(),
             'schema' => $this->schemaState(),
+            'migrate' => $this->migrateState($migrate),
             'urls' => [
                 'lightapi' => PortalDefinition::url('lightapi'),
                 'upgrade' => PortalDefinition::url('settings', 'upgrade'),
                 'portal' => PortalDefinition::url(),
+                'migrate_export' => PortalDefinition::url('settings', 'migrate', 'export'),
+                'migrate_import' => PortalDefinition::url('settings', 'migrate', 'import'),
             ],
         ])->render());
+    }
+
+    // ---- data migration ------------------------------------------------
+
+    /**
+     * Build the bundle of the ticked projects and send it as a download.
+     *
+     * A plain form POST rather than a lightapi call, as it was in the
+     * PmMigrate plugin: the answer is a ZIP the browser saves, which a fetch
+     * would have to rebuild into a download by hand. A failure answers with
+     * the settings page again, the sentence in the migration card.
+     *
+     * @return mixed
+     */
+    public function migrateExport(Request $request, Content $content)
+    {
+        // The page that offers this is already admin-only, but a POST does not
+        // come through that page: refuse it here too. It reads every row of
+        // every project, whoever may see them.
+        if (!static::isSystemAdmin()) {
+            abort(403, strval(PortalDefinition::trans('migrate.not_admin')));
+        }
+
+        $ids = array_values(array_filter(array_map('intval', (array) $request->input('projects', []))));
+        if (empty($ids)) {
+            return $this->index($request, $content, ['error' => PortalDefinition::trans('migrate.select_projects')]);
+        }
+
+        static::liftLimits();
+        try {
+            $path = Migrate\Exporter::run($ids);
+        } catch (\Throwable $e) {
+            return $this->index($request, $content, ['error' => static::migrateMessage($e, 'export')]);
+        }
+
+        return response()->download($path, 'pm-migrate-' . date('Ymd-His') . '.zip')->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Check an uploaded bundle against this Exment, and write it if asked to.
+     *
+     * Every run is checked first (a dry run); writing needs the 実行 button
+     * and the backup tick both, so a stray click cannot import anything.
+     *
+     * @return mixed
+     */
+    public function migrateImport(Request $request, Content $content)
+    {
+        // Writes rows straight into the tables, past every permission check:
+        // a system administrator's call alone, whatever the screen showed.
+        if (!static::isSystemAdmin()) {
+            abort(403, strval(PortalDefinition::trans('migrate.not_admin')));
+        }
+
+        $file = $request->file('bundle');
+        if ($file === null || !$file->isValid()) {
+            return $this->index($request, $content, ['error' => PortalDefinition::trans('migrate.select_bundle')]);
+        }
+
+        $execute = $request->input('action') === 'execute';
+        if ($execute && !$request->boolean('confirm')) {
+            return $this->index($request, $content, ['error' => PortalDefinition::trans('migrate.need_confirm')]);
+        }
+
+        static::liftLimits();
+        try {
+            $spec = Migrate\UserMap::parseSpec(strval($request->input('user_map', '')));
+            $mode = $request->input('master_mode') === Migrate\Importer::MASTER_REPLACE
+                ? Migrate\Importer::MASTER_REPLACE
+                : Migrate\Importer::MASTER_ABORT;
+            $report = Migrate\Importer::run(strval($file->getRealPath()), $spec, $mode, $execute);
+        } catch (\Throwable $e) {
+            return $this->index($request, $content, ['error' => static::migrateMessage($e, 'import')]);
+        }
+
+        return $this->index($request, $content, ['report' => $report, 'ran' => $execute ? 'execute' : 'dry']);
+    }
+
+    /**
+     * What the migration card shows: the projects that can be exported, and
+     * the answer to the POST this page is the reply to, if any.
+     *
+     * @param array<string, mixed> $extra
+     * @return array<string, mixed>
+     */
+    protected function migrateState(array $extra): array
+    {
+        $projects = [];
+        $error = $extra['error'] ?? null;
+        try {
+            $projects = Migrate\Exporter::projectChoices();
+        } catch (\Throwable $e) {
+            // The rest of the settings page must still open: a missing table
+            // only takes the export list away.
+            $error = $error ?? static::migrateMessage($e, 'projects');
+        }
+
+        $request = request();
+
+        return [
+            'projects' => $projects,
+            'error' => $error,
+            'report' => $extra['report'] ?? null,
+            'ran' => $extra['ran'] ?? null,
+            // An import answered with this page keeps what was typed, so a dry
+            // run can be followed by the real one without retyping the map.
+            'user_map' => strval($request->input('user_map', '')),
+            'master_mode' => $request->input('master_mode') === Migrate\Importer::MASTER_REPLACE
+                ? Migrate\Importer::MASTER_REPLACE
+                : Migrate\Importer::MASTER_ABORT,
+        ];
+    }
+
+    /**
+     * A bundle can take longer, and more memory, than a web request is
+     * normally allowed.
+     */
+    protected static function liftLimits(): void
+    {
+        @set_time_limit(0);
+        @ini_set('memory_limit', '1024M');
+    }
+
+    /**
+     * The sentence shown for a failure. Only MigrateException carries one that
+     * is safe to show: anything else may hold SQL, a host name or a path, so
+     * it goes to the log and the screen gets a fixed sentence.
+     */
+    protected static function migrateMessage(\Throwable $e, string $what): string
+    {
+        if ($e instanceof Migrate\MigrateException) {
+            return $e->getMessage();
+        }
+
+        Log::error('pm_portal migrate ' . $what . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+
+        return strval(PortalDefinition::trans('migrate.failed'));
     }
 
     /**
