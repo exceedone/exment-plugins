@@ -25,10 +25,10 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 ## Install / 入れ方
 
-1. Zip the contents of `PmPortal/` (and `PmMigrate/` if needed). `config.json` must be at the top of the zip. `PmPortal` also has `templates/pm_portal/config.json`; put the top `config.json` last in the zip, because the plugin market reads the last one it finds.
-   `PmPortal/`（必要なら `PmMigrate/` も）の中身を zip にします。`config.json` を zip のいちばん上に置きます。`PmPortal` には `templates/pm_portal/config.json` もあるので、いちばん上の `config.json` を zip の最後に入れてください（プラグインマーケットは最後に見つけたものを読むため）。
-2. Upload the zip in **Admin → Plugins**. On Exment SaaS, use **Admin → Plugin market**.
-   **管理 → プラグイン** でアップロードします。Exment SaaS では **管理 → プラグインマーケット** から入れます。
+1. Download `PmPortal-<version>.zip` (and `PmMigrate-<version>.zip` if needed) from **[Releases](https://github.com/exceedone/exment-plugins/releases)**. Do not unzip it.
+   **[Releases](https://github.com/exceedone/exment-plugins/releases)** から `PmPortal-<版>.zip`（必要なら `PmMigrate-<版>.zip` も）をダウンロードします。展開はしません。
+2. Upload the zip in **Admin settings → Plugins → Plugin upload**. On Exment SaaS, use **Admin → Plugin market**.
+   **管理者設定 → プラグイン → プラグインアップロード** で zip を送ります。Exment SaaS では **管理 → プラグインマーケット** から入れます。
 3. Open the portal (**Project management** in the menu) as an administrator and run the first-time setup. It creates the tables the portal uses.
    管理者でポータル（メニューの **プロジェクト管理**）を開き、初期設定をします。ポータルが使うテーブルが作られます。
 4. After installing a newer version, press **⚙ Settings → Update data structure** if the portal asks for it.
@@ -40,6 +40,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   PHP 8.2 で動く書き方にします。
 - Raise `version` in `config.json` for each release, and never change `uuid` or `plugin_name`.
   出すたびに `config.json` の `version` を上げます。`uuid` と `plugin_name` は変えません。
+- To release, raise `version` in `config.json`, merge to `main`, then push a tag `<Folder>-v<version>` (for example `git tag PmPortal-v1.1.0 && git push origin PmPortal-v1.1.0`). The release workflow builds the zip (top `config.json` last) and publishes it on Releases.
+  出すときは、`config.json` の `version` を上げて `main` にマージし、`<フォルダ名>-v<版>` のタグ（例: `git tag PmPortal-v1.1.0 && git push origin PmPortal-v1.1.0`）を push します。release のワークフローが zip を作り（いちばん上の `config.json` を最後に入れる）、Releases に出します。
 - When you add tables or columns, raise `PortalSchema::VERSION` and add the step to `PortalUpgrade`.
   テーブルや列を足したら、`PortalSchema::VERSION` を上げ、`PortalUpgrade` に手順を足します。
 - UI text is in `PmPortal/resources/lang/ja/pmportal.php`. A key used by the screen's script must also be listed in `resources/views/index.blade.php`.

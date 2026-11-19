@@ -4,7 +4,7 @@
     "plugin_view_name": "プロジェクトポータル",
     "description": "Backlog 風のプロジェクトポータル。Exment の標準テーブル上に構築し、画面が使う軽量 API を含みます。",
     "author": "Exceedone",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "plugin_type": "page,validator,event,batch",
     "event_triggers": ["saving", "saved"],
     "batch_hour": -1,
