@@ -87,8 +87,14 @@ class PortalSchema
      * settings are added by PortalUpgrade::syncShareSettings(), not through
      * the template, whose import deletes every share setting a table has
      * before it writes its own.
+     *
+     * 24: the "issue saved" notification (notifies()) is written by
+     * PortalUpgrade::createMissingNotifies(). It used to ride in the
+     * template, whose importer silently skips notifications, so no install
+     * ever got it and assignees heard nothing when their issue changed
+     * (ISS00343).
      */
-    const VERSION = 23;
+    const VERSION = 24;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
