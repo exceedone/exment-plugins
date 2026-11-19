@@ -4,13 +4,13 @@ parameters:
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
 			count: 1
-			path: ../../project-management/PmMigrate/Exporter.php
+			path: ../../project-management/PmPortal/Migrate/Exporter.php
 
 		-
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
 			count: 1
-			path: ../../project-management/PmMigrate/Importer.php
+			path: ../../project-management/PmPortal/Migrate/Importer.php
 
 		-
 			message: '#^Call to an undefined static method Exceedone\\Exment\\Model\\CustomColumn\:\:selectTargetTable\(\)\.$#'

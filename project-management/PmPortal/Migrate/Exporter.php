@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\PmMigrate;
+namespace App\Plugins\PmPortal\Migrate;
 
 use Exceedone\Exment\Model\Define;
 use Illuminate\Support\Facades\DB;
@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 /**
+ * Data migration, originally written by TTM as the separate PmMigrate plugin
+ * and folded into PmPortal in 1.2.0.
+ *
  * Builds the bundle of the chosen projects.
  *
  * Reads the database with plain queries and writes nothing to it. A project

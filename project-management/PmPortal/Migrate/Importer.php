@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\PmMigrate;
+namespace App\Plugins\PmPortal\Migrate;
 
 use Exceedone\Exment\Model\Define;
 use Exceedone\Exment\Services\ZipService;
@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 /**
+ * Data migration, originally written by TTM as the separate PmMigrate plugin
+ * and folded into PmPortal in 1.2.0.
+ *
  * Writes a bundle into this Exment.
  *
  * Rows are inserted with the ids they had, straight into the tables, so no
@@ -861,7 +864,7 @@ class Importer
             if ($e instanceof MigrateException) {
                 $this->errors[] = $e->getMessage();
             } else {
-                Log::error('pm_migrate import failed: ' . $e->getMessage(), ['exception' => $e]);
+                Log::error('pm_portal migrate import failed: ' . $e->getMessage(), ['exception' => $e]);
                 $this->errors[] = '書き込み中にエラーが発生したため、すべて取り消しました（ログを確認してください）。';
             }
         }
@@ -903,7 +906,7 @@ class Importer
             try {
                 $disk->delete($path);
             } catch (\Throwable $e) {
-                Log::warning('pm_migrate could not remove a copied file: ' . $path);
+                Log::warning('pm_portal migrate could not remove a copied file: ' . $path);
             }
         }
         $this->copiedPaths = [];

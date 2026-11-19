@@ -1,25 +1,29 @@
 <?php
 
-namespace App\Plugins\PmMigrate;
+namespace App\Plugins\PmPortal\Migrate;
 
+use App\Plugins\PmPortal\PortalDefinition;
 use Exceedone\Exment\Model\CustomValueAuthoritable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
+ * Data migration, originally written by TTM as the separate PmMigrate plugin
+ * and folded into PmPortal in 1.2.0.
+ *
  * What the two ends of a migration must agree on: which Exment tables the
  * portal uses, which of their columns hold user ids, and which columns can be
  * written to.
  *
- * Reads Exment's own metadata tables with plain queries, so it does not depend
- * on PmPortal's classes being loadable on the machine it runs on.
+ * Reads Exment's own metadata tables with plain queries; only the table names
+ * come from the portal itself (PortalDefinition::config()).
  */
 class MigrateSchema
 {
     /**
-     * The tables the portal needs, by role, with the names the template ships.
-     * PmPortal records the names an install really uses (they gain a prefix
-     * when a table of that name already existed) in its plugin row.
+     * The roles a bundle carries, with the names the template ships. The
+     * names an install really uses (they gain a prefix when a table of that
+     * name already existed) come from PortalDefinition::config().
      */
     const ROLE_DEFAULTS = [
         'project_table' => 'project',
@@ -77,12 +81,15 @@ class MigrateSchema
      */
     public static function roles(): array
     {
-        $options = json_decode(strval(DB::table('plugins')->where('plugin_name', 'PmPortal')->value('options')), true);
-        $stored = is_array($options) ? ($options['portal_setup']['tables'] ?? []) : [];
+        // Now that this code runs inside the portal it asks the portal: the
+        // same answer the separate plugin read out of the plugin row, plus a
+        // deployment override in config('exment.pmportal') that the plugin
+        // row never saw, so both ends name the tables the screens really use.
+        $config = PortalDefinition::config();
 
         $roles = [];
         foreach (static::ROLE_DEFAULTS as $role => $default) {
-            $name = is_array($stored) ? ($stored[$role] ?? null) : null;
+            $name = $config[$role] ?? null;
             $roles[$role] = is_string($name) && $name !== '' ? $name : $default;
         }
 

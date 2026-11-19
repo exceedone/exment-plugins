@@ -1,8 +1,11 @@
 <?php
 
-namespace App\Plugins\PmMigrate;
+namespace App\Plugins\PmPortal\Migrate;
 
 /**
+ * Data migration, originally written by TTM as the separate PmMigrate plugin
+ * and folded into PmPortal in 1.2.0.
+ *
  * The folder a migration bundle is built in and read from.
  *
  *   manifest.json        what was exported, from where, with which users
