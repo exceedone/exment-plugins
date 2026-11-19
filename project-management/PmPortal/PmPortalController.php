@@ -594,6 +594,8 @@ class PmPortalController extends AdminControllerBase
         // Reactions (ISS00259), one query for the comments and one for the issues.
         $comment_reactions = Star::reactions('comment', $comment_ids);
         $issue_reactions = Star::reactions($issue_name, $ids);
+        // Review requests (ISS00341): who was asked to confirm each comment.
+        $comment_reviews = Star::reviews('comment', $comment_ids);
         $comments = [];
         foreach ($comment_rows as $comment) {
             $comments[intval($comment->parent_id)][] = $comment;
@@ -659,7 +661,7 @@ class PmPortalController extends AdminControllerBase
             }
 
             foreach (($comments[intval($issue->id)] ?? []) as $comment) {
-                $timeline[] = [
+                $entry = [
                     'tp' => 'cmt',
                     'cid' => $comment->id,
                     'by' => intval($comment->created_user_id),
@@ -671,6 +673,22 @@ class PmPortalController extends AdminControllerBase
                     'rx' => (object) ($comment_reactions[strval($comment->id)] ?? []),
                     'del' => !$archived && intval($comment->created_user_id) == intval($me),
                 ];
+                // Only on a comment that asked for a confirmation: most do
+                // not, and the page carries thirty issues' worth of these.
+                // "at" is when the person confirmed; a pending one has none.
+                if (!empty($comment_reviews[strval($comment->id)])) {
+                    $entry['rv'] = array_map(function ($review) {
+                        return [
+                            'by' => $review['by'],
+                            'ok' => $review['ok'],
+                            'at' => $review['ok'] ? $this->fmtAt($review['ts']) : '',
+                        ];
+                    }, $comment_reviews[strval($comment->id)]);
+                    // An archived project takes no confirmation (see
+                    // reviewComment), so the button is not offered there.
+                    $entry['rv_on'] = !$archived;
+                }
+                $timeline[] = $entry;
             }
 
             // The same documents twice: once as a line in the history, once
@@ -804,6 +822,19 @@ class PmPortalController extends AdminControllerBase
             }
         }
 
+        // Review request (ISS00341): with "review" ticked, the people picked to
+        // be told are also asked to confirm the comment. It hangs off the
+        // comment, so a status change alone asks nobody; and only people who
+        // can read the issue can be asked - anybody else could never open it
+        // to confirm, and would stand there as pending for ever.
+        $reviewers = [];
+        if ($comment !== '' && $this->wantsReview($request)) {
+            $reviewers = array_values(array_diff(
+                PortalMembership::filterReaders($issue, $this->pickedUsers($request)),
+                [intval(\Exment::getUserId())]
+            ));
+        }
+
         // Every bell Exment rings for this write - the table's notify for the
         // status change and for the comment, the @mention pipeline - is a row
         // past this mark. The portal's own bell then skips whoever got one.
@@ -844,6 +875,20 @@ class PmPortalController extends AdminControllerBase
             // new cannot have been starred yet.
             Star::purge('comment', $model->id);
 
+            // Review request (ISS00341): the picked people are asked to
+            // confirm this comment. After the purge above, which would take
+            // these rows with it. A failure here costs the request, never the
+            // comment: it is saved, and an error answer would get it posted
+            // twice.
+            if (!empty($reviewers)) {
+                try {
+                    Star::askReview('comment', $model->id, $reviewers);
+                } catch (\Throwable $e) {
+                    $reviewers = [];
+                    Log::error('pm_portal review request on comment ' . $model->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+                }
+            }
+
             // What Exment's own comment form does next (DefaultShow::addComment):
             // the issue table's notifications for a comment - its assignees,
             // notified users and creator - which a portal comment never rang.
@@ -873,6 +918,13 @@ class PmPortalController extends AdminControllerBase
         }
         if ($comment !== '') {
             $lines[] = $comment;
+        }
+        if (!empty($reviewers)) {
+            // First, and with the names: the bell and the mail are where the
+            // asked person learns that this one is theirs to answer.
+            array_unshift($lines, strval(PortalDefinition::trans('message.review_request_body', [
+                'names' => implode('、', array_column($this->usersFor($reviewers), 'n')),
+            ])));
         }
         try {
             $this->ringPortalBells($request, $project, $issue, $bell_mark, implode("\n", $lines));
@@ -1337,6 +1389,39 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * Whether the writer ticked "ask them to confirm" (ISS00341).
+     */
+    public function wantsReview(Request $request): bool
+    {
+        $flag = $request->input('review');
+
+        return is_scalar($flag) && in_array(strval($flag), ['1', 'true', 'on'], true);
+    }
+
+    /**
+     * The people the writer picked in the dock (notify_users), as user ids:
+     * who the bell rings for, and who a review request asks. Capped, see
+     * NOTIFY_PICK_LIMIT; whether each may read the issue is the caller's to
+     * check (filterReaders).
+     *
+     * @return array<int, int>
+     */
+    protected function pickedUsers(Request $request): array
+    {
+        return collect((array) $request->get('notify_users', []))
+            ->filter(function ($v) {
+                return is_numeric($v) && intval($v) > 0;
+            })
+            ->map(function ($v) {
+                return intval($v);
+            })
+            ->unique()
+            ->take(self::NOTIFY_PICK_LIMIT)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Where one issue opens in the portal, as a full URL for a mail.
      *
      * @param \Exceedone\Exment\Model\CustomValue $project
@@ -1357,8 +1442,15 @@ class PmPortalController extends AdminControllerBase
      */
     protected function detailUserIds(array $detail): array
     {
+        // The people asked to confirm a comment are named under it, and need
+        // not have written or opened anything on the issue.
+        $reviewers = collect(array_get($detail, 'timeline', []))->flatMap(function ($row) {
+            return array_column((array) array_get($row, 'rv', []), 'by');
+        });
+
         return collect(array_get($detail, 'timeline', []))->pluck('by')
             ->merge(collect(array_get($detail, 'reads', []))->pluck('by'))
+            ->merge($reviewers)
             ->filter()->map(function ($v) {
                 return intval($v);
             })->unique()->values()->all();
@@ -1387,17 +1479,8 @@ class PmPortalController extends AdminControllerBase
         $me = intval(\Exment::getUserId());
         $issue_name = $this->issue_table->table_name;
 
-        $picked = collect((array) $request->get('notify_users', []))
-            ->filter(function ($v) {
-                return is_numeric($v) && intval($v) > 0;
-            })
-            ->map(function ($v) {
-                return intval($v);
-            })
-            ->unique()
-            ->take(self::NOTIFY_PICK_LIMIT);
         $watchers = Star::userIds(Star::TYPE_WATCH, $issue_name, $issue->id);
-        $candidates = $picked->merge($watchers)->unique()->values()->all();
+        $candidates = collect($this->pickedUsers($request))->merge($watchers)->unique()->values()->all();
         if (empty($candidates)) {
             return;
         }
@@ -1636,6 +1719,121 @@ class PmPortalController extends AdminControllerBase
         Star::purge('comment', $comment->id);
 
         return $this->issueDetailResponse($project, $issue_id);
+    }
+
+    /**
+     * Confirm a review request on a comment, or take the confirmation back
+     * (ISS00341). POST {id}/comment/{comment_id}/review with ok=1 or ok=0.
+     *
+     * Only somebody the comment's writer asked can answer, and only for
+     * themselves: the row is found by the caller's own user id, so there is
+     * no id in the request to put somebody else's name under. Taking it back
+     * is allowed - a button pressed on the wrong comment has to be undoable -
+     * and the time shown is always that of the last confirmation.
+     */
+    public function reviewComment(Request $request, $id, $comment_id)
+    {
+        $project = $this->findProject($id);
+        $comment = getModelName(SystemTableName::COMMENT)::find($comment_id);
+        if (!isset($comment) || strval($comment->parent_type) !== $this->issue_table->table_name) {
+            abort(404);
+        }
+        // Throws when the issue it hangs off is not this project's, or is one
+        // the caller cannot read.
+        $issue = $this->findIssue($project, $comment->parent_id);
+        // A confirmation is part of the conversation - the others read it -
+        // so an archived project takes none, as it takes no comment.
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+
+        $ok = $request->input('ok');
+        $ok = !is_scalar($ok) || !in_array(strval($ok), ['0', 'false', 'off', ''], true);
+        $me = intval(\Exment::getUserId());
+        $was = in_array(strval($comment->id), Star::pendingReviews('comment', $me), true);
+        if (!Star::setReview('comment', $comment->id, $me, $ok)) {
+            return $this->messageError(403, 'review_not_asked');
+        }
+
+        // Tell whoever asked, once per confirmation actually given: that is
+        // the answer they were waiting for. Not on taking it back, and not
+        // when a second click found it confirmed already.
+        if ($ok && $was) {
+            try {
+                $this->ringReviewDone($project, $issue, $comment, $me);
+            } catch (\Throwable $e) {
+                Log::warning('pm_portal review bell for comment ' . $comment->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+            }
+        }
+
+        return $this->issueDetailResponse($project, $issue->id);
+    }
+
+    /**
+     * The bell that tells a comment's writer that somebody they asked has
+     * confirmed it. Only while the writer can still read the issue - a bell
+     * shows the issue's title and the comment to whoever receives it.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     * @param \Exceedone\Exment\Model\CustomValue $comment
+     */
+    protected function ringReviewDone($project, $issue, $comment, int $me): void
+    {
+        $asker = intval($comment->created_user_id);
+        if ($asker <= 0 || $asker === $me || empty(PortalMembership::filterReaders($issue, [$asker]))) {
+            return;
+        }
+        $notify = new NotifyNavbar();
+        $notify->fill([
+            'notify_id' => 0,
+            'parent_id' => $issue->id,
+            'parent_type' => $this->issue_table->table_name,
+            'target_user_id' => $asker,
+            'notify_subject' => PortalDefinition::notifySubject('[' . $this->issueKey($project, $issue->id) . '] '
+                . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), ''))),
+            // What was confirmed, under the sentence saying so: the writer may
+            // have asked about several comments on the same issue.
+            'notify_body' => PortalDefinition::notifyBody(
+                strval(PortalDefinition::trans('message.review_done_body')) . "\n\n"
+                . strval(array_get($comment->value, 'comment_detail', ''))
+            ),
+            'trigger_user_id' => $me,
+        ]);
+        $notify->save();
+    }
+
+    /**
+     * The issues, out of the given ones, that carry a comment this user has
+     * been asked to confirm and has not yet (ISS00341) - the list's 確認待ち.
+     *
+     * Two indexed reads: the user's pending requests (few - they go away as
+     * they are answered), then the comments those sit on. Going through the
+     * comment table also drops a request whose comment was deleted somewhere
+     * that did not purge it.
+     *
+     * @param array<int, mixed> $issue_ids
+     * @param mixed $me
+     * @return array<int, bool> issue id => true
+     */
+    protected function reviewPendingIssues(array $issue_ids, $me): array
+    {
+        $comment_ids = Star::pendingReviews('comment', $me);
+        if (empty($issue_ids) || empty($comment_ids)) {
+            return [];
+        }
+        $out = [];
+        $parents = getModelName(SystemTableName::COMMENT)::whereIn('id', $comment_ids)
+            ->where('parent_type', $this->issue_table->table_name)
+            ->pluck('parent_id');
+        $wanted = array_flip(array_map('intval', $issue_ids));
+        foreach ($parents as $parent_id) {
+            if (isset($wanted[intval($parent_id)])) {
+                $out[intval($parent_id)] = true;
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -2303,6 +2501,8 @@ class PmPortalController extends AdminControllerBase
             ->merge(collect($wiki['pages'])->pluck('upby'))
             ->merge(collect($details)->pluck('timeline')->flatten(1)->pluck('by'))
             ->merge(collect($details)->pluck('reads')->flatten(1)->pluck('by'))
+            // the people asked to confirm a comment (ISS00341), named under it
+            ->merge(collect($details)->pluck('timeline')->flatten(1)->pluck('rv')->filter()->flatten(1)->pluck('by'))
             ->filter()->unique()->values()->toArray();
 
         list($relations, $relation_types, $related_meta) = $this->buildRelations($project, $issues);
@@ -2686,9 +2886,13 @@ class PmPortalController extends AdminControllerBase
      */
     protected function issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread): array
     {
+        // Read here rather than handed in: every list of rows wants it, and
+        // it is the reader's own, like the marks beside it.
+        $review = $this->reviewPendingIssues($issues->pluck('id')->all(), \Exment::getUserId());
         $rows = [];
         foreach ($issues as $issue) {
             $row = $this->buildIssueRow($project, $issue);
+            $row['my_rv'] = isset($review[intval($issue->id)]);
             $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
             $row['my_star'] = in_array(strval($issue->id), $my_stars);
             $row['my_watch'] = in_array(strval($issue->id), $my_watches);

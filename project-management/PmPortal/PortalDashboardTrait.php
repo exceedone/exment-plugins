@@ -281,6 +281,28 @@ trait PortalDashboardTrait
             ));
         }
 
+        // Review requests (ISS00341): the issues with a comment somebody asked
+        // this user to confirm and that they have not confirmed yet - open or
+        // finished, since the question still stands on a closed issue. Read
+        // through the comment table, so a request whose comment is gone drops
+        // out; the row check in $map leaves out what the user cannot reach.
+        $review = [];
+        $review_comments = Star::pendingReviews('comment', $me);
+        if (!empty($review_comments)) {
+            $review_ids = getModelName(SystemTableName::COMMENT)::whereIn('id', $review_comments)
+                ->where('parent_type', $this->issue_table->table_name)
+                ->pluck('parent_id')->map(function ($id) {
+                    return intval($id);
+                })->filter()->unique()->values()->toArray();
+            if (!empty($review_ids)) {
+                $review = $map($byDue(
+                    $this->dashboardLean($this->issue_table->getValueModel()->query())
+                        ->where('parent_type', $parent_type)
+                        ->whereIn('id', $review_ids)
+                ));
+            }
+        }
+
         // "Closed this week" is read off updated_at, not off the revision that
         // actually flipped the status. Reading the revisions would cost a join
         // per row for a number nobody audits, and an issue that was closed and
@@ -311,6 +333,7 @@ trait PortalDashboardTrait
             'overdue' => $overdue,
             'soon' => $soon,
             'created' => $created,
+            'review' => $review,
             'watched' => $watched,
             'closed' => $closed,
         ];

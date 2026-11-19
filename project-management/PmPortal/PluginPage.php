@@ -222,6 +222,11 @@ class PluginPage extends PluginPageBase
         return $this->portal()->deleteComment(request(), $id, $comment_id);
     }
 
+    public function reviewComment($id, $comment_id)
+    {
+        return $this->portal()->reviewComment(request(), $id, $comment_id);
+    }
+
     public function toggleStar($id)
     {
         return $this->portal()->toggleStar(request(), $id);

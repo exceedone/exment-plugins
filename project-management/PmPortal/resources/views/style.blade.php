@@ -551,6 +551,12 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail{margin:0 0 0 auto;padding-left:12px;white-space:nowrap;}
 .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail input{margin:0 2px 0 0;}
 .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail .fa{margin-right:0;}
+/* Two ticks on the head (確認を依頼する, メールでも知らせる): the first one takes
+   the push to the right, the second sits beside it. */
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-rv + .pp-notify-mail{margin-left:0;}
+/* With 確認を依頼する ticked the picked people are being asked, not only told:
+   each picked chip carries the tick, so what the post will do is on screen. */
+.pmportal #pp-notify-chips.rv .bl-chip:not(.off)::after{content:"\f046";font-family:FontAwesome;font-size:12px;margin-left:2px;}
 /* The comment and who hears of it stand side by side once there is room for
    both; the huge grow on the comment means the people card only ever takes
    what it asked for there, and the whole line when it wraps under. */
@@ -1427,6 +1433,21 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-move-in .pp-move-sel{max-width:100%;margin:0 6px;padding:4px 6px;}
 .pmportal .pp-move-note{margin-top:6px;color:var(--bl-sub);font-size:12px;}
 .pmportal .pp-issuedel{color:#c0392b;}
+/* Review request under a comment (ISS00341): one line - who was asked, each
+   確認待ち or 確認済み, and the asked reader's own button. */
+.pmportal .pp-rv{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;margin:6px 0 2px;font-size:12px;}
+.pmportal .pp-rv .lb{color:var(--bl-sub);font-weight:700;white-space:nowrap;}
+.pmportal .pp-rvp{display:inline-flex;align-items:center;gap:4px;padding:1px 8px 1px 2px;border:1px solid var(--bl-line);border-radius:12px;background:var(--bl-box);line-height:20px;white-space:nowrap;}
+.pmportal .pp-rvp .bl-av{width:18px;height:18px;margin:0;font-size:9px;}
+.pmportal .pp-rvp .s{color:#b7791f;font-weight:700;}
+.pmportal .pp-rvp .tm{color:var(--bl-sub);font-size:11px;}
+.pmportal .pp-rvp.wait{border-color:#e0b458;background:color-mix(in srgb, #eda62a 10%, var(--bl-box));}
+.pmportal .pp-rvp.ok{border-color:color-mix(in srgb, #2e9e6b 55%, var(--bl-line));background:color-mix(in srgb, #2e9e6b 9%, var(--bl-box));}
+.pmportal .pp-rvp.ok .s{color:#2e9e6b;}
+.pmportal .pp-rvbtn{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border:1px solid var(--bl-accent);border-radius:12px;background:var(--bl-accent);color:#fff;font-size:12px;font-weight:700;line-height:20px;cursor:pointer;}
+.pmportal .pp-rvbtn:hover{filter:brightness(.94);}
+.pmportal .pp-rvbtn.undo{border:0;background:none;color:var(--bl-sub);font-weight:400;padding:2px 2px;text-decoration:underline;}
+.pmportal .pp-rvbtn[disabled]{opacity:.6;cursor:default;}
 /* Reactions on an issue and a comment (ISS00259). */
 .pmportal .pp-rxrow{margin:8px 0 4px;}
 .pmportal .pp-rxbar{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px;position:relative;margin-right:8px;vertical-align:middle;}

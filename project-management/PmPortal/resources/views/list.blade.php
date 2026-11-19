@@ -14,6 +14,8 @@
         'overdue' => $t('tab_overdue'),
         'soon' => $t('tab_soon'),
         'created' => $t('tab_created'),
+        // ISS00341: comments somebody asked me to confirm.
+        'review' => $t('tab_review'),
         'watched' => $t('tab_watched'),
         'closed' => $t('tab_closed'),
     ];
