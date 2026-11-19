@@ -11,7 +11,9 @@
         'f_all', 'f_kw', 'f_as', 'f_ty', 'f_ms', 'f_cat', 'f_rd', 'f_rd_unread', 'f_rd_read', 'f_save', 'f_saved',
         'f_pr', 'f_mine', 'f_clear', 'f_cleared', 'f_csv', 'f_csv_title', 'f_csv_empty',
         'sort_asc', 'sort_desc',
-        'q_overdue', 'q_soon', 'q_created', 'q_watch', 'q_unread',
+        'q_overdue', 'q_soon', 'q_created', 'q_watch', 'q_unread', 'q_review',
+        'rv_ask', 'rv_ask_hint', 'rv_need_people', 'rv_need_text', 'rv_label', 'rv_wait', 'rv_ok',
+        'rv_confirm', 'rv_confirm_tip', 'rv_undo', 'rv_undo_tip', 'rv_done', 'rv_undone', 'rv_fail',
         'pg_size', 'pg_all', 'pg_range', 'pg_prev', 'pg_next', 'pg_page',
         'sf_menu', 'sf_name_ph', 'sf_add', 'sf_none', 'sf_del', 'sf_saved', 'sf_deleted',
         'sf_need_name', 'sf_full',
@@ -410,6 +412,11 @@
                              label column: the card head already names it. --}}
                         <div class="bl-card-box">
                             <div class="bl-boxhead"><i class="fa fa-bell-o"></i>{{ $lang['notify_to'] }}<span class="bl-qe-n" id="pp-notify-n" hidden></span>
+                                {{-- ISS00341: the people picked below are also asked to
+                                     confirm the comment. A tick on the card that already
+                                     picks them, rather than a second list of the same people:
+                                     the dock must not grow taller. --}}
+                                <label class="pp-notify-mail pp-notify-rv" title="{{ $lang['rv_ask_hint'] }}"><input type="checkbox" id="pp-notify-rv"> <i class="fa fa-check-square-o"></i> {{ $lang['rv_ask'] }}</label>
                                 <label class="pp-notify-mail" title="{{ $lang['notify_mail_hint'] }}"><input type="checkbox" id="pp-notify-mail"> <i class="fa fa-envelope-o"></i> {{ $lang['notify_mail'] }}</label>
                             </div>
                             <div class="bl-boxbody">

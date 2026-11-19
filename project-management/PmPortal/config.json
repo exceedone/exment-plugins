@@ -52,6 +52,7 @@
         { "method": "post", "uri": "{id}/issue/{issue_id}/upload", "function": "uploadIssueFile" },
         { "method": "patch", "uri": "{id}/comment/{comment_id}", "function": "updateComment" },
         { "method": "delete", "uri": "{id}/comment/{comment_id}", "function": "deleteComment" },
+        { "method": "post", "uri": "{id}/comment/{comment_id}/review", "function": "reviewComment" },
         { "method": "post", "uri": "{id}/star", "function": "toggleStar" },
         { "method": "get", "uri": "{id}/git_repo", "function": "gitRepo" },
         { "method": "post", "uri": "{id}/git_repo", "function": "postGitRepo" },

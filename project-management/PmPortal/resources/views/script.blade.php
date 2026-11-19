@@ -387,6 +387,81 @@ window.PmPortalBoot = function () {
             ' data-star-type="' + esc(type) + '" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' +
             '<i class="fa ' + (on ? 'fa-star' : 'fa-star-o') + '"></i><span class="ct">' + (count ? ' ' + esc(count) : '') + '</span></span>';
     }
+    /* ------------------------------------------------ review request ---- */
+    // ISS00341: 「確認をお願いします」 with an answer. Under the comment, on one
+    // line: everybody who was asked, 確認待ち or 確認済み with the time, and -
+    // for the asked reader only - the button that answers. The server finds
+    // the row by who is asking, so the button carries no user id.
+    function rvBar(e) {
+        if (!e.rv || !e.rv.length) { return ''; }
+        var mine = null;
+        var chips = e.rv.map(function (r) {
+            if (String(r.by) === String(D.me)) { mine = r; }
+            return '<span class="pp-rvp ' + (r.ok ? 'ok' : 'wait') + '" title="' +
+                esc(user(r.by).n + ': ' + (r.ok ? L.rv_ok + (r.at ? ' ' + r.at : '') : L.rv_wait)) + '">' +
+                av(r.by) + esc(user(r.by).n) +
+                '<span class="s">' + (r.ok ? '<i class="fa fa-check"></i> ' + esc(L.rv_ok) : esc(L.rv_wait)) + '</span>' +
+                (r.ok && r.at ? '<span class="tm">' + esc(r.at) + '</span>' : '') + '</span>';
+        }).join('');
+        var btn = '';
+        if (mine && e.rv_on) {
+            btn = mine.ok
+                ? '<button type="button" class="pp-rvbtn undo" data-cid="' + esc(e.cid) + '" data-ok="0" title="' + esc(L.rv_undo_tip) + '">' + esc(L.rv_undo) + '</button>'
+                : '<button type="button" class="pp-rvbtn" data-cid="' + esc(e.cid) + '" data-ok="1" title="' + esc(L.rv_confirm_tip) + '"><i class="fa fa-check"></i> ' + esc(L.rv_confirm) + '</button>';
+        }
+        return '<div class="pp-rv"><span class="lb"><i class="fa fa-check-square-o"></i> ' + esc(L.rv_label) + '</span>' + chips + btn + '</div>';
+    }
+    // Whether an issue's detail still holds a request this reader has not
+    // answered - what the list's 確認待ち chip counts.
+    function rvPending(res) {
+        return (res.timeline || []).some(function (e) {
+            return e.tp === 'cmt' && (e.rv || []).some(function (r) { return !r.ok && String(r.by) === String(D.me); });
+        });
+    }
+    function rvAnswer(btn) {
+        if (btn.disabled || currentIssue === null) { return; }
+        var issueId = currentIssue, epoch = detailEpoch;
+        var ok = btn.getAttribute('data-ok') === '1';
+        var seq = ++DET_SEQ;
+        btn.disabled = true;
+        $.ajax({
+            url: D.urls.base + '/comment/' + btn.getAttribute('data-cid') + '/review', type: 'POST',
+            dataType: 'json',
+            data: { ok: ok ? 1 : 0 },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            btn.disabled = false;
+            if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
+                if (detailCurrent(issueId, epoch)) { toast(errText(null, res, L.rv_fail), true); }
+                return;
+            }
+            // The answer is the whole issue again: the line under the comment
+            // and the list's 確認待ち mark both come from it (applyDetail).
+            applyDetail(res, epoch, true, seq);
+            if (detailCurrent(issueId, epoch)) { toast(ok ? L.rv_done : L.rv_undone); }
+        }).fail(function (xhr) {
+            btn.disabled = false;
+            if (!detailCurrent(issueId, epoch)) { return; }
+            toast(xhrErr(xhr, L.rv_fail), true);
+        });
+    }
+    // 確認を依頼する in the dock: whether it is ticked, and the tick shown on
+    // the picked chips while it is.
+    function rvAskOn() {
+        var box = document.getElementById('pp-notify-rv');
+        return !!(box && box.checked);
+    }
+    function rvAskSync(off) {
+        var box = document.getElementById('pp-notify-rv');
+        if (box && off) { box.checked = false; }
+        var chips = document.getElementById('pp-notify-chips');
+        if (chips) { chips.classList.toggle('rv', rvAskOn()); }
+    }
+    // Delegated: the tick is part of the page, but this script may be drawn
+    // before or after it.
+    document.addEventListener('change', function (ev) {
+        if (ev.target && ev.target.id === 'pp-notify-rv') { rvAskSync(); }
+    });
     /* ------------------------------------------------ reactions -------- */
     // ISS00259: Facebook's reactions plus the ones Slack and Teams use at
     // work. A person may put several kinds on one thing; each chip turns
@@ -750,7 +825,10 @@ window.PmPortalBoot = function () {
             return !!D.me && String(i.by) === String(D.me);
         } },
         { k: 'watch', l: 'q_watch', i: 'fa-eye', t: function (i) { return !!i.my_watch; } },
-        { k: 'unread', l: 'q_unread', i: 'fa-envelope', t: function (i) { return !!i.unread; } }
+        { k: 'unread', l: 'q_unread', i: 'fa-envelope', t: function (i) { return !!i.unread; } },
+        // ISS00341: issues with a comment somebody asked me to confirm and
+        // that I have not confirmed yet.
+        { k: 'review', l: 'q_review', i: 'fa-check-square-o', warn: true, t: function (i) { return !!i.my_rv; } }
     ];
     function qchipTest(key) {
         for (var n = 0; n < QCHIPS.length; n++) {
@@ -2618,6 +2696,7 @@ window.PmPortalBoot = function () {
         var st = document.getElementById('pp-cmt-status');
         if (st) { st.value = ''; }
         document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
+        rvAskSync(true);
         ppNotifyCount();
         qeMark();
     }
@@ -3040,7 +3119,7 @@ window.PmPortalBoot = function () {
                 // Only the author may rewrite or remove what they wrote; the
                 // address of a comment is public to everyone who can read it.
                 var mine = !!e.del;
-                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' +
+                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) +
                     '<div class="act">' + rxBar('comment', e.cid, e.rx) + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
                     '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
                     '<span class="cmenu"><a href="javascript:void(0);" class="pp-cmenu" title="' + esc(L.cmt_menu) + '"><i class="fa fa-ellipsis-h"></i></a>' +
@@ -4175,6 +4254,19 @@ window.PmPortalBoot = function () {
             ppDockMsg(L.dock_empty, true);
             return;
         }
+        // ISS00341: a review request asks the picked people about this
+        // comment, so it needs both. Said before anything is sent - the
+        // server would post the comment and quietly ask nobody. The "next
+        // status" button sends no comment and so asks nobody.
+        var review = !statusOnly && rvAskOn();
+        if (review && !document.querySelector('#pp-notify-chips .pp-notify:not(.off)')) {
+            ppDockMsg(L.rv_need_people, true);
+            return;
+        }
+        if (review && !hasText) {
+            ppDockMsg(L.rv_need_text, true);
+            return;
+        }
         var label = (issueById(issueId) || {}).key || '';
         var sequence = ++cmtSequence;
         cmtPending[issueId] = sequence;
@@ -4230,6 +4322,7 @@ window.PmPortalBoot = function () {
             var seq = ++DET_SEQ;
             var data = { comment: text, status_to: statusTo || '', notify_users: notifyUsers };
             if (notifyMail) { data.notify_mail = 1; }
+            if (review) { data.review = 1; }
             if (statusTo && statusFrom !== null) { data.status_from = statusFrom; }
             $.ajax({
                 url: base + '/issue/' + issueId + '/comment',
@@ -4264,6 +4357,7 @@ window.PmPortalBoot = function () {
                 document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
                 var mailNow = document.getElementById('pp-notify-mail');
                 if (mailNow) { mailNow.checked = false; }
+                if (!statusOnly) { rvAskSync(true); }
                 buildDetail(own(DET, String(issueId)) || res);
                 if (!box.value.trim()) { ppDockOpen(false); }
                 if (statusTo) {
@@ -4710,6 +4804,10 @@ window.PmPortalBoot = function () {
         if (!res || !res.ok || !res.issue) { toast(L.post_fail, true); return false; }
         $.extend(D.users, res.users || {});
         res.issue = $.extend({}, issueById(res.issue.id) || {}, res.issue);
+        // The detail answer's row has no reader's marks; 確認待ち is read off
+        // the timeline it came with, so the list's chip follows a request
+        // just made, answered or taken back without a reload.
+        if (res.timeline) { res.issue.my_rv = rvPending(res); }
         if (!detPut(res.issue.id, res, seq)) { return false; }
         (D.issues || []).forEach(function (row, index) {
             if (String(row.id) === String(res.issue.id)) { D.issues[index] = res.issue; }
@@ -9889,6 +9987,8 @@ window.PmPortalBoot = function () {
         }
         var chip = ev.target.closest('.pp-notify');
         if (chip) { chip.classList.toggle('off'); ppNotifyCount(); return; }
+        var rvBtn = ev.target.closest('.pp-rvbtn');
+        if (rvBtn) { rvAnswer(rvBtn); return; }
         var nextBtn = ev.target.closest('.pp-next-status');
         if (nextBtn) { postComment(nextBtn.dataset.next); return; }
         var quote = ev.target.closest('.pp-quote');
