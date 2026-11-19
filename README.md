@@ -36,7 +36,7 @@ The plugins are provided in two ways. Choose by where your Exment runs.
 | Your Exment | Get the plugin from | How to install |
 |---|---|---|
 | Exment SaaS (`*.exments.com`) | Exment Plugin Market (https://exments.com) | [A. Exment SaaS](#a-exment-saas) |
-| Your own server (on-premises, rental server), or you are a developer | GitHub (this repository, https://github.com/exceedone/exment-plugins) | [B. Your own server](#b-your-own-server) |
+| Your own server (on-premises, rental server), or you are a developer | GitHub Releases (https://github.com/exceedone/exment-plugins/releases) | [B. Your own server](#b-your-own-server) |
 
 ### A. Exment SaaS
 
@@ -44,18 +44,33 @@ In Exment, open **Admin → Plugin market → Install**.
 
 ### B. Your own server
 
-1. Zip the contents of a plugin folder (for example `PmPortal/`), with `config.json` at the top of the zip.
-2. In Exment, open **Admin → Plugins → Upload** and choose the zip.
-3. Follow the plugin's own README (for example the first-time setup of the project portal).
+**Download**
+
+1. Open **[Releases](https://github.com/exceedone/exment-plugins/releases)** (right side of this page).
+2. Under the newest release of the plugin (for example **PmPortal 1.1.0**), click the zip in **Assets** (for example `PmPortal-1.1.0.zip`). Do not unzip it.
+
+Do not use the green **Code → Download ZIP** button: that is the whole repository, and Exment cannot read it.
+
+**Upload**
+
+1. Log in to Exment as an administrator.
+2. Open **Admin settings → Plugins**.
+3. In **Plugin upload**, choose the zip you downloaded and send it.
+4. Follow the plugin's own README (for example the first-time setup of the project portal).
+
+**Update to a newer version**
+
+1. Download the newer zip from Releases and upload it the same way. The plugin is replaced; your data stays.
+2. For the project portal: open it and press **⚙ Settings → Update data structure** if it asks.
 
 ### GitHub and the market: what is different
 
 | | GitHub (this repository) | Exment Plugin Market |
 |---|---|---|
-| What you get | Source code | A zip made for your Exment |
+| What you get | A zip ready to upload (source code, readable) | A zip made for your Exment |
 | PHP files | As is (readable) | Encoded with ionCube for your domain; works only there |
 
-- An encoded zip from the market does not run on other servers. To run a plugin on your own server, use the source from GitHub.
+- An encoded zip from the market does not run on other servers. To run a plugin on your own server, use the zip from GitHub Releases.
 - The same versions are published to both. A new version is released on GitHub first, then uploaded to the market.
 
 ## Plugin categories
@@ -142,7 +157,7 @@ Exment Plugin Project Management は、2 つの Exment プラグインででき�
 | 使っている Exment | 入手先 | 入れ方 |
 |---|---|---|
 | Exment SaaS（`*.exments.com`） | Exment プラグインマーケット（https://exments.com） | [A. Exment SaaS の場合](#a-exment-saas-の場合) |
-| 自分のサーバー（オンプレ・レンタルサーバー）、または開発者 | GitHub（このリポジトリ、https://github.com/exceedone/exment-plugins） | [B. 自分のサーバーの場合](#b-自分のサーバーの場合) |
+| 自分のサーバー（オンプレ・レンタルサーバー）、または開発者 | GitHub の Releases（https://github.com/exceedone/exment-plugins/releases） | [B. 自分のサーバーの場合](#b-自分のサーバーの場合) |
 
 ### A. Exment SaaS の場合
 
@@ -150,18 +165,33 @@ Exment の **管理 → プラグインマーケット → インストール** 
 
 ### B. 自分のサーバーの場合
 
-1. プラグインのフォルダ（例: `PmPortal/`）の中身を zip にします。`config.json` が zip のいちばん上に来るようにします。
-2. Exment の **管理 → プラグイン → アップロード** で zip を選びます。
-3. そのあとは、各プラグインの README に従います（例: プロジェクトポータルの初期設定）。
+**ダウンロード**
+
+1. このページの右側にある **[Releases](https://github.com/exceedone/exment-plugins/releases)** を開きます。
+2. 入れたいプラグインのいちばん新しい版（例: **PmPortal 1.1.0**）の **Assets** にある zip（例: `PmPortal-1.1.0.zip`）をクリックして保存します。zip は展開しません。
+
+緑の **Code → Download ZIP** ボタンは使わないでください。リポジトリ全体の zip なので、Exment は読めません。
+
+**アップロード**
+
+1. Exment に管理者でログインします。
+2. **管理者設定 → プラグイン** を開きます。
+3. **プラグインアップロード** で、ダウンロードした zip を選んで送ります。
+4. そのあとは、各プラグインの README に従います（例: プロジェクトポータルの初期設定）。
+
+**新しい版にする**
+
+1. Releases から新しい版の zip をダウンロードし、同じようにアップロードします。プラグインが置きかわります。データは消えません。
+2. プロジェクトポータルの場合: ポータルを開き、言われたら **⚙ 設定 → データ構造の更新** を押します。
 
 ### GitHub とマーケットの違い
 
 | | GitHub（このリポジトリ） | Exment プラグインマーケット |
 |---|---|---|
-| 入手できるもの | ソースコード | 自分の Exment 用の zip |
+| 入手できるもの | そのままアップロードできる zip（中はソースコード） | 自分の Exment 用の zip |
 | PHP のファイル | そのまま（読める） | ionCube で、自分のドメイン専用に暗号化（そのドメインでだけ動く） |
 
-- マーケットの暗号化された zip は、ほかのサーバーでは動きません。自分のサーバーで動かすときは、GitHub のソースを使ってください。
+- マーケットの暗号化された zip は、ほかのサーバーでは動きません。自分のサーバーで動かすときは、GitHub の Releases の zip を使ってください。
 - どちらも同じ版を出します。新しい版は、まず GitHub に出してから、マーケットに上げます。
 
 ## プラグインの区分
