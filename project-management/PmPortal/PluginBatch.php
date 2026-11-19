@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
  *           switched on (default: all). Archived projects are never filled.
  *   param2  how many AI calls this run may make (default: 100). A call that
  *           failed counts: it was still an attempt.
+ *           "recur" makes the recurring issues whose turn has come instead
  *   param3  "dry" prints what would be asked and written, and neither calls
  *           the AI nor writes anything
  *
@@ -75,6 +76,17 @@ class PluginBatch extends PluginBatchBase
         $target = strval(array_get($options, 'param1') ?? 'all');
         $limit = max(1, intval(array_get($options, 'param2') ?: 100));
         $dry = strtolower(strval(array_get($options, 'param3') ?? '')) === 'dry';
+
+        // --param1=recur: make the recurring issues whose turn has come
+        // (PortalRecurrence). Page loads do this too; this is for a server
+        // that runs the batch on a schedule.
+        if ($target === 'recur') {
+            \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            $made = PortalRecurrence::run($dry);
+            $this->say($dry ? 'recur_dry' : 'recur', ['count' => count($made)]);
+
+            return 0;
+        }
 
         $def = PortalDefinition::config();
         $project_table = CustomTable::getEloquent(array_get($def, 'project_table'));

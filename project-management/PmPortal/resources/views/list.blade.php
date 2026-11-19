@@ -14,6 +14,8 @@
         'overdue' => $t('tab_overdue'),
         'soon' => $t('tab_soon'),
         'created' => $t('tab_created'),
+        // ISS00341: comments somebody asked me to confirm.
+        'review' => $t('tab_review'),
         'watched' => $t('tab_watched'),
         'closed' => $t('tab_closed'),
     ];
@@ -22,20 +24,29 @@
     // features the portal does not have (documents, git). Each entry is a
     // hash the portal's router already answers.
     $launch = [
-        ['new', PortalDefinition::trans('add_issue')],
-        ['issues', PortalDefinition::trans('tab_issues')],
-        ['board', PortalDefinition::trans('tab_board')],
-        ['gantt', PortalDefinition::trans('tab_gantt')],
-        ['burndown', PortalDefinition::trans('tab_burndown')],
-        ['wiki', PortalDefinition::trans('tab_wiki')],
-        ['files', PortalDefinition::trans('tab_files')],
+        ['new', PortalDefinition::trans('add_issue'), 'fa-plus'],
+        ['issues', PortalDefinition::trans('tab_issues'), 'fa-list-ul'],
+        ['board', PortalDefinition::trans('tab_board'), 'fa-columns'],
+        ['gantt', PortalDefinition::trans('tab_gantt'), 'fa-tasks'],
+        ['burndown', PortalDefinition::trans('tab_burndown'), 'fa-line-chart'],
+        ['wiki', PortalDefinition::trans('tab_wiki'), 'fa-book'],
+        ['files', PortalDefinition::trans('tab_files'), 'fa-folder-o'],
     ];
+
+    // Column captions of the project list (snoro 2026-11-19). The numbers sit
+    // in fixed columns under one caption instead of repeating the word in
+    // every row; the captions are the existing "未完了 :count" strings with
+    // the count left out, so no new language key is needed.
+    $colLabel = function ($key) use ($t) {
+        return trim($t($key, ['count' => '']));
+    };
 @endphp
 
 {{-- Scoped to .pp-dash: this page renders inside the Exment admin layout,
      which has no portal stylesheet of its own. --}}
 <style>
 .pp-dash{--d-line:#dfe5ea;--d-text:#33434f;--d-mute:#8a97a3;--d-accent:#4cae93;--d-red:#e5544b;--d-amber:#eda62a;
+    --d-line2:#eef2f5;--d-sub:#8a97a3;--d-accent-d:#3d9a80;--d-hover:#f2f8f5;--d-chip:#eef3f6;--d-ink2:#51616f;
     color:var(--d-text);font-size:13px;}
 .pp-dash a{color:inherit;text-decoration:none;}
 .pp-dash .pp-panel{background:#fff;border:1px solid var(--d-line);border-radius:8px;margin-bottom:16px;overflow:hidden;}
@@ -44,55 +55,140 @@
 .pp-dash .pp-ph .pp-ph-right{margin-left:auto;font-weight:400;font-size:12px;}
 
 /* two columns, projects in the top-left corner ------------------------- */
-.pp-dash .pp-wrap{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:16px;align-items:start;}
+.pp-dash .pp-wrap{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start;}
 @media (max-width:1100px){.pp-dash .pp-wrap{grid-template-columns:minmax(0,1fr);}}
+/* Everything in the left column sizes itself by the column, not by the
+   window: the sidebar and the two column grid make the window width a poor
+   guide to the room a row really has. */
+.pp-dash .pp-left{container-type:inline-size;container-name:ppl;}
 
-/* project rows --------------------------------------------------------- */
-.pp-dash .pp-pj{display:flex;gap:9px;padding:9px 14px;border-bottom:1px solid #eef2f5;align-items:flex-start;}
+/* project list (snoro 2026-11-19) ---------------------------------------
+   One project per line, like the project menu of the top bar: the name
+   takes what is left, everything after it is a fixed-width column packed
+   to the right. A child row is indented by its padding only, so the
+   columns of parents and children stand in one line whatever the depth or
+   the length of the name. The caption row uses the same cells. */
+.pp-dash .pp-pjpanel{overflow:visible;position:relative;z-index:2;}
+.pp-dash .pp-pjpanel>.pp-ph{border-radius:7px 7px 0 0;}
+.pp-dash .pp-pjlist>:last-child{border-radius:0 0 7px 7px;}
+.pp-dash .pp-ph .pp-ph-n{background:var(--d-chip);border-radius:9px;padding:0 7px;font-size:11px;font-weight:700;
+    color:var(--d-ink2);margin-left:-3px;}
+.pp-dash .pp-pjh,.pp-dash .pp-pj{display:flex;align-items:center;gap:8px;padding:0 10px 0 14px;}
+.pp-dash .pp-pjh{height:24px;border-bottom:1px solid var(--d-line2);font-size:10.5px;font-weight:700;
+    color:var(--d-mute);white-space:nowrap;}
+.pp-dash .pp-pjh .sp{flex:1 1 0;min-width:0;}
+.pp-dash .pp-pj{position:relative;min-height:34px;border-bottom:1px solid var(--d-line2);cursor:pointer;}
 .pp-dash .pp-pj:last-child{border-bottom:0;}
-.pp-dash .pp-pj.arch{background:#f6f7f8;opacity:.8;}
-.pp-dash .pp-pj-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:5px;}
-.pp-dash .pp-pj-l1{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:20px;}
-.pp-dash .pp-pj-name{font-size:14px;font-weight:700;}
-.pp-dash .pp-pj-name:hover{text-decoration:underline;}
-.pp-dash .pp-pj-up{color:var(--d-mute);font-size:10.5px;}
-.pp-dash .cd{background:#eef3f6;border:1px solid var(--d-line);border-radius:3px;padding:0 7px;
-    font-weight:700;color:#51616f;font-size:11px;}
-.pp-dash .pill{color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700;}
-.pp-dash .pp-pj-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:11px;color:var(--d-mute);min-height:18px;}
-.pp-dash .pp-pj-meta .pj-bar{flex:none;width:72px;height:5px;border-radius:3px;background:#eef2f5;overflow:hidden;}
-.pp-dash .pp-pj-meta .pj-bar i{display:block;height:100%;background:var(--d-accent);}
-.pp-dash .pp-pj-meta .od{color:var(--d-red);font-weight:700;}
-.pp-dash .pp-pj-meta .mi{color:var(--d-accent);font-weight:700;}
+.pp-dash .pp-pj:hover,.pp-dash .pp-pj:focus-within,.pp-dash .pp-pj.open{background:var(--d-hover);}
+.pp-dash .pp-pj.open{z-index:5;}
+.pp-dash .pp-pj.arch{background:#f6f7f8;}
+.pp-dash .pp-pj.arch .pp-pj-name{color:var(--d-ink2);}
+.pp-dash .pp-pj-l1{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;}
+.pp-dash .pp-pj-name{flex:0 1 auto;min-width:0;font-size:13.5px;font-weight:700;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pp-dash .pp-pj-name:hover{text-decoration:underline;color:var(--d-accent-d);}
+.pp-dash .pp-pj-up{flex:0 2 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    color:var(--d-mute);font-size:10.5px;}
+.pp-dash .pp-pj .ar{flex:none;background:#7f8c8d;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;
+    font-weight:700;line-height:1.6;white-space:nowrap;}
+/* the fixed columns - caption row and project rows share these widths */
+.pp-dash .pp-pjlist .cd{flex:none;width:104px;box-sizing:border-box;}
+.pp-dash .pp-pjlist .ps{flex:none;width:56px;text-align:center;overflow:hidden;line-height:1;}
+.pp-dash .pp-pjlist .pg{flex:none;width:84px;display:flex;align-items:center;justify-content:flex-end;gap:6px;}
+.pp-dash .pp-pjlist .op{flex:none;width:46px;text-align:right;}
+.pp-dash .pp-pjlist .od{flex:none;width:52px;text-align:right;}
+.pp-dash .pp-pjlist .mi{flex:none;width:40px;text-align:right;}
+.pp-dash .pp-pjlist .mo{flex:none;width:24px;}
+.pp-dash .pp-pj .cd{overflow:hidden;line-height:1;}
+.pp-dash .pp-pj .cd .k{display:inline-block;max-width:100%;box-sizing:border-box;vertical-align:middle;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;background:var(--d-chip);border-radius:3px;padding:0 6px;line-height:1.7;
+    font-size:10.5px;font-weight:700;color:var(--d-ink2);font-family:Menlo,Consolas,monospace;}
+.pp-dash .pp-pj .pill{display:inline-block;max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;vertical-align:middle;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;font-weight:700;line-height:1.6;}
+.pp-dash .pp-pj .pj-bar{flex:none;width:44px;height:5px;border-radius:3px;background:#e6ecf0;overflow:hidden;}
+.pp-dash .pp-pj .pj-bar i{display:block;height:100%;background:var(--d-accent);border-radius:3px;}
+.pp-dash .pp-pj .pc{flex:none;width:34px;text-align:right;font-size:11.5px;color:var(--d-mute);}
+.pp-dash .pp-pj .pg,.pp-dash .pp-pj .op,.pp-dash .pp-pj .od,.pp-dash .pp-pj .mi{font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pp-dash .pp-pj .op,.pp-dash .pp-pj .od,.pp-dash .pp-pj .mi{font-size:12.5px;font-weight:700;}
+.pp-dash .pp-pj .op{color:var(--d-ink2);}
+.pp-dash .pp-pj .op.z{color:#c3ccd4;font-weight:400;}
+.pp-dash .pp-pj .od{color:var(--d-red);}
+.pp-dash .pp-pj .mi{color:var(--d-accent-d);}
+.pp-dash .pp-pjh .pg{display:block;text-align:right;}
 
-/* The Backlog move: the row turns theme-green and the meta line gives its
-   place to the launch links. Inline rather than a popup, so nothing needs
-   z-index and nothing can be clipped by the panel. focus-within keeps the
-   links reachable by keyboard. */
-.pp-dash .pp-launch{display:none;align-items:center;flex-wrap:wrap;min-height:18px;}
-.pp-dash .pp-pj:hover,.pp-dash .pp-pj:focus-within{background:var(--d-accent);}
-.pp-dash .pp-pj:hover .pp-pj-meta,.pp-dash .pp-pj:focus-within .pp-pj-meta{display:none;}
-.pp-dash .pp-pj:hover .pp-launch,.pp-dash .pp-pj:focus-within .pp-launch{display:flex;}
-.pp-dash .pp-pj:hover .pp-pj-name,.pp-dash .pp-pj:focus-within .pp-pj-name,
-.pp-dash .pp-pj:hover .pp-pj-up,.pp-dash .pp-pj:focus-within .pp-pj-up{color:#fff;}
-.pp-dash .pp-pj:hover .cd,.pp-dash .pp-pj:focus-within .cd{background:rgba(255,255,255,.22);border-color:transparent;color:#fff;}
-.pp-dash .pp-launch a{color:#fff;font-size:11.5px;padding:0 9px;border-left:1px solid rgba(255,255,255,.4);
-    white-space:nowrap;line-height:1.5;}
-.pp-dash .pp-launch a:first-child{padding-left:0;border-left:0;}
-.pp-dash .pp-launch a:hover{text-decoration:underline;color:#fff;}
+/* Launch links. They used to replace the numbers while the row was hovered,
+   which hid exactly what the eye was reading across and could not be
+   reached by touch at all. Now a small menu behind the "..." button of
+   the row. */
+.pp-dash .pp-pj-more{width:24px;height:24px;border:0;background:none;border-radius:5px;padding:0;cursor:pointer;
+    color:#b3bec7;font-size:13px;line-height:1;}
+.pp-dash .pp-pj:hover .pp-pj-more{color:var(--d-mute);}
+.pp-dash .pp-pj-more:hover,.pp-dash .pp-pj:hover .pp-pj-more:hover,
+.pp-dash .pp-pj-more[aria-expanded="true"]{background:#e3ece8;color:var(--d-accent-d);}
+.pp-dash .pp-pj-more:focus-visible{outline:2px solid var(--d-accent);outline-offset:1px;}
+.pp-dash .pp-launch{position:absolute;right:8px;top:calc(100% - 3px);z-index:20;min-width:180px;background:#fff;
+    border:1px solid var(--d-line);border-radius:8px;box-shadow:0 8px 24px rgba(15,42,60,.16);padding:5px 0;cursor:default;}
+.pp-dash .pp-launch[hidden]{display:none;}
+.pp-dash .pp-launch.up{top:auto;bottom:calc(100% - 3px);}
+.pp-dash .pp-launch a{display:flex;align-items:center;gap:9px;padding:6px 14px;font-size:12.5px;white-space:nowrap;}
+.pp-dash .pp-launch a i{flex:none;width:14px;text-align:center;color:var(--d-mute);}
+.pp-dash .pp-launch a:hover,.pp-dash .pp-launch a:focus-visible{background:var(--d-hover);outline:0;}
+.pp-dash .pp-launch a:hover i{color:var(--d-accent-d);}
+.pp-dash .pp-launch .sep{border-top:1px solid var(--d-line2);margin:4px 0;}
 
-.pp-dash .pp-star{border:0;background:none;cursor:pointer;padding:1px 2px;font-size:15px;color:#c9d2d9;line-height:1;flex:none;margin-top:1px;}
+.pp-dash .pp-star{border:0;background:none;cursor:pointer;padding:1px 2px;font-size:14px;color:#c9d2d9;line-height:1;flex:none;width:20px;}
 .pp-dash .pp-star:hover{color:var(--d-amber);}
 .pp-dash .pp-star[aria-pressed="true"]{color:var(--d-amber);}
 
+/* Narrow column: the bar goes first, then the key, then the percentage and
+   the state - the name and the three counts always stay. */
+@container ppl (max-width:680px){
+    .pp-dash .pp-pjlist .pj-bar{display:none;}
+    .pp-dash .pp-pjlist .pg{width:34px;}
+}
+@container ppl (max-width:600px){
+    .pp-dash .pp-pjlist .cd{display:none;}
+}
+@container ppl (max-width:470px){
+    .pp-dash .pp-pjlist .pg{display:none;}
+}
+@container ppl (max-width:420px){
+    .pp-dash .pp-pjlist .ps{display:none;}
+    .pp-dash .pp-pjh,.pp-dash .pp-pj{gap:6px;padding:0 6px 0 8px;}
+    .pp-dash .pp-pjh{font-size:10px;}
+    .pp-dash .pp-pjlist .op{width:40px;}
+    .pp-dash .pp-pjlist .od{width:42px;}
+    .pp-dash .pp-pjlist .mi{width:30px;}
+    .pp-dash .pp-pj{min-height:38px;}
+    .pp-dash .pp-pj-name{white-space:normal;overflow-wrap:anywhere;line-height:1.3;padding:4px 0;}
+}
+
+/* project tree on the dashboard (fold, drag) */
+.pp-dash .pp-pj[hidden]{display:none !important;}
+.pp-dash .pp-dtgl-slot{flex:none;width:16px;display:inline-flex;justify-content:center;}
+.pp-dash .pp-dtgl{border:0;background:none;padding:4px 2px;color:var(--d-sub);font-size:10px;line-height:1;cursor:pointer;}
+.pp-dash .pp-dtgl:hover{color:var(--d-accent-d);}
+.pp-dash .pp-pj.kid .pp-pj-name{font-weight:600;}
+.pp-dash .pp-pj.dragging{opacity:.45;}
+.pp-dash .pp-pj.drop-before{box-shadow:inset 0 3px 0 var(--d-accent);}
+.pp-dash .pp-pj.drop-after{box-shadow:inset 0 -3px 0 var(--d-accent);}
+.pp-dash .pp-dfold{font-size:11.5px;font-weight:400;color:var(--d-sub);margin-left:6px;white-space:nowrap;}
+.pp-dash .pp-dfold a{color:var(--d-accent-d);font-weight:700;cursor:pointer;}
+.pp-dash .pp-dfold a:hover,.pp-dash .pp-ph-right a:hover{text-decoration:underline;}
+.pp-dash .pp-ph-right a{color:var(--d-accent-d);font-weight:700;white-space:nowrap;}
+.pp-dash .pp-pjpanel>.pp-ph{flex-wrap:wrap;row-gap:4px;}
+
 /* KPI ------------------------------------------------------------------ */
-.pp-dash .pp-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
+/* Four in a row, or two by two when the column is narrow - never three and
+   one left over. */
+.pp-dash .pp-kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px;}
+@container ppl (max-width:620px){.pp-dash .pp-kpi{grid-template-columns:repeat(2,minmax(0,1fr));}}
 .pp-dash .pp-kpi button{display:flex;flex-direction:column;gap:1px;text-align:left;background:#fff;
     border:1px solid var(--d-line);border-left:4px solid var(--d-accent);border-radius:8px;padding:9px 13px;
     cursor:pointer;font:inherit;color:inherit;width:100%;transition:box-shadow .12s,transform .12s;}
 .pp-dash .pp-kpi button:hover{box-shadow:0 2px 10px rgba(51,67,79,.13);transform:translateY(-1px);}
 .pp-dash .pp-kpi button:focus-visible{outline:2px solid var(--d-accent);outline-offset:2px;}
-.pp-dash .pp-kpi .n{font-size:22px;font-weight:700;line-height:1.15;}
+.pp-dash .pp-kpi .n{font-size:22px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;}
 .pp-dash .pp-kpi .l{font-size:11.5px;font-weight:700;}
 .pp-dash .pp-kpi .h{font-size:10.5px;color:var(--d-mute);}
 .pp-dash .pp-kpi .k-overdue{border-left-color:var(--d-red);}
@@ -106,63 +202,77 @@
    last tab was cut in half and below that it was gone, with nothing to say
    there was more. */
 .pp-dash .pp-tabs{display:flex;flex-wrap:wrap;gap:0;padding:0 10px;border-bottom:1px solid var(--d-line);background:#fbfcfd;}
-.pp-dash .pp-tabs button{border:0;background:none;font:inherit;color:var(--d-mute);cursor:pointer;padding:10px 7px;
+.pp-dash .pp-tabs button{border:0;background:none;font:inherit;color:var(--d-mute);cursor:pointer;padding:9px 7px;
     border-bottom:2px solid transparent;white-space:nowrap;font-size:12.5px;}
 .pp-dash .pp-tabs button:hover{color:var(--d-text);}
 .pp-dash .pp-tabs button[aria-selected="true"]{color:var(--d-text);font-weight:700;border-bottom-color:var(--d-accent);}
-.pp-dash .pp-tabs .c{display:inline-block;margin-left:5px;background:#eef3f6;border-radius:9px;padding:0 6px;
-    font-size:11px;font-weight:700;color:#51616f;}
+.pp-dash .pp-tabs .c{display:inline-block;margin-left:5px;background:var(--d-chip);border-radius:9px;padding:0 6px;
+    font-size:11px;font-weight:700;color:var(--d-ink2);}
 .pp-dash .pp-tabs button[aria-selected="true"] .c{background:var(--d-accent);color:#fff;}
 
 /* Same cap as the feed, plus a floor so an empty tab does not collapse the
    panel to a strip and make the two columns look broken. */
 .pp-dash [data-body]{min-height:180px;max-height:520px;overflow-y:auto;overscroll-behavior:contain;}
-.pp-dash .pp-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid #eef2f5;}
+/* Fixed columns here as well: project, key, then the subject taking the
+   rest, then priority, state and due date in slots of their own, so a
+   short state name no longer pulls the priority badge sideways. */
+.pp-dash .pp-row{display:flex;align-items:center;gap:10px;padding:0 16px;min-height:35px;border-bottom:1px solid var(--d-line2);}
 .pp-dash .pp-row:last-child{border-bottom:0;}
-.pp-dash .pp-row:hover{background:#f7fafb;}
-.pp-dash .pp-row .pj{flex:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.pp-dash .pp-row:hover{background:var(--d-hover);}
+.pp-dash .pp-row .pj{flex:none;width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     font-size:11px;color:var(--d-mute);}
-.pp-dash .pp-row .key{flex:none;font-size:11.5px;font-weight:700;color:#3c8dbc;font-family:Menlo,Consolas,monospace;}
-.pp-dash .pp-row .sub{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pp-dash .pp-row .key{flex:none;width:134px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:11.5px;font-weight:700;color:#3c8dbc;font-family:Menlo,Consolas,monospace;}
+.pp-dash .pp-row .sub{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pp-dash .pp-row:hover .sub{text-decoration:underline;}
-.pp-dash .pp-row .st{flex:none;color:#fff;border-radius:20px;padding:1px 9px;font-size:10.5px;font-weight:700;}
-.pp-dash .pp-row .pr{flex:none;color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700;}
-@media (max-width:1400px){.pp-dash .pp-row .pr{display:none;}}
-.pp-dash .pp-row .due{flex:none;font-size:11.5px;color:var(--d-mute);min-width:82px;text-align:right;}
+.pp-dash .pp-row .prs{flex:none;width:40px;text-align:center;line-height:1;}
+.pp-dash .pp-row .sts{flex:none;width:74px;text-align:center;line-height:1;}
+.pp-dash .pp-row .st,.pp-dash .pp-row .pr{display:inline-block;max-width:100%;box-sizing:border-box;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;color:#fff;border-radius:20px;font-weight:700;line-height:1.6;}
+.pp-dash .pp-row .st{padding:0 9px;font-size:10.5px;}
+.pp-dash .pp-row .pr{padding:0 8px;font-size:10px;}
+.pp-dash .pp-row .due{flex:none;font-size:11.5px;color:var(--d-mute);width:84px;text-align:right;white-space:nowrap;
+    font-variant-numeric:tabular-nums;}
 .pp-dash .pp-row .due.late{color:var(--d-red);font-weight:700;}
 .pp-dash .pp-row .due.soon{color:#b9791a;font-weight:700;}
+/* The key already starts with the project code, so the project name is the
+   first to go; then the priority; a phone keeps key, subject, state, due. */
+@container ppl (max-width:700px){.pp-dash .pp-row .pj{display:none;}}
+@container ppl (max-width:560px){
+    .pp-dash .pp-row .prs{display:none;}
+    .pp-dash .pp-row .key{width:auto;max-width:134px;}
+}
+@container ppl (max-width:420px){
+    .pp-dash .pp-row{flex-wrap:wrap;gap:2px 8px;padding:7px 12px;}
+    .pp-dash .pp-row .key{order:1;max-width:none;flex:1 1 0;}
+    .pp-dash .pp-row .sts{order:2;width:auto;}
+    .pp-dash .pp-row .due{order:3;width:auto;}
+    .pp-dash .pp-row .sub{order:4;flex:1 1 100%;}
+}
 .pp-dash .pp-empty{padding:26px 16px;text-align:center;color:var(--d-mute);font-size:12.5px;}
-.pp-dash .pp-more{padding:8px 16px;font-size:11.5px;color:var(--d-mute);background:#fbfcfd;border-top:1px solid #eef2f5;}
+.pp-dash .pp-more{padding:8px 16px;font-size:11.5px;color:var(--d-mute);background:#fbfcfd;border-top:1px solid var(--d-line2);}
 
 /* feed ----------------------------------------------------------------- */
 /* Capped and scrolled inside itself, so a long feed cannot push everything
    below it off the screen. */
 .pp-dash .pp-feedbody{max-height:760px;overflow-y:auto;overscroll-behavior:contain;}
 .pp-dash .pp-fday{position:sticky;top:0;background:#f4f7f9;border-bottom:1px solid var(--d-line);
-    padding:6px 16px;font-size:11.5px;font-weight:700;color:#51616f;z-index:1;}
-.pp-dash .pp-fd{display:flex;gap:9px;padding:10px 16px;border-bottom:1px solid #eef2f5;align-items:flex-start;}
+    padding:5px 16px;font-size:11.5px;font-weight:700;color:var(--d-ink2);z-index:1;}
+.pp-dash .pp-fd{display:flex;gap:10px;padding:8px 16px;border-bottom:1px solid var(--d-line2);align-items:flex-start;}
 .pp-dash .pp-fd:last-child{border-bottom:0;}
-.pp-dash .pp-fd:hover{background:#f7fafb;}
+.pp-dash .pp-fd:hover{background:var(--d-hover);}
 .pp-dash .pp-fd .av{flex:none;width:26px;height:26px;border-radius:50%;color:#fff;display:flex;align-items:center;
-    justify-content:center;font-size:11px;letter-spacing:-.3px;font-weight:700;position:relative;overflow:hidden;}
-/* project tree on the dashboard (fold, drag) */
-.pp-dash .pp-pj[hidden]{display:none !important;}
-.pp-dash .pp-dtgl-slot{flex:none;width:16px;display:inline-flex;justify-content:center;}
-.pp-dash .pp-dtgl{border:0;background:none;padding:0;color:var(--d-sub,#8a97a3);font-size:10px;cursor:pointer;}
-.pp-dash .pp-dtgl:hover{color:#3d9a80;}
-.pp-dash .pp-pj.kid .pp-pj-name{font-weight:600;}
-.pp-dash .pp-pj[draggable="true"]{cursor:grab;}
-.pp-dash .pp-pj.dragging{opacity:.45;}
-.pp-dash .pp-pj.drop-before{box-shadow:inset 0 3px 0 #4cae93;}
-.pp-dash .pp-pj.drop-after{box-shadow:inset 0 -3px 0 #4cae93;}
-.pp-dash .pp-dfold{font-size:11.5px;font-weight:400;color:var(--d-sub,#8a97a3);margin-left:10px;}
-.pp-dash .pp-dfold a{color:#3d9a80;font-weight:700;cursor:pointer;}
+    justify-content:center;font-size:11px;letter-spacing:-.3px;font-weight:700;position:relative;overflow:hidden;margin-top:2px;}
 /* ISS00254: registered avatar laid over the initial */
 .pp-dash .pp-fd .av .bl-avimg{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;object-fit:cover;background:#fff;}
 .pp-dash .pp-fd .bd{flex:1 1 auto;min-width:0;}
-.pp-dash .pp-fd .ln1{font-size:11.5px;color:var(--d-mute);}
+/* Each on a line of its own: as inline spans the who/when line and the
+   issue line ran together on a wide screen and broke apart on a narrow
+   one, so no two entries had the same shape. */
+.pp-dash .pp-fd .ln1,.pp-dash .pp-fd .ln2,.pp-dash .pp-fd .ex{display:block;}
+.pp-dash .pp-fd .ln1{font-size:11.5px;color:var(--d-mute);line-height:1.5;}
 .pp-dash .pp-fd .ln1 b{color:var(--d-text);}
-.pp-dash .pp-fd .ln2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;}
+.pp-dash .pp-fd .ln2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;line-height:1.55;}
 .pp-dash .pp-fd .ln2 .key{font-family:Menlo,Consolas,monospace;font-size:11.5px;font-weight:700;color:#3c8dbc;}
 .pp-dash .pp-fd:hover .ln2{text-decoration:underline;}
 .pp-dash .pp-fd .ex{font-size:11.5px;color:var(--d-mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -175,9 +285,12 @@
 
             {{-- Projects, in the top-left corner where Backlog keeps them.
                  Hovering a row swaps its numbers for the launch menu. --}}
-            <section class="pp-panel">
+            <section class="pp-panel pp-pjpanel">
                 <div class="pp-ph">
                     <i class="fa fa-folder-open-o"></i> {{ $t('projects') }}
+                    @if(count($projects) > 0)
+                    <span class="pp-ph-n">{{ count($projects) }}</span>
+                    @endif
                     {{-- fold the project tree (snoro 2026-11-18) --}}
                     <span class="pp-dfold" id="pp-dfold" hidden>
                         <a href="javascript:void(0);" id="pp-dfold-open">すべて開く</a> /
@@ -201,12 +314,27 @@
                     </span>
                     @endif
                 </div>
+                <div class="pp-pjlist">
+                @if(count($projects) > 0)
+                {{-- Caption row: the same cells as a project row, so each word
+                     stands over its column at every width. --}}
+                <div class="pp-pjh" aria-hidden="true">
+                    <span class="sp"></span>
+                    <span class="cd"></span>
+                    <span class="ps"></span>
+                    <span class="pg">{{ $t('progress') }}</span>
+                    <span class="op">{{ $colLabel('card_open') }}</span>
+                    <span class="od">{{ $colLabel('card_overdue') }}</span>
+                    <span class="mi">{{ $colLabel('card_mine') }}</span>
+                    <span class="mo"></span>
+                </div>
+                @endif
                 @forelse($projects as $project)
                 <div class="pp-pj {{ $project['archived'] ? 'arch' : '' }} {{ !empty($project['depth']) ? 'kid' : '' }}"
                      id="pp-dpj-{{ $project['id'] }}"
                      data-id="{{ $project['id'] }}" data-parent="{{ $project['parent_id'] ?? '' }}" data-depth="{{ intval($project['depth'] ?? 0) }}"
                      @if(!empty($reorder_url)) draggable="true" title="ドラッグで並べ替え" @endif
-                     @if(!empty($project['depth'])) style="padding-left:{{ 12 + 24 * min(intval($project['depth']), 4) }}px" @endif>
+                     @if(!empty($project['depth'])) style="padding-left:{{ 14 + 22 * min(intval($project['depth']), 4) }}px" @endif>
                     <span class="pp-dtgl-slot"></span>
                     <button type="button" class="pp-star" data-star="{{ $project['id'] }}"
                             data-url="{{ $project['star_url'] }}"
@@ -214,50 +342,47 @@
                             title="{{ $project['starred'] ? $t('star_on') : $t('star_off') }}">
                         <i class="fa {{ $project['starred'] ? 'fa-star' : 'fa-star-o' }}"></i>
                     </button>
-                    <div class="pp-pj-main">
-                        <div class="pp-pj-l1">
-                            <a class="pp-pj-name" href="{{ $project['url'] }}">{{ $project['name'] }}</a>
-                            @if($project['key'] !== '')
-                            <span class="cd">{{ $project['key'] }}</span>
-                            @endif
-                            @if($project['status'])
-                            <span class="pill" style="background:{{ $project['status']['c'] }}">{{ $project['status']['l'] }}</span>
-                            @endif
-                            @if($project['archived'])
-                            <span class="pill" style="background:#7f8c8d">{{ PortalDefinition::trans('archived_tag') }}</span>
-                            @endif
-                            @if($project['parent'] && empty($project['depth']))
-                            {{-- nested rows show their parent by position; only an
-                                 orphan whose parent is not listed keeps the hint --}}
-                            <span class="pp-pj-up"><i class="fa fa-level-up fa-rotate-90"></i> {{ $project['parent'] }}</span>
-                            @endif
-                        </div>
-                        <div class="pp-pj-meta">
-                            <span class="pj-bar" title="{{ $t('progress') }} {{ $project['progress'] }}%"><i style="width:{{ $project['progress'] }}%"></i></span>
-                            <span>{{ $project['progress'] }}%</span>
-                            <span>{{ $t('card_open', ['count' => $project['open']]) }}</span>
-                            @if($project['overdue'] > 0)
-                            <span class="od">{{ $t('card_overdue', ['count' => $project['overdue']]) }}</span>
-                            @endif
-                            @if($project['mine'] > 0)
-                            <span class="mi">{{ $t('card_mine', ['count' => $project['mine']]) }}</span>
-                            @endif
-                        </div>
-                        <div class="pp-launch">
-                            @foreach($launch as $item)
-                            @if($item[0] !== 'new' || !empty($project['can_add']))
-                            <a href="{{ $project['url'] }}#{{ $item[0] }}">{{ $item[1] }}</a>
-                            @endif
-                            @endforeach
-                            @if(!empty($project['can_edit']))
-                            <a href="{{ $project['url'] }}#settings"><i class="fa fa-cog"></i> {{ PortalDefinition::trans('tab_settings') }}</a>
-                            @endif
-                        </div>
+                    <div class="pp-pj-l1">
+                        <a class="pp-pj-name" href="{{ $project['url'] }}" title="{{ $project['name'] }}">{{ $project['name'] }}</a>
+                        @if($project['archived'])
+                        <span class="ar">{{ PortalDefinition::trans('archived_tag') }}</span>
+                        @endif
+                        @if($project['parent'] && empty($project['depth']))
+                        {{-- nested rows show their parent by position; only an
+                             orphan whose parent is not listed keeps the hint --}}
+                        <span class="pp-pj-up"><i class="fa fa-level-up fa-rotate-90"></i> {{ $project['parent'] }}</span>
+                        @endif
+                    </div>
+                    {{-- Fixed columns. An empty cell still takes its width, so
+                         a project without a key or a state does not pull the
+                         cells after it out of line. --}}
+                    <span class="cd">@if($project['key'] !== '')<span class="k" title="{{ $project['key'] }}">{{ $project['key'] }}</span>@endif</span>
+                    <span class="ps">@if($project['status'])<span class="pill" style="background:{{ $project['status']['c'] }}" title="{{ $project['status']['l'] }}">{{ $project['status']['l'] }}</span>@endif</span>
+                    <span class="pg" title="{{ $t('progress') }} {{ $project['progress'] }}%">
+                        <span class="pj-bar"><i style="width:{{ $project['progress'] }}%"></i></span>
+                        <span class="pc">{{ $project['progress'] }}%</span>
+                    </span>
+                    <span class="op {{ $project['open'] > 0 ? '' : 'z' }}" title="{{ $t('card_open', ['count' => $project['open']]) }}">{{ $project['open'] }}</span>
+                    <span class="od" @if($project['overdue'] > 0) title="{{ $t('card_overdue', ['count' => $project['overdue']]) }}" @endif>{{ $project['overdue'] > 0 ? $project['overdue'] : '' }}</span>
+                    <span class="mi" @if($project['mine'] > 0) title="{{ $t('card_mine', ['count' => $project['mine']]) }}" @endif>{{ $project['mine'] > 0 ? $project['mine'] : '' }}</span>
+                    <button type="button" class="pp-pj-more mo" aria-haspopup="true" aria-expanded="false"
+                            title="メニューを開く" aria-label="メニューを開く"><i class="fa fa-ellipsis-h"></i></button>
+                    <div class="pp-launch" hidden>
+                        @foreach($launch as $item)
+                        @if($item[0] !== 'new' || !empty($project['can_add']))
+                        <a href="{{ $project['url'] }}#{{ $item[0] }}"><i class="fa {{ $item[2] }}"></i>{{ $item[1] }}</a>
+                        @endif
+                        @endforeach
+                        @if(!empty($project['can_edit']))
+                        <div class="sep"></div>
+                        <a href="{{ $project['url'] }}#settings"><i class="fa fa-cog"></i>{{ PortalDefinition::trans('tab_settings') }}</a>
+                        @endif
                     </div>
                 </div>
                 @empty
                 <div class="pp-empty">{{ PortalDefinition::trans('empty') }}</div>
                 @endforelse
+                </div>
             </section>
 
             {{-- What needs attention. Clicking a card opens the tab behind it. --}}
@@ -293,14 +418,11 @@
                     @forelse($tabs[$key] as $row)
                     <a class="pp-row" href="{{ $row['url'] }}">
                         <span class="pj" title="{{ $row['project'] }}">{{ $row['project'] }}</span>
-                        <span class="key">{{ $row['key'] }}</span>
+                        <span class="key" title="{{ $row['key'] }}">{{ $row['key'] }}</span>
                         <span class="sub" title="{{ $row['subject'] }}">{{ $row['subject'] }}</span>
-                        @if($row['priority'])
-                        <span class="pr" style="background:{{ $row['priority']['c'] }}">{{ $row['priority']['l'] }}</span>
-                        @endif
-                        @if($row['status'])
-                        <span class="st" style="background:{{ $row['status']['c'] }}">{{ $row['status']['l'] }}</span>
-                        @endif
+                        {{-- slots, filled or not, so the columns hold --}}
+                        <span class="prs">@if($row['priority'])<span class="pr" style="background:{{ $row['priority']['c'] }}">{{ $row['priority']['l'] }}</span>@endif</span>
+                        <span class="sts">@if($row['status'])<span class="st" style="background:{{ $row['status']['c'] }}">{{ $row['status']['l'] }}</span>@endif</span>
                         <span class="due {{ $row['late'] ? 'late' : ($row['soon'] ? 'soon' : '') }}">{{ $row['due_label'] }}</span>
                     </a>
                     @empty
@@ -496,6 +618,49 @@
             ev.stopPropagation();
             all(!fold[b.getAttribute('data-tgl')]);
         });
+        // ---- one line per project (snoro 2026-11-19): the whole line opens
+        //      the project, and the launch links live in a menu behind the
+        //      row's "…" button instead of replacing the numbers on hover.
+        function closeLaunch(focusBack) {
+            root.querySelectorAll('.pp-pj.open').forEach(function (r) {
+                r.classList.remove('open');
+                var m = r.querySelector('.pp-launch'), b = r.querySelector('.pp-pj-more');
+                if (m) { m.hidden = true; m.classList.remove('up'); }
+                if (b) { b.setAttribute('aria-expanded', 'false'); if (focusBack) { b.focus(); } }
+            });
+        }
+        root.addEventListener('click', function (ev) {
+            var more = ev.target.closest('.pp-pj-more');
+            if (more) {
+                ev.preventDefault();
+                var row = more.closest('.pp-pj'), menu = row.querySelector('.pp-launch');
+                var was = row.classList.contains('open');
+                closeLaunch(false);
+                if (was || !menu) { return; }
+                row.classList.add('open');
+                more.setAttribute('aria-expanded', 'true');
+                menu.hidden = false;
+                // opens upward when it would run off the bottom of the window
+                if (menu.getBoundingClientRect().bottom > window.innerHeight - 8
+                    && row.getBoundingClientRect().top > menu.offsetHeight + 8) { menu.classList.add('up'); }
+                return;
+            }
+            var line = ev.target.closest('.pp-pj[data-id]');
+            if (!line || ev.target.closest('a,button,input,select,.pp-launch')) { return; }
+            var name = line.querySelector('.pp-pj-name');
+            if (name) { name.click(); }
+        });
+        // Bound on document, which outlives this page under pjax: each
+        // handler retires itself once its dashboard is gone.
+        document.addEventListener('click', function onDoc(ev) {
+            if (!document.body.contains(root)) { document.removeEventListener('click', onDoc); return; }
+            if (!ev.target.closest('.pp-pj-more') && !ev.target.closest('.pp-launch')) { closeLaunch(false); }
+        });
+        document.addEventListener('keydown', function onEsc(ev) {
+            if (!document.body.contains(root)) { document.removeEventListener('keydown', onEsc); return; }
+            if (ev.key === 'Escape' && root.querySelector('.pp-pj.open')) { closeLaunch(true); }
+        });
+
         var o = document.getElementById('pp-dfold-open'), c = document.getElementById('pp-dfold-close');
         if (o) { o.addEventListener('click', function (ev) { ev.preventDefault(); all(false); }); }
         if (c) { c.addEventListener('click', function (ev) { ev.preventDefault(); all(true); }); }
@@ -575,7 +740,9 @@
     // back out of localStorage, not out of the server's escaping.
     (function () {
         var entries = [];
-        try { entries = JSON.parse(localStorage.getItem('pp_recent') || '[]'); } catch (e) { entries = []; }
+        // Kept per person by the issue screen (recentPush in script.blade.php).
+        var recentKey = @json('pp_recent.u' . intval(\Exment::getUserId()));
+        try { entries = JSON.parse(localStorage.getItem(recentKey) || '[]'); } catch (e) { entries = []; }
         if (!Array.isArray(entries) || !entries.length) { return; }
         var body = root.querySelector('[data-body="recent"]');
         var count = document.getElementById('pp-recent-count');

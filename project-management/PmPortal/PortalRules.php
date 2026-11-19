@@ -118,7 +118,10 @@ class PortalRules
             return [];
         }
 
-        if ($current && $current->exists) {
+        // An issue on its way to another project is checked whole: a status
+        // nobody touched still names the old project's list, and has to be
+        // looked at against the new one.
+        if ($current && $current->exists && !static::moving($current)) {
             $input = static::changed($input, PortalMembership::storedValue($current));
             if (empty($input)) {
                 return [];
@@ -418,7 +421,7 @@ class PortalRules
         if ($current && $current->exists && !PortalMembership::canManage($current)) {
             $column = strval(array_key_first($input));
             $people = [];
-            foreach (['manager', 'members', 'viewers'] as $key) {
+            foreach (['manager', 'members', 'viewers', 'member_orgs', 'viewer_orgs'] as $key) {
                 $people[] = static::column($def, 'project.' . $key, '');
             }
             $message = in_array($column, $people, true) ? 'rules.people_manager_only' : 'rules.project_manager_only';
@@ -700,7 +703,8 @@ class PortalRules
             return [];
         }
 
-        $stored = ($current && $current->exists) ? PortalMembership::storedValue($current) : [];
+        // Moving to another project, everyone named is new to that project.
+        $stored = ($current && $current->exists && !static::moving($current)) ? PortalMembership::storedValue($current) : [];
         $errors = [];
         foreach ($checks as [$column, $allowed, $message]) {
             if ($column === '' || !array_key_exists($column, $input)) {
@@ -767,6 +771,85 @@ class PortalRules
     // ---- placement and links --------------------------------------------
 
     /**
+     * Whether this save takes a stored row out of the project it was in.
+     *
+     * @param CustomValue $model
+     * @return bool
+     */
+    public static function moving(CustomValue $model): bool
+    {
+        return $model->exists
+            && !is_nullorempty($model->getOriginal('parent_id'))
+            && ($model->isDirty('parent_id') || $model->isDirty('parent_type'));
+    }
+
+    /**
+     * Whether the save that is about to run - an API or form request naming a
+     * parent - moves this issue to another project. The validator plugin runs
+     * before the new parent is set on the model, so it can only tell from the
+     * request; it leaves the checks to the saving event, which sees the model
+     * with its new project and runs every rule against that one.
+     *
+     * @param CustomTable $table
+     * @param CustomValue|null $current
+     * @return bool
+     */
+    public static function moveRequested(CustomTable $table, ?CustomValue $current): bool
+    {
+        if (!$current || !$current->exists || static::kindOf($table, PortalDefinition::config()) !== 'issue') {
+            return false;
+        }
+        $request = request();
+        if (!$request || !$request->has('parent_id')) {
+            return false;
+        }
+        $to = $request->input('parent_id');
+
+        return is_scalar($to) && strval($to) !== '' && strval($to) !== strval($current->parent_id);
+    }
+
+    /**
+     * Why this issue may not leave its project, or null when it may.
+     *
+     * A sub-task belongs to its parent's project and a parent takes its
+     * sub-tasks' project with it, so neither moves alone - Backlog asks to
+     * take the parent off first. The project it leaves has to let the caller
+     * edit it, as the one it goes to does (placement() checks that one), and
+     * neither may be archived.
+     *
+     * @param CustomTable $table
+     * @param CustomValue $model
+     * @param array<string, mixed> $def
+     * @return string|null
+     */
+    protected static function moveRefusal(CustomTable $table, CustomValue $model, array $def): ?string
+    {
+        $projectTable = strval(array_get($def, 'project_table'));
+        if (strval($model->getOriginal('parent_type')) !== $projectTable) {
+            return PortalDefinition::trans('rules.parent_change');
+        }
+
+        $parentColumn = static::column($def, 'issue.parent', 'parent_issue');
+        if (static::countPointingAt($table, $parentColumn, $model->id) > 0) {
+            return PortalDefinition::trans('rules.move_has_children');
+        }
+
+        $from = $model->getOriginal('parent_id');
+        if (static::projectArchived($def, $from)) {
+            return PortalDefinition::trans('rules.project_archived');
+        }
+        if (\Exment::user() === null) {
+            return null;
+        }
+        $old = static::findRow($projectTable, $from, true);
+        if ($old && PortalDefinition::enableEdit($old, true) !== true) {
+            return PortalDefinition::trans('rules.parent_readonly');
+        }
+
+        return null;
+    }
+
+    /**
      * Which project an issue or a wiki page sits in.
      *
      * The project is Exment's parent relation, not a column, so nothing in
@@ -800,7 +883,17 @@ class PortalRules
                 return [];
             }
             if (!is_nullorempty($model->getOriginal('parent_id'))) {
-                return [$key => PortalDefinition::trans('rules.parent_change')];
+                // Backlog moves an issue to another project; a wiki page
+                // stays where it was written.
+                if ($kind !== 'issue') {
+                    return [$key => PortalDefinition::trans('rules.parent_change')];
+                }
+                $refusal = static::moveRefusal($table, $model, $def);
+                if ($refusal !== null) {
+                    return [$key => $refusal];
+                }
+                // The new project is then checked like the project of a new
+                // issue, below; validate() checks every value against it.
             }
         }
 

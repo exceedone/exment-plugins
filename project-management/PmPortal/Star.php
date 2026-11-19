@@ -29,6 +29,173 @@ class Star extends ModelBase
     protected $table = 'exment_stars';
 
     /**
+     * Reactions (ISS00259): one row per user, kind and target, stored as
+     * star_type "r:<kind>" (the column holds 10 characters). Several kinds
+     * per user, the way Slack and Teams do it: 👀 when you start reading,
+     * ✅ when it is done.
+     */
+    public const REACTION_PREFIX = 'r:';
+
+    /** The kinds, in the order the picker shows them. */
+    public const REACTIONS = ['like', 'heart', 'haha', 'wow', 'sad', 'angry', 'thanks', 'clap', 'party', 'eyes', 'ok'];
+
+    /**
+     * Review requests (ISS00341): "please confirm this comment", one row per
+     * asked person and comment. The row is TYPE_REVIEW while the person has
+     * not confirmed and TYPE_REVIEW_OK once they have - the same row, its
+     * star_type flipped, so updated_at is when they confirmed and the two
+     * states can never both exist for one person. Who asked is not stored:
+     * it is the comment's writer.
+     */
+    public const TYPE_REVIEW = 'rv';
+    public const TYPE_REVIEW_OK = 'rv:ok';
+
+    /**
+     * Ask people to confirm one target. Somebody already asked is left as
+     * they are (a confirmation given is not taken back by asking again).
+     *
+     * @param string $target_type
+     * @param mixed $target_id
+     * @param array<int, mixed> $user_ids
+     * @return void
+     */
+    public static function askReview(string $target_type, $target_id, array $user_ids): void
+    {
+        $have = static::where('target_type', $target_type)
+            ->where('target_id', strval($target_id))
+            ->whereIn('star_type', [self::TYPE_REVIEW, self::TYPE_REVIEW_OK])
+            ->pluck('user_id')->map(function ($v) {
+                return intval($v);
+            })->all();
+        foreach (array_unique(array_map('intval', $user_ids)) as $user_id) {
+            if ($user_id <= 0 || in_array($user_id, $have, true)) {
+                continue;
+            }
+            try {
+                static::create([
+                    'star_type' => self::TYPE_REVIEW,
+                    'target_type' => $target_type,
+                    'target_id' => strval($target_id),
+                    'user_id' => $user_id,
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Written by a parallel request meanwhile: it is there.
+            }
+        }
+    }
+
+    /**
+     * Confirm a review request, or take the confirmation back.
+     *
+     * @param string $target_type
+     * @param mixed $target_id
+     * @param mixed $user_id
+     * @param bool $ok
+     * @return bool false when this user was never asked
+     */
+    public static function setReview(string $target_type, $target_id, $user_id, bool $ok): bool
+    {
+        $from = $ok ? self::TYPE_REVIEW : self::TYPE_REVIEW_OK;
+        $to = $ok ? self::TYPE_REVIEW_OK : self::TYPE_REVIEW;
+        // updated_at moves with the flip: it is the time of the confirmation.
+        if (static::target($from, $target_type, $target_id)->where('user_id', $user_id)->update(['star_type' => $to]) > 0) {
+            return true;
+        }
+
+        // Already in the state asked for (a second tab, a double click).
+        return static::target($to, $target_type, $target_id)->where('user_id', $user_id)->exists();
+    }
+
+    /**
+     * Who was asked to confirm which target, over many targets at once, in
+     * the order they were asked.
+     *
+     * @param string $target_type
+     * @param array<int, mixed> $target_ids
+     * @return array<string, array<int, array{by: int, ok: bool, ts: string}>> target_id => asked people
+     */
+    public static function reviews(string $target_type, array $target_ids): array
+    {
+        if (empty($target_ids)) {
+            return [];
+        }
+        $rows = static::whereIn('star_type', [self::TYPE_REVIEW, self::TYPE_REVIEW_OK])
+            ->where('target_type', $target_type)
+            ->whereIn('target_id', array_map('strval', $target_ids))
+            ->orderBy('id')
+            ->get(['star_type', 'target_id', 'user_id', 'updated_at']);
+        $out = [];
+        foreach ($rows as $row) {
+            $out[strval($row->target_id)][] = [
+                'by' => intval($row->user_id),
+                'ok' => strval($row->star_type) === self::TYPE_REVIEW_OK,
+                'ts' => strval($row->updated_at),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The targets one user has been asked to confirm and has not yet.
+     *
+     * @param string $target_type
+     * @param mixed $user_id
+     * @return array<int, string>
+     */
+    public static function pendingReviews(string $target_type, $user_id): array
+    {
+        return static::where('star_type', self::TYPE_REVIEW)
+            ->where('target_type', $target_type)
+            ->where('user_id', $user_id)
+            ->pluck('target_id')
+            ->map(function ($v) {
+                return strval($v);
+            })
+            ->all();
+    }
+
+    /**
+     * Whether a star_type is one of the reactions.
+     */
+    public static function isReaction(string $star_type): bool
+    {
+        return strpos($star_type, self::REACTION_PREFIX) === 0
+            && in_array(substr($star_type, strlen(self::REACTION_PREFIX)), self::REACTIONS, true);
+    }
+
+    /**
+     * Who reacted with what, over many targets at once:
+     * target id => kind => user ids, in the order they reacted.
+     *
+     * @param string $target_type
+     * @param array<int, mixed> $target_ids
+     * @return array<string, array<string, array<int, int>>>
+     */
+    public static function reactions(string $target_type, array $target_ids): array
+    {
+        if (empty($target_ids)) {
+            return [];
+        }
+        $rows = static::where('star_type', 'like', self::REACTION_PREFIX . '%')
+            ->where('target_type', $target_type)
+            ->whereIn('target_id', array_map('strval', $target_ids))
+            ->orderBy('id')
+            ->get(['star_type', 'target_id', 'user_id']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            if (!static::isReaction(strval($row->star_type))) {
+                continue;
+            }
+            $kind = substr(strval($row->star_type), strlen(self::REACTION_PREFIX));
+            $out[strval($row->target_id)][$kind][] = intval($row->user_id);
+        }
+
+        return $out;
+    }
+
+    /**
      * Base query for one target.
      *
      * @param string $star_type

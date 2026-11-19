@@ -1,5 +1,10 @@
 <script>
-(function () {
+// Run from index.blade.php's inline call as well: Exment swaps pages through
+// pjax, which does not run a script file the page has already loaded, so a
+// project opened from another project's page would otherwise get no script
+// at all (empty issue list until F5). The ppBound check makes a second call
+// for the same page a no-op.
+window.PmPortalBoot = function () {
     'use strict';
     var root = document.getElementById('pmportal');
     if (!root || root.dataset.ppBound) { return; }
@@ -16,7 +21,7 @@
     function alive() { return document.getElementById('pmportal') === root; }
 
     var D = JSON.parse(document.getElementById('pmportal-data').textContent);
-    var L = @json($lang);
+    var L = JSON.parse(document.getElementById('pmportal-lang').textContent);
     var CSRF = $('meta[name="csrf-token"]').attr('content');
 
     /* ------------------------------------------------ request queue ----- */
@@ -340,18 +345,32 @@
         if (!s) { return null; }
         return Math.round((new Date(s + 'T00:00:00') - new Date(D.today + 'T00:00:00')) / 86400000);
     }
+    // The due date with its time (schema 22), e.g. 11/20 15:00.
+    function dueText(iss) { return d2(iss.dd) + (iss.dt ? ' ' + iss.dt : ''); }
+    // The clock now, HH:MM, on this computer.
+    function nowHM() {
+        var n = new Date();
+        return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2);
+    }
+    // Past due: a day before today, or today with a time that has gone by.
+    // An issue without a time is due at the end of its day, as before.
+    function dueOver(iss) {
+        if (!iss || !iss.dd) { return false; }
+        var days = daysTo(iss.dd);
+        return days < 0 || (days === 0 && !!iss.dt && nowHM() > iss.dt);
+    }
     function dueCell(iss) {
         if (!iss.dd) { return '<span class="bl-due">—</span>'; }
         var days = daysTo(iss.dd);
-        if (!isDone(iss.st) && days < 0) {
-            return '<span class="bl-due over"><span class="bl-due-part"><i class="fa fa-exclamation-circle"></i> ' + esc(d2(iss.dd)) + '</span> ' +
-                '<span class="bl-due-part">(' + esc(fmt(L.overdue_d, -days)) + ')</span></span>';
+        if (!isDone(iss.st) && dueOver(iss)) {
+            return '<span class="bl-due over"><span class="bl-due-part"><i class="fa fa-exclamation-circle"></i> ' + esc(dueText(iss)) + '</span> ' +
+                '<span class="bl-due-part">(' + esc(fmt(L.overdue_d, Math.max(-days, 0))) + ')</span></span>';
         }
         if (!isDone(iss.st) && days <= 3) {
-            return '<span class="bl-due soon"><span class="bl-due-part"><i class="fa fa-clock-o"></i> ' + esc(d2(iss.dd)) + '</span> ' +
+            return '<span class="bl-due soon"><span class="bl-due-part"><i class="fa fa-clock-o"></i> ' + esc(dueText(iss)) + '</span> ' +
                 '<span class="bl-due-part">(' + esc(fmt(L.left_d, days)) + ')</span></span>';
         }
-        return '<span class="bl-due">' + esc(d2(iss.dd)) + '</span>';
+        return '<span class="bl-due">' + esc(dueText(iss)) + '</span>';
     }
     function pbar(pg) {
         if (pg === null || pg === undefined || pg === '') { return '—'; }
@@ -364,8 +383,142 @@
     }
     function starBtn(type, targetType, targetId, count, on, extraCls) {
         return '<span class="bl-star pp-star' + (on ? ' on' : '') + (extraCls ? ' ' + extraCls : '') +
-            '" data-star-type="' + esc(type) + '" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' +
+            '" title="' + esc(on ? L.star_off_tip : L.star_on_tip) + '"' +
+            ' data-star-type="' + esc(type) + '" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' +
             '<i class="fa ' + (on ? 'fa-star' : 'fa-star-o') + '"></i><span class="ct">' + (count ? ' ' + esc(count) : '') + '</span></span>';
+    }
+    /* ------------------------------------------------ review request ---- */
+    // ISS00341: 「確認をお願いします」 with an answer. Under the comment, on one
+    // line: everybody who was asked, 確認待ち or 確認済み with the time, and -
+    // for the asked reader only - the button that answers. The server finds
+    // the row by who is asking, so the button carries no user id.
+    function rvBar(e) {
+        if (!e.rv || !e.rv.length) { return ''; }
+        var mine = null;
+        var chips = e.rv.map(function (r) {
+            if (String(r.by) === String(D.me)) { mine = r; }
+            return '<span class="pp-rvp ' + (r.ok ? 'ok' : 'wait') + '" title="' +
+                esc(user(r.by).n + ': ' + (r.ok ? L.rv_ok + (r.at ? ' ' + r.at : '') : L.rv_wait)) + '">' +
+                av(r.by) + esc(user(r.by).n) +
+                '<span class="s">' + (r.ok ? '<i class="fa fa-check"></i> ' + esc(L.rv_ok) : esc(L.rv_wait)) + '</span>' +
+                (r.ok && r.at ? '<span class="tm">' + esc(r.at) + '</span>' : '') + '</span>';
+        }).join('');
+        var btn = '';
+        if (mine && e.rv_on) {
+            btn = mine.ok
+                ? '<button type="button" class="pp-rvbtn undo" data-cid="' + esc(e.cid) + '" data-ok="0" title="' + esc(L.rv_undo_tip) + '">' + esc(L.rv_undo) + '</button>'
+                : '<button type="button" class="pp-rvbtn" data-cid="' + esc(e.cid) + '" data-ok="1" title="' + esc(L.rv_confirm_tip) + '"><i class="fa fa-check"></i> ' + esc(L.rv_confirm) + '</button>';
+        }
+        return '<div class="pp-rv"><span class="lb"><i class="fa fa-check-square-o"></i> ' + esc(L.rv_label) + '</span>' + chips + btn + '</div>';
+    }
+    // Whether an issue's detail still holds a request this reader has not
+    // answered - what the list's 確認待ち chip counts.
+    function rvPending(res) {
+        return (res.timeline || []).some(function (e) {
+            return e.tp === 'cmt' && (e.rv || []).some(function (r) { return !r.ok && String(r.by) === String(D.me); });
+        });
+    }
+    function rvAnswer(btn) {
+        if (btn.disabled || currentIssue === null) { return; }
+        var issueId = currentIssue, epoch = detailEpoch;
+        var ok = btn.getAttribute('data-ok') === '1';
+        var seq = ++DET_SEQ;
+        btn.disabled = true;
+        $.ajax({
+            url: D.urls.base + '/comment/' + btn.getAttribute('data-cid') + '/review', type: 'POST',
+            dataType: 'json',
+            data: { ok: ok ? 1 : 0 },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            btn.disabled = false;
+            if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
+                if (detailCurrent(issueId, epoch)) { toast(errText(null, res, L.rv_fail), true); }
+                return;
+            }
+            // The answer is the whole issue again: the line under the comment
+            // and the list's 確認待ち mark both come from it (applyDetail).
+            applyDetail(res, epoch, true, seq);
+            if (detailCurrent(issueId, epoch)) { toast(ok ? L.rv_done : L.rv_undone); }
+        }).fail(function (xhr) {
+            btn.disabled = false;
+            if (!detailCurrent(issueId, epoch)) { return; }
+            toast(xhrErr(xhr, L.rv_fail), true);
+        });
+    }
+    // 確認を依頼する in the dock: whether it is ticked, and the tick shown on
+    // the picked chips while it is.
+    function rvAskOn() {
+        var box = document.getElementById('pp-notify-rv');
+        return !!(box && box.checked);
+    }
+    function rvAskSync(off) {
+        var box = document.getElementById('pp-notify-rv');
+        if (box && off) { box.checked = false; }
+        var chips = document.getElementById('pp-notify-chips');
+        if (chips) { chips.classList.toggle('rv', rvAskOn()); }
+    }
+    // Delegated: the tick is part of the page, but this script may be drawn
+    // before or after it.
+    document.addEventListener('change', function (ev) {
+        if (ev.target && ev.target.id === 'pp-notify-rv') { rvAskSync(); }
+    });
+    /* ------------------------------------------------ reactions -------- */
+    // ISS00259: Facebook's reactions plus the ones Slack and Teams use at
+    // work. A person may put several kinds on one thing; each chip turns
+    // the reader's own on and off. RXS holds what each bar shows, so a bar
+    // can be drawn again after a click without the whole detail.
+    var RX = [
+        ['like', '\uD83D\uDC4D'], ['heart', '\u2764\uFE0F'], ['haha', '\uD83D\uDE06'], ['wow', '\uD83D\uDE2E'],
+        ['sad', '\uD83D\uDE22'], ['angry', '\uD83D\uDE20'], ['thanks', '\uD83D\uDE4F'], ['clap', '\uD83D\uDC4F'],
+        ['party', '\uD83C\uDF89'], ['eyes', '\uD83D\uDC40'], ['ok', '\u2705']
+    ];
+    var RXS = {};
+    function rxBar(targetType, targetId, rx) {
+        var key = targetType + ':' + targetId;
+        RXS[key] = rx && typeof rx === 'object' ? rx : {};
+        var chips = RX.filter(function (k) { return (RXS[key][k[0]] || []).length > 0; }).map(function (k) {
+            var us = RXS[key][k[0]];
+            var mine = us.map(String).indexOf(String(D.me)) >= 0;
+            var names = us.map(function (u) { return user(u).n; }).join('\u3001');
+            return '<span class="pp-rx' + (mine ? ' on' : '') + '" data-rx="' + k[0] + '" title="' + esc(L['rx_' + k[0]] + ': ' + names) + '">' +
+                k[1] + '<span class="n">' + us.length + '</span></span>';
+        }).join('');
+        return '<span class="pp-rxbar" data-target-type="' + esc(targetType) + '" data-target-id="' + esc(targetId) + '">' + chips +
+            // A word beside the face: the bare "☺+" was missed (snoro 2026-11-19).
+            '<span class="pp-rxadd" title="' + esc(L.rx_add) + '"><i class="fa fa-smile-o"></i> ' + esc(L.rx_add) + '</span>' +
+            '<span class="pp-rxpick" hidden>' + RX.map(function (k) {
+                return '<span class="pp-rxopt" data-rx="' + k[0] + '" title="' + esc(L['rx_' + k[0]]) + '">' + k[1] + '</span>';
+            }).join('') + '</span></span>';
+    }
+    function rxToggle(bar, kind) {
+        if (!bar || bar.dataset.busy === '1') { return; }
+        var tt = bar.dataset.targetType, tid = bar.dataset.targetId;
+        bar.dataset.busy = '1';
+        $.ajax({
+            url: D.urls.base + '/star', type: 'POST', dataType: 'json',
+            data: { star_type: 'r:' + kind, target_type: tt, target_id: tid },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            bar.dataset.busy = '';
+            if (!res || !res.ok) { toast(errText(null, res, L.rx_fail), true); return; }
+            var rx = $.extend({}, RXS[tt + ':' + tid] || {});
+            if (res.users && res.users.length) { rx[kind] = res.users; } else { delete rx[kind]; }
+            var tmp = document.createElement('span');
+            tmp.innerHTML = rxBar(tt, tid, rx);
+            if (bar.parentNode) { bar.parentNode.replaceChild(tmp.firstChild, bar); }
+        }).fail(function (xhr) {
+            bar.dataset.busy = '';
+            toast(xhrErr(xhr, L.rx_fail), true);
+        });
+    }
+    // ★ on the issue detail: a labelled button beside ウォッチ (Fable's review,
+    // snoro 2026-11-19). ★ is 注目度 - how many people care - counted, not
+    // named; the reactions are where people are named.
+    function starDetailBtn(issueId, count, on) {
+        return '<a class="bl-btn-sub pp-star pp-star-d' + (on ? ' on' : '') + '" title="' + esc(on ? L.star_off_tip : L.star_on_tip) + '"' +
+            ' data-star-type="star" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(issueId) + '">' +
+            '<i class="fa ' + (on ? 'fa-star' : 'fa-star-o') + '"></i> <span class="lb">' + esc(on ? L.star_on : L.star_label) + '</span>' +
+            ' <span class="ct">' + esc(count || 0) + '</span></a>';
     }
     function issueById(id) {
         var found = null;
@@ -395,36 +548,41 @@
         });
         document.getElementById('pp-projhead').innerHTML =
             '<div class="bl-projicon"><i class="fa fa-folder-open"></i></div>' +
-            '<div class="bl-projinfo"><span class="bl-projname">' + esc(p.name) + '</span>' +
+            // One line: name, then dates / manager / note beside it. The note
+            // is cut to what fits and opens in place on a click (snoro 2026-11-18:
+            // the header took a third of the screen).
+            '<div class="bl-projinfo"><span class="bl-projttl"><span class="bl-projname">' + esc(p.name) + '</span>' +
             (p.key ? '<span class="bl-projkey">' + esc(p.key) + '</span>' : '') +
-            (p.status ? '<span class="bl-pill" style="background:' + ppColor(p.status.c) + ';margin-left:8px;">' + esc(p.status.l) + '</span>' : '') +
-            '<div class="bl-projmeta"><i class="fa fa-calendar" style="margin-left:0;"></i>' +
-            esc(p.start || '—') + ' 〜 ' + esc(p.end || '—') +
-            '<i class="fa fa-user"></i>' + esc(L.role_pm) + ': ' + esc(user(p.manager).n) +
-            (p.note ? '<i class="fa fa-info-circle"></i>' + esc(p.note) : '') + '</div></div>' +
-            '<div class="bl-avatars">' + avlist(people) + '</div>' +
+            (p.status ? '<span class="bl-pill" style="background:' + ppColor(p.status.c) + ';">' + esc(p.status.l) + '</span>' : '') +
+            '</span><div class="bl-projmeta"><span class="mi"><i class="fa fa-calendar"></i>' +
+            esc(p.start || '—') + ' 〜 ' + esc(p.end || '—') + '</span>' +
+            '<span class="mi"><i class="fa fa-user"></i>' + esc(L.role_pm) + ': ' + esc(user(p.manager).n) + '</span>' +
+            (p.note ? '<a class="bl-projnote" href="javascript:void(0);" aria-expanded="false" title="' + esc(p.note) + '">' +
+                '<i class="fa fa-info-circle"></i><span class="tx">' + esc(p.note) + '</span></a>' : '') + '</div></div>' +
+            // avatars, fetched-at and the refresh button wrap as one group
+            '<div class="bl-projside"><div class="bl-avatars">' + avlist(people) + '</div>' +
             // A check that finds nothing changed is silent, which reads exactly
             // like a check that never ran. The time the data on screen was
             // fetched is what tells the two apart.
             '<span class="pp-freshat">' + esc(String(L.rf_at).replace(':time', String(D.now || ''))) + '</span>' +
             '<a class="bl-btn-sub pp-refresh" href="javascript:void(0);" title="' + esc(L.rf_button) + '">' +
-            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a>';
+            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a></div>';
     }
 
     /* ------------------------------------------------ home -------------- */
     function renderHome() {
         var open = (D.issues || []).filter(function (i) { return !isDone(i.st); });
-        var overdue = open.filter(function (i) { return i.dd && daysTo(i.dd) < 0; });
-        var soon = open.filter(function (i) { return i.dd && daysTo(i.dd) >= 0 && daysTo(i.dd) <= 3; });
+        var overdue = open.filter(function (i) { return dueOver(i); });
+        var soon = open.filter(function (i) { return i.dd && !dueOver(i) && daysTo(i.dd) <= 3; });
         document.getElementById('pp-stats').innerHTML =
-            '<div class="bl-stat"><div class="n">' + D.issues.length + '</div><div class="l"><i class="fa fa-tasks"></i>' + L.stat_all + '</div></div>' +
+            '<div class="bl-stat"><div class="n">' + (D.issues.length + arCount()) + '</div><div class="l"><i class="fa fa-tasks"></i>' + L.stat_all + '</div></div>' +
             '<div class="bl-stat"><div class="n">' + open.length + '</div><div class="l"><i class="fa fa-folder-open-o"></i>' + L.stat_open + '</div></div>' +
             '<div class="bl-stat' + (overdue.length ? ' warn' : '') + '"><div class="n">' + overdue.length + '</div><div class="l"><i class="fa fa-exclamation-circle"></i>' + L.stat_overdue + '</div></div>' +
             '<div class="bl-stat"><div class="n">' + soon.length + '</div><div class="l"><i class="fa fa-clock-o"></i>' + L.stat_soon + '</div></div>';
 
         var stack = '', leg = '';
         (D.statuses || []).forEach(function (s) {
-            var n = D.issues.filter(function (i) { return i.st === s.k; }).length;
+            var n = D.issues.filter(function (i) { return i.st === s.k; }).length + arIn('by_status', s.k);
             if (n) { stack += '<i style="flex:' + n + ';background:' + ppColor(s.c) + '" title="' + esc(s.l) + ' ' + n + '"></i>'; }
             leg += '<span><span class="sw" style="background:' + ppColor(s.c) + '"></span>' + esc(s.l) + ' <b>' + n + '</b>' + L.unit_cnt + '</span>';
         });
@@ -435,8 +593,12 @@
         Object.keys(D.milestones || {}).forEach(function (k) {
             var m = D.milestones[k];
             var all = D.issues.filter(function (i) { return i.ms === k; });
-            if (!all.length) { return; }
+            // Archived issues are finished ones.
+            var arN = arIn('by_ms', k);
+            if (!all.length && !arN) { return; }
             var done = all.filter(function (i) { return isDone(i.st); });
+            done = { length: done.length + arN };
+            all = { length: all.length + arN };
             var pct = Math.round(done.length * 100 / all.length);
             var left = m.due ? daysTo(m.due) : null;
             ms += '<div class="row"><span class="nm"><i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:6px;"></i>' + esc(m.l) + '</span>' +
@@ -478,9 +640,46 @@
         }).join('') || ('<div style="color:var(--bl-faint);">' + esc(L.empty) + '</div>');
     }
 
+    /* ------------------------------------------------ archive ----------- */
+    // ISS00332: issues finished more than D.archive.days days ago are not in
+    // the page. D.archive counts them (per status, milestone, parent) so the
+    // numbers still cover the whole project; the rows come on request.
+    var AR = { loaded: false, show: false, busy: null };
+    function arOn() { return !!(D.archive && D.archive.count > 0); }
+    // What D.issues is missing: nothing once the rows are here.
+    function arCount() { return arOn() && !AR.loaded ? Number(D.archive.count) || 0 : 0; }
+    function arIn(map, k) { return arOn() && !AR.loaded ? Number((D.archive[map] || {})[String(k)] || 0) : 0; }
+    function loadArchived() {
+        if (!arOn() || AR.loaded) { return $.Deferred().resolve().promise(); }
+        if (AR.busy) { return AR.busy; }
+        AR.busy = $.getJSON(D.archive.url).then(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            $.extend(D.users, res.users || {});
+            var have = {};
+            (D.issues || []).forEach(function (i) { have[String(i.id)] = true; });
+            (res.issues || []).forEach(function (r) {
+                if (!have[String(r.id)]) { r.ar = true; D.issues.push(r); }
+            });
+            AR.loaded = true;
+        }).always(function () { AR.busy = null; });
+
+        return AR.busy;
+    }
+    function showArchived(on) {
+        AR.show = !!on;
+        if (!on) { PAGE.no = 1; renderIssues(); return; }
+        var note = document.getElementById('pp-ar-note');
+        if (note) { note.textContent = L.ar_loading; }
+        loadArchived().then(function () {
+            if (!alive()) { return; }
+            PAGE.no = 1;
+            renderIssues();
+        }, function () { toast(L.ar_fail, true); renderIssues(); });
+    }
+
     /* ------------------------------------------------ issues ------------ */
-    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', q: '' };
-    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'kw'];
+    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', rd: '', q: '' };
+    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'rd', 'kw'];
     // These were per browser, so a shared machine handed the next person the
     // last one's filters and saved conditions. They are per person now. What
     // is still under the old key is taken over once, by whoever opens the
@@ -615,10 +814,10 @@
             return !!D.me && i.as.map(String).indexOf(String(D.me)) >= 0;
         } },
         { k: 'overdue', l: 'q_overdue', i: 'fa-exclamation-circle', warn: true, t: function (i) {
-            return !isDone(i.st) && !!i.dd && daysTo(i.dd) < 0;
+            return !isDone(i.st) && dueOver(i);
         } },
         { k: 'soon', l: 'q_soon', i: 'fa-clock-o', t: function (i) {
-            if (isDone(i.st) || !i.dd) { return false; }
+            if (isDone(i.st) || !i.dd || dueOver(i)) { return false; }
             var d = daysTo(i.dd);
             return d >= 0 && d <= 1;
         } },
@@ -626,7 +825,10 @@
             return !!D.me && String(i.by) === String(D.me);
         } },
         { k: 'watch', l: 'q_watch', i: 'fa-eye', t: function (i) { return !!i.my_watch; } },
-        { k: 'unread', l: 'q_unread', i: 'fa-envelope', t: function (i) { return !!i.unread; } }
+        { k: 'unread', l: 'q_unread', i: 'fa-envelope', t: function (i) { return !!i.unread; } },
+        // ISS00341: issues with a comment somebody asked me to confirm and
+        // that I have not confirmed yet.
+        { k: 'review', l: 'q_review', i: 'fa-check-square-o', warn: true, t: function (i) { return !!i.my_rv; } }
     ];
     function qchipTest(key) {
         for (var n = 0; n < QCHIPS.length; n++) {
@@ -658,6 +860,7 @@
     // Every filter, sort or page-size change goes through here, so the page
     // number and the selection can never be left describing the old list.
     function afterFilterChange() {
+        FILTER_CARRIED = false;
         PAGE.no = 1;
         clearSelection();
         renderIssues();
@@ -674,12 +877,27 @@
     // Only what means the same in every project is carried over: status ids,
     // types, milestones and categories are per project, so a value from
     // another project is kept only if this project has it too.
+    // Set while the filter in use is the one brought over from another
+    // project. If it shows nothing here, it is dropped (see renderIssues):
+    // a keyword, an assignee or 未読 from the last project can easily match
+    // nothing in this one, and an empty list read as "the issues are gone".
+    var FILTER_CARRIED = false;
+    function dropCarriedFilterIfEmpty() {
+        if (!FILTER_CARRIED || !(D.issues || []).length) { return; }
+        FILTER_CARRIED = false;
+        if (filteredIssues().length > 0) { return; }
+        FILTER_FIELDS.forEach(function (k) { FILTER[k] = ''; });
+        syncFilterControls();
+        rememberLastFilter();
+        toast(L.f_carried_cleared);
+    }
     function carriedFilterValue(k, v) {
         if (k === 'st') { return (v === '!done' || own(ST, v)) ? v : ''; }
         if (k === 'ty') { return own(D.types, v) ? v : ''; }
         if (k === 'ms') { return own(D.milestones, v) ? v : ''; }
         if (k === 'cat') { return own(D.categories, v) ? v : ''; }
         if (k === 'pr') { return own(D.priorities, v) ? v : ''; }
+        if (k === 'rd') { return (v === 'unread' || v === 'read') ? v : ''; }
         return v;
     }
     try {
@@ -698,6 +916,7 @@
                     var v = own(last.f, k);
                     if (typeof v === 'string' || typeof v === 'number') { FILTER[k] = carriedFilterValue(k, String(v)); }
                 });
+                FILTER_CARRIED = true;
             }
         }
     } catch (e) { /* ignore */ }
@@ -758,7 +977,7 @@
         ms: { t: true, v: function (i) { return msSortKey(i.ms); } },
         cat: { t: true, v: function (i) { return (i.cat && i.cat.length) ? String(own(D.categories, i.cat[0]) || '') : ''; } },
         sd: { t: false, v: function (i) { return i.sd || ''; } },
-        dd: { t: false, v: function (i) { return i.dd || ''; } },
+        dd: { t: false, v: function (i) { return i.dd ? i.dd + ' ' + (i.dt || '99:99') : ''; } },
         pg: { t: false, v: function (i) { return (i.pg === null || i.pg === undefined) ? null : Number(i.pg); } },
         up: { t: false, v: function (i) { return String(i.up || ''); } }
     };
@@ -931,12 +1150,13 @@
 
     function renderIssueFilters() {
         var tabs = '<button class="bl-sttab' + (FILTER.st === '' ? ' active' : '') + '" data-st="">' +
-            esc(L.f_all) + '<span class="ct">' + D.issues.length + '</span></button>';
+            esc(L.f_all) + '<span class="ct">' + (D.issues.length + arCount()) + '</span></button>';
         tabs += '<button class="bl-sttab' + (FILTER.st === ST_NOT_DONE ? ' active' : '') + '" data-st="' + ST_NOT_DONE + '">' +
             esc(L.f_not_done || '完了以外') + '<span class="ct">' +
-            D.issues.filter(function (i) { return stMatch(i.st, ST_NOT_DONE); }).length + '</span></button>';
+            (D.issues.filter(function (i) { return stMatch(i.st, ST_NOT_DONE); }).length +
+                (D.statuses || []).reduce(function (n, s) { return n + (stMatch(s.k, ST_NOT_DONE) ? arIn('by_status', s.k) : 0); }, 0)) + '</span></button>';
         (D.statuses || []).forEach(function (s) {
-            var n = D.issues.filter(function (i) { return i.st === s.k; }).length;
+            var n = D.issues.filter(function (i) { return i.st === s.k; }).length + arIn('by_status', s.k);
             tabs += '<button class="bl-sttab' + (FILTER.st === s.k ? ' active' : '') + '" data-st="' + esc(s.k) + '">' +
                 '<span class="dot" style="background:' + ppColor(s.c) + '"></span>' + esc(s.l) + '<span class="ct">' + n + '</span></button>';
         });
@@ -1025,6 +1245,7 @@
         setVal('pp-f-pr', FILTER.pr);
         setVal('pp-f-ms', FILTER.ms);
         setVal('pp-f-cat', FILTER.cat);
+        setVal('pp-f-rd', FILTER.rd);
         setVal('pp-jump', FILTER.kw);
         setVal('pp-pg-size', String(PAGE.size));
         // Offered only when there is something to clear, so the row does not
@@ -1053,6 +1274,7 @@
         var quick = FILTER.q ? qchipTest(FILTER.q) : null;
 
         return (D.issues || []).filter(function (i) {
+            if (i.ar && !AR.show) { return false; }
             if (quick && !quick(i)) { return false; }
             if (FILTER.st && !stMatch(i.st, FILTER.st)) { return false; }
             if (FILTER.as && i.as.map(String).indexOf(String(FILTER.as)) < 0) { return false; }
@@ -1060,12 +1282,15 @@
             if (FILTER.pr && String(i.pr) !== String(FILTER.pr)) { return false; }
             if (FILTER.ms && i.ms !== FILTER.ms) { return false; }
             if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
+            if (FILTER.rd === 'unread' && !i.unread) { return false; }
+            if (FILTER.rd === 'read' && i.unread) { return false; }
             if (kw && (i.key + ' ' + i.subject + ' ' + (i.sub || '')).toLowerCase().indexOf(kw) < 0) { return false; }
 
             return true;
         }).sort(sortCmp());
     }
     function renderIssues() {
+        dropCarriedFilterIfEmpty();
         renderIssueFilters();
         renderSortHead();
 
@@ -1096,7 +1321,7 @@
         // tree mode only: a narrow column left of 件名 holds the indent and
         // the ▼/▶ or └ (snoro 2026-11-18), so the subject cell stays clean
         var tHead = document.getElementById('pp-tcol-head');
-        if (tHead) { tHead.hidden = !TREE_ON; }
+        if (tHead) { tHead.hidden = !TREE_ON; tHead.textContent = L.col_tree; }
 
         var onPage = {};
         if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
@@ -1137,7 +1362,7 @@
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
                 // stacked to its right so both lines start at the same place
                 (TREE_ON ? '<td class="pp-tcol">' + ind + '</td>' : '') +
-                '<td class="sub">' + parent + esc(i.subject) +
+                '<td class="sub">' + parent + rcMark(i) + esc(i.subject) +
                     (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
                 '<td' + edAttr('st') + '>' + pill(i.st) + '</td>' +
@@ -1152,6 +1377,7 @@
         document.getElementById('pp-issue-rows').innerHTML = rows;
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
+        ppListFit();
     }
 
     // `matched` is how many issues pass the filters; in tree mode `total` is
@@ -1159,7 +1385,8 @@
     function renderPager(total, from, shown, pages, matched) {
         // Two different facts, and the reader wants both: where this page sits
         // inside the filtered list, and how much of the project that list is.
-        var count = fmt(L.cnt_line, typeof matched === 'number' ? matched : total, D.issues.length);
+        var count = fmt(L.cnt_line, typeof matched === 'number' ? matched : total, D.issues.length + arCount());
+        renderArchiveNote();
         document.getElementById('pp-issue-count').textContent = (total === 0 || pages <= 1)
             ? count
             : String(L.pg_range).replace(':from', from + 1).replace(':to', from + shown)
@@ -1179,6 +1406,22 @@
             (PAGE.no >= pages ? ' disabled' : '') + '>' + esc(L.pg_next) + '</button>';
         nav.innerHTML = html;
     }
+    // Under the list: how many finished issues are archived, and the switch.
+    // Only while the status filter could match them (all, or a done status).
+    function renderArchiveNote() {
+        var note = document.getElementById('pp-ar-note');
+        if (!note) { return; }
+        var could = FILTER.st === '' || FILTER.st === ST_NOT_DONE || isDone(FILTER.st);
+        if (!arOn() || !could) { note.innerHTML = ''; return; }
+        note.innerHTML = AR.show
+            ? esc(fmt(L.ar_shown, D.archive.count)) + ' <a href="javascript:void(0);" data-ar="0">' + esc(L.ar_hide) + '</a>'
+            : esc(fmt(L.ar_hidden, D.archive.count, D.archive.days)) + ' <a href="javascript:void(0);" data-ar="1">' + esc(L.ar_show) + '</a>';
+    }
+    $(document).on('click', '#pp-ar-note a[data-ar]', function (ev) {
+        if (!alive()) { return; }
+        ev.preventDefault();
+        showArchived(this.getAttribute('data-ar') === '1');
+    });
     // First, last, and the neighbourhood of the current page; 0 stands for the
     // gap between them. Sixty pages of buttons would be its own kind of
     // unusable.
@@ -1629,6 +1872,11 @@
     // than reloading the page.
     function adoptPayload(next, seq) {
         D = next;
+        // The new payload has no archived rows again; bring them back if they
+        // were on show.
+        AR.loaded = false;
+        AR.busy = null;
+        if (AR.show) { loadArchived().then(function () { if (alive()) { renderIssues(); } }); }
         ST = {};
         ST_RANK = {};
         (D.statuses || []).forEach(function (s, n) { ST[s.k] = s; ST_RANK[s.k] = n; });
@@ -1864,6 +2112,11 @@
             timeline: null
         };
     }
+    // A small repeat mark after the subject of a recurring issue.
+    function rcMark(i) {
+        if (!i.rc) { return ''; }
+        return '<i class="fa fa-repeat pp-rc" title="' + esc(L.col_rc + ': ' + (L['rc_' + i.rc] || i.rc)) + '"></i> ';
+    }
     function renderDetail(id) {
         var epoch = ++detailEpoch;
         cmtSetBusy(false);
@@ -1965,18 +2218,34 @@
             if (seen && !next) { next = s; }
             if (s.k === i.st) { seen = true; }
         });
-        var head = '<div class="bl-dhead">' + tag(i.ty) +
+        // The way back sits on the head row itself, so it costs no line of
+        // its own above the issue (the same button closes the page too).
+        var head = '<div class="bl-dhead"><a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' + tag(i.ty) +
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' +
-            starBtn('star', D.issue_table, i.id, local.star, local.my_star) + issueNav(i) +
+            issueNav(i) +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
                 '<i class="fa fa-arrow-right"></i> ' + fmt(esc(L.to_next), esc(next.l)) + '</button>' : '') +
-            (res.description ? '<a class="bl-btn-sub pp-quote pp-dquote"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
-            (CAN_ADD_ISSUE ? '<a class="bl-btn-sub pp-issuecopy"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
-            '<a class="bl-btn-sub pp-mailbtn"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
+            // What is used every day stays a button; what is used now and
+            // then waits in one menu, so the row is one line and the
+            // delete button is not a neighbour of the edit button.
+            // With no children yet the 子課題 box stays away; its one button
+            // waits up here instead of costing a box of its own.
+            (res.editable && CAN_ADD_ISSUE && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
+                ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
+            starDetailBtn(i.id, local.star, local.my_star) +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
-            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a></span></div>' +
+            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
+            '<span class="pp-more"><a class="bl-btn-sub pp-morebtn" href="javascript:void(0);" role="button" aria-haspopup="true" aria-expanded="false">' +
+                '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) + '</a><span class="m" hidden>' +
+            (res.description ? '<a class="pp-quote pp-dquote" href="javascript:void(0);"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
+            (CAN_ADD_ISSUE ? '<a class="pp-issuecopy" href="javascript:void(0);"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
+            '<a class="pp-mailbtn" href="javascript:void(0);"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
+            (res.movable ? '<a class="pp-issuemove" href="javascript:void(0);"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
+            (res.deletable ? '<a class="pp-issuedel" href="javascript:void(0);"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
+            '</span></span></span></div>' +
+            '<div class="pp-move" hidden></div>' +
             '<div class="bl-dtitle">' + esc(i.subject) + '</div>' +
             (i.sub ? '<div class="pp-dsubsub">' + esc(i.sub) + '</div>' : '') +
             '<div class="bl-dsum">' +
@@ -1984,10 +2253,13 @@
             '<span class="it"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') || '—') + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
-            '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span></div>' +
+            '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
-                : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>';
+                : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>' +
+            '<div class="pp-rxrow">' + rxBar(D.issue_table, i.id, res.reactions) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
+        ppDbarFill(i);
         linkifyIssueRefs(document.querySelector('#pp-d-main .bl-desc'));
         // The quote button carries the description as words, not markup, and
         // the rendered block is the shortest way to those words.
@@ -2003,21 +2275,39 @@
             [L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:5px;"></i>' + esc(ms.l) : '—'],
             [L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
+            [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
             [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
             [L.lbl_pg, pbar(i.pg)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#issue-' + esc(parentIssue.id) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_watch, '<i class="fa fa-eye" style="color:var(--bl-faint);"></i> ' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people))]
         ];
-        document.getElementById('pp-d-props').innerHTML = props.map(function (p) {
+        // Status, priority, assignees and the due date are on the summary row
+        // above the description, and the watch count on its button: said
+        // once is enough. Of the rest, only what is set - a column of dashes
+        // only pushed the comments further down. Nothing set, no box.
+        var shown = [L.col_st, L.col_pr, L.col_as, L.col_dd, L.lbl_watch];
+        var setProps = props.filter(function (p) {
+            if (shown.indexOf(p[0]) >= 0) { return false; }
+            var v = String(p[1] === null || p[1] === undefined ? '' : p[1]);
+            if (p[0] === L.lbl_eh) { return i.eh !== null && i.eh !== undefined && i.eh !== '' || i.ah !== null && i.ah !== undefined && i.ah !== ''; }
+            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0; }
+            return v !== '' && v !== '—' && v !== esc('—');
+        });
+        document.getElementById('pp-d-props').innerHTML = setProps.map(function (p) {
             return '<div class="row"><span class="k">' + esc(p[0]) + '</span><span class="v">' + p[1] + '</span></div>';
         }).join('');
+        var propBox = document.getElementById('pp-d-propbox');
+        // Left alone while the inline editor has stood it aside: the editor
+        // brings its own fields, and puts this box back as it was on close.
+        var mainBox = document.getElementById('pp-d-main').closest('.bl-card-box');
+        var editingNow = mainBox && mainBox.style.display === 'none';
+        if (propBox && !editingNow) { propBox.style.display = setProps.length ? '' : 'none'; }
 
         var kids = (D.issues || []).filter(function (x) { return String(x.parent) === String(i.id); });
         // A child is a new issue: editing this one is not enough on its own.
         var canAddChild = res.editable && CAN_ADD_ISSUE;
-        // The box stays up with no children in it when the user may add one:
-        // that button is the only way to say "this belongs under that".
-        document.getElementById('pp-d-childbox').style.display = (kids.length || canAddChild) ? '' : 'none';
+        // No children, no box: the add button moved up to the issue's head.
+        document.getElementById('pp-d-childbox').style.display = kids.length ? '' : 'none';
         document.getElementById('pp-d-children').innerHTML = kids.map(function (k) {
             return '<div class="row"><div class="k"><span class="bl-key">' + esc(k.key) + '</span></div>' +
                 '<div class="v"><a class="bl-issuelink" href="#issue-' + esc(k.id) + '">' + esc(k.subject) + '</a>'
@@ -2028,9 +2318,10 @@
                 + '<i class="fa fa-plus"></i> ' + esc(L.child_add) + '</a></div></div>'
             : '');
         // Backlog's childIssueSummary, from what the list already knows.
-        var kidsDone = kids.filter(function (k) { return isDone(k.st); }).length;
+        var kidsAr = arIn('kids', i.id);
+        var kidsDone = kids.filter(function (k) { return isDone(k.st); }).length + kidsAr;
         document.getElementById('pp-d-childsum').textContent =
-            kids.length ? fmt(L.children_done, kidsDone, kids.length) : '';
+            (kids.length + kidsAr) ? fmt(L.children_done, kidsDone, kids.length + kidsAr) : '';
 
         // What the reader had picked in the dock for this same issue outlives
         // the redraw - the status to move it to and who to tell - the way the
@@ -2071,8 +2362,9 @@
         });
         document.getElementById('pp-notify-chips').innerHTML = people.map(function (u) {
             var on = keepNotify && keepNotify.indexOf(String(u)) >= 0;
-            return '<span class="bl-chip' + (on ? '' : ' off') + ' pp-notify" data-user="' + esc(u) + '">' + esc(user(u).n) + '</span>';
-        }).join(' ');
+            return '<span class="bl-chip has-av' + (on ? '' : ' off') + ' pp-notify" role="button" tabindex="0" data-user="' + esc(u) + '">' + av(u) + esc(user(u).n) + '</span>';
+        }).join('');
+        ppNotifyCount();
         var dockav = document.getElementById('pp-dockav');
         if (dockav) { dockav.innerHTML = av(D.me); }
         cmtSetBusy(cmtBusy);
@@ -2101,24 +2393,59 @@
     // is stored under.
     var QE_COLS = {
         pr: 'priority', as: 'assignees', ms: 'milestone', cat: 'category',
-        sd: 'start', dd: 'due', eh: 'estimate', ah: 'actual', pg: 'progress'
+        sd: 'start', dd: 'due', dt: 'due_time', eh: 'estimate', ah: 'actual', pg: 'progress'
     };
     // Column names live in the def map, not in this file: an install that
     // renamed one overrides the map instead of patching code.
     function qeCol(key) { return own(D.issue_cols, key) || ''; }
-    function qeRow(label, node) {
+    // One field of the dock: its label over its widget. `size` names how
+    // much room the field is worth (see .bl-qe in the stylesheet) - a date is
+    // ten characters wherever it is shown, and a field that stretches to the
+    // width of the card says nothing about what goes in it. `unit` is the
+    // quiet suffix after the label ("h", "%").
+    function qeRow(label, node, size, unit) {
+        var multi = !!(node.dataset && node.dataset.qeMulti);
         var row = document.createElement('div');
-        row.className = 'row';
+        row.className = 'row' + (size ? ' ' + size : '');
         var k = document.createElement('span');
         k.className = 'k';
         k.textContent = label;
+        if (unit) {
+            var u = document.createElement('span');
+            u.className = 'u';
+            u.textContent = unit;
+            k.appendChild(u);
+        }
+        if (multi) {
+            // How many are switched on, so a long list says so at a glance.
+            var n = document.createElement('span');
+            n.className = 'bl-qe-n';
+            n.hidden = true;
+            k.appendChild(n);
+        }
         var v = document.createElement('span');
         v.className = 'v';
         v.appendChild(node);
         row.appendChild(k);
         row.appendChild(v);
+        if (multi) { qeChipsCount(node); }
 
         return row;
+    }
+    function qeChipsCount(box) {
+        var row = box.closest ? box.closest('.row') : null;
+        var n = row ? row.querySelector('.k .bl-qe-n') : null;
+        if (!n) { return; }
+        var c = box.querySelectorAll('.bl-chip:not(.off)').length;
+        n.textContent = c ? String(c) : '';
+        n.hidden = !c;
+    }
+    function ppNotifyCount() {
+        var n = document.getElementById('pp-notify-n');
+        if (!n) { return; }
+        var c = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
+        n.textContent = c ? String(c) : '';
+        n.hidden = !c;
     }
     function qeSelect(name, options, value, blank) {
         var sel = document.createElement('select');
@@ -2167,12 +2494,14 @@
     // are short enough to show whole.
     //
     // labelOf names a value the options do not carry, for the chip it gets.
-    function qeChips(name, options, values, labelOf) {
+    // people: the values are user ids, and each chip carries that face.
+    function qeChips(name, options, values, labelOf, people) {
         var box = document.createElement('div');
         box.className = 'bl-qe-chips';
         box.dataset.qe = name;
         box.dataset.qeMulti = '1';
         box._qeLabel = labelOf || qeUnlisted;
+        box._qePeople = !!people;
         options.forEach(function (o) { qeChip(box, String(o[0]), o[1], false); });
         if (!options.length) {
             var em = document.createElement('span');
@@ -2190,10 +2519,17 @@
         chip.className = 'bl-chip off' + (extra ? ' pp-qe-extra' : '');
         chip.dataset.val = val;
         chip.textContent = label;
+        chip.setAttribute('role', 'button');
+        chip.tabIndex = 0;
+        if (box._qePeople) {
+            chip.classList.add('has-av');
+            chip.insertAdjacentHTML('afterbegin', av(val));
+        }
         if (extra && L.qe_extra) { chip.title = L.qe_extra; }
         chip.addEventListener('click', function () {
             chip.classList.toggle('off');
             QE.touched[box.dataset.qe] = true;
+            qeChipsCount(box);
             qeMark();
         });
         box.appendChild(chip);
@@ -2218,6 +2554,7 @@
         });
         var em = box.querySelector('.em');
         if (em) { em.hidden = !!box.querySelector('.bl-chip'); }
+        qeChipsCount(box);
     }
     function renderQuickEdit(i, res) {
         var box = document.getElementById('pp-cmt-fields');
@@ -2238,7 +2575,7 @@
             as: (i.as || []).map(String),
             ms: i.ms == null ? '' : String(i.ms),
             cat: (i.cat || []).map(String),
-            sd: i.sd || '', dd: i.dd || '',
+            sd: i.sd || '', dd: i.dd || '', dt: i.dt || '',
             eh: i.eh == null ? '' : String(i.eh),
             ah: i.ah == null ? '' : String(i.ah),
             pg: i.pg == null ? '' : String(i.pg)
@@ -2266,7 +2603,7 @@
         var st = document.createElement('select');
         st.id = 'pp-cmt-status';
         st.className = 'bl-qe-in';
-        box.appendChild(qeRow(L.st_change, st));
+        box.appendChild(qeRow(L.st_change, st, 'w-st'));
         if (!res.editable) {
             if (editbox) { editbox.hidden = true; }
 
@@ -2283,19 +2620,23 @@
         var cats = Object.keys(D.categories || {}).map(function (k) { return [k, String(D.categories[k])]; })
             .sort(function (a, b) { return cmpText(a[1], b[1]); });
 
-        box.appendChild(qeRow(L.col_pr, qeSelect('pr', prios, QE.base.pr, L.empty)));
+        // Laid out by what each field holds: the three pickers share a line,
+        // the two chip lists take a line each, and the dates and the hours -
+        // short values, every one - sit side by side on the last.
+        box.appendChild(qeRow(L.col_pr, qeSelect('pr', prios, QE.base.pr, L.empty), 'w-sel'));
+        box.appendChild(qeRow(L.col_ms, qeSelect('ms', miles, QE.base.ms, L.empty), 'w-sel'));
         box.appendChild(qeRow(L.col_as, qeChips('as', people, QE.base.as, function (v) {
             // Not a member, but a person the payload knows by name.
             var u = own(D.users, v);
             return u ? String(u.n) : qeUnlisted(v);
-        })));
-        box.appendChild(qeRow(L.col_ms, qeSelect('ms', miles, QE.base.ms, L.empty)));
-        box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat)));
-        box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd)));
-        box.appendChild(qeRow(L.col_dd, qeInput('dd', 'date', QE.base.dd)));
-        box.appendChild(qeRow(L.lbl_eh_only, qeInput('eh', 'number', QE.base.eh, { min: '0', step: '0.5' })));
-        box.appendChild(qeRow(L.lbl_ah_only, qeInput('ah', 'number', QE.base.ah, { min: '0', step: '0.5' })));
-        box.appendChild(qeRow(L.lbl_pg, qeInput('pg', 'number', QE.base.pg, { min: '0', max: '100', step: '1' })));
+        }, true), 'w-full'));
+        box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat), 'w-full'));
+        box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd), 'w-date'));
+        box.appendChild(qeRow(L.col_dd, qeInput('dd', 'date', QE.base.dd), 'w-date'));
+        box.appendChild(qeRow(L.col_dt, qeInput('dt', 'time', QE.base.dt), 'w-time'));
+        box.appendChild(qeRow(L.lbl_eh_only, qeInput('eh', 'number', QE.base.eh, { min: '0', step: '0.5' }), 'w-num', 'h'));
+        box.appendChild(qeRow(L.lbl_ah_only, qeInput('ah', 'number', QE.base.ah, { min: '0', step: '0.5' }), 'w-num', 'h'));
+        box.appendChild(qeRow(L.lbl_pg, qeInput('pg', 'number', QE.base.pg, { min: '0', max: '100', step: '1' }), 'w-num', '%'));
         if (carry) { qeApplyCarry(carry); }
         qeMark();
     }
@@ -2355,6 +2696,8 @@
         var st = document.getElementById('pp-cmt-status');
         if (st) { st.value = ''; }
         document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
+        rvAskSync(true);
+        ppNotifyCount();
         qeMark();
     }
     // What the widgets hold now, in the same shape QE.base is kept in, so the
@@ -2373,6 +2716,9 @@
                 return;
             }
             out[name] = String(el.value == null ? '' : el.value);
+            // The due time leaves as HH:MM, and 00:00 (where the picker's
+            // spinner starts) as no time at all.
+            if (name === 'dt') { out[name] = qeRowValue('dt', out[name]) || ''; }
         });
 
         return out;
@@ -2457,6 +2803,215 @@
         document.body.classList.add('pp-dock-on');
     }
     window.ppDockFit = ppDockFit;
+    // ISS00336. How far down the window a pinned line has to start: below
+    // Exment's own header when the theme fixes it to the window, else at the
+    // very top. Measured, for the same reason the dock is.
+    function ppStickTop() {
+        var top = 0;
+        var hdr = document.querySelector('.main-header');
+        if (hdr) {
+            var pos = window.getComputedStyle(hdr).position;
+            if (pos === 'fixed' || pos === 'sticky') {
+                top = Math.max(0, Math.round(hdr.getBoundingClientRect().bottom));
+            }
+        }
+        if (root._ppStickTop !== top) {
+            root._ppStickTop = top;
+            root.style.setProperty('--pp-stick-top', top + 'px');
+        }
+        return top;
+    }
+    // The issue's line: on screen only while an issue is open and its title
+    // has scrolled up out of sight.
+    function ppDbarFit(top) {
+        var bar = document.getElementById('pp-dbar');
+        var screen = document.getElementById('pp-issue');
+        if (!bar || !screen) { return; }
+        if (top === undefined) { top = ppStickTop(); }
+        var title = document.querySelector('#pp-d-main .bl-dtitle');
+        // offsetParent is null while the issue's card is swapped out for the
+        // inline editor: its title then measures 0 and would read as
+        // "scrolled away", putting a way out on top of a half-written edit.
+        var on = String(currentScreen) === 'issue' && !!title && !!bar.dataset.id
+            && title.offsetParent !== null
+            && title.getBoundingClientRect().bottom < top;
+        if (on) {
+            var host = screen.parentNode && screen.parentNode.getBoundingClientRect ? screen.parentNode : screen;
+            var r = host.getBoundingClientRect();
+            bar.style.setProperty('--pp-dbar-l', Math.round(r.left) + 'px');
+            bar.style.setProperty('--pp-dbar-w', Math.round(r.width) + 'px');
+        }
+        if (bar.hidden === on) { bar.hidden = !on; }
+    }
+    // The wiki's page list, held beside a long article on a wide screen.
+    // Fixed once the grid's top has gone above the pinned line, and pushed
+    // up with the grid's bottom so it never runs over the footer.
+    var WIDE = window.matchMedia ? window.matchMedia('(min-width:761px) and (min-height:560px)') : null;
+    function ppWtreeFit(top) {
+        var grid = document.querySelector('#pp-wiki .bl-wiki');
+        var card = grid ? grid.firstElementChild : null;
+        if (!card) { return; }
+        var unpin = function () {
+            if (!card.classList.contains('pp-pinned')) { return; }
+            card.classList.remove('pp-pinned');
+            grid.classList.remove('pp-wtree-pinned');
+            ['top', 'left', 'width', 'max-height'].forEach(function (k) { card.style.removeProperty(k); });
+            var body = card.querySelector('.bl-wtree');
+            if (body) { body.style.removeProperty('max-height'); }
+        };
+        if (String(currentScreen) !== 'wiki' || (WIDE && !WIDE.matches)) { unpin(); return; }
+        // Only beside an article longer than the list: pinning a list that
+        // is the taller of the two would shorten the page under the reader.
+        var article = card.nextElementSibling;
+        var listH = card.classList.contains('pp-pinned') ? card.scrollHeight : card.offsetHeight;
+        if (!article || article.offsetHeight <= listH) { unpin(); return; }
+        top = (top === undefined ? ppStickTop() : top) + 8;
+        var g = grid.getBoundingClientRect();
+        if (g.top >= top) { unpin(); return; }
+        var cols = String(window.getComputedStyle(grid).gridTemplateColumns || '').split(' ');
+        var w = parseFloat(cols[0]) || 260;
+        var maxH = Math.max(120, window.innerHeight - top - 8);
+        card.classList.add('pp-pinned');
+        grid.classList.add('pp-wtree-pinned');
+        card.style.width = Math.round(w) + 'px';
+        card.style.left = Math.round(g.left) + 'px';
+        // The list scrolls inside, under its own heading (and its add link),
+        // rather than the heading scrolling away with it.
+        var body = card.querySelector('.bl-wtree');
+        var headH = body ? card.offsetHeight - body.offsetHeight : 0;
+        if (body) { body.style.maxHeight = Math.max(80, maxH - headH) + 'px'; }
+        var h = Math.min(card.offsetHeight, maxH);
+        card.style.top = Math.round(Math.min(top, g.bottom - h - 12)) + 'px';
+    }
+    // Down to the comments, from the summary row or the pinned line.
+    root.addEventListener('click', function (ev) {
+        if (!(ev.target.closest && ev.target.closest('.pp-tocmt'))) { return; }
+        ev.preventDefault();
+        var tl = document.getElementById('pp-d-tlbox');
+        if (tl) { tl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+    // Boxes folded on an earlier visit come back folded.
+    Array.prototype.forEach.call(root.querySelectorAll('.bl-card-box[id]'), function (card) {
+        if (!card.querySelector('.bl-boxhead[data-collapse]')) { return; }
+        try {
+            if (localStorage.getItem('pmportal.fold.' + card.id) === '1') { card.classList.add('bl-collapsed'); }
+        } catch (e) { /* ignore */ }
+    });
+    // The boxes about the issue stand beside its text on a wide screen
+    // (.pp-two in the stylesheet) - but only while there is a box to show
+    // and the text itself is on screen: with every box hidden the column
+    // would be an empty strip, and the inline editor (which hides the main
+    // card) wants the whole width. Each box is shown and hidden through its
+    // style by whoever draws it, so that is what is watched.
+    function ppSideFit() {
+        var side = document.getElementById('pp-d-side');
+        var main = document.getElementById('pp-d-main');
+        var mainCard = main ? main.closest('.bl-card-box') : null;
+        if (!side || !mainCard || !side.parentNode) { return; }
+        var any = Array.prototype.some.call(side.children, function (c) { return c.style.display !== 'none'; });
+        var two = any && mainCard.style.display !== 'none';
+        if (side.hidden === any) { side.hidden = !any; }
+        if (side.parentNode.classList.contains('pp-two') !== two) { side.parentNode.classList.toggle('pp-two', two); }
+    }
+    (function () {
+        var side = document.getElementById('pp-d-side');
+        var main = document.getElementById('pp-d-main');
+        var mainCard = main ? main.closest('.bl-card-box') : null;
+        if (!side || !mainCard) { return; }
+        ppSideFit();
+        if (!window.MutationObserver) { return; }
+        var mo = new MutationObserver(ppSideFit);
+        [mainCard].concat(Array.prototype.slice.call(side.children)).forEach(function (el) {
+            mo.observe(el, { attributes: true, attributeFilter: ['style'] });
+        });
+    })();
+    // The issue's menu also closes on a click outside the portal (the admin
+    // sidebar, the header) and on Escape; clicks inside are the root
+    // listener's business.
+    function ppMoreClose() {
+        Array.prototype.forEach.call(root.querySelectorAll('.pp-more'), function (w) {
+            var m = w.querySelector('.m');
+            var b = w.querySelector('.pp-morebtn');
+            if (m) { m.hidden = true; }
+            if (b) { b.setAttribute('aria-expanded', 'false'); }
+        });
+    }
+    document.addEventListener('click', function onPpMoreDoc(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpMoreDoc); return; }
+        if (!root.contains(ev.target)) { ppMoreClose(); }
+    });
+    document.addEventListener('keydown', function onPpMoreKey(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onPpMoreKey); return; }
+        if (ev.key === 'Escape') { ppMoreClose(); }
+    });
+    // The issue list scrolls inside its own frame on a wide screen, so its
+    // column heads can stay at the frame's top (position:sticky only works
+    // inside the box that scrolls). A fixed max-height (100vh - 70px) left
+    // the page scrolling too wherever the head of the portal is taller than
+    // that guess - and then the frame, heads and all, scrolled out of sight.
+    // So the frame gets exactly the room left under it on screen, measured.
+    function ppListFit() {
+        var wrap = document.querySelector('#pp-issue-head') ? document.querySelector('#pp-issue-head').closest('.bl-tablewrap') : null;
+        if (!wrap) { return; }
+        if (String(currentScreen) !== 'issues' || (WIDE && !WIDE.matches)) {
+            wrap.style.removeProperty('max-height');
+            return;
+        }
+        var se = document.scrollingElement || document.documentElement;
+        var top = wrap.getBoundingClientRect().top + (se ? se.scrollTop : 0);
+        // Whatever stays below it on the page: Exment's footer where there
+        // still is one, and the frame's own margin.
+        var foot = document.querySelector('.main-footer');
+        var below = (foot ? foot.offsetHeight : 0) + 16;
+        wrap.style.maxHeight = Math.max(240, Math.floor(window.innerHeight - top - below)) + 'px';
+    }
+    // Both pinned things, measured once per frame.
+    function ppPinFit() {
+        var top = ppStickTop();
+        ppDbarFit(top);
+        ppWtreeFit(top);
+    }
+    function ppDbarFill(i) {
+        var bar = document.getElementById('pp-dbar');
+        if (!bar) { return; }
+        bar.dataset.id = String(i.id);
+        bar.innerHTML = '<a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' +
+            '<span class="bl-key">' + esc(i.key) + '</span>' +
+            '<span class="t" role="button" tabindex="0" title="' + esc(i.subject) + '">' + esc(i.subject) + '</span>' + pill(i.st) +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>';
+        ppDbarFit();
+    }
+    // The title takes you back up to the whole head of the issue. Scrolled
+    // into view rather than window.scrollTo: on this admin theme the window
+    // itself may not be what scrolls (see SCROLL_POS below).
+    var ppDbarEl = document.getElementById('pp-dbar');
+    var ppDbarTop = function (ev) {
+        if (!(ev.target.closest && ev.target.closest('.t'))) { return; }
+        if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') { return; }
+        ev.preventDefault();
+        var main = document.getElementById('pp-d-main');
+        if (main) { main.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    };
+    if (ppDbarEl) {
+        ppDbarEl.addEventListener('click', ppDbarTop);
+        ppDbarEl.addEventListener('keydown', ppDbarTop);
+    }
+    // Listened for on the document, in the capture phase, so the scroll is
+    // heard whichever box does the scrolling - the window, or an admin
+    // wrapper when the theme pins html and body to the window's height.
+    var ppPinPending = false;
+    document.addEventListener('scroll', function onPpPin() {
+        if (!alive()) { document.removeEventListener('scroll', onPpPin, true); return; }
+        if (ppPinPending) { return; }
+        ppPinPending = true;
+        window.requestAnimationFrame(function () { ppPinPending = false; if (alive()) { ppPinFit(); } });
+    }, { capture: true, passive: true });
+    // Folding Exment's sidebar moves the content area without a resize.
+    document.addEventListener('click', function onPpSidebar(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpSidebar); return; }
+        if (!(ev.target.closest && ev.target.closest('.sidebar-toggle'))) { return; }
+        setTimeout(function () { if (alive()) { ppDockFit(); ppPinFit(); } }, 350);
+    });
     // On screen only while an issue is: every other screen has its own way in
     // to writing, and a composer pinned under a wiki page means nothing.
     function ppDockShow(on) {
@@ -2481,6 +3036,20 @@
         }
     }
     window.ppDockOpen = ppDockOpen;
+    // The chips are not buttons, but they are pressed like one: reachable
+    // with Tab, switched with Enter or Space. Ctrl+Enter stays the form's.
+    (function () {
+        var sheet = document.getElementById('pp-docksheet');
+        if (!sheet) { return; }
+        sheet.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Enter' && ev.key !== ' ') { return; }
+            if (ev.ctrlKey || ev.metaKey || ev.altKey) { return; }
+            var t = ev.target;
+            if (!t || !t.classList || !t.classList.contains('bl-chip')) { return; }
+            ev.preventDefault();
+            t.click();
+        });
+    }());
     function ppDockIsOpen() {
         var sheet = document.getElementById('pp-docksheet');
         return !!(sheet && !sheet.hidden);
@@ -2489,6 +3058,8 @@
     // composer floating over it belongs to the issue it just replaced.
     function ppDetailEditing(on) {
         if (on) { detailEpoch++; cmtSetBusy(false); }
+        // The pinned line follows the issue's card in and out of the editor.
+        setTimeout(function () { if (alive()) { ppDbarFit(); } }, 0);
         var dock = document.getElementById('pp-cmtdock');
         if (!dock) { return; }
         if (on) {
@@ -2504,7 +3075,7 @@
     window.addEventListener('resize', function onPpFit() {
         if (!alive()) { window.removeEventListener('resize', onPpFit); return; }
         if (ppFitPending) { return; }
-        ppFitPending = setTimeout(function () { ppFitPending = null; if (alive()) { ppDockFit(); } }, 120);
+        ppFitPending = setTimeout(function () { ppFitPending = null; if (alive()) { ppDockFit(); ppPinFit(); ppListFit(); } }, 120);
     });
     // Backlog shows the stream two ways: everything that happened, or the
     // comments on their own. The choice belongs to the person, not to the
@@ -2522,6 +3093,15 @@
         // refresh, a comment posted or deleted. Each open editor is put back
         // on its comment afterwards, text and caret as they were.
         var editing = cmtEditsOpen();
+        // How many comments there are, on the box's head and on the links
+        // that lead down to it: whether the trip is worth making.
+        var cmtN = res.timeline === null ? 0
+            : (res.timeline || []).filter(function (e) { return e.tp === 'cmt'; }).length;
+        var tlSum = document.getElementById('pp-d-tlsum');
+        if (tlSum) { tlSum.textContent = cmtN ? String(cmtN) : ''; }
+        Array.prototype.forEach.call(root.querySelectorAll('#pp-issue .pp-tocmt .n'), function (n) {
+            n.textContent = cmtN ? String(cmtN) : '';
+        });
         if (res.timeline === null) { box.innerHTML = skel(4); return; }
         var rows = (res.timeline || []).filter(function (e) { return TLF !== 'cmt' || e.tp === 'cmt'; });
         box.innerHTML = rows.map(function (e) {
@@ -2539,8 +3119,8 @@
                 // Only the author may rewrite or remove what they wrote; the
                 // address of a comment is public to everyone who can read it.
                 var mine = !!e.del;
-                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' +
-                    '<div class="act">' + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
+                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) +
+                    '<div class="act">' + rxBar('comment', e.cid, e.rx) + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
                     '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
                     '<span class="cmenu"><a href="javascript:void(0);" class="pp-cmenu" title="' + esc(L.cmt_menu) + '"><i class="fa fa-ellipsis-h"></i></a>' +
                     '<span class="m" hidden>' +
@@ -3152,6 +3732,39 @@
         if (!incoming) { return t.l; }
         return (own(types, t.inv) || {}).l || t.l;
     }
+    // Issues of other projects named in related rows, by id: the card
+    // endpoint's answer, or false while it is being asked.
+    var REL_FAR = {};
+    function relFarText(id) {
+        var c = REL_FAR[id];
+        return c ? esc(c.key || ('#' + id)) + ' ' + esc(c.subject || '') : '#' + esc(id);
+    }
+    function relFarPaint(a) {
+        var c = REL_FAR[a.dataset.issue];
+        if (!c || !a.isConnected) { return; }
+        a.innerHTML = relFarText(a.dataset.issue);
+        var tx = a.parentNode;
+        if (c.st_l && tx && !(tx.nextElementSibling && tx.nextElementSibling.classList.contains('pp-relfar-st'))) {
+            // Its own project's status label, in the neutral colour: this
+            // project's status colours do not apply to another's rows.
+            var st = document.createElement('span');
+            st.className = 'bl-pill pp-relfar-st';
+            st.style.background = '#95a5a6';
+            st.textContent = c.st_l;
+            tx.insertAdjacentElement('afterend', st);
+        }
+    }
+    function relFarFill(a) {
+        var id = a.dataset.issue;
+        if (REL_FAR[id]) { relFarPaint(a); return; }
+        if (REL_FAR[id] === false) { return; }
+        REL_FAR[id] = false;
+        hcFetch('issue', id, function (res) {
+            if (!res || !res.ok) { delete REL_FAR[id]; return; }
+            REL_FAR[id] = res;
+            Array.prototype.forEach.call(document.querySelectorAll('.pp-relfar[data-issue="' + id + '"]'), relFarPaint);
+        });
+    }
     // One link being added at a time. The duplicate check reads the links
     // the page holds, which only learn about this one when its answer is
     // back - so a double click used to file the same link twice.
@@ -3162,6 +3775,10 @@
         var rows = relationsOf(i.id);
         var canEdit = !!(D.related_table && res.editable);
         if (!rows.length && !canEdit) { box.style.display = 'none'; return; }
+        // The add form costs a whole row on every issue that is read far more
+        // often than it is linked; it opens from a link, and stays open for
+        // the issue it was opened on.
+        var relOpen = box.dataset.addFor === String(i.id);
         box.style.display = '';
         var html = rows.map(function (r) {
             var incoming = String(r.t) === String(i.id) && String(r.f) !== String(i.id);
@@ -3172,18 +3789,19 @@
                 // An issue this project is not carrying - one that was related
                 // across projects, or has since moved. All the row can say by
                 // itself is the number; the card behind it says the rest.
-                : '<a class="bl-issuelink pp-card" href="' + esc(D.urls.data_base + '/' + D.issue_table + '/' + otherId) + '" data-issue="' + esc(otherId) + '">#' + esc(otherId) + '</a>';
+                : '<a class="bl-issuelink pp-card pp-relfar" href="' + esc(D.urls.data_base + '/' + D.issue_table + '/' + otherId) + '" data-issue="' + esc(otherId) + '">' + relFarText(otherId) + '</a>';
             return '<div class="row"><div class="k">' + esc(relTypeLabel(r.rt, incoming)) + '</div>' +
                 '<div class="v"><span class="tx">' + link + '</span>' +
                 (other ? pill(other.st) : '') +
                 (canEdit ? '<a href="javascript:void(0);" class="pp-rel-del" data-rel="' + esc(r.id) + '" title="' + esc(L.del) + '"><i class="fa fa-times"></i></a>' : '') +
                 '</div></div>';
         }).join('');
-        if (!rows.length) {
-            html = '<div class="row"><div class="k"></div><div class="v bl-relempty">' + esc(L.rel_none) + '</div></div>';
+        if (canEdit && !relOpen) {
+            html += '<div class="row"><div class="k"></div><div class="v">' +
+                '<a href="javascript:void(0);" class="bl-reladd-open" data-issue="' + esc(i.id) + '"><i class="fa fa-plus"></i> ' + esc(L.rel_add_open) + '</a></div></div>';
         }
         if (canEdit) {
-            html += '<div class="row"><div class="k"></div><div class="v bl-reladd">' +
+            html += '<div class="row"' + (relOpen ? '' : ' hidden') + '><div class="k"></div><div class="v bl-reladd">' +
                 '<select id="pp-rel-type">' +
                 Object.keys(D.relation_types || {}).map(function (key) {
                     return '<option value="' + esc(key) + '">' + esc(D.relation_types[key].l) + '</option>';
@@ -3192,6 +3810,23 @@
                 '<button type="button" class="bl-btn-sub" id="pp-rel-add"><i class="fa fa-plus"></i> ' + esc(L.rel_add) + '</button></div></div>';
         }
         document.getElementById('pp-d-related').innerHTML = html;
+        // An issue of another project: the row starts with its number and is
+        // filled in with its key, subject and status from the card endpoint
+        // (ISS00258) - the same answer the hover card shows.
+        Array.prototype.forEach.call(box.querySelectorAll('.pp-relfar'), function (a) {
+            relFarFill(a);
+        });
+        var relOpener = box.querySelector('.bl-reladd-open');
+        if (relOpener) {
+            relOpener.addEventListener('click', function () {
+                box.dataset.addFor = String(i.id);
+                var form = box.querySelector('.bl-reladd');
+                var row = form ? form.closest('.row') : null;
+                if (row) { row.hidden = false; }
+                var openerRow = relOpener.closest('.row');
+                if (openerRow) { openerRow.parentNode.removeChild(openerRow); }
+            });
+        }
         Array.prototype.forEach.call(box.querySelectorAll('.pp-rel-del'), function (btn) {
             btn.addEventListener('click', onRelDel);
         });
@@ -3268,6 +3903,10 @@
     var currentWiki = null;
     function renderWiki(selectId) {
         var wiki = D.wiki || { enabled: false, pages: [] };
+        // With no page to show, the article card is an empty frame: it steps
+        // aside (.pp-wempty) until there is something to put in it.
+        var wgrid = document.querySelector('#pp-wiki .bl-wiki');
+        if (wgrid) { wgrid.classList.toggle('pp-wempty', !wiki.enabled || !wiki.pages.length); }
         if (!wiki.enabled) {
             document.getElementById('pp-wtree').innerHTML = '<div style="color:var(--bl-faint);white-space:normal;">' + esc(L.wiki_none) + '</div>';
             document.getElementById('pp-whead').innerHTML = '';
@@ -3343,6 +3982,18 @@
                 return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a> ';
             }).join('') + '</p>' : '');
         linkifyIssueRefs(document.getElementById('pp-wbody'));
+        // Opened from the pinned list half way down a long article, the next
+        // page would otherwise start where the last one was being read.
+        // Only when another page was opened: a save that redraws the same
+        // page leaves the reader where they were.
+        var wgrid = document.querySelector('#pp-wiki .bl-wiki');
+        var wnow = String(currentWiki);
+        if (wgrid && root._ppWikiShown !== undefined && root._ppWikiShown !== wnow
+            && wgrid.getBoundingClientRect().top < ppStickTop()) {
+            wgrid.scrollIntoView({ block: 'start' });
+        }
+        root._ppWikiShown = wnow;
+        ppWtreeFit();
         // ISS00257: wiki edits open in the native NED form; no iframe prewarm.
     }
 
@@ -3603,6 +4254,19 @@
             ppDockMsg(L.dock_empty, true);
             return;
         }
+        // ISS00341: a review request asks the picked people about this
+        // comment, so it needs both. Said before anything is sent - the
+        // server would post the comment and quietly ask nobody. The "next
+        // status" button sends no comment and so asks nobody.
+        var review = !statusOnly && rvAskOn();
+        if (review && !document.querySelector('#pp-notify-chips .pp-notify:not(.off)')) {
+            ppDockMsg(L.rv_need_people, true);
+            return;
+        }
+        if (review && !hasText) {
+            ppDockMsg(L.rv_need_text, true);
+            return;
+        }
         var label = (issueById(issueId) || {}).key || '';
         var sequence = ++cmtSequence;
         cmtPending[issueId] = sequence;
@@ -3658,6 +4322,7 @@
             var seq = ++DET_SEQ;
             var data = { comment: text, status_to: statusTo || '', notify_users: notifyUsers };
             if (notifyMail) { data.notify_mail = 1; }
+            if (review) { data.review = 1; }
             if (statusTo && statusFrom !== null) { data.status_from = statusFrom; }
             $.ajax({
                 url: base + '/issue/' + issueId + '/comment',
@@ -3692,6 +4357,7 @@
                 document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
                 var mailNow = document.getElementById('pp-notify-mail');
                 if (mailNow) { mailNow.checked = false; }
+                if (!statusOnly) { rvAskSync(true); }
                 buildDetail(own(DET, String(issueId)) || res);
                 if (!box.value.trim()) { ppDockOpen(false); }
                 if (statusTo) {
@@ -3785,6 +4451,12 @@
         if (key === 'sd' || key === 'dd') {
             var day = String(v == null ? '' : v).slice(0, 10);
             return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+        }
+        if (key === 'dt') {
+            var hm = /^(\d{1,2}):(\d{2})/.exec(String(v == null ? '' : v));
+            var t = hm ? ('0' + hm[1]).slice(-2) + ':' + hm[2] : '';
+            // 00:00 is no time (the picker starts there): see clearMidnightDueTime.
+            return t === '00:00' ? '' : t;
         }
         if (key === 'pg') {
             return (v === null || v === undefined || v === '' || !isFinite(Number(v))) ? null : Number(v);
@@ -4132,6 +4804,10 @@
         if (!res || !res.ok || !res.issue) { toast(L.post_fail, true); return false; }
         $.extend(D.users, res.users || {});
         res.issue = $.extend({}, issueById(res.issue.id) || {}, res.issue);
+        // The detail answer's row has no reader's marks; 確認待ち is read off
+        // the timeline it came with, so the list's chip follows a request
+        // just made, answered or taken back without a reload.
+        if (res.timeline) { res.issue.my_rv = rvPending(res); }
         if (!detPut(res.issue.id, res, seq)) { return false; }
         (D.issues || []).forEach(function (row, index) {
             if (String(row.id) === String(res.issue.id)) { D.issues[index] = res.issue; }
@@ -4374,6 +5050,109 @@
             });
         });
     }
+    /* ------------------------------------- move / delete an issue ------ */
+    // Move: a small panel under the detail head lists the projects the
+    // issue may go to (asked of the server when opened - it knows who may
+    // add issues where). The server converts status and type to the new
+    // project's and takes off what does not travel; the page then goes to
+    // the issue in its new project.
+    function issueMoveClose() {
+        var box = document.querySelector('#pp-d-main .pp-move');
+        if (box) { box.hidden = true; box.innerHTML = ''; }
+    }
+    function issueMoveOpen(issueId) {
+        var box = document.querySelector('#pp-d-main .pp-move');
+        if (!box) { return; }
+        if (!box.hidden) { issueMoveClose(); return; }
+        box.hidden = false;
+        box.innerHTML = '<div class="pp-move-in">' + esc(L.move_loading) + '</div>';
+        $.ajax({
+            url: D.urls.base + '/issue/' + encodeURIComponent(issueId) + '/move',
+            dataType: 'json', cache: false
+        }).done(function (res) {
+            if (String(currentIssue) !== String(issueId) || box.hidden) { return; }
+            var list = (res && res.projects) || [];
+            if (!list.length) {
+                box.innerHTML = '<div class="pp-move-in">' + esc(L.move_none) +
+                    ' <a class="bl-btn-sub pp-move-cancel">' + esc(L.move_cancel) + '</a></div>';
+                return;
+            }
+            box.innerHTML = '<div class="pp-move-in"><b>' + esc(L.move_title) + '</b> ' +
+                '<select class="pp-move-sel"><option value="">' + esc(L.move_pick) + '</option>' +
+                list.map(function (p) {
+                    return '<option value="' + esc(p.id) + '">' + esc(p.name) + (p.key ? ' (' + esc(p.key) + ')' : '') + '</option>';
+                }).join('') + '</select> ' +
+                '<button type="button" class="bl-btn-main pp-move-do">' + esc(L.move_do) + '</button> ' +
+                '<a class="bl-btn-sub pp-move-cancel">' + esc(L.move_cancel) + '</a>' +
+                '<div class="pp-move-note">' + esc(L.move_note) + '</div></div>';
+        }).fail(function (xhr) {
+            if (String(currentIssue) !== String(issueId)) { return; }
+            issueMoveClose();
+            toast(xhrErr(xhr, L.move_fail), true);
+        });
+    }
+    function issueMoveRun(issueId, btn) {
+        var sel = document.querySelector('#pp-d-main .pp-move-sel');
+        if (!sel || !sel.value || btn.disabled) { return; }
+        btn.disabled = true;
+        $.ajax({
+            url: D.urls.base + '/issue/' + encodeURIComponent(issueId) + '/move',
+            type: 'POST', dataType: 'json',
+            data: { project: sel.value },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!res || !res.ok || !res.url) {
+                btn.disabled = false;
+                toast(errText(null, res, L.move_fail), true);
+                return;
+            }
+            if (res.message) { toast(res.message); }
+            // Another project's page: a full load, which also leaves this
+            // project's list without the issue.
+            setTimeout(function () { location.href = res.url; }, 400);
+        }).fail(function (xhr) {
+            btn.disabled = false;
+            toast(xhrErr(xhr, L.move_fail), true);
+        });
+    }
+    // Delete arms itself like a comment's: the second click within a few
+    // seconds is the confirmation. Shown to the project's manager.
+    function issueDelete(issueId, link) {
+        if (link.dataset.busy === '1') { return; }
+        var lb = link.querySelector('.lb') || link;
+        if (link.dataset.armed !== '1') {
+            link.dataset.armed = '1';
+            lb.textContent = L.issue_del_ask;
+            setTimeout(function () {
+                if (!link.parentNode) { return; }
+                link.dataset.armed = '';
+                lb.textContent = L.issue_delete;
+            }, 4000);
+            return;
+        }
+        link.dataset.busy = '1';
+        $.ajax({
+            url: D.urls.base + '/issue/' + encodeURIComponent(issueId) + '/delete',
+            type: 'POST', dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!res || !res.ok) {
+                link.dataset.busy = '';
+                toast(errText(null, res, L.issue_del_fail), true);
+                return;
+            }
+            if (res.message) { toast(res.message); }
+            // Back to the list, drawn again without the issue.
+            setTimeout(function () {
+                history.replaceState(null, '', location.pathname + location.search + '#issues');
+                location.reload();
+            }, 400);
+        }).fail(function (xhr) {
+            link.dataset.busy = '';
+            toast(xhrErr(xhr, L.issue_del_fail), true);
+        });
+    }
+
     // Delete asks by arming itself rather than by opening a dialog: the
     // second click within a few seconds is the confirmation.
     function cmtDelete(link) {
@@ -5433,6 +6212,7 @@
             [c.priority || null, c.milestone || null],
             [c.category || null, x.versions || null],
             [c.start || null, c.due || null],
+            [x.recurrence || null],
             [c.estimate || null, c.actual || null],
             [c.progress || null, x.resolution || null],
             [x.notified_users || null]
@@ -6472,6 +7252,9 @@
             // touched it, and was written back each time.
             var v = String(value == null ? '' : value);
             if (col.type === 'date') { v = v.slice(0, 10); }
+            // The picker writes hours and minutes (see _datepicker); a stored
+            // 14:30:00 is shown as 14:30.
+            if (col.type === 'time') { v = v.slice(0, 5); }
             input.value = v;
             if (readonly) { input.readOnly = true; }
             if (window.ppDateField) { window.ppDateField(input, col.type); }
@@ -8534,6 +9317,8 @@
             // left edge and its width from a content area that has no
             // measurable box until the screen it belongs to has been laid out.
             if (scr === 'issue') { ppDockFit(); }
+            ppPinFit();
+            ppListFit();
         });
     }
     // Coming out of a ticket used to land you at the top of the issue list
@@ -8666,6 +9451,14 @@
         var m = path.match(/^issue-(.+)$/);
         if (m) {
             var id = resolveIssueRef(m[1]);
+            if (id === null && arOn() && !AR.loaded) {
+                // Maybe an archived one: not in the page until asked for. Its
+                // key is the project's key and its id ("KOYAMA-234"), so the
+                // detail can be fetched on its own (fetchDetails asks the
+                // server, which checks it belongs here).
+                var km = String(m[1]).toUpperCase().match(/^(.+)-(\d+)$/);
+                if (km && km[1] === String(D.project.key || '#').toUpperCase()) { id = km[2]; }
+            }
             if (id === null) {
                 // A key this project is not carrying: a stale bookmark, or a
                 // link copied out of a different project. The list is a more
@@ -8854,7 +9647,7 @@
             all++;
             if (isDone(i.st)) { return; }
             open++;
-            if (i.dd && D.today && i.dd < D.today) { over++; }
+            if (D.today && dueOver(i)) { over++; }
         });
 
         return { all: all, open: open, over: over };
@@ -9083,7 +9876,14 @@
         var collapseHead = ev.target.closest('.bl-boxhead[data-collapse]');
         if (collapseHead && !ev.target.closest('a, button, input, select, textarea')) {
             var card = collapseHead.closest('.bl-card-box');
-            if (card) { card.classList.toggle('bl-collapsed'); return; }
+            if (card) {
+                card.classList.toggle('bl-collapsed');
+                // Folded stays folded, on the next issue and the next visit.
+                if (card.id) {
+                    try { localStorage.setItem('pmportal.fold.' + card.id, card.classList.contains('bl-collapsed') ? '1' : '0'); } catch (e) { /* ignore */ }
+                }
+                return;
+            }
         }
         var mlink = ev.target.closest('.pp-mlink');
         if (mlink) {
@@ -9110,6 +9910,37 @@
             if (m !== wanted) { m.hidden = true; }
         });
         if (cmenuBtn) { wanted.hidden = !wanted.hidden; return; }
+        // The issue's own menu (その他) works the same way. The delete entry
+        // asks a second time in place, so the first click on it must leave
+        // the menu open for the question to be read.
+        var moreBtn = ev.target.closest('.pp-morebtn');
+        var moreKeep = moreBtn || ev.target.closest('.pp-more .pp-issuedel');
+        Array.prototype.forEach.call(root.querySelectorAll('.pp-more'), function (w) {
+            var m = w.querySelector('.m');
+            var b = w.querySelector('.pp-morebtn');
+            if (!m || !b) { return; }
+            if (moreBtn === b) { m.hidden = !m.hidden; }
+            else if (!(moreKeep && w.contains(moreKeep))) { m.hidden = true; }
+            b.setAttribute('aria-expanded', m.hidden ? 'false' : 'true');
+        });
+        if (moreBtn) { return; }
+        var rxAdd = ev.target.closest('.pp-rxadd');
+        if (rxAdd) {
+            ev.stopPropagation();
+            var pick = rxAdd.parentNode.querySelector('.pp-rxpick');
+            document.querySelectorAll('.pp-rxpick').forEach(function (p) { if (p !== pick) { p.hidden = true; } });
+            if (pick) { pick.hidden = !pick.hidden; }
+            return;
+        }
+        var rxEl = ev.target.closest('.pp-rx, .pp-rxopt');
+        if (rxEl) {
+            ev.stopPropagation();
+            rxToggle(rxEl.closest('.pp-rxbar'), rxEl.getAttribute('data-rx'));
+            return;
+        }
+        if (!ev.target.closest('.pp-rxbar')) {
+            document.querySelectorAll('.pp-rxpick').forEach(function (p) { p.hidden = true; });
+        }
         var star = ev.target.closest('.pp-star');
         if (star) {
             ev.stopPropagation();
@@ -9120,7 +9951,15 @@
             }).done(function (res) {
                 star.classList.toggle('on', res.on);
                 star.querySelector('i').className = 'fa ' + (res.on ? 'fa-star' : 'fa-star-o');
-                star.querySelector('.ct').textContent = res.count ? ' ' + res.count : '';
+                star.title = res.on ? L.star_off_tip : L.star_on_tip;
+                if (star.classList.contains('pp-star-d')) {
+                    // The detail's button keeps its count even at 0, and says
+                    // which way it is.
+                    star.querySelector('.ct').textContent = String(res.count || 0);
+                    star.querySelector('.lb').textContent = res.on ? L.star_on : L.star_label;
+                } else {
+                    star.querySelector('.ct').textContent = res.count ? ' ' + res.count : '';
+                }
                 if (star.dataset.targetType === D.issue_table && star.dataset.starType === 'star') {
                     var issue = issueById(star.dataset.targetId);
                     if (issue) { issue.star = res.count; issue.my_star = res.on; }
@@ -9147,7 +9986,9 @@
             return;
         }
         var chip = ev.target.closest('.pp-notify');
-        if (chip) { chip.classList.toggle('off'); return; }
+        if (chip) { chip.classList.toggle('off'); ppNotifyCount(); return; }
+        var rvBtn = ev.target.closest('.pp-rvbtn');
+        if (rvBtn) { rvAnswer(rvBtn); return; }
         var nextBtn = ev.target.closest('.pp-next-status');
         if (nextBtn) { postComment(nextBtn.dataset.next); return; }
         var quote = ev.target.closest('.pp-quote');
@@ -9183,6 +10024,14 @@
         if (mailBtn) { mailOpen(currentIssue); return; }
         var issueCopy = ev.target.closest('.pp-issuecopy');
         if (issueCopy) { openNcreate(D.issue_table, issuePrefill('copy'), 'copy' + currentIssue); return; }
+        var issueMove = ev.target.closest('.pp-issuemove');
+        if (issueMove) { issueMoveOpen(currentIssue); return; }
+        var moveCancel = ev.target.closest('.pp-move-cancel');
+        if (moveCancel) { issueMoveClose(); return; }
+        var moveDo = ev.target.closest('.pp-move-do');
+        if (moveDo) { issueMoveRun(currentIssue, moveDo); return; }
+        var issueDel = ev.target.closest('.pp-issuedel');
+        if (issueDel) { issueDelete(currentIssue, issueDel); return; }
         var wikiNode = ev.target.closest('[data-wiki]');
         if (wikiNode) {
             ev.preventDefault();
@@ -9306,7 +10155,7 @@
         afterFilterChange();
     });
     [['pp-f-kw', 'kw', 'input'], ['pp-f-as', 'as', 'change'], ['pp-f-ty', 'ty', 'change'],
-     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change']].forEach(function (def) {
+     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change']].forEach(function (def) {
         document.getElementById(def[0]).addEventListener(def[2], function () {
             FILTER[def[1]] = this.value;
             afterFilterChange();
@@ -9631,6 +10480,8 @@
     /* ---- staying current ---- */
     document.getElementById('pp-projhead').addEventListener('click', function (ev) {
         if (ev.target.closest('.pp-refresh')) { refreshData(false); }
+        var note = ev.target.closest('.bl-projnote');
+        if (note) { note.setAttribute('aria-expanded', this.classList.toggle('note-open') ? 'true' : 'false'); }
     });
     // Coming back to the tab is the moment the page is most likely to be out
     // of date and the moment the reader is least likely to be mid-sentence.
@@ -9828,5 +10679,6 @@
     // warm so it never fights them for the network.
     // ISS00257: the gantt is no longer embedded in advance either; it loads
     // when its tab is opened (ensureEmbed).
-})();
+};
+window.PmPortalBoot();
 </script>

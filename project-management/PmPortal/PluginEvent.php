@@ -3,6 +3,7 @@
 namespace App\Plugins\PmPortal;
 
 use Exceedone\Exment\Enums\PluginEventTrigger;
+use Exceedone\Exment\Enums\SystemTableName;
 use Exceedone\Exment\Model\CustomValue;
 use Exceedone\Exment\Model\NotifyNavbar;
 use Exceedone\Exment\Services\Plugin\PluginEventBase;
@@ -62,7 +63,32 @@ class PluginEvent extends PluginEventBase
             return;
         }
 
+        static::clearMidnightDueTime($model);
         static::check($model);
+    }
+
+    /**
+     * A due time of 00:00 is stored as no time (ISS00299, snoro 2026-11-19).
+     *
+     * The time picker starts its spinner at 00:00:00, so a click that only
+     * meant to open it writes midnight - and midnight would make the issue
+     * overdue from the first minute of its due date. Nobody means "due at
+     * the very start of the day"; an empty time is the whole day.
+     */
+    protected static function clearMidnightDueTime(CustomValue $model): void
+    {
+        $def = PortalDefinition::config();
+        if ($model->custom_table->table_name !== strval(array_get($def, 'issue_table'))) {
+            return;
+        }
+        $column = strval(array_get($def, 'issue_extra.due_time', 'due_time'));
+        $value = (array) $model->getAttribute('value');
+        if (!array_key_exists($column, $value)) {
+            return;
+        }
+        if (preg_match('/^0{1,2}:00(:00)?$/', trim(strval($value[$column])))) {
+            $model->setValue([$column => null]);
+        }
     }
 
     /**
@@ -118,6 +144,21 @@ class PluginEvent extends PluginEventBase
             $model = $data[0] ?? null;
             if ($model instanceof CustomValue && static::restoring($model)) {
                 static::check($model);
+            }
+        });
+
+        // Someone joining or leaving a team, or a team deleted or restored,
+        // changes who is on every project that names the team, without any
+        // project being saved. See PortalMembership::teamsChanging().
+        Event::listen(['eloquent.saving: *', 'eloquent.deleting: *', 'eloquent.restoring: *'], function ($eventName, array $data) {
+            $model = $data[0] ?? null;
+            if (!$model instanceof CustomValue) {
+                return;
+            }
+            $table = $model->custom_table;
+            $name = $table ? $table->table_name : null;
+            if ($name === SystemTableName::USER || $name === SystemTableName::ORGANIZATION) {
+                PortalMembership::teamsChanging();
             }
         });
 

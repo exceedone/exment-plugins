@@ -4,11 +4,14 @@ namespace App\Plugins\PmPortal;
 
 use Exceedone\Exment\Enums\ColumnType;
 use Exceedone\Exment\Enums\MenuType;
+use Exceedone\Exment\Enums\MultisettingType;
 use Exceedone\Exment\Enums\Permission;
 use Exceedone\Exment\Enums\PluginType;
 use Exceedone\Exment\Enums\RoleType;
+use Exceedone\Exment\Enums\ShareTrigger;
 use Exceedone\Exment\Enums\ViewKindType;
 use Exceedone\Exment\Model\CustomColumn;
+use Exceedone\Exment\Model\CustomColumnMulti;
 use Exceedone\Exment\Model\CustomTable;
 use Exceedone\Exment\Model\CustomView;
 use Exceedone\Exment\Model\Menu;
@@ -292,24 +295,25 @@ class PortalUpgrade
 
             // Everything below goes in with $is_update = true, so Exment
             // creates what is missing and leaves the rest exactly as it is.
-            // Notifications are the one thing it cannot judge for itself -
-            // it matches those on a label an administrator is free to rewrite
-            // - so decide here instead and hand over only what is missing.
+            // Notifications are not part of it: Exment's template importer
+            // has no notifies section and drops the key without a word, which
+            // is how ex1task ran for months with no "issue updated" bell at
+            // all. createMissingNotifies() writes them itself, after the
+            // tables exist (ISS00343).
             $fragment = PortalSchema::template($names, PortalSetup::prefix());
-            $fragment['notifies'] = static::missingNotifies(array_get($fragment, 'notifies', []));
+            unset($fragment['notifies']);
 
             $importer = new TemplateImporter();
             $importer->import($fragment, false, true);
             $steps[] = PortalDefinition::trans('upgrade.step_tables');
 
-            if (!empty($fragment['notifies'])) {
-                $steps[] = PortalDefinition::trans('upgrade.step_notifies', [
-                    'count' => count($fragment['notifies']),
-                ]);
-            }
-
             PortalSetup::syncTables();
             System::clearCache();
+
+            $notified = static::createMissingNotifies($names);
+            if ($notified > 0) {
+                $steps[] = PortalDefinition::trans('upgrade.step_notifies', ['count' => $notified]);
+            }
 
             $seeded = static::seedResolutions($names);
             if ($seeded > 0) {
@@ -339,6 +343,13 @@ class PortalUpgrade
             $optioned = static::applyTableOptions($names);
             if ($optioned > 0) {
                 $steps[] = PortalDefinition::trans('upgrade.step_table_options', ['count' => $optioned]);
+            }
+
+            // Schema 23: the organization columns become share columns.
+            // Idempotent, so no version gate.
+            $shared = static::syncShareSettings($names);
+            if ($shared > 0) {
+                $steps[] = PortalDefinition::trans('upgrade.step_share_settings', ['count' => $shared]);
             }
 
             // Schema 8 is where the per project switches became something a
@@ -445,6 +456,81 @@ class PortalUpgrade
 
             return is_string($name) && $name !== '' && !Notify::where('notify_name', $name)->exists();
         }));
+    }
+
+    /**
+     * Write the portal's notifications that this install has not got yet.
+     *
+     * PortalSchema::notifies() describes them the way a template file would:
+     * a column target as "table.column", which only the template importer
+     * knows how to read - and that importer skips notifications altogether.
+     * So they are stored here the way Exment's own notify screen stores one:
+     * the target table by id, a column target by the column's id, and the
+     * standard "data saved" mail template, which the in-app bell also takes
+     * its subject and body from.
+     *
+     * @param array<string, string> $names
+     * @return int notifications created
+     */
+    protected static function createMissingNotifies(array $names): int
+    {
+        $missing = static::missingNotifies(PortalSchema::notifies($names, PortalSetup::prefix()));
+        if (empty($missing)) {
+            return 0;
+        }
+        $template = CustomTable::getEloquent('mail_template');
+        $mail = isset($template)
+            ? $template->getValueModel()->where('value->mail_key_name', 'data_saved_notify')->first()
+            : null;
+
+        $created = 0;
+        foreach ($missing as $notify) {
+            $table = CustomTable::getEloquent(strval(array_get($notify, 'target_table_name')));
+            if (!isset($table)) {
+                continue;
+            }
+
+            $actions = [];
+            foreach ((array) array_get($notify, 'action_settings', []) as $action) {
+                $targets = [];
+                foreach ((array) array_get($action, 'notify_action_target', []) as $target) {
+                    $target = strval($target);
+                    if (strpos($target, '.') === false) {
+                        $targets[] = $target;
+                        continue;
+                    }
+                    list($table_name, $column_name) = explode('.', $target, 2);
+                    $target_table = CustomTable::getEloquent($table_name);
+                    $column = isset($target_table) ? CustomColumn::getEloquent($column_name, $target_table) : null;
+                    if (isset($column)) {
+                        $targets[] = strval($column->id);
+                    }
+                }
+                // mail_subject is a template-file convenience; the mail
+                // template above carries the subject.
+                unset($action['mail_subject']);
+                $action['notify_action_target'] = $targets;
+                $actions[] = $action;
+            }
+
+            $trigger = (array) array_get($notify, 'trigger_settings', []);
+            // A null here would be read as a schedule date column.
+            unset($trigger['notify_target_date']);
+
+            $model = new Notify();
+            $model->notify_name = array_get($notify, 'notify_name');
+            $model->notify_view_name = array_get($notify, 'notify_view_name');
+            $model->notify_trigger = array_get($notify, 'notify_trigger');
+            $model->target_id = $table->id;
+            $model->active_flg = 1;
+            $model->mail_template_id = isset($mail) ? $mail->id : null;
+            $model->trigger_settings = $trigger;
+            $model->action_settings = $actions;
+            $model->save();
+            $created++;
+        }
+
+        return $created;
     }
 
     /**
@@ -1461,6 +1547,60 @@ class PortalUpgrade
         }
 
         return $changed;
+    }
+
+    /**
+     * Make each column of PortalSchema::shareSettings() a share column, the
+     * way Exment's own table settings screen would.
+     *
+     * Not through the template: its import deletes every share setting the
+     * table has before it writes the ones it brings, which would take the
+     * members and viewers settings - and any an administrator added - with
+     * it. Here a setting is only added, and only when the table has none for
+     * that column; one an administrator changed or removed by hand after
+     * this added it comes back only if the column has no setting at all.
+     *
+     * @param array<string, string> $names
+     * @return int settings added
+     */
+    protected static function syncShareSettings(array $names): int
+    {
+        $added = 0;
+        foreach (PortalSchema::shareSettings($names) as $setting) {
+            $table = CustomTable::getEloquent($setting['table']);
+            $column = $table ? CustomColumn::getEloquent($setting['column'], $table) : null;
+            if (!$column) {
+                continue;
+            }
+
+            $has = CustomColumnMulti::where('custom_table_id', $table->id)
+                ->where('multisetting_type', MultisettingType::SHARE_SETTINGS)
+                ->get()
+                ->contains(function ($multi) use ($column) {
+                    return intval($multi->share_column_id) === intval($column->id);
+                });
+            if ($has) {
+                continue;
+            }
+
+            $multi = new CustomColumnMulti();
+            $multi->custom_table_id = $table->id;
+            $multi->multisetting_type = MultisettingType::SHARE_SETTINGS;
+            $multi->priority = CustomColumnMulti::where('custom_table_id', $table->id)
+                ->where('multisetting_type', MultisettingType::SHARE_SETTINGS)
+                ->max('priority') + 1;
+            $multi->share_column_id = $column->id;
+            $multi->share_trigger_type = ShareTrigger::CREATE . ',' . ShareTrigger::UPDATE;
+            $multi->share_permission = $setting['permission'];
+            $multi->save();
+            $added++;
+        }
+
+        if ($added > 0) {
+            System::clearCache();
+        }
+
+        return $added;
     }
 
     /**

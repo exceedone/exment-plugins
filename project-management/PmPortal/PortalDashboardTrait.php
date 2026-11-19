@@ -229,7 +229,7 @@ trait PortalDashboardTrait
         $assignee_key = $this->dashboardQueryKey(array_get($is, 'assignees'));
 
         $open = function () use ($parent_type, $status_key, $done_ids) {
-            $query = $this->issue_table->getValueModel()->query()->where('parent_type', $parent_type);
+            $query = $this->dashboardLean($this->issue_table->getValueModel()->query())->where('parent_type', $parent_type);
             if (!empty($done_ids)) {
                 // Narrow on the indexed status column first: whatever follows
                 // it - FIND_IN_SET over the assignee list, a LIKE - cannot use
@@ -275,10 +275,32 @@ trait PortalDashboardTrait
             })->filter()->values()->toArray();
         if (!empty($watch_ids)) {
             $watched = $map($byDue(
-                $this->issue_table->getValueModel()->query()
+                $this->dashboardLean($this->issue_table->getValueModel()->query())
                     ->where('parent_type', $parent_type)
                     ->whereIn('id', $watch_ids)
             ));
+        }
+
+        // Review requests (ISS00341): the issues with a comment somebody asked
+        // this user to confirm and that they have not confirmed yet - open or
+        // finished, since the question still stands on a closed issue. Read
+        // through the comment table, so a request whose comment is gone drops
+        // out; the row check in $map leaves out what the user cannot reach.
+        $review = [];
+        $review_comments = Star::pendingReviews('comment', $me);
+        if (!empty($review_comments)) {
+            $review_ids = getModelName(SystemTableName::COMMENT)::whereIn('id', $review_comments)
+                ->where('parent_type', $this->issue_table->table_name)
+                ->pluck('parent_id')->map(function ($id) {
+                    return intval($id);
+                })->filter()->unique()->values()->toArray();
+            if (!empty($review_ids)) {
+                $review = $map($byDue(
+                    $this->dashboardLean($this->issue_table->getValueModel()->query())
+                        ->where('parent_type', $parent_type)
+                        ->whereIn('id', $review_ids)
+                ));
+            }
         }
 
         // "Closed this week" is read off updated_at, not off the revision that
@@ -289,7 +311,7 @@ trait PortalDashboardTrait
         $closed = [];
         if (!empty($done_ids)) {
             $closed = $map(
-                $this->issue_table->getValueModel()->query()
+                $this->dashboardLean($this->issue_table->getValueModel()->query())
                     ->where('parent_type', $parent_type)
                     ->whereIn($status_key, $done_ids)
                     ->whereInArrayString($assignee_key, $me)
@@ -311,6 +333,7 @@ trait PortalDashboardTrait
             'overdue' => $overdue,
             'soon' => $soon,
             'created' => $created,
+            'review' => $review,
             'watched' => $watched,
             'closed' => $closed,
         ];
@@ -380,7 +403,7 @@ trait PortalDashboardTrait
         $issue_name = $this->issue_table->table_name;
         $limit = static::$dash_feed_limit;
 
-        $issues = $this->issue_table->getValueModel()->query()
+        $issues = $this->dashboardLean($this->issue_table->getValueModel()->query())
             ->where('parent_type', $this->project_table->table_name)
             ->orderBy('updated_at', 'desc')->take($limit)->get();
 
@@ -502,5 +525,43 @@ trait PortalDashboardTrait
         $column = is_nullorempty($column_name) ? null : CustomColumn::getEloquent($column_name, $this->issue_table);
 
         return isset($column) ? $column->getQueryKey() : 'value->' . strval($column_name);
+    }
+
+    /** @var array<string, array<int, string>> table => its columns, read once per request */
+    protected $dash_columns = [];
+
+    /**
+     * Read the issues without their body. The dashboard lists show the
+     * subject, status, due date and people - never the description - and the
+     * description is by far the largest part of a row: on a project of long
+     * documents, reading it made each list query pull most of the table's
+     * size across from the database for nothing. MySQL / MariaDB only (JSON_REMOVE);
+     * other databases read the whole row as before.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    protected function dashboardLean($query)
+    {
+        $desc = strval(array_get($this->def['issue'], 'description', ''));
+        $connection = $query->getQuery()->getConnection();
+        if ($desc === '' || !in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return $query;
+        }
+        $table = $query->getModel()->getTable();
+        if (!isset($this->dash_columns[$table])) {
+            $this->dash_columns[$table] = \Illuminate\Support\Facades\Schema::connection($connection->getName())->getColumnListing($table);
+        }
+        $columns = array_values(array_filter($this->dash_columns[$table], function ($c) {
+            return $c !== 'value';
+        }));
+        if (count($columns) === count($this->dash_columns[$table])) {
+            return $query; // no value column: nothing to trim
+        }
+        $grammar = $query->getQuery()->getGrammar();
+
+        return $query->select(array_map(function ($c) use ($table) {
+            return $table . '.' . $c;
+        }, $columns))->selectRaw('JSON_REMOVE(' . $grammar->wrap($table . '.value') . ', ?) as ' . $grammar->wrap('value'), ['$."' . addcslashes($desc, '"\\') . '"']);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Plugins\PmPortal;
 use Exceedone\Exment\Enums\NotifyAction;
 use Exceedone\Exment\Enums\NotifyTrigger;
 use Exceedone\Exment\Enums\PluginEventTrigger;
+use Exceedone\Exment\Enums\SharePermission;
 
 /**
  * The Backlog shaped database the portal wants, expressed once.
@@ -67,8 +68,33 @@ class PortalSchema
      * 19: issues get subject_sub, a second subject line (ex1task keeps the
      * Vietnamese subject there), shown under the subject in the list and
      * the detail. The sidebar menu is a single entry (menus()).
+     *
+     * 20: issues get recurrence (daily, weekdays, weekly, monthly, yearly).
+     * When the next turn comes, PortalRecurrence makes the next issue and
+     * moves the setting to it.
+     *
+     * 21: not used. It was taken by ISS00333 while it was on its own branch,
+     * which landed after 22 and so became 23. The number stays used so the
+     * history reads in order.
+     *
+     * 22: issues get due_time, an optional time on the due date (ISS00299).
+     * Empty means the whole day, as before.
+     *
+     * 23: projects get member_orgs and viewer_orgs (ISS00333), organization
+     * columns that work like members and viewers: each is a share column, so
+     * an organization named in one gets a share on the project and everyone
+     * in it can write (or read) the project's issues and wiki. The share
+     * settings are added by PortalUpgrade::syncShareSettings(), not through
+     * the template, whose import deletes every share setting a table has
+     * before it writes its own.
+     *
+     * 24: the "issue saved" notification (notifies()) is written by
+     * PortalUpgrade::createMissingNotifies(). It used to ride in the
+     * template, whose importer silently skips notifications, so no install
+     * ever got it and assignees heard nothing when their issue changed
+     * (ISS00343).
      */
-    const VERSION = 19;
+    const VERSION = 24;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -105,6 +131,10 @@ class PortalSchema
         'notified_users' => 'notified_users',
         // Schema 19: second subject line (e.g. the subject in Vietnamese).
         'subject_sub' => 'subject_sub',
+        // Schema 20: repeat the issue (PortalRecurrence).
+        'recurrence' => 'recurrence',
+        // Schema 22: the time on the due date, or empty for the whole day.
+        'due_time' => 'due_time',
     ];
 
     /**
@@ -132,6 +162,9 @@ class PortalSchema
         'ai_assign' => 'ai_assign',
         // Schema 18: the order an administrator dragged the projects into.
         'display_order' => 'display_order',
+        // Schema 23: organizations on the project (ISS00333).
+        'member_orgs' => 'member_orgs',
+        'viewer_orgs' => 'viewer_orgs',
     ];
 
     /** Menu node names, prefixed per install the same way tables are. */
@@ -609,6 +642,19 @@ class PortalSchema
                 static::column($ic['subject_sub'], 'issue.subject_sub', 'text', [
                     'help' => PortalDefinition::trans('schema.help.subject_sub'),
                 ], 2),
+                // Schema 20: indexed, so a run finds the few recurring issues
+                // without reading every row.
+                static::column($ic['recurrence'], 'issue.recurrence', 'select_valtext', [
+                    'index_enabled' => '1',
+                    'select_item_valtext' => static::valtext(PortalRecurrence::KINDS, 'issue.recurrences.'),
+                    'help' => PortalDefinition::trans('schema.help.recurrence'),
+                ], 23),
+                // Schema 22: a time column of its own beside the due date, so
+                // the date stays a date for the gantt, the board, CSV and the
+                // API, and an issue without a time is exactly what it was.
+                static::column($ic['due_time'], 'issue.due_time', 'time', [
+                    'help' => PortalDefinition::trans('schema.help.due_time'),
+                ], 24),
             ],
         ];
     }
@@ -659,7 +705,37 @@ class PortalSchema
             'index_enabled' => '1',
         ], 40);
 
+        // Schema 23: organizations as members and as viewers, placed with the
+        // people columns (same order as members / viewers; Exment then
+        // orders by creation, so each lands right after its user column).
+        $columns[] = static::column($pc['member_orgs'], 'project.member_orgs', 'organization', [
+            'multiple_enabled' => '1',
+            'help' => PortalDefinition::trans('schema.help.member_orgs'),
+        ], 6);
+        $columns[] = static::column($pc['viewer_orgs'], 'project.viewer_orgs', 'organization', [
+            'multiple_enabled' => '1',
+            'help' => PortalDefinition::trans('schema.help.viewer_orgs'),
+        ], 7);
+
         return ['table_name' => $n['project_table'], 'custom_columns' => $columns];
+    }
+
+    /**
+     * The share columns the schema adds to an existing table, with the
+     * permission each one grants - the same shape the bundled template gives
+     * members (edit) and viewers (view). Triggered on create and on update.
+     *
+     * @param array<string, string> $n
+     * @return array<int, array{table: string, column: string, permission: string}>
+     */
+    public static function shareSettings(array $n): array
+    {
+        $pc = self::PROJECT_COLUMNS;
+
+        return [
+            ['table' => $n['project_table'], 'column' => $pc['member_orgs'], 'permission' => SharePermission::EDIT],
+            ['table' => $n['project_table'], 'column' => $pc['viewer_orgs'], 'permission' => SharePermission::VIEW],
+        ];
     }
 
     /**

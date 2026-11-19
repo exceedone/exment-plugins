@@ -100,6 +100,13 @@
 .pmportal .bl-star{color:#c3ccd4;cursor:pointer;white-space:nowrap;}
 .pmportal .bl-star.on{color:#f2b01e;}
 .pmportal .bl-star:hover{color:#f2b01e;}
+/* ★ on the issue detail: a labelled button beside ウォッチ (注目). */
+.pmportal .pp-star-d .fa{color:#c3ccd4;}
+.pmportal .pp-star-d:hover .fa{color:#f2b01e;}
+.pmportal .pp-star-d.on{border-color:#f2b01e !important;background:color-mix(in srgb, #f2b01e 12%, var(--bl-box)) !important;}
+.pmportal .pp-star-d.on .fa{color:#f2b01e;}
+.pmportal .pp-star-d .ct{font-weight:700;}
+@media (max-width:480px){.pmportal .pp-star-d .lb{display:none;}}
 .pmportal .bl-pbar{background:#e9eef2;border-radius:var(--bl-radius-s,4px);height:8px;min-width:70px;position:relative;overflow:hidden;}
 .pmportal .bl-pbar>i{position:absolute;left:0;top:0;bottom:0;background:var(--bl-accent);border-radius:var(--bl-radius-s,4px);}
 .pmportal .bl-mention{background:#e8f4ff;color:#2b6cb0;border-radius:3px;padding:0 4px;font-weight:700;}
@@ -406,6 +413,25 @@
    issue is long, and a composer that has to be scrolled to is a composer that
    is not used. Collapsed it is one row; opened it grows upwards and its own
    body scrolls, so the sheet can never be taller than the screen. */
+/* ISS00336: the issue's own line, pinned while a long issue is read. Only
+   shown once the title is out of sight, so it never repeats what is on
+   screen. Fixed rather than sticky: it takes no room until it is needed. */
+.pmportal .pp-dbar{position:fixed;top:var(--pp-stick-top,0px);left:var(--pp-dbar-l,0);width:var(--pp-dbar-w,100%);z-index:930;
+  display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;box-sizing:border-box;
+  background:var(--bl-box);border-bottom:1px solid var(--bl-line);box-shadow:0 2px 6px rgba(0,0,0,.06);font-size:13px;}
+.pmportal .pp-dbar[hidden]{display:none;}
+/* A phone has no height to spare; the comment dock is enough there. */
+@media (max-width:760px){.pmportal .pp-dbar{display:none !important;}}
+.pmportal .pp-dbar .bl-key{flex:none;}
+.pmportal .pp-dbar .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;cursor:pointer;color:var(--bl-ink);}
+/* A jump to a comment or a heading must not land under the pinned line
+   (wide screens only - a phone has no pinned line). */
+@media (min-width:761px){.pmportal #pp-issue [id]{scroll-margin-top:calc(var(--pp-stick-top,0px) + 56px);}}
+.pmportal .pp-dbar .t:focus-visible{outline:2px solid var(--bl-accent);outline-offset:2px;border-radius:3px;}
+@media print{
+  .pmportal .pp-dbar{display:none !important;}
+  .pmportal .bl-wiki > .bl-card-box.pp-pinned{position:static !important;max-height:none !important;width:auto !important;}
+}
 .pmportal .bl-cmtdock{position:fixed;left:var(--pp-dock-l,0);width:var(--pp-dock-w,100%);bottom:0;z-index:940;
   background:var(--bl-box);border-top:1px solid var(--bl-line);box-shadow:0 -6px 18px rgba(15,42,60,.10);
   display:flex;flex-direction:column;max-height:64vh;}
@@ -472,15 +498,86 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 .pmportal .pp-hc-rows .v{flex:1;min-width:0;word-break:break-word;}
 .pmportal .pp-hc-msg{color:var(--bl-sub);}
 .pmportal .pp-hc-key{font-weight:700;color:#2b6cb0;font-size:11px;}
-.pmportal .bl-qe-in{width:100%;border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:4px 6px;font-size:12px;
-  background:var(--bl-box);color:var(--bl-ink);}
-.pmportal .bl-qe-in:focus{border-color:var(--bl-accent);outline:none;}
-.pmportal .bl-qe-chips{display:flex;flex-wrap:wrap;gap:4px;}
-.pmportal .bl-qe-num{max-width:100px;}
+.pmportal .bl-qe-in{width:100%;height:30px;border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:4px 8px;
+  font-size:13px;line-height:20px;background:var(--bl-box);color:var(--bl-ink);box-sizing:border-box;
+  font-variant-numeric:tabular-nums;transition:border-color .12s,box-shadow .12s;}
+.pmportal .bl-qe-in:hover{border-color:color-mix(in srgb, var(--bl-accent) 45%, var(--bl-line));}
+.pmportal .bl-qe-in:focus{border-color:var(--bl-accent);outline:none;box-shadow:var(--bl-focus,0 0 0 3px rgba(76,174,147,.18));}
+.pmportal .bl-qe-in:disabled{background:var(--bl-box2);color:var(--bl-faint);}
+.pmportal select.bl-qe-in{padding-right:4px;text-overflow:ellipsis;cursor:pointer;}
+.pmportal .bl-qe-in::placeholder{color:var(--bl-faint);opacity:.8;}
+.pmportal .bl-qe-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.pmportal .bl-qe-num{text-align:right;}
+/* ---- dock fields: each as wide as what it holds (snoro 2026-11-19) ----
+   The fields used to be label | value rows, every value stretched across the
+   card: a ten-character date in a thousand-pixel box, and a card that had to
+   be scrolled. Now each is a label over its widget at a width of its own and
+   they wrap like words - three pickers on a line, the two chip lists a line
+   each, the dates and the hours side by side on the last. */
+.pmportal .bl-qe{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 12px;}
+.pmportal .bl-qe > .row{display:flex;flex-direction:column;gap:3px;min-width:0;flex:0 0 auto;}
+.pmportal .bl-qe > .row > .k{display:flex;align-items:center;gap:5px;min-height:17px;font-size:11.5px;line-height:1.45;
+  font-weight:600;color:var(--bl-sub);white-space:nowrap;}
+.pmportal .bl-qe > .row > .k .u{font-weight:400;color:var(--bl-faint);}
+.pmportal .bl-qe > .row > .v{display:block;min-width:0;}
+.pmportal .bl-qe > .row.w-st{flex:1 1 190px;max-width:300px;}
+.pmportal .bl-qe > .row.w-sel{flex:1 1 140px;max-width:260px;}
+.pmportal .bl-qe > .row.w-full{flex:1 1 100%;}
+.pmportal .bl-qe > .row.w-date{width:120px;}
+.pmportal .bl-qe > .row.w-time{width:98px;}
+.pmportal .bl-qe > .row.w-num{width:72px;}
+.pmportal .bl-qe .bl-qe-chips .em{font-size:12px;line-height:24px;}
+/* how many chips are switched on */
+.pmportal .bl-qe-n{display:inline-block;min-width:16px;padding:0 5px;border-radius:9px;background:var(--bl-accent);color:#fff;
+  font-size:10.5px;font-weight:700;line-height:16px;text-align:center;font-variant-numeric:tabular-nums;}
+.pmportal .bl-qe-n[hidden]{display:none;}
+.pmportal .bl-boxhead .bl-qe-n{margin-left:7px;vertical-align:1px;}
+/* ---- dock chips: who is picked reads at a glance ---- */
+.pmportal .bl-dockbody .bl-chip{gap:5px;padding:2px 10px;font-size:12px;font-weight:600;line-height:18px;border-radius:13px;
+  background:var(--bl-box);border:1px solid var(--bl-line);color:var(--bl-sub);white-space:nowrap;user-select:none;
+  transition:background .12s,border-color .12s,color .12s;}
+.pmportal .bl-dockbody .bl-chip.has-av{padding-left:3px;}
+.pmportal .bl-dockbody .bl-chip .bl-av{width:18px;height:18px;margin:0;font-size:9px;transition:opacity .12s,filter .12s;}
+.pmportal .bl-dockbody .bl-chip.off .bl-av{opacity:.5;filter:grayscale(.7);}
+.pmportal .bl-dockbody .bl-chip:hover{background:var(--bl-hover);border-color:color-mix(in srgb, var(--bl-accent) 55%, var(--bl-line));color:var(--bl-ink);}
+.pmportal .bl-dockbody .bl-chip:hover .bl-av{opacity:1;filter:none;}
+.pmportal .bl-dockbody .bl-chip:not(.off){background:color-mix(in srgb, var(--bl-accent) 14%, var(--bl-box));
+  border-color:var(--bl-accent);color:var(--bl-accent-d,#2c6e5b);}
+.pmportal .bl-dockbody .bl-chip:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
+.pmportal #pp-notify-chips{display:flex;flex-wrap:wrap;gap:5px;}
+/* ---- dock cards: quieter heads, the room goes to the fields ---- */
+.pmportal .bl-dockbody .bl-card-box>.bl-boxhead{display:flex;align-items:center;flex-wrap:wrap;gap:2px 0;padding:7px 12px;font-size:13px;}
+.pmportal .bl-dockbody .bl-card-box>.bl-boxbody{padding:10px 12px 12px;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail{margin:0 0 0 auto;padding-left:12px;white-space:nowrap;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail input{margin:0 2px 0 0;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail .fa{margin-right:0;}
+/* Two ticks on the head (確認を依頼する, メールでも知らせる): the first one takes
+   the push to the right, the second sits beside it. */
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-rv + .pp-notify-mail{margin-left:0;}
+/* With 確認を依頼する ticked the picked people are being asked, not only told:
+   each picked chip carries the tick, so what the post will do is on screen. */
+.pmportal #pp-notify-chips.rv .bl-chip:not(.off)::after{content:"\f046";font-family:FontAwesome;font-size:12px;margin-left:2px;}
+/* The comment and who hears of it stand side by side once there is room for
+   both; the huge grow on the comment means the people card only ever takes
+   what it asked for there, and the whole line when it wraps under. */
+.pmportal .bl-dockmain{flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:0 12px;}
+.pmportal .bl-dockmain > .bl-card-box{flex:999 1 560px;min-width:0;}
+.pmportal .bl-dockmain > .bl-card-box + .bl-card-box{flex:1 1 380px;}
+/* The fields need about 700px to sit in three lines and are given no more:
+   on a wide screen the rest is the comment's. */
+.pmportal .bl-dockside{flex:3 1 380px;max-width:720px;}
+@media (max-width:480px){
+  .pmportal .bl-qe{gap:10px 8px;}
+  .pmportal .bl-qe > .row.w-st,.pmportal .bl-qe > .row.w-sel{max-width:none;}
+  .pmportal .bl-qe > .row.w-date{flex:1 1 120px;}
+  .pmportal .bl-qe > .row.w-time{width:98px;}
+  .pmportal .bl-qe > .row.w-num{width:58px;}
+  .pmportal .bl-qe > .row.w-num .bl-qe-in{padding:4px 4px 4px 6px;}
+}
 @media (max-width:1000px){
   .pmportal .bl-dockbody{display:block;}
   .pmportal .bl-dockmain{display:block;}
-  .pmportal .bl-dockside{display:block;}
+  .pmportal .bl-dockside{display:block;max-width:none;}
 }
 
 /* ---- type-ahead: @ people, # issues, ~ files ---- */
@@ -574,6 +671,13 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 
 /* ---- wiki / files ---- */
 .pmportal .bl-wiki{display:grid;grid-template-columns:260px 1fr;gap:12px;align-items:start;}
+/* ISS00336: the page list stays beside a long article (PC only). Pinned
+   from script (ppWtreeFit), not with position:sticky - AdminLTE's .wrapper
+   has overflow:hidden, and sticky does nothing under such a box. The
+   article keeps its column while the list is out of the grid's flow. */
+.pmportal .bl-wiki.pp-wtree-pinned > .bl-card-box:nth-child(2){grid-column:2;}
+.pmportal .bl-wiki > .bl-card-box.pp-pinned{position:fixed;z-index:20;overflow:hidden;margin:0;}
+.pmportal .bl-wiki > .bl-card-box.pp-pinned .bl-wtree{overflow:auto;}
 .pmportal .bl-wtree .nd{padding:5px 8px;border-radius:var(--bl-radius-s,4px);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pmportal .bl-wtree .nd:hover{background:var(--bl-hover);}
 .pmportal .bl-wtree .nd.on{background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));color:var(--bl-accent-d);font-weight:700;}
@@ -1209,10 +1313,74 @@ body.pp-ib-open{overflow:hidden;}
   border-radius:var(--bl-radius-s);padding:7px 16px;color:#fff;font-weight:700;box-shadow:var(--bl-shadow-s);}
 .pmportal .bl-dback:hover,.pmportal .bl-dback:focus{border-color:var(--bl-accent-d);color:#fff;background:var(--bl-accent-d);text-decoration:none;}
 .pmportal .bl-dhead > span:last-child{flex-wrap:wrap;justify-content:flex-end;}
+.pmportal .pp-ar-note { font-size: 12px; color: var(--bl-sub); margin-left: 10px; }
+.pmportal .pp-ar-note a { color: var(--bl-accent-d); font-weight: 700; }
+.pmportal .pp-rc { color: var(--bl-accent-d); font-size: 11px; margin-right: 2px; }
+.pmportal .bl-dback-foot{margin:14px 0 4px;}
+.pmportal .bl-dback.bl-dback-s{padding:4px 12px;font-size:12px;}
 .pmportal .bl-dsum{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:12px;padding:9px 12px;
   background:var(--bl-box2);border:1px solid var(--bl-line2);border-radius:var(--bl-radius);}
 .pmportal .bl-dsum .it{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
+/* Issue detail, kept short (ISS00336): the fields as a grid of as many
+   columns as the width takes, rather than one field per line. */
+.pmportal .bl-props{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));column-gap:28px;}
+.pmportal .bl-dsum .pp-tocmt{margin-left:auto;font-weight:700;color:var(--bl-accent-d);white-space:nowrap;cursor:pointer;}
+.pmportal .pp-dbar .pp-tocmt{flex:none;font-weight:700;color:var(--bl-accent-d);white-space:nowrap;cursor:pointer;}
+.pmportal .bl-reladd-open{color:var(--bl-accent-d);font-weight:600;}
 .pmportal .bl-dsum .k{color:var(--bl-sub);font-size:var(--bl-fs-xs);font-weight:700;white-space:nowrap;}
+/* How many comments wait below, on the links that lead to them and on the
+   timeline's own head. */
+.pmportal .pp-tocmt .n:not(:empty),.pmportal #pp-d-tlsum:not(:empty){display:inline-block;margin-left:6px;padding:0 7px;min-width:20px;
+  box-sizing:border-box;text-align:center;border-radius:var(--bl-radius-pill,10px);font-size:11px;line-height:18px;font-weight:700;
+  background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));color:var(--bl-accent-d);}
+/* The issue's head: three or four buttons and one menu for the rest. */
+.pmportal .bl-dhead .bl-btn-sub,.pmportal .bl-dhead .bl-btn-main{white-space:nowrap;}
+.pmportal .pp-more{position:relative;display:inline-flex;}
+.pmportal .pp-more > .m{position:absolute;right:0;top:calc(100% + 4px);z-index:40;min-width:190px;padding:4px 0;
+  background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius,6px);box-shadow:0 6px 18px rgba(15,42,60,.14);}
+.pmportal .pp-more > .m[hidden]{display:none;}
+.pmportal .pp-more > .m a{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:13px;color:var(--bl-ink);
+  white-space:nowrap;text-decoration:none;cursor:pointer;}
+.pmportal .pp-more > .m a .fa{width:14px;text-align:center;color:var(--bl-sub);}
+.pmportal .pp-more > .m a:hover,.pmportal .pp-more > .m a:focus-visible{background:var(--bl-hover);outline:0;}
+.pmportal .pp-more > .m a.pp-issuedel{margin-top:4px;padding-top:9px;border-top:1px solid var(--bl-line2);color:var(--bl-red,#d9534f);}
+.pmportal .pp-more > .m a.pp-issuedel .fa{color:inherit;}
+.pmportal .pp-more > .m a.pp-issuedel[data-armed="1"]{background:color-mix(in srgb, var(--bl-red,#d9534f) 12%, var(--bl-box));font-weight:700;}
+/* On a phone the button may sit anywhere in a wrapped row: the menu hangs
+   from the head as a whole instead, so it can never leave the screen. */
+@media (max-width:760px){
+  .pmportal .bl-dhead{position:relative;}
+  .pmportal .pp-more{position:static;}
+  .pmportal .pp-more > .m{left:0;right:0;top:100%;}
+}
+/* A wide screen has room beside the text: the boxes about the issue (fields,
+   children, files, related) stand in a column on the right, and the comments
+   follow the description with nothing in between. .pp-two is set by
+   ppSideFit() only while there is a box to show. The second row takes any
+   height the column needs beyond the description, so no gap opens above the
+   comments. */
+@media (min-width:1800px){
+  .pmportal .bl-detail.pp-two{display:grid;grid-template-columns:minmax(0,1fr) clamp(340px,24%,440px);grid-template-rows:auto 1fr;
+    column-gap:12px;align-items:start;}
+  .pmportal .bl-detail.pp-two > *{grid-column:1;min-width:0;}
+  .pmportal .bl-detail.pp-two > #pp-d-tlbox{grid-row:2;}
+  .pmportal .bl-detail.pp-two > .bl-dside{grid-column:2;grid-row:1 / span 2;}
+  .pmportal .bl-detail.pp-two > .bl-dside > .bl-card-box:last-child{margin-bottom:0;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-props{grid-template-columns:minmax(0,1fr);}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-rows > .row > .k,
+  .pmportal .bl-detail.pp-two .bl-dside .bl-props .k{width:84px;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-children .row > .k{width:auto;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-reladd{flex-wrap:wrap;}
+  /* A related issue in the narrow column: the kind of relation above, the
+     subject on as many lines as it needs - a subject cut after ten
+     characters says nothing. */
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related > .row{flex-wrap:wrap;gap:2px 8px;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related > .row > .k{width:100%;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related > .row > .k:empty{display:none;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related .v{flex:1 1 100%;align-items:flex-start;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-related .v .tx{white-space:normal;overflow-wrap:anywhere;}
+  .pmportal .bl-detail.pp-two .bl-dside .bl-children .v > .bl-issuelink{white-space:normal;overflow-wrap:anywhere;}
+}
 
 /* ---- hover / focus ---- */
 .pmportal .bl-btn-main,.pmportal .bl-btn-sub,.pmportal .bl-sttab,.pmportal .bl-qchip,.pmportal .bl-fmine,
@@ -1251,13 +1419,49 @@ body.pp-ib-open{overflow:hidden;}
 }
 
 /* Unread (read receipts): a row with something the reader has not seen yet -
-   a light tint, a dot before the subject and the subject in bold, like an
-   unread mail. */
+   a light tint, a bar on the row's left edge and the subject in bold, like an
+   unread mail. The bar is drawn inside the first cell, so the subjects of read
+   and unread rows start at the same place (a dot before the subject pushed it
+   right - snoro 2026-11-19). */
 .pmportal .bl-list tbody tr.pp-unread{background:color-mix(in srgb, #2f80ed 6%, var(--bl-box));}
 .pmportal .bl-list tbody tr.pp-unread.sel{background:color-mix(in srgb, var(--bl-accent) 10%, color-mix(in srgb, #2f80ed 6%, var(--bl-box)));}
 .pmportal .bl-list tbody tr.pp-unread td.sub{font-weight:700;}
-.pmportal .bl-list tbody tr.pp-unread td.sub::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
-  background:#2f80ed;margin-right:6px;vertical-align:middle;}
+.pmportal .bl-list tbody tr.pp-unread > td:first-child{box-shadow:inset 3px 0 0 #2f80ed;}
+/* Move an issue to another project: the panel under the detail head. */
+.pmportal .pp-move{margin:8px 0 4px;}
+.pmportal .pp-move-in{padding:10px 12px;border:1px solid var(--bl-line);border-radius:6px;background:var(--bl-box);font-size:13px;}
+.pmportal .pp-move-in .pp-move-sel{max-width:100%;margin:0 6px;padding:4px 6px;}
+.pmportal .pp-move-note{margin-top:6px;color:var(--bl-sub);font-size:12px;}
+.pmportal .pp-issuedel{color:#c0392b;}
+/* Review request under a comment (ISS00341): one line - who was asked, each
+   確認待ち or 確認済み, and the asked reader's own button. */
+.pmportal .pp-rv{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;margin:6px 0 2px;font-size:12px;}
+.pmportal .pp-rv .lb{color:var(--bl-sub);font-weight:700;white-space:nowrap;}
+.pmportal .pp-rvp{display:inline-flex;align-items:center;gap:4px;padding:1px 8px 1px 2px;border:1px solid var(--bl-line);border-radius:12px;background:var(--bl-box);line-height:20px;white-space:nowrap;}
+.pmportal .pp-rvp .bl-av{width:18px;height:18px;margin:0;font-size:9px;}
+.pmportal .pp-rvp .s{color:#b7791f;font-weight:700;}
+.pmportal .pp-rvp .tm{color:var(--bl-sub);font-size:11px;}
+.pmportal .pp-rvp.wait{border-color:#e0b458;background:color-mix(in srgb, #eda62a 10%, var(--bl-box));}
+.pmportal .pp-rvp.ok{border-color:color-mix(in srgb, #2e9e6b 55%, var(--bl-line));background:color-mix(in srgb, #2e9e6b 9%, var(--bl-box));}
+.pmportal .pp-rvp.ok .s{color:#2e9e6b;}
+.pmportal .pp-rvbtn{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border:1px solid var(--bl-accent);border-radius:12px;background:var(--bl-accent);color:#fff;font-size:12px;font-weight:700;line-height:20px;cursor:pointer;}
+.pmportal .pp-rvbtn:hover{filter:brightness(.94);}
+.pmportal .pp-rvbtn.undo{border:0;background:none;color:var(--bl-sub);font-weight:400;padding:2px 2px;text-decoration:underline;}
+.pmportal .pp-rvbtn[disabled]{opacity:.6;cursor:default;}
+/* Reactions on an issue and a comment (ISS00259). */
+.pmportal .pp-rxrow{margin:8px 0 4px;}
+.pmportal .pp-rxbar{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px;position:relative;margin-right:8px;vertical-align:middle;}
+.pmportal .pp-rx{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border:1px solid var(--bl-line);border-radius:12px;background:var(--bl-box);font-size:13px;line-height:20px;cursor:pointer;user-select:none;}
+.pmportal .pp-rx .n{font-size:11px;color:var(--bl-sub);}
+.pmportal .pp-rx.on{border-color:#2f80ed;background:color-mix(in srgb, #2f80ed 10%, var(--bl-box));}
+.pmportal .pp-rx.on .n{color:#2f80ed;font-weight:700;}
+.pmportal .pp-rxadd{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border:1px solid var(--bl-line);border-radius:14px;background:var(--bl-box);font-size:13px;line-height:20px;color:var(--bl-sub);cursor:pointer;user-select:none;}
+.pmportal .pp-rxadd .fa{font-size:15px;}
+.pmportal .pp-rxadd:hover{color:#2f80ed;border-color:#2f80ed;}
+.pmportal .pp-rxpick{position:absolute;left:0;top:100%;margin-top:4px;z-index:50;display:flex;flex-wrap:wrap;gap:2px;max-width:260px;padding:6px;border:1px solid var(--bl-line);border-radius:8px;background:var(--bl-box);box-shadow:0 4px 14px rgba(0,0,0,.15);}
+.pmportal .pp-rxpick[hidden]{display:none;}
+.pmportal .pp-rxopt{font-size:20px;line-height:28px;width:30px;text-align:center;border-radius:6px;cursor:pointer;}
+.pmportal .pp-rxopt:hover{background:var(--bl-hover, rgba(0,0,0,.06));transform:scale(1.15);}
 /* Who opened the issue, on the detail's summary line. */
 .pmportal .pp-reads .pp-reads-v{display:inline-flex;align-items:center;gap:2px;flex-wrap:wrap;}
 .pmportal .pp-reads .pp-reads-v.none{color:var(--bl-faint);font-size:12px;}
@@ -1290,5 +1494,92 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-mailbox-note{font-size:11px;color:var(--bl-faint);margin-top:6px;}
 .pmportal .pp-mailbox-foot{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:12px;}
 .pmportal .pp-mailbox-err{margin-right:auto;color:var(--bl-red);font-size:12px;}
+
+/* ==== compact layout (snoro 2026-11-18) ===============================
+   The header, the tabs and the filter block took a third of the screen
+   before the first issue. Everything here is an override of the rules
+   above, kept in one place so it can be read (or dropped) as a unit. */
+/* ---- project header: one line ---- */
+.pmportal .bl-projhead{flex-wrap:wrap;gap:6px 12px;padding:7px 14px;margin-bottom:8px;}
+.pmportal .bl-projicon{width:30px;height:30px;font-size:14px;border-radius:var(--bl-radius,6px);}
+/* min(): on a phone a 300px basis is wider than the card and would drop the
+   name under the icon instead of beside it. */
+.pmportal .bl-projinfo{flex:1 1 min(300px,calc(100% - 42px));display:flex;flex-wrap:wrap;align-items:center;gap:2px 14px;}
+.pmportal .bl-projttl{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;}
+.pmportal .bl-projname{font-size:17px;line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pmportal .bl-projkey{flex:none;margin-left:0;vertical-align:0;padding:0 7px;font-size:11.5px;}
+.pmportal .bl-projttl .bl-pill{flex:none;}
+.pmportal .bl-projmeta{flex:1 1 440px;min-width:0;display:flex;align-items:center;gap:2px 14px;margin-top:0;white-space:nowrap;overflow:hidden;flex-wrap:wrap;}
+.pmportal .bl-projmeta i{margin:0 4px 0 0;}
+.pmportal .bl-projmeta .mi{flex:none;}
+/* The note keeps to what is left of the line; a click opens it in place. */
+.pmportal .bl-projnote{flex:1 1 170px;min-width:0;display:flex;align-items:baseline;color:inherit;text-decoration:none;
+  border-radius:var(--bl-radius-s,4px);}
+.pmportal .bl-projnote .tx{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pmportal .bl-projnote::after{content:'';flex:none;width:5px;height:5px;margin:0 2px 0 7px;border:solid currentColor;
+  border-width:0 1.5px 1.5px 0;transform:translateY(-3px) rotate(45deg);opacity:.7;}
+.pmportal .bl-projnote:hover,.pmportal .bl-projnote:focus{color:var(--bl-ink);text-decoration:none;}
+.pmportal .bl-projnote:focus-visible{outline:2px solid var(--bl-accent);outline-offset:-2px;}
+.pmportal .bl-projhead.note-open .bl-projmeta{flex-basis:100%;flex-wrap:wrap;white-space:normal;overflow:visible;}
+.pmportal .bl-projhead.note-open .bl-projnote{flex-basis:100%;}
+.pmportal .bl-projhead.note-open .bl-projnote .tx{white-space:pre-line;overflow:visible;line-height:1.55;}
+.pmportal .bl-projhead.note-open .bl-projnote::after{transform:translateY(1px) rotate(-135deg);}
+.pmportal .bl-projside{flex:0 1 auto;min-width:0;max-width:100%;margin-left:auto;display:flex;align-items:center;gap:10px;}
+.pmportal .bl-projhead .bl-avatars{flex:0 1 auto;min-width:0;margin-left:0;padding-left:6px;flex-wrap:wrap;row-gap:3px;}
+.pmportal .bl-projhead .bl-av{width:24px;height:24px;}
+.pmportal .bl-projhead .pp-freshat{flex:none;margin-left:0;}
+/* flex:none + nowrap: squeezed by a long note, 更新 used to stand one glyph per line */
+.pmportal .bl-projhead .pp-refresh{flex:none;white-space:nowrap;padding:4px 10px;font-size:12px;}
+@media (max-width:760px){
+  .pmportal .bl-projhead{gap:6px 10px;padding:8px 10px;}
+  .pmportal .bl-projicon{width:30px;height:30px;font-size:14px;}
+  .pmportal .bl-projinfo{flex:1 1 calc(100% - 42px);}
+  .pmportal .bl-projname{font-size:16px;}
+  .pmportal .bl-projmeta{margin-top:0;line-height:1.5;flex-wrap:wrap;}
+  .pmportal .bl-projmeta i,.pmportal .bl-projmeta i:not(:first-child){margin:0 4px 0 0;}
+  .pmportal .bl-projnote{flex-basis:100%;}
+}
+/* ---- screen tabs ---- */
+.pmportal .bl-tabs{margin-bottom:8px;}
+.pmportal .bl-tab{padding:8px 13px;}
+.pmportal .bl-addissue{padding:5px 14px;}
+/* The tab row stays one line on a laptop: the search box gives up width
+   before the add button is pushed down to a second row. */
+@media (min-width:761px){
+  /* A small basis that grows: a wrapping row breaks on the basis, before
+     anything is asked to shrink. */
+  .pmportal .bl-tabs .bl-tabsearch{flex:1 1 110px;max-width:210px;margin-right:8px;}
+  .pmportal .bl-tabs .bl-tabsearch input{width:100%;box-sizing:border-box;}
+  .pmportal .bl-tabs .bl-tab,.pmportal .bl-tabs .bl-addissue{white-space:nowrap;flex:none;}
+  .pmportal .bl-tabs .bl-addissue{margin-left:auto;}
+}
+/* ---- wiki with no pages: only the list card, no empty article frame ---- */
+.pmportal .bl-wiki.pp-wempty{grid-template-columns:minmax(260px,420px);}
+.pmportal .bl-wiki.pp-wempty > .bl-card-box:nth-child(2){display:none;}
+/* ---- issue toolbar: status tabs and quick chips share one wrapping row ---- */
+.pmportal .bl-toolbar{padding:8px 12px;margin-bottom:8px;}
+.pmportal .bl-pillrow{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-bottom:7px;}
+.pmportal .bl-pillrow .bl-sttabs,.pmportal .bl-pillrow .bl-qchips{display:contents;}
+/* a hairline where the status cut ends and the shortcuts begin */
+.pmportal .bl-pillrow .bl-qchips::before{content:'';flex:none;width:1px;height:16px;background:var(--bl-line);margin:0 5px;}
+.pmportal .bl-sttab,.pmportal .bl-qchip{padding:2px 10px;line-height:1.5;white-space:nowrap;}
+.pmportal .bl-qchip{color:var(--bl-sub);background:var(--bl-box2);border-color:var(--bl-line2);}
+.pmportal .bl-qchip i{margin-right:4px;opacity:.8;}
+.pmportal .bl-sttab .ct,.pmportal .bl-qchip .ct{font-variant-numeric:tabular-nums;}
+.pmportal .bl-filters{gap:6px;}
+.pmportal .bl-filters select,.pmportal .bl-filters input{padding:4px 8px;}
+.pmportal .bl-filters .bl-treebtn{padding:4px 10px;}
+/* ---- issue list: tighter rows, quieter header, calmer secondary text ---- */
+.pmportal .bl-list th{padding:7px 10px;font-size:11.5px;color:var(--bl-faint);letter-spacing:.03em;}
+.pmportal .bl-list th.sorted{color:var(--bl-accent-d);}
+.pmportal .bl-list td{padding:7px 10px;line-height:1.4;}
+.pmportal .bl-list td.sub{color:var(--bl-ink);}
+.pmportal .bl-list td.sub .pp-subsub{margin-top:1px;color:var(--bl-faint);}
+.pmportal .bl-list a.bl-key{font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pmportal .bl-list td.up{font-size:11.5px;font-variant-numeric:tabular-nums;}
+.pmportal .bl-tablewrap{box-shadow:var(--bl-shadow-s);}
+@media (min-width:761px) and (min-height:560px){
+  .pmportal .bl-tablewrap{max-height:calc(100vh - 70px);}
+}
 
 </style>

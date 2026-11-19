@@ -172,9 +172,34 @@ class PluginPage extends PluginPageBase
         return $this->portal()->mailIssue(request(), $id, $issue_id);
     }
 
+    public function asset($name)
+    {
+        return $this->portal()->asset(request(), $name);
+    }
+
+    public function issueMoveTargets($id, $issue_id)
+    {
+        return $this->portal()->issueMoveTargets(request(), $id, $issue_id);
+    }
+
+    public function moveIssue($id, $issue_id)
+    {
+        return $this->portal()->moveIssue(request(), $id, $issue_id);
+    }
+
+    public function deleteIssue($id, $issue_id)
+    {
+        return $this->portal()->deleteIssue(request(), $id, $issue_id);
+    }
+
     public function projectReadAll($id)
     {
         return $this->portal()->projectReadAll(request(), $id);
+    }
+
+    public function archivedIssues($id)
+    {
+        return $this->portal()->archivedIssues(request(), $id);
     }
 
     public function issueRead($id, $issue_id)
@@ -195,6 +220,11 @@ class PluginPage extends PluginPageBase
     public function deleteComment($id, $comment_id)
     {
         return $this->portal()->deleteComment(request(), $id, $comment_id);
+    }
+
+    public function reviewComment($id, $comment_id)
+    {
+        return $this->portal()->reviewComment(request(), $id, $comment_id);
     }
 
     public function toggleStar($id)
@@ -230,6 +260,11 @@ class PluginPage extends PluginPageBase
     public function topbarProjects()
     {
         return $this->portal()->topbarProjects(request());
+    }
+
+    public function ranking()
+    {
+        return $this->respond($this->portal()->ranking(request(), new Content()));
     }
 
     public function gitRepo($id)

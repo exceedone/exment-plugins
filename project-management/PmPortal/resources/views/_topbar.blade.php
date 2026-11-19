@@ -47,7 +47,7 @@
 <style>
 .pp-top{display:flex;align-items:stretch;gap:2px;flex-wrap:wrap;position:relative;z-index:60;
     background:var(--bl-box,#fff);border:1px solid var(--bl-line,#dfe5ea);border-radius:8px;
-    margin-bottom:14px;padding:0 8px;font-size:13px;color:var(--bl-ink,#33434f);}
+    margin-bottom:10px;padding:0 8px;font-size:13px;color:var(--bl-ink,#33434f);}
 .pp-top a{text-decoration:none;color:inherit;}
 .pp-top .pp-top-home,.pp-top .pp-top-dd>button{display:flex;align-items:center;gap:7px;padding:0 13px;
     border:0;background:none;font:inherit;color:inherit;cursor:pointer;white-space:nowrap;height:44px;}
@@ -78,9 +78,11 @@
 /* project menu - the dashboard's project panel, in a dropdown ---------- */
 /* The header, the filter box and プロジェクトの追加 stay put; only the
    list moves, so the box you are typing in never scrolls away. */
-.pp-top .pp-top-pjmenu{width:560px;min-width:0;max-width:calc(100vw - 32px);
+.pp-top .pp-top-pjmenu{width:720px;min-width:0;max-width:calc(100vw - 32px);
     max-height:none;overflow:hidden;}
-.pp-top .pp-pjm-list{max-height:330px;overflow-y:auto;overscroll-behavior:contain;}
+/* As tall as the window allows: the script sets the exact height when the
+   menu opens; this is what holds until then (and without javascript). */
+.pp-top .pp-pjm-list{max-height:calc(100vh - 260px);min-height:120px;overflow-y:auto;overscroll-behavior:contain;}
 .pp-top .pp-pjm-head{display:flex;align-items:center;gap:10px;padding:9px 14px;
     border-bottom:1px solid var(--bl-line,#dfe5ea);background:var(--bl-bg,#fbfcfd);}
 .pp-top .pp-pjm-head .ti{font-weight:700;font-size:13px;}
@@ -99,12 +101,14 @@
     padding:0 3px;font-size:13px;line-height:1;}
 .pp-top .pp-pjm-sbox .cl:hover{color:var(--bl-ink,#33434f);}
 .pp-top .pp-pjm-list [hidden]{display:none;}
-.pp-top .pp-pjm-row{display:flex;gap:9px;align-items:flex-start;padding:8px 14px;
-    border-bottom:1px solid var(--bl-line,#eef2f5);}
+/* One project per line (snoro 2026-11-18): name, key and state on the left,
+   progress and counts on the right. The launch links that used to replace
+   the numbers on hover are gone - the row itself opens the project. */
+.pp-top .pp-pjm-row{display:flex;gap:7px;align-items:center;padding:4px 12px 4px 14px;min-height:30px;
+    border-bottom:1px solid var(--bl-line2,#eef2f5);cursor:pointer;}
 .pp-top .pp-pjm-row:last-child{border-bottom:0;}
 .pp-top .pp-pjm-row.arch{background:#f6f7f8;}
 .pp-top .pp-pjm-row.kid .nm{font-weight:600;}
-.pp-top .pp-pjm-row[draggable="true"]{cursor:grab;}
 .pp-top .pp-pjm-tgl{border:0;background:none;padding:0 2px;width:18px;color:var(--bl-sub,#8a97a3);font-size:10px;cursor:pointer;flex:none;}
 .pp-top .pp-pjm-tgl:hover{color:var(--bl-accent-d,#3d9a80);}
 .pp-top .pp-pjm-head .pp-pjm-fold{font-size:11.5px;color:var(--bl-sub,#8a97a3);}
@@ -113,42 +117,45 @@
 .pp-top .pp-pjm-row.dragging{opacity:.45;}
 .pp-top .pp-pjm-row.drop-before{box-shadow:inset 0 3px 0 var(--bl-accent,#4cae93);}
 .pp-top .pp-pjm-row.drop-after{box-shadow:inset 0 -3px 0 var(--bl-accent,#4cae93);}
-.pp-top .pp-pjm-row .mn{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px;}
-.pp-top .pp-pjm-row .l1{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:19px;}
-.pp-top .pp-pjm-row .nm{font-size:13.5px;font-weight:700;}
+.pp-top .pp-pjm-row .mn{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;}
+.pp-top .pp-pjm-row .l1{flex:1 1 0;min-width:90px;display:flex;align-items:center;gap:6px;}
+.pp-top .pp-pjm-row .nm{flex:0 1 auto;min-width:0;font-size:13px;font-weight:700;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pp-top .pp-pjm-row .nm:hover{text-decoration:underline;}
-.pp-top .pp-pjm-row.cur .nm::after{content:'●';color:var(--bl-accent,#4cae93);font-size:9px;margin-left:5px;
-    vertical-align:middle;}
-.pp-top .pp-pjm-row .up{font-size:10.5px;color:var(--bl-sub,#8a97a3);}
-.pp-top .pp-pjm-row .cd{flex:none;background:var(--bl-chip,#eef3f6);border-radius:3px;padding:0 6px;
+.pp-top .pp-pjm-row.cur{background:var(--bl-chip,#eef3f6);box-shadow:inset 3px 0 0 var(--bl-accent,#4cae93);}
+.pp-top .pp-pjm-row.cur .nm{color:var(--bl-accent-d,#3d9a80);}
+.pp-top .pp-pjm-row .up{flex:0 2 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:10.5px;color:var(--bl-sub,#8a97a3);}
+.pp-top .pp-pjm-row .cd{flex:none;width:104px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    background:var(--bl-chip,#eef3f6);border-radius:3px;padding:0 6px;
     font-size:10.5px;font-weight:700;color:var(--bl-sub,#51616f);font-family:Menlo,Consolas,monospace;}
-.pp-top .pp-pjm-row .pill{color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700;}
-.pp-top .pp-pjm-row .ar{background:#7f8c8d;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;}
-.pp-top .pp-pjm-row .mt{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:11px;
-    color:var(--bl-sub,#8a97a3);min-height:17px;}
-.pp-top .pp-pjm-row .mt .bar{flex:none;width:68px;height:5px;border-radius:3px;background:#eef2f5;overflow:hidden;}
+.pp-top .pp-pjm-row .cd.none{background:none;}
+.pp-top .pp-pjm-row .ps{flex:none;width:52px;text-align:center;}
+.pp-top .pp-pjm-row .pill{display:inline-block;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;font-weight:700;line-height:1.6;}
+.pp-top .pp-pjm-row .ar{flex:none;background:#7f8c8d;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;}
+.pp-top .pp-pjm-row .mt{flex:none;display:flex;align-items:center;gap:7px;font-size:11px;white-space:nowrap;
+    color:var(--bl-sub,#8a97a3);font-variant-numeric:tabular-nums;}
+.pp-top .pp-pjm-row .mt .bar{flex:none;width:44px;height:5px;border-radius:3px;background:#e6ecf0;overflow:hidden;}
 .pp-top .pp-pjm-row .mt .bar i{display:block;height:100%;background:var(--bl-accent,#4cae93);}
+.pp-top .pp-pjm-row .mt .pc{min-width:30px;text-align:right;}
+.pp-top .pp-pjm-row .mt .op{min-width:62px;text-align:right;}
+.pp-top .pp-pjm-row .mt .od{min-width:64px;}
+.pp-top .pp-pjm-row .mt .mi{min-width:50px;}
 .pp-top .pp-pjm-row .mt .od{color:var(--bl-red,#e5544b);font-weight:700;}
 .pp-top .pp-pjm-row .mt .mi{color:var(--bl-accent-d,#3d9a80);font-weight:700;}
-/* The Backlog move the dashboard panel already makes: the row turns
-   theme-green and the numbers give their place to the launch links. */
-.pp-top .pp-pjm-row .lc{display:none;align-items:center;flex-wrap:wrap;min-height:17px;}
-.pp-top .pp-pjm-row .lc a{color:#fff;font-size:11.5px;padding:0 7px;line-height:1.5;white-space:nowrap;
-    border-left:1px solid rgba(255,255,255,.4);}
-.pp-top .pp-pjm-row .lc a:first-child{padding-left:0;border-left:0;}
-.pp-top .pp-pjm-row .lc a:hover{text-decoration:underline;color:#fff;}
-.pp-top .pp-pjm-row:hover,.pp-top .pp-pjm-row:focus-within{background:var(--bl-accent,#4cae93);}
-.pp-top .pp-pjm-row:hover .mt,.pp-top .pp-pjm-row:focus-within .mt{display:none;}
-.pp-top .pp-pjm-row:hover .lc,.pp-top .pp-pjm-row:focus-within .lc{display:flex;}
-.pp-top .pp-pjm-row:hover .nm,.pp-top .pp-pjm-row:focus-within .nm,
-.pp-top .pp-pjm-row:hover .up,.pp-top .pp-pjm-row:focus-within .up{color:#fff;}
-.pp-top .pp-pjm-row:hover .cd,.pp-top .pp-pjm-row:focus-within .cd{background:rgba(255,255,255,.22);color:#fff;}
-.pp-top .pp-pjm-row:hover .pp-pjm-gear,.pp-top .pp-pjm-row:focus-within .pp-pjm-gear{color:#fff;}
-.pp-top .pp-pjm-star{flex:none;border:0;background:none;cursor:pointer;padding:1px 2px;font-size:14px;
-    color:#c9d2d9;line-height:1;margin-top:3px;}
+.pp-top .pp-pjm-row:hover,.pp-top .pp-pjm-row:focus-within{background:var(--bl-hover,#f2f8f5);}
+.pp-top .pp-pjm-star{flex:none;border:0;background:none;cursor:pointer;padding:1px 2px;font-size:13px;
+    color:#c9d2d9;line-height:1;}
 .pp-top .pp-pjm-star:hover,.pp-top .pp-pjm-star[aria-pressed="true"]{color:var(--bl-amber,#eda62a);}
-.pp-top .pp-pjm-gear{flex:none;color:var(--bl-sub,#8a97a3);padding:3px 2px 0;font-size:13px;}
-.pp-top .pp-pjm-gear:hover{color:var(--bl-accent-d,#3d9a80);}
+.pp-top .pp-pjm-gear{flex:none;color:#b3bec7;padding:0 2px;font-size:13px;}
+.pp-top .pp-pjm-row:hover .pp-pjm-gear{color:var(--bl-sub,#8a97a3);}
+.pp-top .pp-pjm-gear:hover,.pp-top .pp-pjm-row:hover .pp-pjm-gear:hover{color:var(--bl-accent-d,#3d9a80);}
+/* Narrow menu: the bar and the percentage go first, the counts stay. */
+@media (max-width:560px){
+    .pp-top .pp-pjm-row .mt .bar,.pp-top .pp-pjm-row .mt .pc{display:none;}
+    .pp-top .pp-pjm-row .cd,.pp-top .pp-pjm-row .ps{display:none;}
+    .pp-top .pp-pjm-row .mt .od:empty,.pp-top .pp-pjm-row .mt .mi:empty{display:none;}
+}
 .pp-top .pp-pjm-foot{border-top:1px solid var(--bl-line,#dfe5ea);}
 
 /* search --------------------------------------------------------------- */
@@ -180,7 +187,7 @@
      data-project-table="{{ $topbar['project_table'] }}"
      data-current="{{ $topbar['current'] }}"
      aria-label="{{ PortalDefinition::trans('title') }}">
-    <a class="pp-top-home {{ $topbar['current'] === null ? 'on' : '' }}" href="{{ $topbar['dashboard_url'] }}">
+    <a class="pp-top-home {{ $topbar['current'] === null && ($topbar['page'] ?? '') !== 'ranking' ? 'on' : '' }}" href="{{ $topbar['dashboard_url'] }}">
         <i class="fa fa-home"></i><span>{{ $tt('dashboard') }}</span>
     </a>
 
@@ -237,6 +244,10 @@
             @endif
         </div>
     </div>
+
+    <a class="pp-top-home {{ ($topbar['page'] ?? '') === 'ranking' ? 'on' : '' }}" href="{{ $topbar['ranking_url'] ?? '' }}">
+        <i class="fa fa-trophy"></i><span>{{ $tt('ranking') }}</span>
+    </a>
 
     <div class="pp-top-dd">
         <button type="button" aria-haspopup="true" aria-expanded="false">
@@ -313,6 +324,8 @@
     }
 
     var LANG = @json($topbarLang);
+    // The issue screen keeps 最近見た per person under this key (recentPush).
+    var RECENT_KEY = @json('pp_recent.u' . intval(\Exment::getUserId()));
 
     function span(cls, text) {
         var s = document.createElement('span');
@@ -340,6 +353,13 @@
         if (ev.target.closest('.pp-top-menu a')) { closeAll(); }
     });
     bar.querySelectorAll('.pp-top-dd > button').forEach(function (btn) {
+        // Start fetching the project list as soon as the pointer is on its
+        // button, so the answer is usually there by the time of the click.
+        if (btn.parentElement.querySelector('.pp-top-menu[data-projects]')) {
+            ['pointerenter', 'focus', 'touchstart'].forEach(function (type) {
+                btn.addEventListener(type, function () { loadProjects(); }, { passive: true });
+            });
+        }
         btn.addEventListener('click', function (ev) {
             ev.stopPropagation();
             var menu = btn.parentElement.querySelector('.pp-top-menu');
@@ -350,6 +370,7 @@
                 menu.hidden = false;
                 btn.setAttribute('aria-expanded', 'true');
                 if (menu.hasAttribute('data-projects')) {
+                    fitProjectList();
                     loadProjects();
                     // Backlog opens this menu with the cursor already in the
                     // filter box, which is what makes it a switcher rather
@@ -383,7 +404,7 @@
     // of localStorage go through textContent, never through markup.
     function fillRecent(menu) {
         var entries = [];
-        try { entries = JSON.parse(localStorage.getItem('pp_recent') || '[]'); } catch (e) { entries = []; }
+        try { entries = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { entries = []; }
         if (!Array.isArray(entries)) { entries = []; }
         menu.textContent = '';
         var shown = 0;
@@ -416,10 +437,30 @@
     var pjClear = document.getElementById('pp-pjm-clear');
     var pjState = { done: false, busy: false, table: '' };
 
+    // The menu used to open on the plain server-rendered list and redraw a
+    // moment later, once the fetch landed - a flash of an unstyled list. The
+    // last answer is kept for this tab (sessionStorage, 10 minutes) and drawn
+    // straight away; the fetch still runs and redraws only if it differs.
+    var PJ_CACHE_MS = 10 * 60 * 1000;
+    function pjCacheKey(url) { return 'pp_pjm:' + url; }
+    function pjCacheRead(url) {
+        try {
+            var hit = JSON.parse(sessionStorage.getItem(pjCacheKey(url)) || 'null');
+            if (hit && hit.t && Date.now() - hit.t < PJ_CACHE_MS && hit.j && Array.isArray(hit.j.items)) { return hit; }
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+    function pjApply(json) {
+        pjState.table = String((json && json.table) || '');
+        pjState.reorderUrl = String((json && json.reorder_url) || '');
+        paintProjects((json && Array.isArray(json.items)) ? json.items : []);
+    }
     function loadProjects() {
         if (pjState.done || pjState.busy || !pjList) { return; }
         var url = bar.getAttribute('data-projects-url');
         if (!url) { return; }
+        var cached = pjState.painted ? null : pjCacheRead(url);
+        if (cached) { pjApply(cached.j); pjState.painted = JSON.stringify(cached.j); }
         pjState.busy = true;
         fetch(url, {
             credentials: 'same-origin',
@@ -429,9 +470,10 @@
             return r.json();
         }).then(function (json) {
             pjState.done = true;
-            pjState.table = String((json && json.table) || '');
-            pjState.reorderUrl = String((json && json.reorder_url) || '');
-            paintProjects((json && Array.isArray(json.items)) ? json.items : []);
+            var text = JSON.stringify(json || {});
+            try { sessionStorage.setItem(pjCacheKey(url), JSON.stringify({ t: Date.now(), j: json })); } catch (e) { /* ignore */ }
+            if (pjState.painted !== text) { pjApply(json); }
+            pjState.painted = text;
         }).catch(function () {
             // Leave the plain list alone - it links to the same projects.
         }).then(function () {
@@ -485,6 +527,17 @@
         try { localStorage.setItem(PJ_FOLD_KEY, JSON.stringify(Object.keys(pjFold))); } catch (e) { /* ignore */ }
     }
     function pjRows() { return pjList ? pjList.querySelectorAll('.pp-pjm-row[data-id]') : []; }
+    // The list runs down to the bottom of the window, less what sits under
+    // it in the menu (the add-project line) and a little air.
+    function fitProjectList() {
+        if (!pjList) { return; }
+        var menu = pjList.closest('.pp-top-menu');
+        if (!menu || menu.hidden) { return; }
+        var below = menu.getBoundingClientRect().bottom - pjList.getBoundingClientRect().bottom;
+        var room = window.innerHeight - pjList.getBoundingClientRect().top - below - 12;
+        pjList.style.maxHeight = Math.max(160, Math.floor(room)) + 'px';
+    }
+    window.addEventListener('resize', fitProjectList);
     function paintToggle(b) {
         var shut = !!pjFold[b.getAttribute('data-tgl')];
         b.textContent = (shut ? '▶' : '▼');
@@ -546,6 +599,41 @@
             var a = document.getElementById(pjFold[b.getAttribute('data-tgl')] ? 'pp-pjm-open' : 'pp-pjm-close');
             if (a) { a.click(); }
         });
+    }
+    // Switching project keeps the screen: on a project's 課題 (list or one
+    // issue) the next project opens on its 課題 too, and the same for the
+    // other tabs every project has. Only the plain project links are
+    // changed - the launch links and the gear name their own screen.
+    function keptScreen() {
+        if (!document.querySelector('.bl-tab[data-scr]')) { return ''; }
+        var path = String(location.hash || '').slice(1).split('?')[0];
+        if (path === 'issues' || /^issue-/.test(path)) { return 'issues'; }
+        if (/^wiki-/.test(path)) { return 'wiki'; }
+        return ['board', 'gantt', 'burndown', 'wiki', 'files'].indexOf(path) >= 0 ? path : '';
+    }
+    function keepScreenOnLink(ev) {
+        var a = ev.target.closest('a[href]');
+        if (!a || !pjList || !pjList.contains(a) || a.closest('.lc') || a.classList.contains('pp-pjm-gear')) { return; }
+        var base = a.getAttribute('data-base');
+        if (base === null) {
+            base = a.getAttribute('href') || '';
+            if (base === '' || base.indexOf('#') >= 0 || base.indexOf('javascript:') === 0) { return; }
+            a.setAttribute('data-base', base);
+        }
+        var screen = keptScreen();
+        a.setAttribute('href', screen ? base + '#' + screen : base);
+    }
+    if (pjList) {
+        // The whole line is the target, not just the name. Going through the
+        // name's own click keeps keepScreenOnLink and the menu's close in play.
+        pjList.addEventListener('click', function (ev) {
+            if (ev.target.closest('a,button,input')) { return; }
+            var row = ev.target.closest('.pp-pjm-row');
+            var nm = row && row.querySelector('a.nm');
+            if (nm) { nm.click(); }
+        });
+        pjList.addEventListener('click', keepScreenOnLink, true);
+        pjList.addEventListener('auxclick', keepScreenOnLink, true);
     }
     ['pp-pjm-open', 'pp-pjm-close'].forEach(function (ctlId) {
         var a = document.getElementById(ctlId);
@@ -656,12 +744,6 @@
         var name = el('a', 'nm', p.name);
         name.href = url;
         l1.appendChild(name);
-        if (p.key) { l1.appendChild(el('span', 'cd', p.key)); }
-        if (p.status && p.status.l) {
-            var pill = el('span', 'pill', p.status.l);
-            pill.style.background = String(p.status.c || '#8a97a3');
-            l1.appendChild(pill);
-        }
         if (p.archived) { l1.appendChild(el('span', 'ar', LANG.archived_tag)); }
         // nested rows already show their parent by position; only a top-level
         // row whose parent is not listed keeps the "↪ parent" hint
@@ -673,6 +755,19 @@
             l1.appendChild(up);
         }
         main.appendChild(l1);
+        // Key and status sit in fixed columns right of the name, so they line
+        // up from row to row whatever the name's length or indent
+        // (snoro 2026-11-19). An empty slot keeps the column when one is missing.
+        var key = el('span', 'cd' + (p.key ? '' : ' none'), p.key || '');
+        if (p.key) { key.title = String(p.key); }
+        main.appendChild(key);
+        var slot = el('span', 'ps');
+        if (p.status && p.status.l) {
+            var pill = el('span', 'pill', p.status.l);
+            pill.style.background = String(p.status.c || '#8a97a3');
+            slot.appendChild(pill);
+        }
+        main.appendChild(slot);
 
         var meta = el('div', 'mt');
         var track = el('span', 'bar');
@@ -681,20 +776,15 @@
         fill.style.width = String(Math.max(0, Math.min(100, Number(p.progress) || 0))) + '%';
         track.appendChild(fill);
         meta.appendChild(track);
-        meta.appendChild(el('span', '', String(p.progress || 0) + '%'));
-        meta.appendChild(el('span', '', count(LANG.pj_open, p.open || 0)));
-        if (p.overdue > 0) { meta.appendChild(el('span', 'od', count(LANG.pj_overdue, p.overdue))); }
-        if (p.mine > 0) { meta.appendChild(el('span', 'mi', count(LANG.pj_mine, p.mine))); }
+        meta.appendChild(el('span', 'pc', String(p.progress || 0) + '%'));
+        meta.appendChild(el('span', 'op', count(LANG.pj_open, p.open || 0)));
+        // Always there, empty at zero, so the columns stay put.
+        meta.appendChild(el('span', 'od', p.overdue > 0 ? count(LANG.pj_overdue, p.overdue) : ''));
+        meta.appendChild(el('span', 'mi', p.mine > 0 ? count(LANG.pj_mine, p.mine) : ''));
         main.appendChild(meta);
 
-        var launch = el('div', 'lc');
-        (LANG.launch || []).forEach(function (item) {
-            if (item[0] === 'new' && !p.can_add) { return; }
-            var a = el('a', '', item[1]);
-            a.href = url + '#' + item[0];
-            launch.appendChild(a);
-        });
-        main.appendChild(launch);
+        // No launch line any more (snoro 2026-11-18): one project per line,
+        // and the whole line opens it - see the click handler on pjList.
         row.appendChild(main);
 
         // Backlog keeps プロジェクト設定 on the right of the row rather than

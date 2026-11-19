@@ -8,10 +8,12 @@
         'hc_loading', 'hc_fail', 'hc_norole', 'hc_code', 'hc_orgs', 'hc_assigned',
         'hc_open_overdue', 'hc_no_issue',
         'feed_add', 'feed_chg', 'feed_cmt', 'feed_file', 'feed_wiki', 'feed_wiki_add', 'feed_project',
-        'f_all', 'f_kw', 'f_as', 'f_ty', 'f_ms', 'f_cat', 'f_save', 'f_saved',
+        'f_all', 'f_kw', 'f_as', 'f_ty', 'f_ms', 'f_cat', 'f_rd', 'f_rd_unread', 'f_rd_read', 'f_save', 'f_saved',
         'f_pr', 'f_mine', 'f_clear', 'f_cleared', 'f_csv', 'f_csv_title', 'f_csv_empty',
         'sort_asc', 'sort_desc',
-        'q_overdue', 'q_soon', 'q_created', 'q_watch', 'q_unread',
+        'q_overdue', 'q_soon', 'q_created', 'q_watch', 'q_unread', 'q_review',
+        'rv_ask', 'rv_ask_hint', 'rv_need_people', 'rv_need_text', 'rv_label', 'rv_wait', 'rv_ok',
+        'rv_confirm', 'rv_confirm_tip', 'rv_undo', 'rv_undo_tip', 'rv_done', 'rv_undone', 'rv_fail',
         'pg_size', 'pg_all', 'pg_range', 'pg_prev', 'pg_next', 'pg_page',
         'sf_menu', 'sf_name_ph', 'sf_add', 'sf_none', 'sf_del', 'sf_saved', 'sf_deleted',
         'sf_need_name', 'sf_full',
@@ -19,13 +21,13 @@
         'bk_nothing', 'bk_done', 'bk_denied', 'bk_missing', 'bk_fail', 'bk_failed', 'bk_failed_title',
         'rf_button', 'rf_working', 'rf_done', 'rf_fail', 'rf_stale', 'rf_at',
         'col_ty', 'col_key', 'col_subject', 'col_as', 'col_st', 'col_pr', 'col_ms', 'col_cat',
-        'col_sd', 'col_dd', 'col_pg', 'col_up', 'cnt_line', 'overdue_d', 'left_d',
+        'col_sd', 'col_dd', 'col_dt', 'col_rc', 'rc_daily', 'rc_weekdays', 'rc_weekly', 'rc_monthly', 'rc_yearly', 'col_pg', 'col_up', 'cnt_line', 'overdue_d', 'left_d',
         'back', 'box_props', 'box_children', 'box_timeline', 'added',
-        'box_related', 'children_done', 'rel_add', 'rel_none',
+        'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments', 'issue_more',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
-        'lbl_eh', 'lbl_pg', 'lbl_parent', 'lbl_watch', 'watch', 'unwatch', 'star', 'edit', 'to_next',
+        'lbl_eh', 'lbl_pg', 'lbl_parent', 'lbl_watch', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
         'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
-        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'read_all_done', 'read_all_fail',
+        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail',
         'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',
         'dock_open', 'dock_title', 'dock_close', 'dock_cancel', 'dock_cmt', 'dock_edit', 'dock_keep',
         'dock_draft', 'dock_saving', 'dock_save_fail', 'dock_stale', 'dock_stale_keep', 'dock_empty',
@@ -38,6 +40,7 @@
         'cmt_hint', 'cmt_drop', 'ct_attach', 'ct_bold', 'ct_italic', 'ct_strike',
         'ct_ul', 'ct_ol', 'ct_quote', 'ct_code', 'ct_link', 'ct_preview', 'ct_write',
         'ct_link_label', 'cmt_uploading', 'cmt_up_ok', 'cmt_up_fail', 'cmt_menu',
+        'rx_add', 'rx_fail', 'rx_like', 'rx_heart', 'rx_haha', 'rx_wow', 'rx_sad', 'rx_angry', 'rx_thanks', 'rx_clap', 'rx_party', 'rx_eyes', 'rx_ok',
         'cmt_edit', 'cmt_copy', 'cmt_copied', 'cmt_save', 'cmt_cancel', 'cmt_saved',
         'cmt_del_ask', 'cmt_deleted', 'cmt_del_fail',
         'wiki_pages', 'wiki_add', 'wiki_edit', 'wiki_hist', 'wiki_files', 'wiki_meta', 'wiki_none', 'wiki_empty',
@@ -67,6 +70,8 @@
         'ne_parent_set', 'ne_mine', 'ne_as_help', 'ne_qa_open', 'ne_qa_ph', 'ne_qa_add',
         'ne_qa_done', 'ne_qa_fail',
         'ned_stale', 'ned_stale_by', 'ned_stale_reload', 'ned_stale_force', 'ned_reloaded',
+        'issue_move', 'move_title', 'move_pick', 'move_note', 'move_do', 'move_cancel', 'move_loading',
+        'move_none', 'move_fail', 'issue_delete', 'issue_del_ask', 'issue_del_fail',
     ])->mapWithKeys(function ($key) {
         return [$key => \App\Plugins\PmPortal\PortalDefinition::trans($key)];
     })->toArray();
@@ -178,9 +183,13 @@
         {{-- ============ issues ============ --}}
         <section class="bl-screen" id="pp-issues">
             <div class="bl-toolbar">
-                <div class="bl-sttabs" id="pp-sttabs"></div>
-                {{-- The dashboard's own cuts, on the project's list. --}}
-                <div class="bl-qchips" id="pp-qchips"></div>
+                {{-- Status tabs and the quick chips flow as one wrapping
+                     row (compact layout, snoro 2026-11-18). --}}
+                <div class="bl-pillrow">
+                    <div class="bl-sttabs" id="pp-sttabs"></div>
+                    {{-- The dashboard's own cuts, on the project's list. --}}
+                    <div class="bl-qchips" id="pp-qchips"></div>
+                </div>
                 <div class="bl-filters">
                     <input id="pp-f-kw" placeholder="{{ $lang['f_kw'] }}" style="width:160px;">
                     <select id="pp-f-as"><option value="">{{ $lang['f_as'] }}: {{ $lang['f_all'] }}</option></select>
@@ -188,6 +197,7 @@
                     <select id="pp-f-pr"><option value="">{{ $lang['f_pr'] }}: {{ $lang['f_all'] }}</option></select>
                     <select id="pp-f-ms"><option value="">{{ $lang['f_ms'] }}: {{ $lang['f_all'] }}</option></select>
                     <select id="pp-f-cat"><option value="">{{ $lang['f_cat'] }}: {{ $lang['f_all'] }}</option></select>
+                    <select id="pp-f-rd"><option value="">{{ $lang['f_rd'] }}: {{ $lang['f_all'] }}</option><option value="unread">{{ $lang['f_rd'] }}: {{ $lang['f_rd_unread'] }}</option><option value="read">{{ $lang['f_rd'] }}: {{ $lang['f_rd_read'] }}</option></select>
                     <span class="bl-fright">
                         {{-- Tree view (ISS00253): off by default; the two
                              fold links only show while it is on. --}}
@@ -256,6 +266,7 @@
                 </table>
                 <div class="bl-pager">
                     <span class="rg" id="pp-issue-count"></span>
+                    <span class="pp-ar-note" id="pp-ar-note"></span>
                     <span class="nav" id="pp-pg-nav"></span>
                     <span class="sz">
                         <label for="pp-pg-size">{{ $lang['pg_size'] }}</label>
@@ -305,28 +316,35 @@
 
         {{-- ============ issue detail ============ --}}
         <section class="bl-screen" id="pp-issue">
-            <p style="margin-bottom:10px;"><a class="bl-dback" href="#issues"><i class="fa fa-angle-left"></i> {{ $lang['back'] }}</a></p>
+            {{-- ISS00336: one line that stays at the top once the title has
+                 scrolled away - which issue this is, and the way back. --}}
+            <div class="pp-dbar" id="pp-dbar" hidden></div>
             <div class="bl-detail">
                 <div class="bl-card-box"><div class="bl-boxbody" id="pp-d-main"><i class="fa fa-spinner fa-spin"></i></div></div>
-                <div class="bl-card-box">
-                    <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sliders"></i>{{ $lang['box_props'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
-                    <div class="bl-boxbody bl-rows bl-props" id="pp-d-props"></div>
-                </div>
-                <div class="bl-card-box" id="pp-d-childbox" style="display:none;">
-                    <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sitemap"></i>{{ $lang['box_children'] }}<span class="bl-childsum" id="pp-d-childsum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
-                    <div class="bl-boxbody bl-rows bl-children" id="pp-d-children"></div>
-                </div>
-                <div class="bl-card-box" id="pp-d-filebox" style="display:none;">
-                    <div class="bl-boxhead" data-collapse="1"><i class="fa fa-paperclip"></i>{{ $lang['box_files'] }}<span class="bl-childsum" id="pp-d-filesum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
-                    <div class="bl-boxbody bl-rows bl-dfiles" id="pp-d-files"></div>
-                </div>
-                <div class="bl-card-box" id="pp-d-relbox" style="display:none;">
-                    <div class="bl-boxhead" data-collapse="1"><i class="fa fa-link"></i>{{ $lang['box_related'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
-                    <div class="bl-boxbody bl-rows bl-related" id="pp-d-related"></div>
+                {{-- The boxes about the issue rather than its text. On a wide
+                     screen they stand beside the description (see .pp-two), so
+                     the comments follow the description directly. --}}
+                <div class="bl-dside" id="pp-d-side">
+                    <div class="bl-card-box" id="pp-d-propbox">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sliders"></i>{{ $lang['box_props'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-props" id="pp-d-props"></div>
+                    </div>
+                    <div class="bl-card-box" id="pp-d-childbox" style="display:none;">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sitemap"></i>{{ $lang['box_children'] }}<span class="bl-childsum" id="pp-d-childsum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-children" id="pp-d-children"></div>
+                    </div>
+                    <div class="bl-card-box" id="pp-d-filebox" style="display:none;">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-paperclip"></i>{{ $lang['box_files'] }}<span class="bl-childsum" id="pp-d-filesum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-dfiles" id="pp-d-files"></div>
+                    </div>
+                    <div class="bl-card-box" id="pp-d-relbox" style="display:none;">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-link"></i>{{ $lang['box_related'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-related" id="pp-d-related"></div>
+                    </div>
                 </div>
                 <div class="bl-card-box" id="pp-d-tlbox">
                     <div class="bl-boxhead" style="display:flex;align-items:center;gap:10px;">
-                        <span><i class="fa fa-comments-o"></i>{{ $lang['box_timeline'] }}</span>
+                        <span><i class="fa fa-comments-o"></i>{{ $lang['box_timeline'] }}<span class="bl-childsum" id="pp-d-tlsum"></span></span>
                         <button type="button" class="bl-tlexpand" id="pp-tl-expand" style="margin-left:auto;" hidden>{{ $lang['tl_expand'] }}</button>
                         <span class="bl-tlfilter" id="pp-tl-filter">
                             <button type="button" data-tl="all">{{ $lang['tl_all'] }}</button><button type="button" data-tl="cmt">{{ $lang['tl_cmt'] }}</button>
@@ -337,6 +355,9 @@
                     </div>
                 </div>
             </div>
+            {{-- The same way back at the foot, for a reader who scrolled down
+                 through a long body and timeline. --}}
+            <p class="bl-dback-foot"><a class="bl-dback" href="#issues"><i class="fa fa-angle-left"></i> {{ $lang['back'] }}</a></p>
 
             {{-- Backlog's pinned composer: a thin row that stays on screen while
                  the issue is read, and unfolds into the comment box together
@@ -390,17 +411,23 @@
                              not with the fields being changed. One value, so no
                              label column: the card head already names it. --}}
                         <div class="bl-card-box">
-                            <div class="bl-boxhead"><i class="fa fa-bell-o"></i>{{ $lang['notify_to'] }}</div>
+                            <div class="bl-boxhead"><i class="fa fa-bell-o"></i>{{ $lang['notify_to'] }}<span class="bl-qe-n" id="pp-notify-n" hidden></span>
+                                {{-- ISS00341: the people picked below are also asked to
+                                     confirm the comment. A tick on the card that already
+                                     picks them, rather than a second list of the same people:
+                                     the dock must not grow taller. --}}
+                                <label class="pp-notify-mail pp-notify-rv" title="{{ $lang['rv_ask_hint'] }}"><input type="checkbox" id="pp-notify-rv"> <i class="fa fa-check-square-o"></i> {{ $lang['rv_ask'] }}</label>
+                                <label class="pp-notify-mail" title="{{ $lang['notify_mail_hint'] }}"><input type="checkbox" id="pp-notify-mail"> <i class="fa fa-envelope-o"></i> {{ $lang['notify_mail'] }}</label>
+                            </div>
                             <div class="bl-boxbody">
                                 <div id="pp-notify-chips"></div>
-                                <label class="pp-notify-mail" title="{{ $lang['notify_mail_hint'] }}"><input type="checkbox" id="pp-notify-mail"> <i class="fa fa-envelope-o"></i> {{ $lang['notify_mail'] }}</label>
                             </div>
                         </div>
                         </div>
                         <div class="bl-dockside">
                             <div class="bl-card-box" id="pp-d-editbox">
                                 <div class="bl-boxhead"><i class="fa fa-sliders"></i>{{ $lang['dock_edit'] }}</div>
-                                <div class="bl-boxbody bl-rows" id="pp-cmt-fields"></div>
+                                <div class="bl-boxbody bl-qe" id="pp-cmt-fields"></div>
                             </div>
                         </div>
                     </div>
@@ -561,5 +588,11 @@
 </div>
 
 <script type="application/json" id="pmportal-data">@json($payload)</script>
-@include(\App\Plugins\PmPortal\PortalDefinition::view('style'))
-@include(\App\Plugins\PmPortal\PortalDefinition::view('script'), ['lang' => $lang])
+<script type="application/json" id="pmportal-lang">@json($lang)</script>
+{{-- The script and the stylesheet are files of their own (PortalDefinition::
+     ASSETS): the browser keeps them across pages and versions them by content,
+     instead of reading ~600 KB of inline code on every page. --}}
+<link rel="stylesheet" href="{{ \App\Plugins\PmPortal\PortalDefinition::assetUrl('style') }}">
+<script src="{{ \App\Plugins\PmPortal\PortalDefinition::assetUrl('script') }}"></script>
+{{-- pjax keeps an already loaded script file from running again: start it here. --}}
+<script>window.PmPortalBoot && window.PmPortalBoot();</script>

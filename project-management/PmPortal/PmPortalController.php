@@ -37,6 +37,7 @@ class PmPortalController extends AdminControllerBase
     use PortalTopbarTrait;
     use PortalProjectTrait;
     use PortalAiTrait;
+    use PortalRankingTrait;
 
     /**
      * How many issues one bulk edit may touch.
@@ -107,6 +108,8 @@ class PmPortalController extends AdminControllerBase
         if (PortalSetup::needsSetup()) {
             return redirect(PortalDefinition::url('setup'));
         }
+        // Recurring issues whose turn has come (at most every few minutes).
+        PortalRecurrence::tick();
 
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
@@ -354,6 +357,7 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::url('setup'));
         }
 
+        PortalRecurrence::tick();
         $project = $this->findProject($id);
 
         $this->setPageInfo(
@@ -587,6 +591,11 @@ class PmPortalController extends AdminControllerBase
         $comment_ids = $comment_rows->pluck('id')->toArray();
         $comment_stars = Star::counts(Star::TYPE_STAR, 'comment', $comment_ids);
         $my_comment_stars = Star::mine(Star::TYPE_STAR, 'comment', $comment_ids, $me);
+        // Reactions (ISS00259), one query for the comments and one for the issues.
+        $comment_reactions = Star::reactions('comment', $comment_ids);
+        $issue_reactions = Star::reactions($issue_name, $ids);
+        // Review requests (ISS00341): who was asked to confirm each comment.
+        $comment_reviews = Star::reviews('comment', $comment_ids);
         $comments = [];
         foreach ($comment_rows as $comment) {
             $comments[intval($comment->parent_id)][] = $comment;
@@ -652,7 +661,7 @@ class PmPortalController extends AdminControllerBase
             }
 
             foreach (($comments[intval($issue->id)] ?? []) as $comment) {
-                $timeline[] = [
+                $entry = [
                     'tp' => 'cmt',
                     'cid' => $comment->id,
                     'by' => intval($comment->created_user_id),
@@ -661,8 +670,25 @@ class PmPortalController extends AdminControllerBase
                     'text' => strval(array_get($comment->value, 'comment_detail', '')),
                     'star' => intval(array_get($comment_stars, strval($comment->id), 0)),
                     'my_star' => in_array(strval($comment->id), $my_comment_stars),
+                    'rx' => (object) ($comment_reactions[strval($comment->id)] ?? []),
                     'del' => !$archived && intval($comment->created_user_id) == intval($me),
                 ];
+                // Only on a comment that asked for a confirmation: most do
+                // not, and the page carries thirty issues' worth of these.
+                // "at" is when the person confirmed; a pending one has none.
+                if (!empty($comment_reviews[strval($comment->id)])) {
+                    $entry['rv'] = array_map(function ($review) {
+                        return [
+                            'by' => $review['by'],
+                            'ok' => $review['ok'],
+                            'at' => $review['ok'] ? $this->fmtAt($review['ts']) : '',
+                        ];
+                    }, $comment_reviews[strval($comment->id)]);
+                    // An archived project takes no confirmation (see
+                    // reviewComment), so the button is not offered there.
+                    $entry['rv_on'] = !$archived;
+                }
+                $timeline[] = $entry;
             }
 
             // The same documents twice: once as a line in the history, once
@@ -716,6 +742,10 @@ class PmPortalController extends AdminControllerBase
                     strval(array_get($issue->value, array_get($this->def['issue'], 'description'), ''))
                 ),
                 'editable' => !$archived && $issue->enableEdit(true) === true,
+                // Moving needs edit rights on the issue; the server lists the
+                // projects it may go to when the button is pressed.
+                'movable' => !$archived && PortalDefinition::enableEdit($issue, true) === true,
+                'deletable' => !$archived && (PortalMembership::canManage($project) || PortalDefinition::enableDelete($issue, true) === true),
                 'watch' => [
                     'count' => intval(array_get($watch_counts, strval($issue->id), 0)),
                     'on' => in_array(strval($issue->id), $my_watches),
@@ -726,6 +756,7 @@ class PmPortalController extends AdminControllerBase
                 })->values()->all(),
                 'files' => $files,
                 'reads' => $reads,
+                'reactions' => (object) ($issue_reactions[strval($issue->id)] ?? []),
             ];
             if ($partial) {
                 $out[strval($issue->id)]['partial'] = true;
@@ -791,6 +822,19 @@ class PmPortalController extends AdminControllerBase
             }
         }
 
+        // Review request (ISS00341): with "review" ticked, the people picked to
+        // be told are also asked to confirm the comment. It hangs off the
+        // comment, so a status change alone asks nobody; and only people who
+        // can read the issue can be asked - anybody else could never open it
+        // to confirm, and would stand there as pending for ever.
+        $reviewers = [];
+        if ($comment !== '' && $this->wantsReview($request)) {
+            $reviewers = array_values(array_diff(
+                PortalMembership::filterReaders($issue, $this->pickedUsers($request)),
+                [intval(\Exment::getUserId())]
+            ));
+        }
+
         // Every bell Exment rings for this write - the table's notify for the
         // status change and for the comment, the @mention pipeline - is a row
         // past this mark. The portal's own bell then skips whoever got one.
@@ -831,6 +875,20 @@ class PmPortalController extends AdminControllerBase
             // new cannot have been starred yet.
             Star::purge('comment', $model->id);
 
+            // Review request (ISS00341): the picked people are asked to
+            // confirm this comment. After the purge above, which would take
+            // these rows with it. A failure here costs the request, never the
+            // comment: it is saved, and an error answer would get it posted
+            // twice.
+            if (!empty($reviewers)) {
+                try {
+                    Star::askReview('comment', $model->id, $reviewers);
+                } catch (\Throwable $e) {
+                    $reviewers = [];
+                    Log::error('pm_portal review request on comment ' . $model->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+                }
+            }
+
             // What Exment's own comment form does next (DefaultShow::addComment):
             // the issue table's notifications for a comment - its assignees,
             // notified users and creator - which a portal comment never rang.
@@ -860,6 +918,13 @@ class PmPortalController extends AdminControllerBase
         }
         if ($comment !== '') {
             $lines[] = $comment;
+        }
+        if (!empty($reviewers)) {
+            // First, and with the names: the bell and the mail are where the
+            // asked person learns that this one is theirs to answer.
+            array_unshift($lines, strval(PortalDefinition::trans('message.review_request_body', [
+                'names' => implode('、', array_column($this->usersFor($reviewers), 'n')),
+            ])));
         }
         try {
             $this->ringPortalBells($request, $project, $issue, $bell_mark, implode("\n", $lines));
@@ -892,6 +957,236 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * The projects this issue may move to: every other project the caller
+     * can add issues to that is not archived. GET {id}/issue/{issue_id}/move.
+     */
+    public function issueMoveTargets(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+        if (PortalDefinition::enableEdit($issue, true) !== true) {
+            return $this->messageError(403, 'no_permission');
+        }
+
+        $key_column = array_get($this->def['project'], 'key');
+        $name_column = array_get($this->def['project'], 'name', 'name');
+        $targets = [];
+        foreach ($this->project_table->getValueModel()->get() as $row) {
+            if (intval($row->id) === intval($project->id) || $this->projectIsArchived($row)
+                || PortalDefinition::enableEdit($row, true) !== true) {
+                continue;
+            }
+            $targets[] = [
+                'id' => intval($row->id),
+                'name' => strval(array_get($row->value, $name_column, '')),
+                'key' => strval(array_get($row->value, $key_column, '')),
+            ];
+        }
+        usort($targets, function ($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
+
+        return response()->json(['ok' => true, 'projects' => $targets]);
+    }
+
+    /**
+     * Move an issue to another project, as Backlog does. POST
+     * {id}/issue/{issue_id}/move with project=<id>.
+     *
+     * The issue keeps its id, key, comments, files and history. The lists it
+     * picks from belong to a project, so its status and type become the new
+     * project's ones of the same name (or the new project's first one); its
+     * category, milestone, versions and parent issue are the old project's
+     * and are taken off; assignees and people to notify who are not on the
+     * new project are taken off. PortalRules checks the result when it is
+     * saved, like any other write.
+     */
+    public function moveIssue(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+        if (PortalDefinition::enableEdit($issue, true) !== true) {
+            return $this->messageError(403, 'no_permission');
+        }
+
+        $to = $request->get('project');
+        if (!is_scalar($to) || !is_numeric($to)) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        if (intval($to) === intval($project->id)) {
+            return $this->messageError(400, 'move_same');
+        }
+        $target = $this->project_table->getValueModel()->find(intval($to));
+        if (!isset($target) || $target->enableAccess() !== true) {
+            return $this->messageError(404, 'move_no_target');
+        }
+        if ($this->projectIsArchived($target)) {
+            return $this->messageError(403, 'archived');
+        }
+
+        $is = (array) $this->def['issue'];
+        $extra = (array) array_get($this->def, 'issue_extra', []);
+        $changes = [];
+
+        // Status and type: the new project's list item with the same label.
+        foreach ([array_get($is, 'status'), array_get($is, 'type')] as $column) {
+            if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
+                continue;
+            }
+            $now = strval(array_get($issue->value, $column, ''));
+            list($old_meta) = $this->selectMeta($this->issue_table, $column, $project->id);
+            list($new_meta, $new_order) = $this->selectMeta($this->issue_table, $column, $target->id);
+            $label = strval(array_get($old_meta, $now . '.l', ''));
+            $pick = null;
+            foreach ($new_order as $key) {
+                if ($label !== '' && strval(array_get($new_meta, $key . '.l')) === $label) {
+                    $pick = $key;
+                    break;
+                }
+            }
+            if ($pick === null && $now !== '' && array_key_exists($now, $new_meta)) {
+                // a list the whole space shares
+                $pick = $now;
+            }
+            if ($pick === null) {
+                $pick = $new_order[0] ?? null;
+            }
+            $changes[$column] = $pick;
+        }
+
+        // The old project's own lists, and the parent issue, do not travel.
+        foreach ([array_get($is, 'category'), array_get($is, 'milestone'), array_get($extra, 'versions'), array_get($is, 'parent')] as $column) {
+            if (!is_nullorempty($column) && CustomColumn::getEloquent($column, $this->issue_table) !== null
+                && !is_nullorempty(array_get($issue->value, $column))) {
+                $changes[$column] = null;
+            }
+        }
+
+        // People who are not on the new project.
+        $roles = PortalMembership::roles((array) $target->value);
+        if (!empty($roles)) {
+            foreach ([[array_get($is, 'assignees'), PortalMembership::EDITORS], [array_get($extra, 'notified_users'), null]] as [$column, $allowed]) {
+                if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
+                    continue;
+                }
+                $ids = PortalMembership::ids(array_get($issue->value, $column));
+                $keep = array_values(array_filter($ids, function ($uid) use ($roles, $allowed) {
+                    $role = $roles[$uid] ?? null;
+                    return $role !== null && ($allowed === null || in_array($role, $allowed, true));
+                }));
+                if (count($keep) !== count($ids)) {
+                    $changes[$column] = array_map('strval', $keep);
+                }
+            }
+        }
+
+        try {
+            \DB::transaction(function () use ($issue, $target, $changes) {
+                $issue->setValue($changes);
+                $issue->parent_id = $target->id;
+                $issue->parent_type = $this->project_table->table_name;
+                $issue->save();
+            });
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (\Throwable $e) {
+            Log::error('PmPortal issue move failed: ' . $e->getMessage());
+
+            return $this->messageError(500, 'move_failed');
+        }
+
+        return response()->json([
+            'ok' => true,
+            'url' => $this->issueUrl($target, $issue->id),
+            'message' => strval(PortalDefinition::trans('message.moved', [
+                'name' => strval(array_get($target->value, array_get($this->def['project'], 'name', 'name'), '')),
+            ])),
+        ]);
+    }
+
+    /**
+     * Whether the caller may delete this issue: the project's manager (and
+     * whoever manages every project), or whoever Exment itself lets delete
+     * it. Nobody while the project is archived.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     */
+    protected function canDeleteIssue($project, $issue): bool
+    {
+        if ($this->projectIsArchived($project)) {
+            return false;
+        }
+
+        return PortalMembership::canManage($project) || PortalDefinition::enableDelete($issue, true) === true;
+    }
+
+    /**
+     * Delete an issue. POST {id}/issue/{issue_id}/delete.
+     *
+     * Its links to other issues and its stars and watches go with it. The
+     * issue itself is soft deleted, so an administrator can bring it back
+     * from Exment's trash. An issue with sub-issues is refused, as in
+     * Backlog: take the sub-issues off first.
+     */
+    public function deleteIssue(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+        if (!$this->canDeleteIssue($project, $issue)) {
+            return $this->messageError(403, 'delete_issue_manager_only');
+        }
+        $reason = PortalRules::validateDestroy($issue);
+        if ($reason !== null) {
+            return PortalDefinition::jsonError(409, 'in_use', ['message' => $reason]);
+        }
+
+        $related_table = CustomTable::getEloquent(array_get($this->def, 'related_table'));
+        $rel = (array) array_get($this->def, 'related_row', []);
+        try {
+            \DB::transaction(function () use ($issue, $related_table, $rel) {
+                if (isset($related_table)) {
+                    $from = $this->columnOf($related_table, strval(array_get($rel, 'from')));
+                    $to = $this->columnOf($related_table, strval(array_get($rel, 'to')));
+                    if (isset($from) && isset($to)) {
+                        $links = $related_table->getValueModel()->newQueryWithoutScopes()
+                            ->whereNull('deleted_at')
+                            ->where(function ($query) use ($from, $to, $issue) {
+                                $query->where($from->getQueryKey(), strval($issue->id))
+                                    ->orWhere($to->getQueryKey(), strval($issue->id));
+                            })
+                            ->get();
+                        foreach ($links as $link) {
+                            Star::purge($related_table->table_name, $link->id);
+                            $link->delete();
+                        }
+                    }
+                }
+                Star::purge($this->issue_table->table_name, $issue->id);
+                $issue->delete();
+            });
+        } catch (\Throwable $e) {
+            Log::error('PmPortal issue delete failed: ' . $e->getMessage());
+
+            return $this->messageError(500, 'delete_failed');
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => strval(PortalDefinition::trans('message.issue_deleted')),
+        ]);
+    }
+
+    /**
      * Mark an issue read (opened) or unread for the signed-in user.
      *
      * The screen calls this without waiting when an issue is opened, and from
@@ -920,6 +1215,31 @@ class PmPortalController extends AdminControllerBase
             'reads' => $reads,
             'users' => $this->usersFor(array_column($reads, 'by')),
         ]);
+    }
+
+    /**
+     * The portal's script or stylesheet (PortalDefinition::ASSETS). The
+     * address carries the content hash, so the answer may be kept for a year.
+     */
+    public function asset(Request $request, $name)
+    {
+        $name = strval($name);
+        $body = PortalDefinition::assetBody($name);
+        if ($body === null) {
+            abort(404);
+        }
+        $etag = '"' . md5($body) . '"';
+        $headers = [
+            'Content-Type' => PortalDefinition::ASSETS[$name]['type'],
+            'Cache-Control' => 'private, max-age=31536000, immutable',
+            'ETag' => $etag,
+            'X-Content-Type-Options' => 'nosniff',
+        ];
+        if (trim(strval($request->header('If-None-Match'))) === $etag) {
+            return response('', 304, $headers);
+        }
+
+        return response($body, 200, $headers);
     }
 
     /**
@@ -1069,6 +1389,39 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * Whether the writer ticked "ask them to confirm" (ISS00341).
+     */
+    public function wantsReview(Request $request): bool
+    {
+        $flag = $request->input('review');
+
+        return is_scalar($flag) && in_array(strval($flag), ['1', 'true', 'on'], true);
+    }
+
+    /**
+     * The people the writer picked in the dock (notify_users), as user ids:
+     * who the bell rings for, and who a review request asks. Capped, see
+     * NOTIFY_PICK_LIMIT; whether each may read the issue is the caller's to
+     * check (filterReaders).
+     *
+     * @return array<int, int>
+     */
+    protected function pickedUsers(Request $request): array
+    {
+        return collect((array) $request->get('notify_users', []))
+            ->filter(function ($v) {
+                return is_numeric($v) && intval($v) > 0;
+            })
+            ->map(function ($v) {
+                return intval($v);
+            })
+            ->unique()
+            ->take(self::NOTIFY_PICK_LIMIT)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Where one issue opens in the portal, as a full URL for a mail.
      *
      * @param \Exceedone\Exment\Model\CustomValue $project
@@ -1089,8 +1442,15 @@ class PmPortalController extends AdminControllerBase
      */
     protected function detailUserIds(array $detail): array
     {
+        // The people asked to confirm a comment are named under it, and need
+        // not have written or opened anything on the issue.
+        $reviewers = collect(array_get($detail, 'timeline', []))->flatMap(function ($row) {
+            return array_column((array) array_get($row, 'rv', []), 'by');
+        });
+
         return collect(array_get($detail, 'timeline', []))->pluck('by')
             ->merge(collect(array_get($detail, 'reads', []))->pluck('by'))
+            ->merge($reviewers)
             ->filter()->map(function ($v) {
                 return intval($v);
             })->unique()->values()->all();
@@ -1119,17 +1479,8 @@ class PmPortalController extends AdminControllerBase
         $me = intval(\Exment::getUserId());
         $issue_name = $this->issue_table->table_name;
 
-        $picked = collect((array) $request->get('notify_users', []))
-            ->filter(function ($v) {
-                return is_numeric($v) && intval($v) > 0;
-            })
-            ->map(function ($v) {
-                return intval($v);
-            })
-            ->unique()
-            ->take(self::NOTIFY_PICK_LIMIT);
         $watchers = Star::userIds(Star::TYPE_WATCH, $issue_name, $issue->id);
-        $candidates = $picked->merge($watchers)->unique()->values()->all();
+        $candidates = collect($this->pickedUsers($request))->merge($watchers)->unique()->values()->all();
         if (empty($candidates)) {
             return;
         }
@@ -1371,6 +1722,121 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * Confirm a review request on a comment, or take the confirmation back
+     * (ISS00341). POST {id}/comment/{comment_id}/review with ok=1 or ok=0.
+     *
+     * Only somebody the comment's writer asked can answer, and only for
+     * themselves: the row is found by the caller's own user id, so there is
+     * no id in the request to put somebody else's name under. Taking it back
+     * is allowed - a button pressed on the wrong comment has to be undoable -
+     * and the time shown is always that of the last confirmation.
+     */
+    public function reviewComment(Request $request, $id, $comment_id)
+    {
+        $project = $this->findProject($id);
+        $comment = getModelName(SystemTableName::COMMENT)::find($comment_id);
+        if (!isset($comment) || strval($comment->parent_type) !== $this->issue_table->table_name) {
+            abort(404);
+        }
+        // Throws when the issue it hangs off is not this project's, or is one
+        // the caller cannot read.
+        $issue = $this->findIssue($project, $comment->parent_id);
+        // A confirmation is part of the conversation - the others read it -
+        // so an archived project takes none, as it takes no comment.
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+
+        $ok = $request->input('ok');
+        $ok = !is_scalar($ok) || !in_array(strval($ok), ['0', 'false', 'off', ''], true);
+        $me = intval(\Exment::getUserId());
+        $was = in_array(strval($comment->id), Star::pendingReviews('comment', $me), true);
+        if (!Star::setReview('comment', $comment->id, $me, $ok)) {
+            return $this->messageError(403, 'review_not_asked');
+        }
+
+        // Tell whoever asked, once per confirmation actually given: that is
+        // the answer they were waiting for. Not on taking it back, and not
+        // when a second click found it confirmed already.
+        if ($ok && $was) {
+            try {
+                $this->ringReviewDone($project, $issue, $comment, $me);
+            } catch (\Throwable $e) {
+                Log::warning('pm_portal review bell for comment ' . $comment->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+            }
+        }
+
+        return $this->issueDetailResponse($project, $issue->id);
+    }
+
+    /**
+     * The bell that tells a comment's writer that somebody they asked has
+     * confirmed it. Only while the writer can still read the issue - a bell
+     * shows the issue's title and the comment to whoever receives it.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     * @param \Exceedone\Exment\Model\CustomValue $comment
+     */
+    protected function ringReviewDone($project, $issue, $comment, int $me): void
+    {
+        $asker = intval($comment->created_user_id);
+        if ($asker <= 0 || $asker === $me || empty(PortalMembership::filterReaders($issue, [$asker]))) {
+            return;
+        }
+        $notify = new NotifyNavbar();
+        $notify->fill([
+            'notify_id' => 0,
+            'parent_id' => $issue->id,
+            'parent_type' => $this->issue_table->table_name,
+            'target_user_id' => $asker,
+            'notify_subject' => PortalDefinition::notifySubject('[' . $this->issueKey($project, $issue->id) . '] '
+                . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), ''))),
+            // What was confirmed, under the sentence saying so: the writer may
+            // have asked about several comments on the same issue.
+            'notify_body' => PortalDefinition::notifyBody(
+                strval(PortalDefinition::trans('message.review_done_body')) . "\n\n"
+                . strval(array_get($comment->value, 'comment_detail', ''))
+            ),
+            'trigger_user_id' => $me,
+        ]);
+        $notify->save();
+    }
+
+    /**
+     * The issues, out of the given ones, that carry a comment this user has
+     * been asked to confirm and has not yet (ISS00341) - the list's 確認待ち.
+     *
+     * Two indexed reads: the user's pending requests (few - they go away as
+     * they are answered), then the comments those sit on. Going through the
+     * comment table also drops a request whose comment was deleted somewhere
+     * that did not purge it.
+     *
+     * @param array<int, mixed> $issue_ids
+     * @param mixed $me
+     * @return array<int, bool> issue id => true
+     */
+    protected function reviewPendingIssues(array $issue_ids, $me): array
+    {
+        $comment_ids = Star::pendingReviews('comment', $me);
+        if (empty($issue_ids) || empty($comment_ids)) {
+            return [];
+        }
+        $out = [];
+        $parents = getModelName(SystemTableName::COMMENT)::whereIn('id', $comment_ids)
+            ->where('parent_type', $this->issue_table->table_name)
+            ->pluck('parent_id');
+        $wanted = array_flip(array_map('intval', $issue_ids));
+        foreach ($parents as $parent_id) {
+            if (isset($wanted[intval($parent_id)])) {
+                $out[intval($parent_id)] = true;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * A refusal in the shape every portal screen reads - ok false, the code in
      * `error`, the sentence to show in `message` - worded by the portal's own
      * message.* line of the same name. A key with no such line still reads as
@@ -1540,7 +2006,12 @@ class PmPortalController extends AdminControllerBase
             $this->def['wiki_table'],
             'comment',
         ]);
-        if (!in_array($star_type, $allowed_types) || !in_array($target_type, $allowed_targets)) {
+        // Reactions (ISS00259) go on an issue or a comment only.
+        $reaction = Star::isReaction($star_type);
+        if ($reaction && !in_array($target_type, [$this->issue_table->table_name, 'comment'], true)) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        if ((!$reaction && !in_array($star_type, $allowed_types)) || !in_array($target_type, $allowed_targets)) {
             return $this->messageError(400, 'invalid_params');
         }
         $target_id = $request->get('target_id');
@@ -1553,7 +2024,12 @@ class PmPortalController extends AdminControllerBase
         // answer adds only how many marks the target still carries, on a
         // target they could read when they marked it.
         if ($target_id !== '' && !empty(Star::mine($star_type, $target_type, [$target_id], $me))) {
-            return response()->json(['ok' => true] + Star::toggle($star_type, $target_type, $target_id, $me));
+            $result = Star::toggle($star_type, $target_type, $target_id, $me);
+            if ($reaction) {
+                $result['users'] = Star::userIds($star_type, $target_type, $target_id);
+            }
+
+            return response()->json(['ok' => true] + $result);
         }
 
         // Putting one on needs the target to be readable here.
@@ -1571,6 +2047,10 @@ class PmPortalController extends AdminControllerBase
         }
 
         $result = Star::toggle($star_type, $target_type, $target_id, $me);
+        if ($reaction) {
+            // Who is on it now, so the chip's names are right without a reload.
+            $result['users'] = Star::userIds($star_type, $target_type, $target_id);
+        }
 
         return response()->json(['ok' => true] + $result);
     }
@@ -1915,10 +2395,17 @@ class PmPortalController extends AdminControllerBase
         $me = \Exment::getUserId();
         $issue_name = $this->issue_table->table_name;
 
-        $issues = $this->issue_table->getValueModel()
-            ->where('parent_id', $project->id)
-            ->where('parent_type', $this->project_table->table_name)
-            ->get();
+        // Without the bodies: the list never shows them, and on a big project
+        // they are most of what the table holds. The few issues whose detail
+        // screens come with the page are read again in full below.
+        // ISS00332: issues finished long ago are left out (see archiveScope)
+        // and come only when the list asks for them.
+        $archive = $this->archiveScope($project);
+        $query = $this->dashboardLean($this->projectIssueQuery($project));
+        if ($archive !== null) {
+            $query->whereRaw($archive['active_sql'], $archive['bindings']);
+        }
+        $issues = $query->get();
         $issue_ids = $issues->pluck('id')->toArray();
         // ISS00257: read shares once - all of this project's issues, and every
         // readable project (each issue's edit check also checks its project) -
@@ -1955,15 +2442,7 @@ class PmPortalController extends AdminControllerBase
         $my_watches = Star::mine(Star::TYPE_WATCH, $issue_name, $issue_ids, $me);
         $unread = $this->unreadIssues($issues, $me);
 
-        $rows = [];
-        foreach ($issues as $issue) {
-            $row = $this->buildIssueRow($project, $issue);
-            $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
-            $row['my_star'] = in_array(strval($issue->id), $my_stars);
-            $row['my_watch'] = in_array(strval($issue->id), $my_watches);
-            $row['unread'] = isset($unread[intval($issue->id)]);
-            $rows[] = $row;
-        }
+        $rows = $this->issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread);
 
         // A switched-off feature costs nothing: the tab is not rendered and
         // the data behind it is not read. Nothing is deleted either - turning
@@ -1989,11 +2468,32 @@ class PmPortalController extends AdminControllerBase
                 return strval($issue->updated_at ?? $issue->created_at);
             })->take($embed_limit)->values()
             : collect();
+        if ($embedded->isNotEmpty()) {
+            // The list was read without bodies; these need theirs.
+            $full = $this->issue_table->getValueModel()->whereIn('id', $embedded->pluck('id')->all())->get()->keyBy('id');
+            $embedded = $embedded->map(function ($issue) use ($full) {
+                return $full->get($issue->id) ?? $issue;
+            })->values();
+        }
         $details = $this->detailsFor($project, $embedded, $me);
 
+        // Members and viewers as the screen uses them - to offer assignees
+        // and to name people: those the columns name first, in their order,
+        // then whoever the organization columns bring (ISS00333).
+        $named = function ($key) use ($project, $pj) {
+            return collect((array) array_get($project->value, array_get($pj, $key), []))->map(function ($v) { return intval($v); });
+        };
+        $roles = collect(PortalMembership::roles((array) $project->value));
+        $member_ids = $named('members')->merge($roles->filter(function ($role) {
+            return $role === PortalMembership::MEMBER;
+        })->keys())->map(function ($v) { return intval($v); })->unique()->values();
+        $viewer_ids = $named('viewers')->merge($roles->filter(function ($role) {
+            return $role === PortalMembership::VIEWER;
+        })->keys())->map(function ($v) { return intval($v); })->unique()->values();
+
         $user_ids = collect([intval(array_get($project->value, array_get($pj, 'manager')))])
-            ->merge(collect((array) array_get($project->value, array_get($pj, 'members'), []))->map(function ($v) { return intval($v); }))
-            ->merge(collect((array) array_get($project->value, array_get($pj, 'viewers'), []))->map(function ($v) { return intval($v); }))
+            ->merge($member_ids)
+            ->merge($viewer_ids)
             ->merge(collect($rows)->pluck('as')->flatten())
             ->merge(collect($rows)->pluck('by'))
             ->merge(collect($feed)->pluck('by'))
@@ -2001,6 +2501,8 @@ class PmPortalController extends AdminControllerBase
             ->merge(collect($wiki['pages'])->pluck('upby'))
             ->merge(collect($details)->pluck('timeline')->flatten(1)->pluck('by'))
             ->merge(collect($details)->pluck('reads')->flatten(1)->pluck('by'))
+            // the people asked to confirm a comment (ISS00341), named under it
+            ->merge(collect($details)->pluck('timeline')->flatten(1)->pluck('rv')->filter()->flatten(1)->pluck('by'))
             ->filter()->unique()->values()->toArray();
 
         list($relations, $relation_types, $related_meta) = $this->buildRelations($project, $issues);
@@ -2019,8 +2521,8 @@ class PmPortalController extends AdminControllerBase
                 'start' => strval(array_get($project->value, array_get($pj, 'start'), '')),
                 'end' => strval(array_get($project->value, array_get($pj, 'end'), '')),
                 'manager' => intval(array_get($project->value, array_get($pj, 'manager'))),
-                'members' => collect((array) array_get($project->value, array_get($pj, 'members'), []))->map(function ($v) { return intval($v); })->values(),
-                'viewers' => collect((array) array_get($project->value, array_get($pj, 'viewers'), []))->map(function ($v) { return intval($v); })->values(),
+                'members' => $member_ids,
+                'viewers' => $viewer_ids,
                 'edit_url' => admin_url('data', [$this->project_table->table_name, $project->id, 'edit']),
                 'features' => $features,
                 // Read-only while archived: the comment, attachment and bulk
@@ -2058,13 +2560,15 @@ class PmPortalController extends AdminControllerBase
             'issues' => $rows,
             'details' => (object) $details,
             'feed' => $feed,
-            'burndown' => $features['gantt'] ? $this->buildBurndown($project, $issues, $milestones) : [],
+            'burndown' => $features['gantt'] ? $this->buildBurndown($project, $this->withArchivedOf($project, $issues, $archive, $milestones), $milestones) : [],
+            'archive' => $this->archiveSummary($project, $archive),
             'wiki' => $wiki,
             'files' => $files,
             'issue_table' => $issue_name,
             // The column names behind the short keys the rows use, so the
             // screen can build a create form that starts from an issue.
-            'issue_cols' => $this->def['issue'],
+            // The quick edit saves the due time by the same role map.
+            'issue_cols' => $this->def['issue'] + ['due_time' => strval(array_get($this->def, 'issue_extra.due_time', 'due_time'))],
             // The columns the schema upgrade added. Named separately because
             // an install that has not run the upgrade simply has not got them,
             // and the form has to lay out whatever is actually there.
@@ -2233,6 +2737,226 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * The project's issues, as a query.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    protected function projectIssueQuery($project)
+    {
+        return $this->issue_table->getValueModel()
+            ->where('parent_id', $project->id)
+            ->where('parent_type', $this->project_table->table_name);
+    }
+
+    /**
+     * Days after which a finished issue is archived (ISS00332): left out of
+     * the list the page loads, counted but not sent, fetched on request.
+     * Nothing is written - an issue that is reopened or edited is simply
+     * back. 0 turns it off.
+     */
+    protected function archiveDays(): int
+    {
+        return max(0, intval(config('exment.pmportal.archive_days', 30)));
+    }
+
+    /**
+     * SQL for an issue column's value: its index column when it has one.
+     */
+    protected function issueColumnSql(?string $name): ?string
+    {
+        if (is_nullorempty($name)) {
+            return null;
+        }
+        $column = CustomColumn::getEloquent($name, $this->issue_table);
+        if (!isset($column)) {
+            return null;
+        }
+        if ($column->index_enabled) {
+            return '`' . $column->getIndexColumnName() . '`';
+        }
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $name)) {
+            return null;
+        }
+
+        return "JSON_UNQUOTE(JSON_EXTRACT(`value`, '$.\"" . $name . "\"'))";
+    }
+
+    /**
+     * What archived means for this project, as SQL, or null when archiving
+     * is off or cannot be told (no status column, no done status, a
+     * database without JSON functions).
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function archiveScope($project): ?array
+    {
+        $days = $this->archiveDays();
+        if ($days === 0) {
+            return null;
+        }
+        $driver = $this->issue_table->getValueModel()->getConnection()->getDriverName();
+        if (!in_array($driver, ['mysql', 'mariadb'], true)) {
+            return null;
+        }
+        $status_column = array_get($this->def['issue'], 'status');
+        $st = $this->issueColumnSql($status_column);
+        $done = array_values(array_filter(array_map('strval', (array) $this->doneKeys($project, $status_column)), 'strlen'));
+        if ($st === null || empty($done)) {
+            return null;
+        }
+        $cutoff = \Carbon\Carbon::now()->subDays($days)->format('Y-m-d H:i:s');
+        $marks = implode(',', array_fill(0, count($done), '?'));
+
+        return [
+            'days' => $days,
+            'st' => $st,
+            // updated_at also moves with a comment, so an issue people are
+            // still talking about stays in the list.
+            'active_sql' => '(' . $st . ' IS NULL OR ' . $st . ' NOT IN (' . $marks . ') OR `updated_at` >= ?)',
+            'archived_sql' => '(' . $st . ' IN (' . $marks . ') AND `updated_at` < ?)',
+            'bindings' => array_merge($done, [$cutoff]),
+        ];
+    }
+
+    /**
+     * Counts of the archived issues, so that every number on the screen
+     * still covers the whole project: per status, per milestone, and done
+     * children per parent.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function archiveSummary($project, ?array $archive): ?array
+    {
+        if ($archive === null) {
+            return null;
+        }
+        $is = $this->def['issue'];
+        $ms = $this->issueColumnSql(array_get($is, 'milestone')) ?? 'NULL';
+        $pa = $this->issueColumnSql(array_get($is, 'parent')) ?? 'NULL';
+        $groups = $this->projectIssueQuery($project)->toBase()
+            ->whereRaw($archive['archived_sql'], $archive['bindings'])
+            ->selectRaw($archive['st'] . ' as st, ' . $ms . ' as ms, ' . $pa . ' as pa, count(*) as n')
+            ->groupByRaw($archive['st'] . ', ' . $ms . ', ' . $pa)
+            ->get();
+        $out = ['days' => $archive['days'], 'count' => 0, 'by_status' => [], 'by_ms' => [], 'kids' => []];
+        foreach ($groups as $g) {
+            $n = intval($g->n);
+            $out['count'] += $n;
+            $st = strval($g->st ?? '');
+            $out['by_status'][$st] = ($out['by_status'][$st] ?? 0) + $n;
+            if (!is_nullorempty($g->ms)) {
+                $out['by_ms'][strval($g->ms)] = ($out['by_ms'][strval($g->ms)] ?? 0) + $n;
+            }
+            if (!is_nullorempty($g->pa)) {
+                $out['kids'][strval($g->pa)] = ($out['kids'][strval($g->pa)] ?? 0) + $n;
+            }
+        }
+        $out['by_status'] = (object) $out['by_status'];
+        $out['by_ms'] = (object) $out['by_ms'];
+        $out['kids'] = (object) $out['kids'];
+        $out['url'] = PortalDefinition::url($project->id, 'archived');
+
+        return $out;
+    }
+
+    /**
+     * The issues plus the archived ones in the given milestones - the
+     * burndown draws a milestone's whole history, finished work included.
+     */
+    protected function withArchivedOf($project, $issues, ?array $archive, array $milestones)
+    {
+        $ms = $this->issueColumnSql(array_get($this->def['issue'], 'milestone'));
+        if ($archive === null || $ms === null || empty($milestones)) {
+            return $issues;
+        }
+        $ids = array_map('strval', array_keys($milestones));
+        $more = $this->dashboardLean($this->projectIssueQuery($project))
+            ->whereRaw($archive['archived_sql'], $archive['bindings'])
+            ->whereRaw($ms . ' IN (' . implode(',', array_fill(0, count($ids), '?')) . ')', $ids)
+            ->get();
+
+        return $more->isEmpty() ? $issues : $issues->concat($more)->values();
+    }
+
+    /**
+     * List rows with the reader's stars, watches and unread marks.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread): array
+    {
+        // Read here rather than handed in: every list of rows wants it, and
+        // it is the reader's own, like the marks beside it.
+        $review = $this->reviewPendingIssues($issues->pluck('id')->all(), \Exment::getUserId());
+        $rows = [];
+        foreach ($issues as $issue) {
+            $row = $this->buildIssueRow($project, $issue);
+            $row['my_rv'] = isset($review[intval($issue->id)]);
+            $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
+            $row['my_star'] = in_array(strval($issue->id), $my_stars);
+            $row['my_watch'] = in_array(strval($issue->id), $my_watches);
+            $row['unread'] = isset($unread[intval($issue->id)]);
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The archived issues of a project, as list rows (ISS00332).
+     */
+    public function archivedIssues(Request $request, $id)
+    {
+        if (PortalSetup::needsSetup()) {
+            return $this->messageError(409, 'setup_required');
+        }
+        $project = $this->findProject($id);
+        $archive = $this->archiveScope($project);
+        if ($archive === null) {
+            return response()->json(['ok' => true, 'issues' => [], 'users' => (object) []]);
+        }
+        $me = \Exment::getUserId();
+        $issue_name = $this->issue_table->table_name;
+        $issues = $this->dashboardLean($this->projectIssueQuery($project))
+            ->whereRaw($archive['archived_sql'], $archive['bindings'])
+            ->get();
+        $this->issue_table->setGridAuthoritable($issues);
+        $ids = $issues->pluck('id')->toArray();
+        $rows = $this->issueRowsWith(
+            $project,
+            $issues,
+            Star::counts(Star::TYPE_STAR, $issue_name, $ids),
+            Star::mine(Star::TYPE_STAR, $issue_name, $ids, $me),
+            Star::mine(Star::TYPE_WATCH, $issue_name, $ids, $me),
+            $this->unreadIssues($issues, $me)
+        );
+        $user_ids = collect($rows)->pluck('as')->flatten()->merge(collect($rows)->pluck('by'))->filter()->unique()->values()->toArray();
+
+        return response()->json(['ok' => true, 'issues' => $rows, 'users' => $this->usersFor($user_ids)]);
+    }
+
+    /**
+     * The due time as HH:MM, or '' when the issue has none (a whole-day due
+     * date, and every issue from before schema 22).
+     *
+     * @param mixed $value the issue's value array
+     * @return string
+     */
+    protected function dueTime($value): string
+    {
+        $raw = strval(array_get((array) $value, strval(array_get($this->def, 'issue_extra.due_time', 'due_time')), ''));
+
+        if (!preg_match('/^(\d{1,2}):(\d{2})/', $raw, $m)) {
+            return '';
+        }
+        $time = sprintf('%02d:%s', intval($m[1]), $m[2]);
+
+        // 00:00 is no time: see PluginEvent::clearMidnightDueTime().
+        return $time === '00:00' ? '' : $time;
+    }
+
+    /**
      * One issue as the list row / detail head sees it.
      *
      * @param \Exceedone\Exment\Model\CustomValue $project
@@ -2252,6 +2976,8 @@ class PmPortalController extends AdminControllerBase
             'subject' => strval(array_get($v, array_get($is, 'subject'), '')),
             // Schema 19: the second subject line (empty before the upgrade).
             'sub' => strval(array_get($v, 'subject_sub', '')),
+            // Schema 20: daily / weekdays / weekly / monthly / yearly, or ''.
+            'rc' => strval(array_get($v, PortalRecurrence::columnName(), '')),
             'ty' => strval(array_get($v, array_get($is, 'type'), '')),
             'st' => strval(array_get($v, array_get($is, 'status'), '')),
             'pr' => strval(array_get($v, array_get($is, 'priority'), '')),
@@ -2260,6 +2986,8 @@ class PmPortalController extends AdminControllerBase
             'cat' => collect((array) array_get($v, array_get($is, 'category'), []))->map('strval')->values(),
             'sd' => $this->rawDate(array_get($v, array_get($is, 'start'))),
             'dd' => $this->rawDate(array_get($v, array_get($is, 'due'))),
+            // Schema 22: HH:MM on the due date, or '' for the whole day.
+            'dt' => $this->dueTime($v),
             'pg' => is_numeric(array_get($v, array_get($is, 'progress'))) ? floatval(array_get($v, array_get($is, 'progress'))) : null,
             // Numbers or nothing, like the progress above: the screen prints
             // the hours straight into the page, and a column that is not a
@@ -3465,7 +4193,8 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
-     * The project columns that say who is on it: manager, members, viewers.
+     * The project columns that say who is on it: manager, members, viewers,
+     * and the member and viewer organizations.
      *
      * @return array<int, string>
      */
@@ -3477,6 +4206,8 @@ class PmPortalController extends AdminControllerBase
             array_get($pj, 'manager'),
             array_get($pj, 'members'),
             array_get($pj, 'viewers'),
+            array_get($pj, 'member_orgs'),
+            array_get($pj, 'viewer_orgs'),
         ])));
     }
 

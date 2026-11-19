@@ -27,16 +27,27 @@
     $pjKey = $payload['project']['key'] !== '' ? $payload['project']['key'] : strval($pjId);
     $apiBase = $payload['urls']['lightapi_base'] . '/data/' . $payload['project_table'] . '/' . $pjId;
 
-    // The three per project master lists the tab manages, in Backlog's own
-    // order. A list whose table this install has not got is left out rather
-    // than shown as an empty box nothing can fill.
+    // The per project master lists the tab manages, in Backlog's own order.
+    // A list whose table this install has not got is left out rather than
+    // shown as an empty box nothing can fill. This tab is the only screen
+    // that edits them: the space-wide settings page keeps to what every
+    // project shares.
     $setDef = PortalDefinition::config();
     $setLists = [];
     $setListRoles = [
+        ['statuses', 'status_table', 'list_statuses_title', 'fa-flag-o', true, false],
         ['types', 'issue_type_table', 'list_types_title', 'fa-tag', true, false],
         ['categories', 'category_table', 'list_categories_title', 'fa-folder-o', false, false],
         ['milestones', 'milestone_table', 'list_milestones_title', 'fa-flag-checkered', false, true],
     ];
+    // What only one of the lists carries, by the column that holds it: a
+    // status counts as done or not, an issue type prefills a new issue. A
+    // column this install has not got simply leaves its control out.
+    $setListColumn = function ($listTable, $rowKey, $role) use ($setDef) {
+        $name = strval(array_get($setDef, $rowKey . '.' . $role));
+
+        return $name !== '' && \Exceedone\Exment\Model\CustomColumn::getEloquent($name, $listTable) !== null ? $name : null;
+    };
     foreach ($setListRoles as list($secKey, $roleKey, $titleKey, $icon, $hasColor, $hasDates)) {
         $tableName = array_get($setDef, $roleKey);
         if (is_nullorempty($tableName)) {
@@ -50,8 +61,12 @@
             'table' => $tableName,
             'title' => $st($titleKey),
             'icon' => $icon,
+            'hint' => $secKey === 'statuses' ? $st('list_statuses_hint') : ($secKey === 'types' ? $st('list_types_hint') : ''),
             'color' => $hasColor,
             'dates' => $hasDates,
+            'done' => $secKey === 'statuses' ? $setListColumn($listTable, 'status_row', 'done') : null,
+            'tpl_subject' => $secKey === 'types' ? $setListColumn($listTable, 'issue_type_row', 'template_subject') : null,
+            'tpl_body' => $secKey === 'types' ? $setListColumn($listTable, 'issue_type_row', 'template_description') : null,
             // Statuses and issue types hang off the project as Exment
             // children; categories and milestones carry a project column.
             // The pane has to know which, or it creates rows the project
@@ -276,6 +291,20 @@
 /* ppDateField turns these into type=text, so match its marker as well. */
 .pmportal .pp-set-row input[type=date],
 .pmportal .pp-set-row input[data-pp-date]{flex:0 0 140px;width:140px;}
+.pmportal .pp-set-row .pp-set-done{display:flex;align-items:center;gap:5px;flex:none;margin:0;font-weight:400;
+  font-size:12px;color:var(--bl-sub);cursor:pointer;white-space:nowrap;}
+.pmportal .pp-set-row .pp-set-done input{margin:0;width:14px;height:14px;}
+.pmportal .pp-set-row .pp-set-done.on{color:var(--bl-accent-d);font-weight:700;}
+.pmportal .pp-set-tpl{border:1px solid var(--bl-line);background:var(--bl-box);color:var(--bl-sub);border-radius:4px;
+  font-size:11.5px;padding:4px 9px;cursor:pointer;white-space:nowrap;flex:none;}
+.pmportal .pp-set-tpl:hover{background:var(--bl-hover);color:var(--bl-ink);}
+.pmportal .pp-set-tpl.has{color:var(--bl-accent-d);border-color:var(--bl-accent);font-weight:700;}
+.pmportal .pp-set-row.tpl-open{flex-wrap:wrap;}
+.pmportal .pp-set-tplbox{flex:0 0 calc(100% - 24px);margin:4px 0 4px 24px;padding:12px 14px;background:var(--bl-box2);
+  border:1px solid var(--bl-line);border-radius:4px;}
+.pmportal .pp-set-tplbox .pp-set-f{max-width:none;margin-bottom:10px;}
+.pmportal .pp-set-tplbox textarea.pp-set-in{font-family:inherit;font-size:12.5px;min-height:110px;resize:vertical;}
+.pmportal .pp-set-tplbox .pp-set-note{margin:0;}
 .pmportal .pp-set-del{border:0;background:none;color:var(--bl-faint);cursor:pointer;font-size:13px;padding:2px 6px;flex:none;}
 .pmportal .pp-set-del:hover{color:var(--bl-red);}
 .pmportal .pp-set-addrow{display:flex;align-items:center;gap:8px;margin-top:12px;}
@@ -590,7 +619,7 @@
             // nobody fills the pickers in only to be told so on save.
             var locked = !S.can_people;
             if (locked) { frag.appendChild(el('div', 'pp-set-note', L.people_locked)); }
-            ['manager', 'members', 'viewers'].forEach(function (role) {
+            ['manager', 'members', 'viewers', 'member_orgs', 'viewer_orgs'].forEach(function (role) {
                 var col = colOf(MAP[role]);
                 if (col) { frag.appendChild(field(col, null, locked)); }
             });
@@ -1283,7 +1312,7 @@
         }
 
         // ---- per project master lists ------------------------------------
-        // 種別 / カテゴリー / マイルストーン. Each row saves itself through
+        // 状態 / 種別 / カテゴリー / マイルストーン. Each row saves itself through
         // the same lightapi the record editor uses, so nothing here can do
         // what a user could not do on the data screen.
         function paneList(secKey) {
@@ -1292,6 +1321,9 @@
             if (!spec) { return frag; }
 
             frag.appendChild(el('div', 'pp-set-sub', spec.title));
+            if (spec.hint) {
+                frag.appendChild(el('div', 'pp-set-note', spec.hint));
+            }
             if (spec.sortable) {
                 frag.appendChild(el('div', 'pp-set-note', L.list_drag_hint));
             }
@@ -1477,6 +1509,32 @@
                 });
                 el_.appendChild(color);
             }
+            if (spec.done) {
+                // 完了扱い: what the burndown and the overdue count read to
+                // tell a finished issue from an open one.
+                var doneWrap = el('label', 'pp-set-done');
+                var done = el('input');
+                done.type = 'checkbox';
+                done.checked = isOn(row[spec.done]);
+                doneWrap.title = L.list_done_tip;
+                doneWrap.classList.toggle('on', done.checked);
+                done.addEventListener('change', function () {
+                    var patch = {};
+                    patch[spec.done] = done.checked ? '1' : '0';
+                    doneWrap.classList.toggle('on', done.checked);
+                    patchRow(spec, row.id, patch, function () {
+                        done.checked = !done.checked;
+                        doneWrap.classList.toggle('on', done.checked);
+                    });
+                });
+                doneWrap.appendChild(done);
+                doneWrap.appendChild(document.createTextNode(L.list_done));
+                el_.appendChild(doneWrap);
+            }
+            var tplBox = null;
+            if (spec.tpl_subject || spec.tpl_body) {
+                tplBox = templateBox(spec, row, el_);
+            }
             if (spec.dates) {
                 [['start_date', L.list_start], ['due_date', L.list_due]].forEach(function (d) {
                     var inp = el('input', 'pp-set-in');
@@ -1534,9 +1592,63 @@
                     });
             });
             el_.appendChild(del);
+            // Last, so it opens under the whole row once the row may wrap.
+            if (tplBox) { el_.appendChild(tplBox); }
 
             if (spec.sortable) { makeDraggable(el_, grip, listBox, spec); }
             return el_;
+        }
+
+        function isOn(v) { return v === '1' || v === 1 || v === true; }
+
+        // 種別 only: the subject and body a new issue of this type starts
+        // with. Folded away behind a button on the row - most types have no
+        // template, and two more boxes on every row would bury the names.
+        function templateBox(spec, row, rowEl) {
+            var box = el('div', 'pp-set-tplbox');
+            box.hidden = true;
+            var toggle = el('button', 'pp-set-tpl');
+            toggle.type = 'button';
+            toggle.title = L.list_tpl_tip;
+            toggle.innerHTML = '<i class="fa fa-file-text-o"></i> ';
+            toggle.appendChild(document.createTextNode(L.list_tpl));
+            toggle.setAttribute('aria-expanded', 'false');
+
+            var inputs = [];
+            var has = function () {
+                return inputs.some(function (i) { return i.value.trim() !== ''; });
+            };
+            [[spec.tpl_subject, L.list_tpl_subject, 'input'], [spec.tpl_body, L.list_tpl_body, 'textarea']].forEach(function (d) {
+                if (!d[0]) { return; }
+                var f = el('div', 'pp-set-f');
+                f.appendChild(el('label', 'pp-set-lab', d[1]));
+                var inp = el(d[2], 'pp-set-in');
+                if (d[2] === 'input') { inp.type = 'text'; }
+                inp.value = row[d[0]] == null ? '' : String(row[d[0]]);
+                var last = inp.value;
+                inp.addEventListener('change', function () {
+                    if (inp.value === last) { return; }
+                    var prev = last;
+                    var patch = {};
+                    patch[d[0]] = inp.value;
+                    last = inp.value;
+                    toggle.classList.toggle('has', has());
+                    patchRow(spec, row.id, patch, function () { last = prev; });
+                });
+                inputs.push(inp);
+                f.appendChild(inp);
+                box.appendChild(f);
+            });
+            box.appendChild(el('div', 'pp-set-note', L.list_tpl_note));
+            toggle.classList.toggle('has', has());
+            toggle.addEventListener('click', function () {
+                box.hidden = !box.hidden;
+                rowEl.classList.toggle('tpl-open', !box.hidden);
+                toggle.setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
+                if (!box.hidden && inputs[0]) { inputs[0].focus(); }
+            });
+            rowEl.appendChild(toggle);
+            return box;
         }
 
         // Native HTML5 drag, no library: the rows are a flat list in one
@@ -1593,6 +1705,7 @@
         var PANES = {
             basic: paneBasic, people: panePeople, features: paneFeatures,
             other: paneOther, git: paneGit, ai: paneAi, danger: paneDanger,
+            statuses: function () { return paneList('statuses'); },
             types: function () { return paneList('types'); },
             categories: function () { return paneList('categories'); },
             milestones: function () { return paneList('milestones'); }
@@ -1613,7 +1726,7 @@
             // The save bar belongs to the panes that edit project columns.
             // Git and delete carry their own buttons, and a master list
             // saves each row the moment it is changed.
-            foot.hidden = ['git', 'danger', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
+            foot.hidden = ['git', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
             nav.querySelectorAll('a').forEach(function (a) {
                 a.classList.toggle('on', a.getAttribute('data-sec') === name);
             });
