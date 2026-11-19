@@ -42,6 +42,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   出すたびに `config.json` の `version` を上げます。`uuid` と `plugin_name` は変えません。
 - To release, raise `version` in `config.json`, merge to `main`, then push a tag `<Folder>-v<version>` (for example `git tag PmPortal-v1.1.0 && git push origin PmPortal-v1.1.0`). The release workflow builds the zip (top `config.json` last) and publishes it on Releases.
   出すときは、`config.json` の `version` を上げて `main` にマージし、`<フォルダ名>-v<版>` のタグ（例: `git tag PmPortal-v1.1.0 && git push origin PmPortal-v1.1.0`）を push します。release のワークフローが zip を作り（いちばん上の `config.json` を最後に入れる）、Releases に出します。
+- After a release, update the download links (version numbers) in the top-level `README.md`.
+  出したあとは、いちばん上の `README.md` のダウンロードのリンク（版の番号）を直します。
 - When you add tables or columns, raise `PortalSchema::VERSION` and add the step to `PortalUpgrade`.
   テーブルや列を足したら、`PortalSchema::VERSION` を上げ、`PortalUpgrade` に手順を足します。
 - UI text is in `PmPortal/resources/lang/ja/pmportal.php`. A key used by the screen's script must also be listed in `resources/views/index.blade.php`.

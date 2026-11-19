@@ -18,10 +18,10 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 
 Exment Plugin Project Management is a set of two Exment plugins:
 
-| Folder | Plugin | What it does |
-|---|---|---|
-| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal | The project and ticket portal |
-| [`project-management/PmMigrate/`](project-management/PmMigrate/) | PmMigrate | Moves a project to another Exment |
+| Folder | Plugin | What it does | Download (for your own server) |
+|---|---|---|---|
+| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal | The project and ticket portal | [PmPortal-1.1.0.zip](https://github.com/exceedone/exment-plugins/releases/download/PmPortal-v1.1.0/PmPortal-1.1.0.zip) |
+| [`project-management/PmMigrate/`](project-management/PmMigrate/) | PmMigrate | Moves a project to another Exment | [PmMigrate-1.0.1.zip](https://github.com/exceedone/exment-plugins/releases/download/PmMigrate-v1.0.1/PmMigrate-1.0.1.zip) |
 
 Details are in the [README of the set](project-management/README.md).
 
@@ -139,10 +139,10 @@ cd .github/ci && composer update --ignore-platform-req='ext-*' && vendor/bin/php
 
 Exment Plugin Project Management は、2 つの Exment プラグインでできています。
 
-| フォルダ | プラグイン | できること |
-|---|---|---|
-| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal | プロジェクトとチケットのポータル |
-| [`project-management/PmMigrate/`](project-management/PmMigrate/) | PmMigrate | プロジェクトを別の Exment に移す |
+| フォルダ | プラグイン | できること | ダウンロード（自分のサーバー用） |
+|---|---|---|---|
+| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal | プロジェクトとチケットのポータル | [PmPortal-1.1.0.zip](https://github.com/exceedone/exment-plugins/releases/download/PmPortal-v1.1.0/PmPortal-1.1.0.zip) |
+| [`project-management/PmMigrate/`](project-management/PmMigrate/) | PmMigrate | プロジェクトを別の Exment に移す | [PmMigrate-1.0.1.zip](https://github.com/exceedone/exment-plugins/releases/download/PmMigrate-v1.0.1/PmMigrate-1.0.1.zip) |
 
 くわしくは [このセットの README](project-management/README.md) を見てください。
 
