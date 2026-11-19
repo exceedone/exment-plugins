@@ -56,8 +56,10 @@ jobs:
         run: |
           name="${{ steps.plugin.outputs.name }}"
           version="${{ steps.plugin.outputs.version }}"
-          gh release create "$GITHUB_REF_NAME" "$name-$version.zip" \
-            --title "$name $version" \
-            --notes "Upload \`$name-$version.zip\` in Exment: Admin settings → Plugins → Plugin upload. After updating, open the portal and press ⚙ Settings → Update data structure if it asks.
-
-Exment の **管理者設定 → プラグイン → プラグインアップロード** で \`$name-$version.zip\` を選びます。更新のときは、そのあとポータルの **⚙ 設定 → データ構造の更新** を押します（表示されたとき）。"
+          zip="$name-$version.zip"
+          {
+            echo "Upload \`$zip\` in Exment: **Admin settings → Plugins → Plugin upload**. After updating, open the portal and press **⚙ Settings → Update data structure** if it asks."
+            echo
+            echo "Exment の **管理者設定 → プラグイン → プラグインアップロード** で \`$zip\` を選びます。更新のときは、そのあとポータルの **⚙ 設定 → データ構造の更新** を押します（表示されたとき）。"
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" "$zip" --title "$name $version" --notes-file notes.md
