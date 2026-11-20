@@ -2255,6 +2255,7 @@ window.PmPortalBoot = function () {
                 '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) + '</a><span class="m" hidden>' +
             (res.description ? '<a class="pp-quote pp-dquote" href="javascript:void(0);"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
             (CAN_ADD_ISSUE ? '<a class="pp-issuecopy" href="javascript:void(0);"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
+            '<a class="pp-linkcopy" href="javascript:void(0);"><i class="fa fa-link"></i> ' + esc(L.link_copy) + '</a>' +
             '<a class="pp-mailbtn" href="javascript:void(0);"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
             (res.movable ? '<a class="pp-issuemove" href="javascript:void(0);"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
             (res.deletable ? '<a class="pp-issuedel" href="javascript:void(0);"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
@@ -5211,10 +5212,25 @@ window.PmPortalBoot = function () {
             toast(xhrErr(xhr, L.cmt_del_fail), true);
         });
     }
+    // The short link to an issue, /view/KEY like Backlog's (1.6.1): the
+    // server redirects it to the project page. Only for a real key - an
+    // issue on a project without a key keeps the long form.
+    function issueShortUrl(i) {
+        var key = i && i.key ? String(i.key) : '';
+        if (!key || key.indexOf('#') >= 0) { return null; }
+        var base = location.pathname.replace(/\/\d+\/?$/, '');
+        return location.origin + base + '/view/' + encodeURIComponent(key);
+    }
     function cmtCopyLink(cid) {
         var issue = issueById(currentIssue);
-        copyText(location.origin + location.pathname + '#' +
+        var short = issueShortUrl(issue);
+        copyText(short ? short + '?c=' + cid : location.origin + location.pathname + '#' +
             (issue ? issueHash(issue.id) : 'issue-' + currentIssue) + '?c=' + cid, L.cmt_copied);
+    }
+    function issueCopyLink() {
+        var issue = issueById(currentIssue);
+        copyText(issueShortUrl(issue) || location.origin + location.pathname + '#' +
+            (issue ? issueHash(issue.id) : 'issue-' + currentIssue), L.link_copied);
     }
     // Clipboard with the execCommand fallback the admin's iframe context
     // still needs on older browsers.
@@ -10046,6 +10062,8 @@ window.PmPortalBoot = function () {
         if (cdel) { cmtDelete(cdel); return; }
         var addChild = ev.target.closest('.pp-addchild');
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
+        var linkCopy = ev.target.closest('.pp-linkcopy');
+        if (linkCopy) { issueCopyLink(); return; }
         var mailBtn = ev.target.closest('.pp-mailbtn');
         if (mailBtn) { mailOpen(currentIssue); return; }
         var issueCopy = ev.target.closest('.pp-issuecopy');

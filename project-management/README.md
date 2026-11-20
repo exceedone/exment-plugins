@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.0 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.1 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.6.1 / 1.6.1 で変わったこと**
+
+- Short links like Backlog's: `/plugins/exment_pm/view/EXMENT_CLOUD-407` opens an issue and `/plugins/exment_pm/projects/EXMENT_CLOUD` a project (on a self-hosted Exment, `/admin/plugins/exment_pm/...`). An issue also opens by its issue_key (`view/ISS00252`) and, if imported, by its key at the source (`view/MIGRE_TEST_2026-2`). The mails and **リンクをコピー** (in the issue's … menu, and on a comment) give the short form. The old `/15#issue-...` links keep working. No データ構造の更新 needed.
+  Backlog のような短いリンクにしました。`/plugins/exment_pm/view/EXMENT_CLOUD-407` で課題が、`/plugins/exment_pm/projects/EXMENT_CLOUD` でプロジェクトが開きます（自分のサーバーの Exment では `/admin/plugins/exment_pm/...`）。課題キー（`view/ISS00252`）や、取り込んだ課題は移行元のキー（`view/MIGRE_TEST_2026-2`）でも開けます。メールと **リンクをコピー**（課題の「…」のメニューとコメント）は短い形になります。今までの `/15#issue-...` のリンクもそのまま開けます。データ構造の更新はいりません。
 
 **Changed in 1.6.0 / 1.6.0 で変わったこと**
 
