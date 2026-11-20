@@ -185,10 +185,12 @@ class Tickets
     public static function addMessage(CustomValue $ticket, array $values, array $files = []): CustomValue
     {
         $names = [];
+        $uuids = [];
         foreach ($files as $file) {
             $saved = static::attach($ticket, strval($file['name']), strval($file['content']));
             if ($saved !== null) {
-                $names[] = $saved;
+                $names[] = $saved['name'];
+                $uuids[] = $saved['uuid'];
             }
         }
 
@@ -202,7 +204,7 @@ class Tickets
             'time_spent' => 0,
         ], array_filter($values, function ($v) {
             return $v !== null;
-        }), empty($names) ? [] : ['attachments' => implode(', ', $names)]));
+        }), empty($names) ? [] : ['attachments' => implode(', ', $names), 'attachment_uuids' => implode(',', $uuids)]));
         $message->save();
 
         return $message;
@@ -212,8 +214,10 @@ class Tickets
      * Store a file as a document of the ticket (Exment's attachment box on
      * the data screen), so it is backed up and permission-checked like any
      * other Exment file.
+     *
+     * @return array{name: string, uuid: string}|null
      */
-    public static function attach(CustomValue $ticket, string $name, string $content): ?string
+    public static function attach(CustomValue $ticket, string $name, string $content): ?array
     {
         if ($content === '' || strlen($content) > 25 * 1024 * 1024) {
             return null;
@@ -224,7 +228,7 @@ class Tickets
             ->saveCustomValue($ticket->id, null, $table);
         $file->saveDocumentModel($ticket, $name);
 
-        return $name;
+        return ['name' => $name, 'uuid' => strval($file->uuid)];
     }
 
     /**
@@ -243,10 +247,26 @@ class Tickets
     }
 
     /**
+     * The ticket's files. For the customer pages ($customerOnly) only those
+     * that came with a message the customer can see - their own or our
+     * reply - so a file attached to an internal note, or added on Exment's
+     * data screen, never reaches the customer (ISS00411).
+     *
      * @return array<int, object> document rows: uuid, name, created_at
      */
-    public static function files(CustomValue $ticket): array
+    public static function files(CustomValue $ticket, bool $customerOnly = false): array
     {
+        $allowed = null;
+        if ($customerOnly) {
+            $allowed = [];
+            foreach (static::messages($ticket, true) as $m) {
+                foreach (explode(',', strval(array_get($m->value, 'attachment_uuids'))) as $uuid) {
+                    if (($uuid = trim($uuid)) !== '') {
+                        $allowed[$uuid] = true;
+                    }
+                }
+            }
+        }
         $docs = CustomTable::getEloquent(SystemTableName::DOCUMENT);
         if (!isset($docs)) {
             return [];
@@ -254,8 +274,12 @@ class Tickets
         $out = [];
         foreach ($docs->getValueModel()->query()->withoutGlobalScopes()
             ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticket->id)->orderBy('id')->get() as $doc) {
+            $uuid = strval(array_get($doc->value, 'file_uuid'));
+            if ($allowed !== null && !isset($allowed[$uuid])) {
+                continue;
+            }
             $out[] = (object) [
-                'uuid' => strval(array_get($doc->value, 'file_uuid')),
+                'uuid' => $uuid,
                 'name' => strval(array_get($doc->value, 'document_name')),
                 'created_at' => strval($doc->created_at),
             ];

@@ -277,9 +277,16 @@ class PublicController extends Controller
             return [null, null];
         }
         // A merged ticket shows the one it went into.
+        // Only when the customer could see the survivor anyway: it is shown to
+        // customers and was asked by the same address. Otherwise the link
+        // stays on the merged (closed) ticket (ISS00411).
         $into = array_get($ticket->value, 'merged_into');
         if (!empty($into) && ($target = Tickets::find($into)) !== null) {
-            $ticket = $target;
+            $email = Its::normalizeEmail(strval($row->email ?: array_get($ticket->value, 'requester_email')));
+            if ($email !== '' && boolval(array_get($target->value, 'customer_visible', '1'))
+                && Its::normalizeEmail(strval(array_get($target->value, 'requester_email'))) === $email) {
+                $ticket = $target;
+            }
         }
 
         return [$row, $ticket];
@@ -322,7 +329,7 @@ class PublicController extends Controller
             'token' => $token,
             'ticket' => $ticket,
             'messages' => Tickets::messages($ticket, true),
-            'files' => Tickets::files($ticket),
+            'files' => Tickets::files($ticket, true),
             'labels' => Tickets::labels([$ticket]),
             'rated' => $rated,
             'flash' => session()->get('its_flash'),
@@ -465,7 +472,7 @@ class PublicController extends Controller
             return $this->notFound();
         }
         $match = null;
-        foreach (Tickets::files($ticket) as $f) {
+        foreach (Tickets::files($ticket, true) as $f) {
             if (hash_equals($f->uuid, strval($uuid))) {
                 $match = $f;
             }
