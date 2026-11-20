@@ -60,7 +60,7 @@ class Plugin extends PluginPageBase
             ->help('オンにすると、プライベート IP（10.x・192.168.x など）や localhost のサーバー、ふつうでないポートにもつなげます。社内に自社のメールサーバーがあるオンプレミスの Exment のときだけオンにしてください（Exment SaaS ではオフのまま）。');
         $form->exmheader('Office')->hr();
         $form->url('ibisoffice_url', 'ibisOffice の場所（URL）')
-            ->help('空にすると、このサイトにインストールした ibisOffice ' . IbisOffice::VERSION . ' を使います。ほかの場所の ibisOffice を使うときだけ、index.html のあるフォルダーの URL を入れます（例: https://office.example.com/ibisoffice/0.8.9/）。');
+            ->help('空にすると、このサイトにインストールした ibisOffice ' . IbisOffice::VERSION . ' を使います。ほかの場所の ibisOffice を使うときだけ、index.html のあるフォルダーの URL を入れます（例: https://office.example.com/ibisoffice/0.8.9/）。このサイトにインストールした ibisOffice があるときは、ページの中で動く ibisoffice-host.js はそちらを使います。ほかの場所のものは https のときだけ使います。');
     }
 
     /**
@@ -108,7 +108,7 @@ class Plugin extends PluginPageBase
             admin_toastr('ibisOffice ' . IbisOffice::VERSION . ' をインストールしました。');
         } catch (\Throwable $e) {
             \Log::error('[ExmentGroupware] ibisOffice install: ' . $e->getMessage());
-            admin_toastr('インストールできませんでした: ' . $e->getMessage(), 'error');
+            WebMail::toast('インストールできませんでした: ' . $e->getMessage(), 'error');
         }
         return redirect($this->plugin->getFullUrl());
     }
@@ -136,8 +136,9 @@ class Plugin extends PluginPageBase
         }
 
         return response(view('exment_exment_groupware::office', [
-            'available' => $office->isAvailable(),
+            'available' => $office->isAvailable() && $office->hostModuleUrl() !== null,
             'editor_base' => $office->baseUrl(),
+            'host_module' => $office->hostModuleUrl(),
             'office_origin' => $office->officeOrigin(),
             'info_url' => admin_urls('file_server', $ws, 'nodes', $id, 'info'),
             'back_url' => admin_urls('file_server', $ws, 'nodes', $id),

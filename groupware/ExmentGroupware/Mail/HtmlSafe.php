@@ -21,9 +21,11 @@ class HtmlSafe
     /**
      * @param array<string, string> $cid Content-ID => data: URL
      * @param bool $keepStyleBlocks false for HTML that goes into the page itself (a quote in the editor)
+     * @param bool $strict only a short list of attributes, no remote images
+     *                     (a quote in the editor: it is in the page, not in the sandbox)
      * @return array{html: string, remote: bool}
      */
-    public static function clean(string $html, array $cid = [], bool $keepStyleBlocks = true): array
+    public static function clean(string $html, array $cid = [], bool $keepStyleBlocks = true, bool $strict = false): array
     {
         $remote = false;
         if (trim($html) === '') {
@@ -63,6 +65,9 @@ class HtmlSafe
 
         foreach (iterator_to_array($xpath->query('//*') ?: []) as $el) {
             if (!$el instanceof \DOMElement) {
+                continue;
+            }
+            if ($strict && !static::strictElement($el)) {
                 continue;
             }
             foreach (iterator_to_array($el->attributes ?? []) as $attr) {
@@ -133,6 +138,54 @@ class HtmlSafe
         }
 
         return ['html' => $out, 'remote' => $remote];
+    }
+
+    const STRICT_ATTRS = ['href', 'src', 'alt', 'title', 'style', 'colspan', 'rowspan', 'align', 'valign', 'width', 'height', 'border', 'cellpadding', 'cellspacing', 'bgcolor', 'color', 'face', 'size', 'dir', 'lang', 'start', 'type', 'target', 'rel'];
+
+    /**
+     * For the strict mode: keep only plain attributes (no id, class, data-*
+     * or name that the page's own script or styles could pick up), keep
+     * styles that cannot cover the page or load anything, and put the alt
+     * text in place of an image that is not inside the mail.
+     *
+     * @return bool false when the element was replaced
+     */
+    protected static function strictElement(\DOMElement $el): bool
+    {
+        foreach (iterator_to_array($el->attributes ?? []) as $attr) {
+            $name = strtolower($attr->nodeName);
+            if (!in_array($name, static::STRICT_ATTRS, true)) {
+                $el->removeAttribute($attr->nodeName);
+                continue;
+            }
+            if ($name === 'style') {
+                $value = strval($attr->nodeValue);
+                if (preg_match('/url\s*\(|expression\s*\(|behavior\s*:|-moz-binding|@import|position\s*:|z-index|\\\\/i', $value) === 1) {
+                    $el->removeAttribute($attr->nodeName);
+                }
+            }
+        }
+        if (strtolower($el->nodeName) === 'img') {
+            $src = strtolower(trim(strval($el->getAttribute('src'))));
+            if (strpos($src, 'data:image/') !== 0) {
+                $alt = trim(strval($el->getAttribute('alt')));
+                $text = $el->ownerDocument !== null ? $el->ownerDocument->createTextNode($alt !== '' ? '[' . $alt . ']' : '') : null;
+                if ($el->parentNode !== null) {
+                    if ($text !== null) {
+                        $el->parentNode->replaceChild($text, $el);
+                    } else {
+                        $el->parentNode->removeChild($el);
+                    }
+                }
+
+                return false;
+            }
+        }
+        if ($el->hasAttribute('background')) {
+            $el->removeAttribute('background');
+        }
+
+        return true;
     }
 
     protected static function inside(\DOMNode $node, \DOMNode $parent): bool

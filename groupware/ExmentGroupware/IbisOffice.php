@@ -68,6 +68,25 @@ class IbisOffice
         return rtrim($url, '/') . '/';
     }
 
+    /**
+     * The address of ibisoffice-host.js. This script runs in Exment's own
+     * page (it can do what the user can do), so the copy installed on this
+     * site is used whenever there is one, and one from elsewhere only over
+     * https.
+     */
+    public function hostModuleUrl(): ?string
+    {
+        if ($this->isInstalled()) {
+            return rtrim(asset(static::PUBLIC_DIR . '/' . static::VERSION), '/') . '/ibisoffice-host.js';
+        }
+        $custom = $this->customUrl();
+        if ($custom === null || stripos($custom, 'https://') !== 0) {
+            return null;
+        }
+
+        return $custom . 'ibisoffice-host.js';
+    }
+
     public function isAvailable(): bool
     {
         return $this->customUrl() !== null || $this->isInstalled();

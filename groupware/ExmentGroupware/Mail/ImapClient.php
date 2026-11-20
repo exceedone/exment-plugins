@@ -629,6 +629,11 @@ class ImapClient
 
     protected function quote(string $value): string
     {
+        // A line break would end the command and start another one.
+        if (preg_match('/[\x00\r\n]/', $value) === 1) {
+            throw new MailException('使えない文字が入っています。');
+        }
+
         return '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $value) . '"';
     }
 }

@@ -50,6 +50,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
     <script type="module">
     const cfg = {!! json_encode([
         'editorBase' => $editor_base,
+        'hostModule' => $host_module,
         'officeOrigin' => $office_origin,
         'infoUrl' => $info_url,
         'backUrl' => $back_url,
@@ -148,7 +149,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
 
         let mod;
         try {
-            mod = await import(cfg.editorBase + 'ibisoffice-host.js');
+            mod = await import(cfg.hostModule);
         } catch (e) {
             stop('<p>ibisOffice を読み込めませんでした。システム管理者にインストールを確かめてもらってください。</p>');
             return;

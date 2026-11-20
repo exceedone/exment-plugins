@@ -289,7 +289,7 @@ class WebMail
         try {
             return redirect($this->oauth->authorizeUrl(strval($a->provider), ['account_id' => intval($a->id)], strval($a->email)));
         } catch (MailException $e) {
-            admin_toastr($e->getMessage(), 'error');
+            static::toast($e->getMessage(), 'error');
 
             return redirect($this->url('accounts'));
         }
@@ -299,7 +299,9 @@ class WebMail
     public function oauthCallback(Request $request)
     {
         if ($request->filled('error')) {
-            admin_toastr('サインインしませんでした: ' . mb_substr(strval($request->input('error_description', $request->input('error'))), 0, 200), 'error');
+            // Only fixed words: anyone can make this URL (error_description is not shown).
+            $code = strval($request->input('error'));
+            static::toast($code === 'access_denied' ? 'サインインを取り消しました。' : 'サインインできませんでした' . (preg_match('/\A[a-z_]{1,40}\z/', $code) === 1 ? '（' . $code . '）' : '') . '。', 'error');
 
             return redirect($this->url('accounts'));
         }
@@ -346,15 +348,15 @@ class WebMail
                     static::tryAccount($account, $this->oauth);
                     Accounts::recordError($id, null);
                 }
-                admin_toastr('サインインしました: ' . $r['email']);
+                static::toast('サインインしました: ' . $r['email']);
             } catch (MailException $e) {
                 Accounts::recordError($id, $e->getMessage());
-                admin_toastr('サインインはできましたが、メールのサーバーに入れませんでした: ' . $e->getMessage(), 'warning');
+                static::toast('サインインはできましたが、メールのサーバーに入れませんでした: ' . $e->getMessage(), 'warning');
             }
 
             return redirect($this->url() . '?account=' . $id);
         } catch (MailException $e) {
-            admin_toastr($e->getMessage(), 'error');
+            static::toast($e->getMessage(), 'error');
 
             return redirect($this->url('accounts'));
         }
@@ -628,5 +630,16 @@ class WebMail
     protected static function security(string $value): string
     {
         return in_array($value, ['ssl', 'tls', 'none'], true) ? $value : 'ssl';
+    }
+
+    /**
+     * A message at the top of the next page. Laravel-admin puts the text into
+     * a JavaScript string and toastr shows it as HTML, so it is escaped here
+     * (messages can carry words from a mail server).
+     */
+    public static function toast(string $message, string $level = 'success'): void
+    {
+        $message = preg_replace('/[\x00-\x1F\x7F\\\\\x{2028}\x{2029}]/u', ' ', $message) ?? '';
+        admin_toastr(htmlspecialchars(mb_substr($message, 0, 300), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), $level);
     }
 }

@@ -237,6 +237,10 @@ class Mailbox
 
     protected function select(string $folder): array
     {
+        // Folder names come from the URL: only the ones the server listed.
+        if ($this->selected !== $folder && !in_array($folder, array_column($this->folders(false), 'name'), true)) {
+            throw new MailException('フォルダーが見つかりません。');
+        }
         $info = $this->imap()->select($folder);
         $this->selected = $folder;
 
@@ -396,7 +400,7 @@ class Mailbox
             'remote_content' => $remote,
             'text' => $mail['text'],
             // For a reply or a forward, without the mail's own styles (they would leak into the page).
-            'quote_html' => $mail['html'] !== '' ? HtmlSafe::clean($mail['html'], [], false)['html'] : HtmlSafe::textToHtml($mail['text']),
+            'quote_html' => $mail['html'] !== '' ? HtmlSafe::clean($mail['html'], [], false, true)['html'] : HtmlSafe::textToHtml($mail['text']),
             'attachments' => $attachments,
             'seen' => true,
             'flagged' => in_array('\\flagged', $flags, true),
