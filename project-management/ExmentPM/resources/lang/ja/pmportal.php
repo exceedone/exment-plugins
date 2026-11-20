@@ -788,6 +788,7 @@ return [
         'step_converted' => ':column を :table 参照に変更し、:count 件の値を置き換えました。',
         'step_feature_flags' => ':count 件のプロジェクトで「利用する機能」を初期値にそろえました。',
         'step_plugin_types' => 'プラグインの種別にバッチ実行を追加しました。',
+        'step_menus' => '左のメニューを「プロジェクト管理」1 つにまとめました（古いメニュー :count 件を整理しました。設定とマスタは ⚙ 設定 から開きます）。',
     ],
     // Data migration on the settings screen (Migrate/*, formerly the PmMigrate
     // plugin). The messages the exporter and importer word themselves stay in

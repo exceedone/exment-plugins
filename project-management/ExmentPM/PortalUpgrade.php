@@ -369,6 +369,16 @@ class PortalUpgrade
 
             static::repairPluginMenu();
 
+            // Schema 25: one sidebar entry (ISS00256). Once, on the way past
+            // 25, so a node an administrator later makes under one of these
+            // names is left alone.
+            if ($applied < 25) {
+                $tidied = static::tidyLegacyMenus($names);
+                if ($tidied > 0) {
+                    $steps[] = PortalDefinition::trans('upgrade.step_menus', ['count' => $tidied]);
+                }
+            }
+
             if ($convert) {
                 foreach (PortalSchema::conversions($names) as $conversion) {
                     $result = static::convert($conversion);
@@ -1231,6 +1241,124 @@ class PortalUpgrade
 
         $menu->menu_target = $plugin->id;
         $menu->save();
+    }
+
+    /**
+     * Take the sidebar down to the single "プロジェクト管理" entry (ISS00256).
+     *
+     * Before 1.4.1 an install got two branches: the schema's (a root node
+     * with the portal, the settings link and a master node holding the five
+     * master tables) and the bundled template's (a node with the project,
+     * issue, milestone and category tables). Neither is created any more;
+     * this removes what older versions left behind and lifts the portal entry
+     * to the top level, in the root's place.
+     *
+     * Only the plugin's own rows go, found by their menu_name: a table entry
+     * only while it still sits under the node the plugin put it in, a node
+     * only once nothing else is left under it. Anything an administrator
+     * added or moved there therefore stays, and so does its parent. Nothing
+     * else changes - the tables, the views and the screens are all still
+     * there, and the settings and master lists open from the portal's
+     * ⚙ 設定. The portal entry keeps any title or icon an administrator gave
+     * it; only the old defaults are replaced.
+     *
+     * @param array<string, string> $names
+     * @return int menu rows removed or moved
+     */
+    protected static function tidyLegacyMenus(array $names): int
+    {
+        $prefix = PortalSetup::prefix();
+        $count = 0;
+
+        $find = function (string $name) {
+            return Menu::query()->where('menu_name', $name)->first();
+        };
+
+        // Table entries under a node, by the names the plugin gave them.
+        $dropTables = function ($node, array $tableNames) use (&$count) {
+            if (!isset($node)) {
+                return;
+            }
+            $rows = Menu::query()->where('parent_id', $node->id)
+                ->where('menu_type', MenuType::TABLE)
+                ->whereIn('menu_name', array_values(array_unique(array_filter($tableNames))))
+                ->get();
+            foreach ($rows as $row) {
+                $row->delete();
+                $count++;
+            }
+        };
+
+        // A node goes only when nothing is left under it.
+        $dropNode = function ($node) use (&$count) {
+            if (!isset($node) || Menu::query()->where('parent_id', $node->id)->exists()) {
+                return;
+            }
+            $node->delete();
+            $count++;
+        };
+
+        $root = $find($prefix . PortalSchema::MENU_ROOT);
+        $master = $find($prefix . PortalSchema::MENU_MASTER);
+        $settings = $find($prefix . PortalSchema::MENU_SETTINGS);
+        $page = $find($prefix . PortalSchema::MENU_PAGE);
+        $template = $find($prefix . PortalSchema::MENU_TEMPLATE);
+
+        // The schema's master node: the five master tables, then the node.
+        // Before 17 the priority and resolution tables did not follow the
+        // install prefix, so the unprefixed name counts too - under this
+        // node it can only be the plugin's own entry.
+        $masterTables = [];
+        foreach (PortalSchema::TABLE_ROLES as $role => $default) {
+            $masterTables[] = array_get($names, $role);
+            $masterTables[] = $prefix . $default;
+            $masterTables[] = $default;
+        }
+        $dropTables($master, $masterTables);
+        if (isset($master) && $master->menu_type == MenuType::PARENT_NODE) {
+            $dropNode($master);
+        }
+
+        // The settings link: a plain link to the settings screen.
+        if (isset($settings) && $settings->menu_type == MenuType::CUSTOM) {
+            $settings->delete();
+            $count++;
+        }
+
+        // The portal entry, out of the root and in its place.
+        if (isset($page) && isset($root) && $page->parent_id == $root->id) {
+            $page->parent_id = $root->parent_id;
+            $page->order = $root->order;
+            $count++;
+        }
+        if (isset($page)) {
+            // Titles the plugin itself has used for this entry.
+            if (in_array(trim(strval($page->title)), ['ポータル', 'プロジェクトポータル'], true)) {
+                $page->title = PortalDefinition::trans('schema.menu.single');
+            }
+            if (strval($page->icon) === 'fa-dashboard') {
+                $page->icon = 'fa-tasks';
+            }
+            if ($page->isDirty()) {
+                $page->save();
+            }
+        }
+        if (isset($root) && $root->menu_type == MenuType::PARENT_NODE) {
+            $dropNode($root);
+        }
+
+        // The bundled template's node with the four data tables.
+        $templateTables = [];
+        foreach (['project_table', 'issue_table', 'milestone_table', 'category_table'] as $role) {
+            $templateTables[] = array_get($names, $role);
+            $templateTables[] = $prefix . array_get(PortalDefinition::TABLE_ROLES, $role);
+        }
+        $dropTables($template, $templateTables);
+        if (isset($template) && $template->menu_type == MenuType::PARENT_NODE) {
+            $dropNode($template);
+        }
+
+        return $count;
     }
 
     /**

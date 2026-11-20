@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.4.0 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.4.1 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,13 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.4.1 / 1.4.1 で変わったこと**
+
+- The left menu has a single entry, **プロジェクト管理**, which opens the portal. A new install no longer creates the other entries (プロジェクトポータル, the settings link, マスタ and the template's table entries). The settings and the master lists open from **⚙ 設定** at the top of the portal (administrators only).
+  左のメニューは **プロジェクト管理** 1 つだけになりました（開くとポータル）。新しく入れたときに、ほかのメニュー（プロジェクトポータル・設定・マスタ・テンプレートの表のメニュー）を作りません。設定とマスタは、ポータルの上の **⚙ 設定** から開きます（管理者だけ）。
+- An install that already has the old entries: press **⚙ 設定 → データ構造の更新** once. It removes only the plugin's own entries, found by their names, and moves プロジェクト管理 to the top of the menu. An entry an administrator added stays (and so does the folder it is in). The screens and the data do not change. The **PM データ移行** entry (PmMigrate) no longer shows once the PmMigrate plugin is deleted.
+  古いメニューがある環境では、**⚙ 設定 → データ構造の更新** を 1 回押します。プラグインが作ったメニューだけを名前で見つけて外し、プロジェクト管理をメニューのいちばん上の段に移します。管理者が足したメニュー（と、それが入っているフォルダ）は残ります。画面とデータは変わりません。**PM データ移行** のメニュー（PmMigrate）は、PmMigrate プラグインを消すと出なくなります。
 
 **Changed in 1.4.0 / 1.4.0 で変わったこと**
 

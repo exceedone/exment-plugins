@@ -93,8 +93,15 @@ class PortalSchema
      * template, whose importer silently skips notifications, so no install
      * ever got it and assignees heard nothing when their issue changed
      * (ISS00343).
+     *
+     * 25: the sidebar is tidied to the single "プロジェクト管理" entry
+     * (ISS00256). PortalUpgrade::tidyLegacyMenus() takes away the menus
+     * older versions created - the portal / settings / master branch and the
+     * bundled template's table branch - and lifts the portal entry to the
+     * top level. Only the plugin's own entries, found by name; the screens
+     * stay, opened from the portal's ⚙ 設定.
      */
-    const VERSION = 24;
+    const VERSION = 25;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -172,6 +179,13 @@ class PortalSchema
     const MENU_PAGE = 'pm_portal_page';
     const MENU_SETTINGS = 'pm_portal_settings';
     const MENU_MASTER = 'pm_portal_master';
+
+    /**
+     * Menu node the bundled template created before 1.4.1, with the plugin's
+     * data tables under it. The template no longer ships a menu (ISS00256);
+     * the name stays so PortalUpgrade::tidyLegacyMenus() can find the node.
+     */
+    const MENU_TEMPLATE = 'pm_internal';
 
     /**
      * Role groups the portal sets up, in the order they are offered.
@@ -777,9 +791,7 @@ class PortalSchema
     }
 
     /**
-     * A menu branch of the plugin's own, kept apart from the raw data tables
-     * the template already put under "project management": the portal and its
-     * settings on one side, the master lists that feed them on the other.
+     * The plugin's sidebar menu: one top-level entry that opens the portal.
      *
      * @param array<string, string> $n
      * @param string $prefix
@@ -787,16 +799,12 @@ class PortalSchema
      */
     public static function menus(array $n, string $prefix): array
     {
-        $root = $prefix . self::MENU_ROOT;
-        $master = $prefix . self::MENU_MASTER;
-
         // ISS00256 (snoro 2026-11-18): the sidebar gets a single entry,
         // "プロジェクト管理", that opens the portal. Settings and the master
         // lists open from the portal's own top bar (⚙ 設定, administrators
         // only). The old root / settings / master branch is no longer created,
-        // so a schema upgrade does not bring it back.
-        unset($root, $master);
-
+        // so a schema upgrade does not bring it back, and an install that
+        // still has it loses it in schema 25 (PortalUpgrade::tidyLegacyMenus).
         return [
             static::menu($prefix . self::MENU_PAGE, 'menu.single', 'plugin', null, 'fa-tasks', '34', [
                 // Menu::importReplaceJson resolves this through Plugin::getEloquent,
