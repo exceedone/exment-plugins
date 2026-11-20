@@ -4,34 +4,34 @@ parameters:
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
 			count: 1
-			path: ../../project-management/PmPortal/Migrate/Exporter.php
+			path: ../../project-management/ExmentPluginPM/Migrate/Exporter.php
 
 		-
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
 			count: 1
-			path: ../../project-management/PmPortal/Migrate/Importer.php
+			path: ../../project-management/ExmentPluginPM/Migrate/Importer.php
 
 		-
 			message: '#^Call to an undefined static method Exceedone\\Exment\\Model\\CustomColumn\:\:selectTargetTable\(\)\.$#'
 			identifier: staticMethod.notFound
 			count: 1
-			path: ../../project-management/PmPortal/LightApiController.php
+			path: ../../project-management/ExmentPluginPM/LightApiController.php
 
 		-
 			message: '#^Variable \$this on left side of \?\? is never defined\.$#'
 			identifier: nullCoalesce.variable
 			count: 1
-			path: ../../project-management/PmPortal/PluginEvent.php
+			path: ../../project-management/ExmentPluginPM/PluginEvent.php
 
 		-
 			message: '#^Call to static method user\(\) on an unknown class Admin\.$#'
 			identifier: class.notFound
 			count: 2
-			path: ../../project-management/PmPortal/PmPortalController.php
+			path: ../../project-management/ExmentPluginPM/PmPortalController.php
 
 		-
 			message: '#^Static call to instance method Exceedone\\Exment\\Model\\Menu\:\:where\(\)\.$#'
 			identifier: method.staticCall
 			count: 2
-			path: ../../project-management/PmPortal/PortalUpgrade.php
+			path: ../../project-management/ExmentPluginPM/PortalUpgrade.php

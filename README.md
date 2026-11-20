@@ -20,9 +20,11 @@ Exment Plugin Project Management is one Exment plugin:
 
 | Folder | Plugin | What it does | Download (for your own server) |
 |---|---|---|---|
-| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal — プロジェクト管理 (Exment Project Management) | Projects and tickets, and moving a project to another Exment (**⚙ Settings → データ移行**) | [PmPortal-1.2.0.zip](https://github.com/exceedone/exment-plugins/releases/download/PmPortal-v1.2.0/PmPortal-1.2.0.zip) |
+| [`project-management/ExmentPluginPM/`](project-management/ExmentPluginPM/) | Exment Plugin PM（プロジェクト管理） — plugin name `ExmentPluginPM` (was `PmPortal` until 1.2.0) | Projects and tickets, and moving a project to another Exment (**⚙ Settings → データ移行**) | [ExmentPluginPM-1.3.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentPluginPM-v1.3.0/ExmentPluginPM-1.3.0.zip) |
 
-Data migration used to be the separate PmMigrate plugin. Since PmPortal 1.2.0 it is part of PmPortal (**⚙ Settings → データ移行**, system administrators only), so PmMigrate is retired: after updating PmPortal you can delete PmMigrate in **Admin settings → Plugins**. Its last version stays on [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1).
+Since 1.3.0 the plugin's internal name is `ExmentPluginPM` (it was `PmPortal`). The address (`/admin/plugins/pm_portal`), the screens and your data do not change. **If you already use PmPortal, do not upload the new zip as it is** — Exment refuses it. Follow [Moving from PmPortal to ExmentPluginPM](project-management/README.md#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) once; after that, updates are uploaded as usual.
+
+Data migration used to be the separate PmMigrate plugin. Since 1.2.0 it is part of this plugin (**⚙ Settings → データ移行**, system administrators only), so PmMigrate is retired: after updating you can delete PmMigrate in **Admin settings → Plugins**. Its last version stays on [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1).
 
 Details are in the [README of the set](project-management/README.md).
 
@@ -48,7 +50,7 @@ In Exment, open **Admin → Plugin market → Install**.
 **Download**
 
 1. Open **[Releases](https://github.com/exceedone/exment-plugins/releases)** (right side of this page).
-2. Under the newest release of the plugin (for example **PmPortal 1.2.0**), click the zip in **Assets** (for example `PmPortal-1.2.0.zip`). Do not unzip it.
+2. Under the newest release of the plugin (for example **ExmentPluginPM 1.3.0**), click the zip in **Assets** (for example `ExmentPluginPM-1.3.0.zip`). Do not unzip it.
 
 Do not use the green **Code → Download ZIP** button: that is the whole repository, and Exment cannot read it.
 
@@ -62,7 +64,8 @@ Do not use the green **Code → Download ZIP** button: that is the whole reposit
 **Update to a newer version**
 
 1. Download the newer zip from Releases and upload it the same way. The plugin is replaced; your data stays.
-2. For Project Management (PmPortal): open it and press **⚙ Settings → Update data structure** if it asks.
+2. For Project Management (ExmentPluginPM): open it and press **⚙ Settings → Update data structure** if it asks.
+3. Coming from PmPortal (1.2.0 or older)? The upload is refused with "UUID exists but the plugin name is wrong". Do [Moving from PmPortal to ExmentPluginPM](project-management/README.md#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) first.
 
 ### GitHub and the market: what is different
 
@@ -142,9 +145,11 @@ Exment Plugin Project Management は、1 つの Exment プラグインです。
 
 | フォルダ | プラグイン | できること | ダウンロード（自分のサーバー用） |
 |---|---|---|---|
-| [`project-management/PmPortal/`](project-management/PmPortal/) | PmPortal — プロジェクト管理 (Exment Project Management) | プロジェクトとチケットの管理、プロジェクトを別の Exment に移す（**⚙ 設定 → データ移行**） | [PmPortal-1.2.0.zip](https://github.com/exceedone/exment-plugins/releases/download/PmPortal-v1.2.0/PmPortal-1.2.0.zip) |
+| [`project-management/ExmentPluginPM/`](project-management/ExmentPluginPM/) | Exment Plugin PM（プロジェクト管理） — プラグイン名 `ExmentPluginPM`（1.2.0 までは `PmPortal`） | プロジェクトとチケットの管理、プロジェクトを別の Exment に移す（**⚙ 設定 → データ移行**） | [ExmentPluginPM-1.3.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentPluginPM-v1.3.0/ExmentPluginPM-1.3.0.zip) |
 
-データ移行は、前は別のプラグイン PmMigrate でした。PmPortal 1.2.0 からは PmPortal の **⚙ 設定 → データ移行**（システム管理者だけ）に入ったので、PmMigrate は使い終わりです。PmPortal を新しくしたあと、**管理者設定 → プラグイン** で PmMigrate を消してかまいません。PmMigrate の最後の版は [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1) に残っています。
+1.3.0 から、プラグインの内部の名前が `ExmentPluginPM` になりました（前は `PmPortal`）。アドレス（`/admin/plugins/pm_portal`）・画面・データは変わりません。**すでに PmPortal を使っている場合は、新しい zip をそのままアップロードしないでください**（Exment が受け付けません）。先に 1 回だけ [PmPortal から ExmentPluginPM への移行](project-management/README.md#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) をします。そのあとは、今までどおりアップロードで新しくできます。
+
+データ移行は、前は別のプラグイン PmMigrate でした。1.2.0 からはこのプラグインの **⚙ 設定 → データ移行**（システム管理者だけ）に入ったので、PmMigrate は使い終わりです。プラグインを新しくしたあと、**管理者設定 → プラグイン** で PmMigrate を消してかまいません。PmMigrate の最後の版は [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1) に残っています。
 
 くわしくは [このセットの README](project-management/README.md) を見てください。
 
@@ -170,7 +175,7 @@ Exment の **管理 → プラグインマーケット → インストール** 
 **ダウンロード**
 
 1. このページの右側にある **[Releases](https://github.com/exceedone/exment-plugins/releases)** を開きます。
-2. 入れたいプラグインのいちばん新しい版（例: **PmPortal 1.2.0**）の **Assets** にある zip（例: `PmPortal-1.2.0.zip`）をクリックして保存します。zip は展開しません。
+2. 入れたいプラグインのいちばん新しい版（例: **ExmentPluginPM 1.3.0**）の **Assets** にある zip（例: `ExmentPluginPM-1.3.0.zip`）をクリックして保存します。zip は展開しません。
 
 緑の **Code → Download ZIP** ボタンは使わないでください。リポジトリ全体の zip なので、Exment は読めません。
 
@@ -184,7 +189,8 @@ Exment の **管理 → プラグインマーケット → インストール** 
 **新しい版にする**
 
 1. Releases から新しい版の zip をダウンロードし、同じようにアップロードします。プラグインが置きかわります。データは消えません。
-2. プロジェクト管理（PmPortal）の場合: 画面を開き、言われたら **⚙ 設定 → データ構造の更新** を押します。
+2. プロジェクト管理（ExmentPluginPM）の場合: 画面を開き、言われたら **⚙ 設定 → データ構造の更新** を押します。
+3. PmPortal（1.2.0 まで）から新しくする場合: アップロードは「UUIDは存在しますが、プラグイン名が正しくありません」と出て止まります。先に [PmPortal から ExmentPluginPM への移行](project-management/README.md#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) をします。
 
 ### GitHub とマーケットの違い
 
