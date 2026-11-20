@@ -5,18 +5,24 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPluginPM/`](ExmentPluginPM/) | Exment Plugin PM（プロジェクト管理） | 1.3.0 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.4.0 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
 | Name in the plugin list / プラグインの一覧に出る名前 | Exment Plugin PM（プロジェクト管理） |
-| Plugin name (`plugin_name`), folder, zip / 内部の名前・フォルダ・zip | `ExmentPluginPM`（1.2.0 までは `PmPortal`） |
-| PHP namespace | `App\Plugins\ExmentPluginPM` |
-| Address / アドレス | `/admin/plugins/pm_portal`（unchanged / 変えていません） |
-| Screen title and menu / 画面の見出しとメニュー | プロジェクト管理（unchanged / 変えていません） |
+| Plugin name (`plugin_name`), folder, zip / 内部の名前・フォルダ・zip | `ExmentPM`（1.2.0 までは `PmPortal`、1.3.0 は `ExmentPluginPM`） |
+| PHP namespace | `App\Plugins\ExmentPM` |
+| Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
+| Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-Until 1.2.0 the plugin was called `PmPortal`. If you already use PmPortal, see [Moving from PmPortal to ExmentPluginPM](#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) below.
-1.2.0 までは `PmPortal` という名前でした。すでに PmPortal を使っている場合は、下の [PmPortal から ExmentPluginPM への移行](#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) を見てください。
+**Changed in 1.4.0 / 1.4.0 で変わったこと**
+
+- The address is now `/admin/plugins/exment_pm` (on Exment SaaS `/plugins/exment_pm`). **Links and bookmarks to the old address `/admin/plugins/pm_portal/...` stop working ("404 not found")**: links in mails already sent, in issue bodies, comments and wiki pages, and browser bookmarks. Exment does not redirect them. The menu entry, the bell notifications and new mails use the new address by themselves. Links stored in issue bodies, comments and wiki pages can be rewritten once with [`tools/rewrite-old-links.php`](tools/rewrite-old-links.php) (optional).
+  アドレスが `/admin/plugins/exment_pm`（Exment SaaS では `/plugins/exment_pm`）になりました。**古いアドレス `/admin/plugins/pm_portal/...` へのリンクやブックマークは開けなくなります（「404 not found」）**。送信済みのメールのリンク、課題の本文・コメント・Wiki に書いたリンク、ブラウザのブックマークです。Exment は転送しません。メニュー・ベルのお知らせ・新しく送るメールは、何もしなくても新しいアドレスになります。課題の本文・コメント・Wiki に保存されたリンクは、[`tools/rewrite-old-links.php`](tools/rewrite-old-links.php) で 1 回書き換えられます（やらなくてもかまいません）。
+- The internal name is now `ExmentPM` (it was `ExmentPluginPM` in 1.3.0 and `PmPortal` before). An Exment that already has the plugin needs the steps in [Moving to ExmentPM](#moving-to-exmentpm-from-pmportal-or-exmentpluginpm--exmentpm-への移行) once.
+  内部の名前が `ExmentPM` になりました（1.3.0 は `ExmentPluginPM`、その前は `PmPortal`）。すでにプラグインが入っている Exment では、[ExmentPM への移行](#moving-to-exmentpm-from-pmportal-or-exmentpluginpm--exmentpm-への移行) を 1 回だけします。
+- The screens say プロジェクト管理 instead of ポータル (for example **プロジェクト管理の設定**, was ポータル設定).
+  画面の「ポータル」という言い方を「プロジェクト管理」に直しました（例: **プロジェクト管理の設定**。前は「ポータル設定」）。
 
 Data migration was the separate PmMigrate plugin until 1.2.0; it is now part of this plugin. PmMigrate is retired: after updating you can delete it in **Admin settings → Plugins** (its last version stays on [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1)).
 データ移行は、1.2.0 までは別のプラグイン PmMigrate でしたが、今はこのプラグインに入っています。PmMigrate は使い終わりです。プラグインを新しくしたあと、**管理者設定 → プラグイン** で消してかまいません（最後の版は [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1) に残っています）。
@@ -40,8 +46,8 @@ Data migration was the separate PmMigrate plugin until 1.2.0; it is now part of 
 
 ## Install / 入れ方
 
-1. Download `ExmentPluginPM-<version>.zip` from **[Releases](https://github.com/exceedone/exment-plugins/releases)**. Do not unzip it. (PmMigrate is no longer needed.)
-   **[Releases](https://github.com/exceedone/exment-plugins/releases)** から `ExmentPluginPM-<版>.zip` をダウンロードします。展開はしません（PmMigrate はもう要りません）。
+1. Download `ExmentPM-<version>.zip` from **[Releases](https://github.com/exceedone/exment-plugins/releases)**. Do not unzip it. (PmMigrate is no longer needed.)
+   **[Releases](https://github.com/exceedone/exment-plugins/releases)** から `ExmentPM-<版>.zip` をダウンロードします。展開はしません（PmMigrate はもう要りません）。
 2. Upload the zip in **Admin settings → Plugins → Plugin upload**. On Exment SaaS, use **Admin → Plugin market**.
    **管理者設定 → プラグイン → プラグインアップロード** で zip を送ります。Exment SaaS では **管理 → プラグインマーケット** から入れます。
 3. Open Project Management (**プロジェクト管理** in the menu) as an administrator and run the first-time setup. It creates the tables the portal uses.
@@ -49,88 +55,125 @@ Data migration was the separate PmMigrate plugin until 1.2.0; it is now part of 
 4. After installing a newer version, press **⚙ Settings → Update data structure** if the screen asks for it.
    新しい版を入れたあと、画面に言われたら **⚙ 設定 → データ構造の更新** を押します。
 
-## Moving from PmPortal to ExmentPluginPM / PmPortal から ExmentPluginPM への移行
+## Moving to ExmentPM (from PmPortal or ExmentPluginPM) / ExmentPM への移行
 
-Only for an Exment that already has **PmPortal** (1.2.0 or older). A new install does not need this.
-すでに **PmPortal**（1.2.0 まで）が入っている Exment だけの作業です。新しく入れる場合は要りません。
+Only for an Exment that already has **PmPortal** (1.2.0 or older) or **ExmentPluginPM** (1.3.0). A new install does not need this. Both go straight to ExmentPM with the same steps; below, `<OLD>` is the name you have now (`PmPortal` or `ExmentPluginPM`).
+すでに **PmPortal**（1.2.0 まで）か **ExmentPluginPM**（1.3.0）が入っている Exment だけの作業です。新しく入れる場合は要りません。どちらからでも、同じ手順で直接 ExmentPM にできます。下の `<OLD>` は、今入っている名前（`PmPortal` か `ExmentPluginPM`）です。
 
-Why: Exment treats an upload as an update only when both `plugin_name` and `uuid` are the same as an installed plugin. The `uuid` is unchanged and the name is new, so uploading the ExmentPluginPM zip on top of PmPortal stops with "UUID exists but the plugin name is wrong" and changes nothing. The steps below rename the installed plugin in place. The row in the `plugins` table keeps its id, so the settings, the menu, the role group permissions, the notifications and all data stay as they are.
-理由: Exment がアップロードを「更新」として扱うのは、`plugin_name` と `uuid` の両方が、入っているプラグインと同じときだけです。`uuid` は同じで名前だけ新しいので、PmPortal の上に ExmentPluginPM の zip をアップロードすると「UUIDは存在しますが、プラグイン名が正しくありません」と出て止まります（何も変わりません）。下の手順は、入っているプラグインの名前だけをその場で変えます。`plugins` テーブルの行の id は同じままなので、設定・メニュー・役割グループの権限・通知・データはそのまま残ります。
+Why: Exment treats an upload as an update only when both `plugin_name` and `uuid` are the same as an installed plugin. The `uuid` is unchanged and the name is new, so uploading the ExmentPM zip on top of the old plugin stops with "UUID exists but the plugin name is wrong" and changes nothing. The steps below rename the installed plugin in place and set its new address. The row in the `plugins` table keeps its id, so the settings, the menu, the role group permissions, the notifications and all data stay as they are.
+理由: Exment がアップロードを「更新」として扱うのは、`plugin_name` と `uuid` の両方が、入っているプラグインと同じときだけです。`uuid` は同じで名前だけ新しいので、古いプラグインの上に ExmentPM の zip をアップロードすると「UUIDは存在しますが、プラグイン名が正しくありません」と出て止まります（何も変わりません）。下の手順は、入っているプラグインの名前をその場で変え、新しいアドレスを入れます。`plugins` テーブルの行の id は同じままなので、設定・メニュー・役割グループの権限・通知・データはそのまま残ります。
 
-Do not delete or disable PmPortal and then upload the new zip: that makes a new plugin, and the settings, the menu entry and the permissions are lost.
-PmPortal を消したり無効にしたりしてから新しい zip をアップロードしないでください。別の新しいプラグインになり、設定・メニュー・権限が消えます。
+Do not delete or disable the old plugin and then upload the new zip: that makes a new plugin, and the settings, the menu entry and the permissions are lost.
+古いプラグインを消したり無効にしたりしてから新しい zip をアップロードしないでください。別の新しいプラグインになり、設定・メニュー・権限が消えます。
+
+What changes for users: the address becomes `/admin/plugins/exment_pm`. Links and bookmarks to `/admin/plugins/pm_portal/...` stop working; tell your users before you start.
+利用者に変わること: アドレスが `/admin/plugins/exment_pm` になります。`/admin/plugins/pm_portal/...` へのリンクやブックマークは開けなくなるので、作業の前に利用者に知らせてください。
 
 ### On your own server / 自分のサーバーの場合
 
-You need shell access to the server and to the database. Keep the order: files first, then the database. (If the name is changed while the new folder is missing, the portal answers 404 and Exment makes an empty `ExmentPluginPM` folder.)
-サーバーとデータベースに入れる人が作業します。順番を守ります（先にファイル、あとでデータベース）。新しいフォルダがないまま名前を変えると、ポータルは 404 になり、Exment が空の `ExmentPluginPM` フォルダを作ります。
+You need shell access to the server and to the database. Keep the order: files first, then the database. (If the name is changed while the new folder is missing, the screen answers 404 and Exment makes an empty `ExmentPM` folder.)
+サーバーとデータベースに入れる人が作業します。順番を守ります（先にファイル、あとでデータベース）。新しいフォルダがないまま名前を変えると、画面は 404 になり、Exment が空の `ExmentPM` フォルダを作ります。
 
-1. Back up the database and the folder `storage/app/plugins/PmPortal`.
-   データベースと `storage/app/plugins/PmPortal` フォルダのバックアップを取ります。
-2. Unzip `ExmentPluginPM-<version>.zip` into a new folder `storage/app/plugins/ExmentPluginPM` (so that `storage/app/plugins/ExmentPluginPM/config.json` exists). Give it the same owner as the `PmPortal` folder. Leave `PmPortal` where it is for now.
-   `ExmentPluginPM-<版>.zip` を、新しいフォルダ `storage/app/plugins/ExmentPluginPM` に展開します（`storage/app/plugins/ExmentPluginPM/config.json` ができる形）。持ち主は `PmPortal` フォルダと同じにします。`PmPortal` フォルダはまだ消しません。
+1. Back up the database and the folder `storage/app/plugins/<OLD>`.
+   データベースと `storage/app/plugins/<OLD>` フォルダのバックアップを取ります。
+2. Unzip `ExmentPM-<version>.zip` into a new folder `storage/app/plugins/ExmentPM` (so that `storage/app/plugins/ExmentPM/config.json` exists). Give it the same owner as the old folder. Leave the old folder where it is for now.
+   `ExmentPM-<版>.zip` を、新しいフォルダ `storage/app/plugins/ExmentPM` に展開します（`storage/app/plugins/ExmentPM/config.json` ができる形）。持ち主は古いフォルダと同じにします。古いフォルダはまだ消しません。
 
    ```
    cd /path/to/exment/storage/app/plugins
-   mkdir ExmentPluginPM && unzip -q /path/to/ExmentPluginPM-1.3.0.zip -d ExmentPluginPM
-   chown -R --reference=PmPortal ExmentPluginPM
+   mkdir ExmentPM && unzip -q /path/to/ExmentPM-1.4.0.zip -d ExmentPM
+   chown -R --reference=<OLD> ExmentPM
    ```
 
-   If the plugins are kept on S3 or another remote disk (`EXMENT_DRIVER_PLUGIN`), put the same files under `ExmentPluginPM/` there too.
-   プラグインを S3 などに置いている場合（`EXMENT_DRIVER_PLUGIN`）は、そこにも同じファイルを `ExmentPluginPM/` として置きます。
-3. Rename the plugin in the database. Connect with `utf8mb4` (for example `mysql --default-character-set=utf8mb4`), or the Japanese name is stored broken. The statement must change exactly 1 row.
-   データベースでプラグインの名前を変えます。`utf8mb4` でつなぎます（例: `mysql --default-character-set=utf8mb4`）。そうしないと日本語の名前が文字化けして入ります。変わる行は 1 行だけです。
+   If the plugins are kept on S3 or another remote disk (`EXMENT_DRIVER_PLUGIN`), put the same files under `ExmentPM/` there too.
+   プラグインを S3 などに置いている場合（`EXMENT_DRIVER_PLUGIN`）は、そこにも同じファイルを `ExmentPM/` として置きます。
+3. Rename the plugin and set the new address in the database. Connect with `utf8mb4` (for example `mysql --default-character-set=utf8mb4`), or the Japanese name is stored broken. The statement must change exactly 1 row. Note the old `plugin_name` and `version` first; you need them to go back.
+   データベースで、プラグインの名前を変え、新しいアドレスを入れます。`utf8mb4` でつなぎます（例: `mysql --default-character-set=utf8mb4`）。そうしないと日本語の名前が文字化けして入ります。変わる行は 1 行だけです。元に戻すときに使うので、先に今の `plugin_name` と `version` を控えます。
 
    ```sql
+   SELECT id, plugin_name, version, JSON_EXTRACT(options, '$.uri') AS uri
+     FROM plugins WHERE uuid = '00da3e93-1a24-4f44-b993-d61367e43649';
+
    UPDATE plugins
-      SET plugin_name = 'ExmentPluginPM',
+      SET plugin_name = 'ExmentPM',
           plugin_view_name = 'Exment Plugin PM（プロジェクト管理）',
-          version = '1.3.0',
+          version = '1.4.0',
+          options = JSON_SET(COALESCE(options, '{}'), '$.uri', 'exment_pm'),
           updated_at = NOW()
     WHERE uuid = '00da3e93-1a24-4f44-b993-d61367e43649'
-      AND plugin_name = 'PmPortal';
+      AND plugin_name IN ('PmPortal', 'ExmentPluginPM');
    ```
-4. Clear the caches (run as the user PHP runs as).
-   キャッシュを消します（PHP を動かしているユーザーで実行します）。
+
+   The address is the `uri` key in the `options` column. Uploading a zip also sets it from `config.json`, but the upload is refused while the name differs, so it is set here.
+   アドレスは `options` 列の `uri` です。zip のアップロードでも `config.json` の値が入りますが、名前が違う間はアップロードが止まるので、ここで入れます。
+4. Clear the caches (run as the user PHP runs as). If you use `php artisan route:cache`, build it again.
+   キャッシュを消します（PHP を動かしているユーザーで実行します）。`php artisan route:cache` を使っている場合は、作り直します。
 
    ```
    php artisan cache:clear
    php artisan view:clear
+   php artisan route:clear
    ```
-5. Open Project Management (`/admin/plugins/pm_portal`, the address is the same) and check your projects. Press **⚙ Settings → Update data structure** if it asks. **Admin settings → Plugins** now shows `ExmentPluginPM`.
-   プロジェクト管理（`/admin/plugins/pm_portal`、アドレスは同じ）を開き、プロジェクトが出ることを確かめます。言われたら **⚙ 設定 → データ構造の更新** を押します。**管理者設定 → プラグイン** には `ExmentPluginPM` と出ます。
-6. Delete the old folder `storage/app/plugins/PmPortal` (and `PmPortal/` on the remote disk).
-   古いフォルダ `storage/app/plugins/PmPortal` を消します（S3 などの `PmPortal/` も）。
-7. If a cron job runs the batch by name, change `--name=PmPortal` to `--name=ExmentPluginPM` (or use `--uuid=00da3e93-1a24-4f44-b993-d61367e43649`, which never changes).
-   cron でバッチを名前で呼んでいる場合は、`--name=PmPortal` を `--name=ExmentPluginPM` に変えます（`--uuid=00da3e93-1a24-4f44-b993-d61367e43649` なら変わりません）。
+5. Open Project Management from the menu (`/admin/plugins/exment_pm`) and check your projects. Press **⚙ Settings → Update data structure** if it asks. **Admin settings → Plugins** now shows `ExmentPM` with the URI `exment_pm`.
+   メニューからプロジェクト管理（`/admin/plugins/exment_pm`）を開き、プロジェクトが出ることを確かめます。言われたら **⚙ 設定 → データ構造の更新** を押します。**管理者設定 → プラグイン** には `ExmentPM`、URI は `exment_pm` と出ます。
+6. Delete the old folder `storage/app/plugins/<OLD>` (and `<OLD>/` on the remote disk).
+   古いフォルダ `storage/app/plugins/<OLD>` を消します（S3 などの `<OLD>/` も）。
+7. If a cron job runs the batch by name, change `--name=<OLD>` to `--name=ExmentPM` (or use `--uuid=00da3e93-1a24-4f44-b993-d61367e43649`, which never changes).
+   cron でバッチを名前で呼んでいる場合は、`--name=<OLD>` を `--name=ExmentPM` に変えます（`--uuid=00da3e93-1a24-4f44-b993-d61367e43649` なら変わりません）。
+8. Optional: rewrite the old links stored in issue bodies, comments and wiki pages. See [Old links in stored text](#old-links-in-stored-text-optional--保存されている古いリンクの書き換えやらなくてもよい).
+   やらなくてもよい作業: 課題の本文・コメント・Wiki に保存されている古いリンクを書き換えます。[保存されている古いリンクの書き換え](#old-links-in-stored-text-optional--保存されている古いリンクの書き換えやらなくてもよい) を見てください。
 
-From now on, update as usual: upload the newer `ExmentPluginPM-<version>.zip` in **Admin settings → Plugins**.
-これからは今までどおり、新しい `ExmentPluginPM-<版>.zip` を **管理者設定 → プラグイン** でアップロードして新しくします。
+From now on, update as usual: upload the newer `ExmentPM-<version>.zip` in **Admin settings → Plugins**.
+これからは今までどおり、新しい `ExmentPM-<版>.zip` を **管理者設定 → プラグイン** でアップロードして新しくします。
 
-To go back: run the same statement the other way round (`plugin_name = 'PmPortal'`, `plugin_view_name = 'プロジェクト管理'`, the old `version`), clear the caches, and keep using the `PmPortal` folder. This is why step 6 comes last.
-元に戻すとき: 同じ SQL を逆向きに実行し（`plugin_name = 'PmPortal'`、`plugin_view_name = 'プロジェクト管理'`、`version` は前の版）、キャッシュを消して、`PmPortal` フォルダを使い続けます。手順 6 を最後にしているのはこのためです。
+To go back: run the statement the other way round with the values you noted (`plugin_name = '<OLD>'`, the old `version`, `'$.uri', 'pm_portal'`; for PmPortal also `plugin_view_name = 'プロジェクト管理'`) `WHERE uuid = '...' AND plugin_name = 'ExmentPM'`, clear the caches, and keep using the old folder. This is why step 6 comes last.
+元に戻すとき: 控えた値で同じ SQL を逆向きに実行し（`plugin_name = '<OLD>'`、`version` は前の版、`'$.uri', 'pm_portal'`。PmPortal のときは `plugin_view_name = 'プロジェクト管理'` も。条件は `WHERE uuid = '...' AND plugin_name = 'ExmentPM'`）、キャッシュを消して、古いフォルダを使い続けます。手順 6 を最後にしているのはこのためです。
 
 ### On Exment SaaS / Exment SaaS の場合
 
-You do not need to do anything. Exceedone does the same rename for each tenant (the files go to the tenant's plugin folder on S3 as well as to the server).
-利用者の作業はありません。エクシード・ワンがテナントごとに同じ名前の変更をします（ファイルはサーバーに加えて、テナントの S3 のプラグイン置き場にも置きます）。
+You do not need to do anything. Exceedone does the same change for each tenant (the files go to the tenant's plugin folder on S3 as well as to the server). The address changes for you too: `/plugins/exment_pm` instead of `/plugins/pm_portal`.
+利用者の作業はありません。エクシード・ワンがテナントごとに同じ変更をします（ファイルはサーバーに加えて、テナントの S3 のプラグイン置き場にも置きます）。アドレスは同じように変わります（`/plugins/pm_portal` が `/plugins/exment_pm` になります）。
+
+### Old links in stored text (optional) / 保存されている古いリンクの書き換え（やらなくてもよい）
+
+Links to `/admin/plugins/pm_portal/...` that people wrote into issue bodies, comments and wiki pages are plain text in the database, so they keep the old address and end in 404. [`tools/rewrite-old-links.php`](tools/rewrite-old-links.php) rewrites them to `/admin/plugins/exment_pm/...`. Mails already sent and bookmarks cannot be fixed.
+課題の本文・コメント・Wiki に人が書いた `/admin/plugins/pm_portal/...` へのリンクは、データベースの中のただの文字なので、古いアドレスのまま残り、開くと 404 になります。[`tools/rewrite-old-links.php`](tools/rewrite-old-links.php) で `/admin/plugins/exment_pm/...` に書き換えられます。送信済みのメールとブックマークは直せません。
+
+The script is plain PHP (PDO); it does not start Exment. Take a database backup first. `--base` is the address of the Exment admin (the part before `/plugins/...`; no `/admin` on Exment SaaS). Only links of that Exment are rewritten; links to another Exment are left alone.
+このスクリプトはふつうの PHP（PDO）で、Exment は起動しません。先にデータベースのバックアップを取ります。`--base` は Exment の管理画面のアドレス（`/plugins/...` の前の部分。Exment SaaS では `/admin` は付きません）です。その Exment へのリンクだけを書き換え、ほかの Exment へのリンクは変えません。
+
+```
+export DB_HOST=... DB_DATABASE=... DB_USERNAME=... DB_PASSWORD=...     # DB_PORT, DB_SSL_CA if needed
+
+# 1. count only, changes nothing / 数えるだけ（何も変えない）
+php tools/rewrite-old-links.php --base=https://example.com/admin
+
+# 2. rewrite; the old texts are saved to the backup file / 書き換える（前の文章はバックアップのファイルに残す）
+php tools/rewrite-old-links.php --base=https://example.com/admin --apply --backup=old-links-backup.json
+
+# 3. undo / 元に戻す
+php tools/rewrite-old-links.php --rollback=old-links-backup.json
+```
+
+It looks in the issue table, the wiki table and Exment's `comment` table (`--tables=a,b` to choose), and with `--bells` also in the text of bell notifications. It changes only the texts that contain an old link; `updated_at` and the edit history stay as they are.
+見る場所は、課題のテーブル・Wiki のテーブル・Exment の `comment` テーブルです（`--tables=a,b` で選べます）。`--bells` を付けると、ベルのお知らせの文章も見ます。古いリンクがある文章だけを変え、`updated_at` と変更履歴は変えません。
 
 ## Development / 開発
 
 - Write PHP that runs on PHP 8.2.
   PHP 8.2 で動く書き方にします。
-- Raise `version` in `config.json` for each release, and never change `uuid`, `plugin_name` or `uri`. (`plugin_name` was changed once, in 1.3.0, and every install needed the manual steps above.)
-  出すたびに `config.json` の `version` を上げます。`uuid`・`plugin_name`・`uri` は変えません（`plugin_name` は 1.3.0 で 1 回だけ変えましたが、入っている環境すべてで上の手作業が必要になりました）。
-- Naming rule for the official plugins: the name in the plugin list is `Exment Plugin ○○（日本語名）`; `plugin_name`, the folder and the zip are `ExmentPlugin○○`, so that they do not collide with other vendors' plugins. Exment builds the namespace as `App\Plugins\<plugin_name>`. When `config.json` has no `uri`, Exment makes the address from the snake case of `plugin_name` (`ExmentPluginPM` would become `exment_plugin_p_m`), so always write `uri` in `config.json`.
-  公式プラグインの名前の決まり: 一覧に出る名前は `Exment Plugin ○○（日本語名）`、`plugin_name`・フォルダ・zip は `ExmentPlugin○○` にします（他社のプラグインと重ならないように）。Exment は namespace を `App\Plugins\<plugin_name>` にします。`config.json` に `uri` がないと、アドレスを `plugin_name` のスネークケースから作る（`ExmentPluginPM` は `exment_plugin_p_m` になる）ので、`config.json` には必ず `uri` を書きます。
-- To release, raise `version` in `config.json`, merge to `main`, then push a tag `<Folder>-v<version>` (for example `git tag ExmentPluginPM-v1.3.0 && git push origin ExmentPluginPM-v1.3.0`). The release workflow builds the zip (top `config.json` last) and publishes it on Releases.
-  出すときは、`config.json` の `version` を上げて `main` にマージし、`<フォルダ名>-v<版>` のタグ（例: `git tag ExmentPluginPM-v1.3.0 && git push origin ExmentPluginPM-v1.3.0`）を push します。release のワークフローが zip を作り（いちばん上の `config.json` を最後に入れる）、Releases に出します。
+- Raise `version` in `config.json` for each release, and never change `uuid`, `plugin_name` or `uri`. (`plugin_name` was changed in 1.3.0 and 1.4.0 and `uri` in 1.4.0; every install needed the manual steps above, and the old links broke.)
+  出すたびに `config.json` の `version` を上げます。`uuid`・`plugin_name`・`uri` は変えません（`plugin_name` は 1.3.0 と 1.4.0 で、`uri` は 1.4.0 で変えましたが、入っている環境すべてで上の手作業が必要になり、古いリンクも切れました）。
+- Naming rule for the official plugins: `plugin_name`, the folder, the namespace and the zip are `Exment<Name>` (`ExmentPM`), the `uri` is `exment_<name>` (`exment_pm`, always written in `config.json`), and the name in the plugin list is `Exment Plugin <Name>（日本語名）`. The full rule is in the [top-level README](../README.md#naming-rule-for-official-plugins).
+  公式プラグインの名前の決まり: `plugin_name`・フォルダ・namespace・zip は `Exment<名前>`（`ExmentPM`）、`uri` は `exment_<名前>`（`exment_pm`。`config.json` に必ず書く）、一覧に出る名前は `Exment Plugin <名前>（日本語名）` です。くわしくは [いちばん上の README](../README.md#公式プラグインの名前の決まり) にあります。
+- To release, raise `version` in `config.json`, merge to `main`, then push a tag `<Folder>-v<version>` (for example `git tag ExmentPM-v1.4.0 && git push origin ExmentPM-v1.4.0`). The release workflow builds the zip (top `config.json` last) and publishes it on Releases.
+  出すときは、`config.json` の `version` を上げて `main` にマージし、`<フォルダ名>-v<版>` のタグ（例: `git tag ExmentPM-v1.4.0 && git push origin ExmentPM-v1.4.0`）を push します。release のワークフローが zip を作り（いちばん上の `config.json` を最後に入れる）、Releases に出します。
 - After a release, update the download links (version numbers) in the top-level `README.md`.
   出したあとは、いちばん上の `README.md` のダウンロードのリンク（版の番号）を直します。
 - When you add tables or columns, raise `PortalSchema::VERSION` and add the step to `PortalUpgrade`.
   テーブルや列を足したら、`PortalSchema::VERSION` を上げ、`PortalUpgrade` に手順を足します。
-- UI text is in `ExmentPluginPM/resources/lang/ja/pmportal.php`. A key used by the screen's script must also be listed in `resources/views/index.blade.php`.
-  画面の文言は `ExmentPluginPM/resources/lang/ja/pmportal.php` にあります。画面のスクリプトで使う文言は、`resources/views/index.blade.php` の一覧にも足します。
+- UI text is in `ExmentPM/resources/lang/ja/pmportal.php`. A key used by the screen's script must also be listed in `resources/views/index.blade.php`.
+  画面の文言は `ExmentPM/resources/lang/ja/pmportal.php` にあります。画面のスクリプトで使う文言は、`resources/views/index.blade.php` の一覧にも足します。
 - After changing a blade file on a server, run `php artisan view:clear`.
   サーバーで blade を変えたら `php artisan view:clear` をします。
 

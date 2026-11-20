@@ -3,11 +3,11 @@ name: release
 # Builds the zip people upload to Exment and attaches it to a GitHub release.
 #
 # Push a tag named <PluginFolder>-v<version>, for example:
-#   git tag ExmentPluginPM-v1.3.0 && git push origin ExmentPluginPM-v1.3.0
+#   git tag ExmentPM-v1.4.0 && git push origin ExmentPM-v1.4.0
 # The version must equal "version" in that plugin's config.json.
 #
 # Why a built zip: Exment reads config.json at the top of the zip, and
-# ExmentPluginPM also has templates/pm_portal/config.json. The plugin market reads
+# ExmentPM also has templates/pm_portal/config.json. The plugin market reads
 # the last config.json it finds, so the top one has to be written last. Few
 # people get that right by hand; the workflow always does.
 on:
