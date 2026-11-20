@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\Storage;
  */
 class PublicController extends Controller
 {
+    /** Whether resolve() moved from the link's ticket to the one it was merged into. */
+    protected bool $followedMerge = false;
+
     protected function guard(): void
     {
         if (!Its::isInstalled() || Its::setting('public_enabled', '1') !== '1') {
@@ -276,17 +279,25 @@ class PublicController extends Controller
         if (!isset($ticket) || !boolval(array_get($ticket->value, 'customer_visible', '1'))) {
             return [null, null];
         }
-        // A merged ticket shows the one it went into.
-        // Only when the customer could see the survivor anyway: it is shown to
-        // customers and was asked by the same address. Otherwise the link
-        // stays on the merged (closed) ticket (ISS00411).
-        $into = array_get($ticket->value, 'merged_into');
-        if (!empty($into) && ($target = Tickets::find($into)) !== null) {
-            $email = Its::normalizeEmail(strval($row->email ?: array_get($ticket->value, 'requester_email')));
-            if ($email !== '' && boolval(array_get($target->value, 'customer_visible', '1'))
-                && Its::normalizeEmail(strval(array_get($target->value, 'requester_email'))) === $email) {
-                $ticket = $target;
+        // A merged ticket shows the one it went into - only when the customer
+        // could see the survivor anyway: shown to customers and asked by the
+        // same address. The address on the link was never verified (the public
+        // form takes any address), so following a merge always asks for the
+        // one-time code sent to it (see otpPassed). Otherwise the link stays on
+        // the merged ticket (ISS00411). A chain A -> B -> C is followed too.
+        $this->followedMerge = false;
+        $email = Its::normalizeEmail(strval($row->email ?: array_get($ticket->value, 'requester_email')));
+        for ($hop = 0; $hop < 5; $hop++) {
+            $into = array_get($ticket->value, 'merged_into');
+            if (empty($into) || ($target = Tickets::find($into)) === null) {
+                break;
             }
+            if ($email === '' || !boolval(array_get($target->value, 'customer_visible', '1'))
+                || Its::normalizeEmail(strval(array_get($target->value, 'requester_email'))) !== $email) {
+                break;
+            }
+            $ticket = $target;
+            $this->followedMerge = true;
         }
 
         return [$row, $ticket];
@@ -294,7 +305,7 @@ class PublicController extends Controller
 
     protected function otpPassed(object $row, CustomValue $ticket): bool
     {
-        if (!boolval(array_get($ticket->value, 'require_otp', '0'))) {
+        if (!$this->followedMerge && !boolval(array_get($ticket->value, 'require_otp', '0'))) {
             return true;
         }
         $until = intval(session()->get('its_otp_ok_' . $row->id, 0));

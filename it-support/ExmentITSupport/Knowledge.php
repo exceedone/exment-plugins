@@ -27,7 +27,7 @@ class Knowledge
             return [];
         }
 
-        $query = $table->getValueModel()->query()->withoutGlobalScopes();
+        $query = $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class);
         if ($publicOnly) {
             $query->where('value->public', '1');
         }
@@ -149,7 +149,7 @@ class Knowledge
         if (!isset($table) || !is_numeric($id)) {
             return null;
         }
-        $q = $table->getValueModel()->query()->withoutGlobalScopes();
+        $q = $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class);
         if ($publicOnly) {
             $q->where('value->public', '1');
         }
@@ -169,7 +169,7 @@ class Knowledge
 
         // Sorted here rather than in SQL: Exment runs on MySQL, MariaDB and
         // SQL Server, which disagree on how to cast a JSON value.
-        return $table->getValueModel()->query()->withoutGlobalScopes()->where('value->public', '1')
+        return $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->public', '1')
             ->orderByDesc('id')->limit(300)->get()
             ->sortByDesc(function ($row) {
                 return intval(array_get($row->value, 'views', 0)) * 2 + intval(array_get($row->value, 'helpful', 0)) * 5;

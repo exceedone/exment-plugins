@@ -34,7 +34,7 @@ class Tickets
 
     public static function query()
     {
-        return static::table()->getValueModel()->query()->withoutGlobalScopes();
+        return static::table()->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class);
     }
 
     public static function find($id): ?CustomValue
@@ -128,15 +128,15 @@ class Tickets
             return [null, null];
         }
 
-        $contact = $contacts->getValueModel()->query()->withoutGlobalScopes()->where('value->email', $email)->first();
+        $contact = $contacts->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->email', $email)->first();
         if (isset($contact)) {
             $cid = array_get($contact->value, 'customer');
-            $customer = $cid ? $customers->getValueModel()->query()->withoutGlobalScopes()->find($cid) : null;
+            $customer = $cid ? $customers->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($cid) : null;
 
             return [$customer, $contact];
         }
 
-        $customer = $customerId ? $customers->getValueModel()->query()->withoutGlobalScopes()->find($customerId) : static::customerByDomain($email);
+        $customer = $customerId ? $customers->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($customerId) : static::customerByDomain($email);
         if (!isset($customer)) {
             return [null, null];
         }
@@ -164,7 +164,7 @@ class Tickets
         }
         // Few customers per install; a scan is simpler than a JSON search on
         // a multi-line field, and exact on sub-domains.
-        foreach ($customers->getValueModel()->query()->withoutGlobalScopes()->cursor() as $customer) {
+        foreach ($customers->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->cursor() as $customer) {
             foreach (preg_split('/[\s,]+/', mb_strtolower(strval(array_get($customer->value, 'email_domains')))) as $d) {
                 $d = ltrim(trim($d), '@');
                 if ($d !== '' && ($domain === $d || str_ends_with($domain, '.' . $d))) {
@@ -237,7 +237,7 @@ class Tickets
     public static function messages(CustomValue $ticket, bool $customerOnly = false)
     {
         $table = Its::table(Its::T_MESSAGE);
-        $q = $table->getValueModel()->query()->withoutGlobalScopes()
+        $q = $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
             ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticket->id)->orderBy('id');
         if ($customerOnly) {
             $q->whereIn('value->kind', ['customer', 'reply']);
@@ -272,7 +272,7 @@ class Tickets
             return [];
         }
         $out = [];
-        foreach ($docs->getValueModel()->query()->withoutGlobalScopes()
+        foreach ($docs->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
             ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticket->id)->orderBy('id')->get() as $doc) {
             $uuid = strval(array_get($doc->value, 'file_uuid'));
             if ($allowed !== null && !isset($allowed[$uuid])) {
@@ -365,9 +365,12 @@ class Tickets
     public static function customerWrote(CustomValue $ticket, string $body, string $via, string $email, string $name = '', ?string $messageId = null, array $files = []): CustomValue
     {
         $status = strval(array_get($ticket->value, 'status'));
-        if ($status === 'closed') {
+        // A merged ticket is off every agent queue, so writing into it would
+        // reach nobody: that goes to a new ticket too (ISS00411).
+        $merged = !empty(array_get($ticket->value, 'merged_into'));
+        if ($status === 'closed' || $merged) {
             $closedAt = array_get($ticket->value, 'closed_at');
-            if (empty($closedAt) || Carbon::parse($closedAt)->diffInDays(Carbon::now()) > 14) {
+            if ($merged || empty($closedAt) || Carbon::parse($closedAt)->diffInDays(Carbon::now()) > 14) {
                 $new = static::create([
                     'subject' => strval(array_get($ticket->value, 'subject')),
                     'description' => '前のチケット ' . array_get($ticket->value, 'ticket_no') . ' の続きです。',
@@ -378,6 +381,8 @@ class Tickets
                     'requester_email' => $email ?: array_get($ticket->value, 'requester_email'),
                     'requester_name' => $name ?: array_get($ticket->value, 'requester_name'),
                     'assignee' => array_get($ticket->value, 'assignee'),
+                    'customer_visible' => array_get($ticket->value, 'customer_visible', '1'),
+                    'require_otp' => array_get($ticket->value, 'require_otp', '0'),
                 ], ['body' => $body, 'message_id' => $messageId], $files);
 
                 return $new;
@@ -500,7 +505,7 @@ class Tickets
     {
         $categoryId = array_get($ticket->value, 'category');
         if (!empty($categoryId) && ($categories = Its::table(Its::T_CATEGORY)) !== null) {
-            $category = $categories->getValueModel()->query()->withoutGlobalScopes()->find($categoryId);
+            $category = $categories->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($categoryId);
             $user = isset($category) ? array_get($category->value, 'default_assignee') : null;
             if (!empty($user)) {
                 return strval($user);
@@ -563,7 +568,7 @@ class Tickets
     {
         $users = CustomTable::getEloquent(SystemTableName::USER);
         $ids = static::agentIds();
-        $q = $users->getValueModel()->query()->withoutGlobalScopes();
+        $q = $users->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class);
         if (!empty($ids)) {
             $q->whereIn('id', $ids);
         }
@@ -603,7 +608,7 @@ class Tickets
             $out[$column] = [];
             $table = Its::table($table_name);
             if (!empty($ids) && isset($table)) {
-                foreach ($table->getValueModel()->query()->withoutGlobalScopes()->whereIn('id', array_unique($ids))->get() as $row) {
+                foreach ($table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->whereIn('id', array_unique($ids))->get() as $row) {
                     $out[$column][strval($row->id)] = strval(array_get($row->value, $label));
                 }
             }
@@ -615,7 +620,7 @@ class Tickets
             }
         }
         if (!empty($userIds)) {
-            foreach (CustomTable::getEloquent(SystemTableName::USER)->getValueModel()->query()->withoutGlobalScopes()->whereIn('id', array_unique($userIds))->get() as $u) {
+            foreach (CustomTable::getEloquent(SystemTableName::USER)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->whereIn('id', array_unique($userIds))->get() as $u) {
                 $out['assignee'][strval($u->id)] = strval(array_get($u->value, 'user_name'));
             }
         }
@@ -635,7 +640,7 @@ class Tickets
             return [];
         }
         $out = [];
-        foreach ($table->getValueModel()->query()->withoutGlobalScopes()->orderBy('id')->limit(1000)->get() as $row) {
+        foreach ($table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->orderBy('id')->limit(1000)->get() as $row) {
             if ($filter !== null && !$filter($row)) {
                 continue;
             }

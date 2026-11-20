@@ -304,6 +304,13 @@ class Schema
             $steps[] = 'テーブルを作りました（すでにあるテーブル・列はそのまま）。';
 
             static::registerPluginRow();
+            static::placeDeskMenu();
+
+            $before = intval(array_get(Its::state(), 'schema_version', 0));
+            if (!$fresh && $before < 2) {
+                $n = static::backfillAttachmentUuids();
+                $steps[] = "やりとりとファイルを {$n} 件つなぎました。";
+            }
 
             $granted = static::grantRoles();
             if ($granted > 0) {
@@ -334,6 +341,42 @@ class Schema
             Log::error('ExmentITSupport setup failed [' . $ref . ']: ' . $e->getMessage(), ['exception' => $e]);
 
             return ['ok' => false, 'message' => 'セットアップできませんでした（ログの番号: ' . $ref . '）。', 'steps' => $steps];
+        }
+    }
+
+    /**
+     * Apply a newer schema by itself the first time an agent opens the desk or
+     * the batch runs after an update, so a forgotten "テーブルを更新" can
+     * not leave the plugin writing to columns that are not there yet (Exment
+     * drops values for unknown columns without a word).
+     */
+    public static function ensureCurrent(): void
+    {
+        if (!static::needsUpgrade()) {
+            return;
+        }
+        // After a failed attempt, wait a while instead of retrying the whole
+        // install on every request.
+        if (\Illuminate\Support\Facades\Cache::has('its_schema_upgrade_failed')) {
+            return;
+        }
+        $lock = \Illuminate\Support\Facades\Cache::lock('its_schema_upgrade', 300);
+        if (!$lock->get()) {
+            return;
+        }
+        try {
+            Its::forget();
+            if (static::needsUpgrade()) {
+                $result = static::install(false);
+                if (!$result['ok']) {
+                    \Illuminate\Support\Facades\Cache::put('its_schema_upgrade_failed', true, 900);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Cache::put('its_schema_upgrade_failed', true, 900);
+            throw $e;
+        } finally {
+            $lock->release();
         }
     }
 
@@ -541,6 +584,95 @@ class Schema
         Its::forget();
     }
 
+    /**
+     * The desk is meant to be the first entry under ITサポート. On an install
+     * where another entry already sits at that place, it goes before it.
+     */
+    protected static function placeDeskMenu(): void
+    {
+        $desk = \DB::table('admin_menu')->where('menu_name', 'its_desk')->first();
+        if (!isset($desk)) {
+            return;
+        }
+        $min = \DB::table('admin_menu')->where('parent_id', $desk->parent_id)->where('id', '<>', $desk->id)->min('order');
+        if ($min !== null && intval($min) <= intval($desk->order)) {
+            \DB::table('admin_menu')->where('id', $desk->id)->update(['order' => max(0, intval($min) - 1)]);
+        }
+    }
+
+    /**
+     * Messages written before schema 2 do not say which files they carried.
+     * A file is linked to a customer message or a reply only when nothing
+     * else could own it: attach() stores the file just before it saves the
+     * message, so the file must be 0-30 seconds older than the message; no
+     * other message of any kind (an internal note included) may list the
+     * same name in that window; and the message may not have a second file
+     * of that name in it. Anything unclear stays hidden from the customer.
+     * Ticket by ticket, so a large install is not read at once.
+     */
+    public static function backfillAttachmentUuids(): int
+    {
+        $messages = Its::table(Its::T_MESSAGE);
+        $docs = CustomTable::getEloquent(\Exceedone\Exment\Enums\SystemTableName::DOCUMENT);
+        if (!isset($messages, $docs)) {
+            return 0;
+        }
+        $scope = \Exceedone\Exment\Model\CustomValueModelScope::class;
+        $ticketIds = $messages->getValueModel()->query()->withoutGlobalScope($scope)
+            ->where('parent_type', Its::T_TICKET)->whereIn('value->kind', ['customer', 'reply'])
+            ->whereNotNull('value->attachments')->where('value->attachments', '<>', '')
+            ->distinct()->pluck('parent_id')->all();
+
+        $names = function ($m) {
+            return array_values(array_filter(array_map('trim', explode(',', strval(array_get($m->value, 'attachments'))))));
+        };
+        $inWindow = function ($docAt, $msgAt) {
+            $gap = $msgAt - $docAt;
+
+            return $gap >= 0 && $gap <= 30;
+        };
+
+        $linked = 0;
+        foreach ($ticketIds as $ticketId) {
+            $all = $messages->getValueModel()->query()->withoutGlobalScope($scope)
+                ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticketId)->get();
+            $files = $docs->getValueModel()->query()->withoutGlobalScope($scope)
+                ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticketId)->get();
+            foreach ($files as $doc) {
+                $name = strval(array_get($doc->value, 'document_name'));
+                $docAt = \Carbon\Carbon::parse($doc->created_at)->getTimestamp();
+                $owners = $all->filter(function ($m) use ($name, $docAt, $names, $inWindow) {
+                    return in_array($name, $names($m), true) && $inWindow($docAt, \Carbon\Carbon::parse($m->created_at)->getTimestamp());
+                });
+                if ($owners->count() !== 1) {
+                    continue;
+                }
+                $m = $owners->first();
+                if (!in_array(strval(array_get($m->value, 'kind')), ['customer', 'reply'], true)) {
+                    continue;
+                }
+                $msgAt = \Carbon\Carbon::parse($m->created_at)->getTimestamp();
+                $twins = $files->filter(function ($d) use ($name, $msgAt, $inWindow) {
+                    return strval(array_get($d->value, 'document_name')) === $name && $inWindow(\Carbon\Carbon::parse($d->created_at)->getTimestamp(), $msgAt);
+                });
+                if ($twins->count() !== 1) {
+                    continue;
+                }
+                $have = array_values(array_filter(array_map('trim', explode(',', strval(array_get($m->value, 'attachment_uuids'))))));
+                $uuid = strval(array_get($doc->value, 'file_uuid'));
+                if ($uuid === '' || in_array($uuid, $have, true)) {
+                    continue;
+                }
+                $have[] = $uuid;
+                $m->setValue(['attachment_uuids' => implode(',', $have)]);
+                $m->save();
+                $linked++;
+            }
+        }
+
+        return $linked;
+    }
+
     protected static function grantRoles(): int
     {
         $created = 0;
@@ -595,7 +727,7 @@ class Schema
         $count = 0;
         foreach (static::seeds() as $table_name => $rows) {
             $table = Its::table($table_name);
-            if (!isset($table) || $table->getValueModel()->query()->withoutGlobalScopes()->exists()) {
+            if (!isset($table) || $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->exists()) {
                 continue;
             }
             foreach ($rows as $row) {

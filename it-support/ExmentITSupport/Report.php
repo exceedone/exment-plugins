@@ -56,7 +56,7 @@ class Report
 
         // Work time by customer from the messages of the month.
         $minutesByTicket = [];
-        foreach (Its::table(Its::T_MESSAGE)->getValueModel()->query()->withoutGlobalScopes()
+        foreach (Its::table(Its::T_MESSAGE)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
             ->where('parent_type', Its::T_TICKET)->whereBetween('created_at', [$from, $to])->get(['parent_id', 'value']) as $m) {
             $minutesByTicket[$m->parent_id] = ($minutesByTicket[$m->parent_id] ?? 0) + intval(array_get($m->value, 'time_spent', 0));
         }
@@ -67,7 +67,7 @@ class Report
             }
         }
 
-        $customers = Its::table(Its::T_CUSTOMER)->getValueModel()->query()->withoutGlobalScopes()->get()->keyBy('id');
+        $customers = Its::table(Its::T_CUSTOMER)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->get()->keyBy('id');
         $by = [];
         $row = function ($cid) use (&$by, $customers) {
             $key = $cid === '' ? '0' : $cid;
@@ -158,7 +158,7 @@ class Report
         }
         arsort($byAgent);
 
-        $deflect = Its::table(Its::T_KNOWLEDGE)->getValueModel()->query()->withoutGlobalScopes()->where('value->public', '1')->get();
+        $deflect = Its::table(Its::T_KNOWLEDGE)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->public', '1')->get();
 
         return [
             'kpi' => [

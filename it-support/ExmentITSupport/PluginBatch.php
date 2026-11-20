@@ -15,6 +15,7 @@ class PluginBatch extends PluginBatchBase
         if (!Its::isInstalled()) {
             return true;
         }
+        Schema::ensureCurrent();
         Automation::run();
 
         return true;

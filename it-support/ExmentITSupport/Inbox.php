@@ -124,6 +124,17 @@ class Inbox
             }
         }
 
+        // A reply quoting a merged ticket belongs to the ticket it went into,
+        // when that is the same person's and shown to customers.
+        for ($hop = 0; isset($ticket) && $hop < 5 && !empty($into = array_get($ticket->value, 'merged_into')); $hop++) {
+            $target = Tickets::find($into);
+            if (!isset($target) || !boolval(array_get($target->value, 'customer_visible', '1'))
+                || Its::normalizeEmail(strval(array_get($target->value, 'requester_email'))) !== Its::normalizeEmail($mail['from'])) {
+                break;
+            }
+            $ticket = $target;
+        }
+
         if (isset($ticket) && !$suspicious) {
             $after = Tickets::customerWrote($ticket, $body, 'mail', $mail['from'], $mail['from_name'], $mail['message_id'] ?: null, $files);
 
@@ -286,8 +297,8 @@ class Inbox
         }
         $code = trim(strval($data['customer'] ?? $data['customer_code'] ?? ''));
         if ($code !== '') {
-            $hit = $customers->getValueModel()->query()->withoutGlobalScopes()->where('value->code', $code)->first()
-                ?? $customers->getValueModel()->query()->withoutGlobalScopes()->where('value->name', $code)->first();
+            $hit = $customers->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->code', $code)->first()
+                ?? $customers->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->name', $code)->first();
             if (isset($hit)) {
                 return $hit;
             }
