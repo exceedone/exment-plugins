@@ -15,7 +15,7 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 | Folder | Name | What it does | Status |
 |---|---|---|---|
 | [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification, data migration) | In use on Exment SaaS |
-| [`it-support/`](it-support/) | Exment Plugin IT Support | IT support / help desk (mail intake, no-login progress links, customer portal, SLA, knowledge base, IT assets, alert intake, reports) | In development |
+| [`it-support/`](it-support/) | Exment Plugin IT Support | IT support / help desk (mail intake, no-login progress links, customer portal, SLA, knowledge base, IT assets, alert intake, reports) | Released 1.0.0 — [ExmentITSupport-1.0.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentITSupport-v1.0.0/ExmentITSupport-1.0.0.zip) |
 
 Exment Plugin Project Management is one Exment plugin:
 
@@ -162,7 +162,7 @@ cd .github/ci && composer update --ignore-platform-req='ext-*' && vendor/bin/php
 | フォルダ | 名前 | できること | 状態 |
 |---|---|---|---|
 | [`project-management/`](project-management/) | Exment Plugin Project Management | プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知・データ移行） | Exment SaaS で利用中 |
-| [`it-support/`](it-support/) | Exment Plugin IT Support | ITサポート・ヘルプデスク（メール受付・ログインなしの進み具合の共有・顧客ポータル・SLA・ナレッジ・IT 資産・監視からの起票・レポート） | 開発中 |
+| [`it-support/`](it-support/) | Exment Plugin IT Support | ITサポート・ヘルプデスク（メール受付・ログインなしの進み具合の共有・顧客ポータル・SLA・ナレッジ・IT 資産・監視からの起票・レポート） | 1.0.0 — [ExmentITSupport-1.0.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentITSupport-v1.0.0/ExmentITSupport-1.0.0.zip) |
 
 Exment Plugin Project Management は、1 つの Exment プラグインです。
 
