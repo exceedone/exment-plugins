@@ -92,7 +92,7 @@
 .pp-dash .pp-pj .ar{flex:none;background:#7f8c8d;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;
     font-weight:700;line-height:1.6;white-space:nowrap;}
 /* the fixed columns - caption row and project rows share these widths */
-.pp-dash .pp-pjlist .cd{flex:none;width:104px;box-sizing:border-box;}
+.pp-dash .pp-pjlist .cd{flex:none;width:170px;box-sizing:border-box;}
 .pp-dash .pp-pjlist .ps{flex:none;width:56px;text-align:center;overflow:hidden;line-height:1;}
 .pp-dash .pp-pjlist .pg{flex:none;width:84px;display:flex;align-items:center;justify-content:flex-end;gap:6px;}
 .pp-dash .pp-pjlist .op{flex:none;width:46px;text-align:right;}
