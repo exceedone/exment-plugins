@@ -548,7 +548,8 @@ class PortalUpgrade
     }
 
     /**
-     * Put the notified-users column on the saved notification's target list.
+     * Put the notified-users column, and since schema 27 the sub-assignee,
+     * manager and reviewer columns, on the saved notification's target list.
      *
      * missingNotifies() only ever adds whole notifications, so an install
      * that already had the issue notification when the column arrived kept
@@ -561,18 +562,29 @@ class PortalUpgrade
      */
     protected static function syncNotifyTargets(array $names): int
     {
-        $column_name = array_get(PortalDefinition::config(), 'issue_extra.notified_users', PortalSchema::ISSUE_COLUMNS['notified_users']);
         $table = CustomTable::getEloquent($names['issue_table']);
-        $column = isset($table) ? CustomColumn::getEloquent($column_name, $table) : null;
-        if (!isset($column)) {
+        if (!isset($table)) {
             return 0;
         }
-        // A saved notification names its column targets by id - the
-        // assignees target already reads "651", not "pm_issue.assignees".
-        // The dotted form only exists inside template files, where the
-        // importer translates it; stored raw it would never match a user.
-        $target = strval($column->id);
-        $dotted = $names['issue_table'] . '.' . $column_name;
+        // Schema 27: the sub-assignees, managers and reviewers are told too.
+        $wanted = [];
+        $dotted = [];
+        foreach (array_merge(['notified_users'], PortalSchema::ROLE_COLUMNS) as $role) {
+            $column_name = array_get(PortalDefinition::config(), 'issue_extra.' . $role, PortalSchema::ISSUE_COLUMNS[$role]);
+            $column = CustomColumn::getEloquent($column_name, $table);
+            if (!isset($column)) {
+                continue;
+            }
+            // A saved notification names its column targets by id - the
+            // assignees target already reads "651", not "pm_issue.assignees".
+            // The dotted form only exists inside template files, where the
+            // importer translates it; stored raw it would never match a user.
+            $wanted[] = strval($column->id);
+            $dotted[] = $names['issue_table'] . '.' . $column_name;
+        }
+        if (empty($wanted)) {
+            return 0;
+        }
 
         $changed = 0;
         $name = PortalSetup::prefix() . PortalSchema::NOTIFY_ISSUE_SAVED;
@@ -589,10 +601,12 @@ class PortalUpgrade
                 }
                 // absorb the dotted form an earlier run may have written
                 $cleaned = array_values(array_filter($targets, function ($t) use ($dotted) {
-                    return $t !== $dotted;
+                    return !in_array($t, $dotted, true);
                 }));
-                if (!in_array($target, $cleaned)) {
-                    $cleaned[] = $target;
+                foreach ($wanted as $target) {
+                    if (!in_array($target, $cleaned)) {
+                        $cleaned[] = $target;
+                    }
                 }
                 if ($cleaned == $targets) {
                     continue;

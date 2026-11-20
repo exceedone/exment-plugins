@@ -2286,6 +2286,13 @@ window.PmPortalBoot = function () {
         var props = [
             [L.col_st, pill(i.st)], [L.col_pr, prio(i.pr)],
             [L.col_as, (i.as || []).map(function (u) { return avname(u); }).join('<br>') || '—'],
+            // Schema 27 (ISS00252): the other people on the issue.
+            [L.lbl_sub_assignees, (i.sa || []).map(function (u) { return avname(u); }).join('<br>')],
+            [L.lbl_managers, (i.mg || []).map(function (u) { return avname(u); }).join('<br>')],
+            [L.lbl_reviewers, (i.rv || []).map(function (u) { return avname(u); }).join('<br>')],
+            [L.lbl_difficulty, i.df ? esc(L['df_' + i.df] || i.df) : ''],
+            // An import's author is the source's; Exment's is the importer.
+            [L.lbl_author, res.source && res.source.cby ? esc(res.source.cby) : (i.by ? avname(i.by) : '')],
             [L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:5px;"></i>' + esc(ms.l) : '—'],
             [L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
@@ -6225,6 +6232,9 @@ window.PmPortalBoot = function () {
         var x = D.issue_extra_cols || {};
         var rows = [
             [c.status || null, c.assignees || null],
+            // Schema 27: the other people, beside the assignees.
+            [x.sub_assignees || null, x.managers || null],
+            [x.reviewers || null, x.difficulty || null],
             [c.priority || null, c.milestone || null],
             [c.category || null, x.versions || null],
             [c.start || null, c.due || null],

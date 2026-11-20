@@ -114,8 +114,16 @@ class PortalSchema
      * before 1.4.1's menu tidy took that number. Both are safe to run
      * again: the template importer only adds a column a table has not
      * got, and the menu tidy removes entries by name.
+     *
+     * 27: who else an issue belongs to (ISS00252). Beside the assignees, the
+     * sub-assignees who help, the managers who answer for it and the
+     * reviewers who check it, and how hard it is. The three people columns
+     * join the issue notification's targets the way the notify column did,
+     * so naming someone tells them. The author is Exment's own created_user
+     * (or, for an import, the source's author) and the watchers are the
+     * notify column, so neither needs a column of its own.
      */
-    const VERSION = 26;
+    const VERSION = 27;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -164,7 +172,22 @@ class PortalSchema
         'source_updated_by' => 'source_updated_by',
         'source_updated_at' => 'source_updated_at',
         'custom_fields' => 'custom_fields',
+        // Schema 27: the other roles on an issue, and its difficulty.
+        'sub_assignees' => 'sub_assignees',
+        'managers' => 'managers',
+        'reviewers' => 'reviewers',
+        'difficulty' => 'difficulty',
     ];
+
+    /**
+     * Schema 27: the people columns besides the assignees, in the order the
+     * screens show them. Each is told about the issue like the notify
+     * column, and has to be on the project.
+     */
+    const ROLE_COLUMNS = ['sub_assignees', 'managers', 'reviewers'];
+
+    /** Schema 27: the difficulty choices, easiest first. */
+    const DIFFICULTIES = ['easy', 'normal', 'hard'];
 
     /** Columns added to the milestone table by this schema (26). */
     const MILESTONE_COLUMNS = [
@@ -433,11 +456,15 @@ class PortalSchema
                         // In-app, not mail: whoever has to act on the issue,
                         // whoever asked to hear about it, and whoever opened it
                         // - the circle Backlog tells on every update.
-                        'notify_action_target' => [
+                        'notify_action_target' => array_merge([
                             $n['issue_table'] . '.' . array_get($issue, 'assignees'),
                             $n['issue_table'] . '.' . array_get($extra, 'notified_users', 'notified_users'),
+                        ], array_map(function ($role) use ($n, $extra) {
+                            // Schema 27: sub-assignees, managers, reviewers.
+                            return $n['issue_table'] . '.' . array_get($extra, $role, $role);
+                        }, self::ROLE_COLUMNS), [
                             'created_user',
-                        ],
+                        ]),
                         // Exment expands ${value:column} when it sends. The
                         // placeholder is named :field rather than :subject so
                         // that the colon inside the value cannot collide with
@@ -794,6 +821,24 @@ class PortalSchema
             'freeword_search' => '1',
             'help' => PortalDefinition::trans('schema.help.custom_fields'),
         ], 66);
+
+        // Schema 27: the other people on the issue, right after the
+        // assignees (same order; Exment then orders by creation), and the
+        // difficulty with the other judgements. Indexed: the lists filter
+        // on them like on the assignees.
+        foreach (self::ROLE_COLUMNS as $role) {
+            $columns[] = static::column($ic[$role], 'issue.' . $role, 'user', [
+                'multiple_enabled' => '1',
+                'index_enabled' => '1',
+                'grid_style' => 'avatar',
+                'help' => PortalDefinition::trans('schema.help.' . $role),
+            ], 7);
+        }
+        $columns[] = static::column($ic['difficulty'], 'issue.difficulty', 'select_valtext', [
+            'index_enabled' => '1',
+            'select_item_valtext' => static::valtext(self::DIFFICULTIES, 'issue.difficulties.'),
+            'help' => PortalDefinition::trans('schema.help.difficulty'),
+        ], 25);
 
         return ['table_name' => $n['issue_table'], 'custom_columns' => $columns];
     }
