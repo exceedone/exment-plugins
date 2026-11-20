@@ -1271,7 +1271,7 @@ class PortalUpgrade
         $count = 0;
 
         $find = function (string $name) {
-            return Menu::where('menu_name', $name)->first();
+            return Menu::query()->where('menu_name', $name)->first();
         };
 
         // Table entries under a node, by the names the plugin gave them.
@@ -1279,7 +1279,7 @@ class PortalUpgrade
             if (!isset($node)) {
                 return;
             }
-            $rows = Menu::where('parent_id', $node->id)
+            $rows = Menu::query()->where('parent_id', $node->id)
                 ->where('menu_type', MenuType::TABLE)
                 ->whereIn('menu_name', array_values(array_unique(array_filter($tableNames))))
                 ->get();
@@ -1291,7 +1291,7 @@ class PortalUpgrade
 
         // A node goes only when nothing is left under it.
         $dropNode = function ($node) use (&$count) {
-            if (!isset($node) || Menu::where('parent_id', $node->id)->exists()) {
+            if (!isset($node) || Menu::query()->where('parent_id', $node->id)->exists()) {
                 return;
             }
             $node->delete();
