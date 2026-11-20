@@ -4,7 +4,7 @@
     "plugin_view_name": "Exment Plugin IT Support（ITサポート）",
     "description": "ITサポート・ヘルプデスク。メール受付・ログインなしの進み具合の共有・顧客ポータル・SLA・ナレッジ（FAQ）・IT資産・エラーログからの自動起票・レポート。Exment の標準テーブル上に作るので、項目や画面はあとから自由に変えられます。",
     "author": "Exceedone",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "plugin_type": "page,batch,event",
     "uri": "exment_it_support",
     "event_triggers": ["saving", "saved"],

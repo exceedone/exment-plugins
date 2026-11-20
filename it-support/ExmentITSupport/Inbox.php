@@ -286,8 +286,8 @@ class Inbox
         }
         $code = trim(strval($data['customer'] ?? $data['customer_code'] ?? ''));
         if ($code !== '') {
-            $hit = $customers->getValueModel()->query()->withoutGlobalScopes()->where('value->code', $code)->first()
-                ?? $customers->getValueModel()->query()->withoutGlobalScopes()->where('value->name', $code)->first();
+            $hit = $customers->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->code', $code)->first()
+                ?? $customers->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->name', $code)->first();
             if (isset($hit)) {
                 return $hit;
             }

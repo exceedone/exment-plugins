@@ -135,10 +135,10 @@ class Sla
     {
         $customerId = array_get($ticket->value, 'customer');
         if (!empty($customerId) && ($customers = Its::table(Its::T_CUSTOMER)) !== null) {
-            $customer = $customers->getValueModel()->query()->withoutGlobalScopes()->find($customerId);
+            $customer = $customers->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($customerId);
             $slaId = isset($customer) ? array_get($customer->value, 'sla') : null;
             if (!empty($slaId) && ($slas = Its::table(Its::T_SLA)) !== null) {
-                $sla = $slas->getValueModel()->query()->withoutGlobalScopes()->find($slaId);
+                $sla = $slas->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($slaId);
                 if (isset($sla)) {
                     return $sla;
                 }
@@ -150,7 +150,7 @@ class Sla
             return null;
         }
 
-        return $slas->getValueModel()->query()->withoutGlobalScopes()->where('value->is_default', '1')->first();
+        return $slas->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->is_default', '1')->first();
     }
 
     /**

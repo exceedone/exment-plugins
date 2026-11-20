@@ -141,7 +141,7 @@ class Automation
         $until = Carbon::today()->addDays($days)->format('Y-m-d');
         $made = 0;
         foreach (['warranty_end' => '保守・保証', 'expires_on' => 'ライセンス・ドメイン・証明書'] as $column => $label) {
-            foreach ($assets->getValueModel()->query()->withoutGlobalScopes()
+            foreach ($assets->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
                 ->whereNotNull('value->' . $column)->where('value->' . $column, '<=', $until)->where('value->' . $column, '>=', $today)->cursor() as $asset) {
                 $date = strval(array_get($asset->value, $column));
                 $fingerprint = 'asset:' . $asset->id . ':' . $column . ':' . $date;
@@ -216,7 +216,7 @@ class Automation
             } catch (\Throwable $e) {
                 Log::warning('ExmentITSupport navbar notify failed: ' . $e->getMessage());
             }
-            $user = $users->getValueModel()->query()->withoutGlobalScopes()->find($id);
+            $user = $users->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($id);
             $email = isset($user) ? strval(array_get($user->value, 'email')) : '';
             if (Its::isEmail($email)) {
                 try {

@@ -88,6 +88,7 @@ class Desk
         if (!Its::isInstalled()) {
             return redirect(Its::url('setup'));
         }
+        Schema::ensureCurrent();
         if ($adminOnly ? !static::isAdmin() : !static::isAgent()) {
             return $adminOnly ? response($this->view('denied')->render(), 403) : redirect(Its::url('my'));
         }
@@ -175,7 +176,7 @@ class Desk
         // The newest message of each ticket, for the preview line.
         $last = [];
         if ($tickets->isNotEmpty()) {
-            foreach (Its::table(Its::T_MESSAGE)->getValueModel()->query()->withoutGlobalScopes()
+            foreach (Its::table(Its::T_MESSAGE)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
                 ->where('parent_type', Its::T_TICKET)->whereIn('parent_id', $tickets->pluck('id')->all())
                 ->where('value->kind', '<>', 'system')->orderByDesc('id')->limit(1000)->get(['id', 'parent_id', 'value']) as $m) {
                 if (!isset($last[$m->parent_id])) {
@@ -257,9 +258,9 @@ class Desk
         }
         $v = (array) $ticket->value;
         $customerId = $v['customer'] ?? null;
-        $customer = !empty($customerId) ? Its::table(Its::T_CUSTOMER)->getValueModel()->query()->withoutGlobalScopes()->find($customerId) : null;
+        $customer = !empty($customerId) ? Its::table(Its::T_CUSTOMER)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($customerId) : null;
         $assetId = $v['asset'] ?? null;
-        $asset = !empty($assetId) ? Its::table(Its::T_ASSET)->getValueModel()->query()->withoutGlobalScopes()->find($assetId) : null;
+        $asset = !empty($assetId) ? Its::table(Its::T_ASSET)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($assetId) : null;
         $related = [];
         if (!empty($customerId)) {
             $related = Tickets::query()->where('value->customer', strval($customerId))->where('id', '<>', $ticket->id)->orderByDesc('id')->limit(6)->get();
@@ -447,7 +448,7 @@ class Desk
                 continue;
             }
             $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $word) . '%';
-            $messageTicketIds = Its::table(Its::T_MESSAGE)->getValueModel()->query()->withoutGlobalScopes()
+            $messageTicketIds = Its::table(Its::T_MESSAGE)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
                 ->where('parent_type', Its::T_TICKET)->where('value->body', 'like', $like)->limit(2000)->pluck('parent_id')->all();
             $q->where(function ($w) use ($like, $messageTicketIds) {
                 foreach (['ticket_no', 'subject', 'description', 'requester_name', 'requester_email', 'tags'] as $col) {
@@ -540,7 +541,7 @@ class Desk
             return [];
         }
 
-        return $table->getValueModel()->query()->withoutGlobalScopes()->orderBy('id')->limit(200)->get()->map(function ($t) {
+        return $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->orderBy('id')->limit(200)->get()->map(function ($t) {
             return ['id' => intval($t->id), 'name' => strval(array_get($t->value, 'name')), 'body' => strval(array_get($t->value, 'body')), 'status' => strval(array_get($t->value, 'set_status'))];
         })->all();
     }
@@ -553,7 +554,7 @@ class Desk
             return 0;
         }
 
-        return intval(Its::table(Its::T_MESSAGE)->getValueModel()->query()->withoutGlobalScopes()
+        return intval(Its::table(Its::T_MESSAGE)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
             ->where('parent_type', Its::T_TICKET)->whereIn('parent_id', $ticketIds)->where('created_at', '>=', $start)
             ->get(['value'])->sum(function ($m) {
                 return intval(array_get($m->value, 'time_spent', 0));
@@ -842,7 +843,7 @@ class Desk
         }
         $user = \Exment::user();
         $email = Its::normalizeEmail(strval(optional($user->base_user)->getValue('email')));
-        $contacts = Its::table(Its::T_CONTACT)->getValueModel()->query()->withoutGlobalScopes()
+        $contacts = Its::table(Its::T_CONTACT)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
             ->where(function ($w) use ($user, $email) {
                 $w->where('value->user', strval($user->getUserId()));
                 if ($email !== '') {
