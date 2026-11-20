@@ -1830,6 +1830,26 @@ window.PmPortalBoot = function () {
 
         return !(box && box.value.trim() !== '');
     }
+    // ISS00257: after a save, fetch the project's data and draw the screens
+    // again in place, instead of reloading the whole page (its HTML, the
+    // portal's script and every widget). hash: the screen to go to once the
+    // data is in, e.g. the issue just created. flash: said when it is done.
+    // Falls back to the reload it replaces when the data cannot be fetched
+    // or something half-written is on the screen.
+    function softReload(hash, flash) {
+        refreshData(true, function (ok) {
+            if (!ok) {
+                if (flash) {
+                    try { sessionStorage.setItem('pp-ne-saved-flash', flash); } catch (e) { /* private mode */ }
+                }
+                if (hash) { location.hash = hash; }
+                location.reload();
+                return;
+            }
+            if (flash) { toast(flash); }
+            if (hash && location.hash.slice(1) !== hash) { location.hash = hash; }
+        });
+    }
     // quiet: the caller has already said something about why the data moved,
     // so a second toast would only talk over it.
     // done: called with whether the screen really was rebuilt, for a caller
@@ -4055,7 +4075,7 @@ window.PmPortalBoot = function () {
             // throw away. The refresh button says there is news instead.
             setTimeout(function () {
                 if (!alive()) { return; }
-                if (safeToRefresh()) { location.reload(); } else { markStale(true); }
+                if (safeToRefresh()) { softReload(); } else { markStale(true); }
             }, 600);
         }).fail(function (xhr) {
             if (alive()) { toast(xhrErr(xhr, L.files_up_fail), true); }
@@ -4386,7 +4406,7 @@ window.PmPortalBoot = function () {
                 if (!box.value.trim()) { ppDockOpen(false); }
                 if (statusTo) {
                     setTimeout(function () {
-                        if (current() && safeToRefresh()) { location.reload(); }
+                        if (current() && safeToRefresh()) { softReload(); }
                     }, 500);
                 }
             }).fail(function (xhr) {
@@ -5167,10 +5187,7 @@ window.PmPortalBoot = function () {
             }
             if (res.message) { toast(res.message); }
             // Back to the list, drawn again without the issue.
-            setTimeout(function () {
-                history.replaceState(null, '', location.pathname + location.search + '#issues');
-                location.reload();
-            }, 400);
+            setTimeout(function () { softReload('issues'); }, 400);
         }).fail(function (xhr) {
             link.dataset.busy = '';
             toast(xhrErr(xhr, L.issue_del_fail), true);
@@ -5519,9 +5536,11 @@ window.PmPortalBoot = function () {
         toast(L.m_saved);
         var mi = path.match(new RegExp('/data/' + D.issue_table + '/(\\d+)$'));
         var mw = path.match(new RegExp('/data/' + D.wiki_table + '/(\\d+)$'));
-        if (mi) { location.hash = 'issue-' + mi[1]; }
-        else if (mw) { location.hash = 'wiki-' + mw[1]; }
-        setTimeout(function () { location.reload(); }, 400);
+        var hash = mi ? 'issue-' + mi[1] : (mw ? 'wiki-' + mw[1] : null);
+        setTimeout(function () {
+            FM.reloading = false;
+            softReload(hash);
+        }, 400);
     }
     // One idempotent sync covers both full loads and pjax swaps inside the
     // frames: style whichever frame is ready, close when the active form
@@ -8963,18 +8982,23 @@ window.PmPortalBoot = function () {
                 setTimeout(function () {
                     if (!nedCurrent(epoch) || (!isCreate && NED.busy)) { return; }
                     if (nedDirty()) { restore(); nedPreserveEdits(); return; }
-                    try {
-                        sessionStorage.setItem('pp-ne-saved-flash', nedGetLangKey('m_saved'));
-                    } catch (e) { /* private mode: skip */ }
                     var destinationId = isCreate ? newId : createdId;
+                    var hash = null;
                     if (destinationId) {
                         if (table === D.wiki_table) {
-                            location.hash = 'wiki-' + destinationId;
+                            hash = 'wiki-' + destinationId;
                         } else if (table === D.issue_table) {
-                            location.hash = 'issue-' + destinationId;
+                            hash = 'issue-' + destinationId;
                         }
                     }
-                    location.reload();
+                    // Saved and nothing left to keep: the panel goes, and the
+                    // screens behind it are drawn again from fresh data.
+                    NED.portalStale = false;
+                    // The save is over: let go of the panel (a create keeps it
+                    // locked until now) so it can close.
+                    restore();
+                    nedClose();
+                    softReload(hash, nedGetLangKey('m_saved'));
                 }, 350);
                 return;
             }
@@ -9323,8 +9347,8 @@ window.PmPortalBoot = function () {
         // other screen here was drawn from what that record used to say, so
         // it is built again rather than shown as it was.
         if (NED.portalStale && scr !== 'board') {
-            location.reload();
-            return;
+            NED.portalStale = false;
+            refreshData(true, function (ok) { if (!ok) { location.reload(); } });
         }
 
         // Park where this screen was before leaving it.

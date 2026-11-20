@@ -362,7 +362,7 @@ class PmPortalController extends AdminControllerBase
      * 2. the source key of an imported issue
      * 3. the issue_key column
      * 4. PROJECTKEY-id of an issue since moved to another project, when
-     *    PROJECTKEY is still some project's key
+     *    PROJECTKEY is still the key of a project the user may open
      * An issue the user may not open is answered as if it were not there.
      */
     public function viewIssue(Request $request, $key)
@@ -434,8 +434,9 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
-     * The project whose key is $code (either case), whether or not this user
-     * may open it, or null.
+     * The project whose key is $code (either case) and that this user may
+     * open, or null. Only readable ones, so a short link does not tell
+     * whether a project the user cannot see has that key.
      *
      * @param string $code
      * @return \Exceedone\Exment\Model\CustomValue|null
@@ -449,7 +450,10 @@ class PmPortalController extends AdminControllerBase
 
         return $this->project_table->getValueModel()
             ->whereIn('value->' . $column, array_unique([$code, strtoupper($code), strtolower($code)]))
-            ->first();
+            ->get()
+            ->first(function ($row) {
+                return $row->enableAccess() === true;
+            });
     }
 
     /**
