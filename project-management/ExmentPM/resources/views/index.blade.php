@@ -25,7 +25,7 @@
         'back', 'box_props', 'box_children', 'box_timeline', 'added',
         'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments', 'issue_more',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
-        'lbl_eh', 'lbl_pg', 'lbl_parent', 'lbl_watch', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
+        'lbl_eh', 'lbl_pg', 'lbl_parent', 'lbl_watch', 'lbl_source', 'lbl_custom_fields', 'src_created', 'src_updated', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
         'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
         'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail',
         'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',

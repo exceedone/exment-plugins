@@ -757,6 +757,9 @@ class PmPortalController extends AdminControllerBase
                 'files' => $files,
                 'reads' => $reads,
                 'reactions' => (object) ($issue_reactions[strval($issue->id)] ?? []),
+                // Schema 25: where an imported issue came from, and the
+                // source's custom attributes. Empty for an issue made here.
+                'source' => $this->issueSource($issue->value),
             ];
             if ($partial) {
                 $out[strval($issue->id)]['partial'] = true;
@@ -764,6 +767,34 @@ class PmPortalController extends AdminControllerBase
         }
 
         return $out;
+    }
+
+    /**
+     * An imported issue's source (schema 25), or null for one made here.
+     * The URL is only handed on when it is http(s): the screen makes a link
+     * of it, and the column takes whatever an import wrote.
+     *
+     * @param mixed $value the issue's value array
+     * @return array<string, string>|null
+     */
+    protected function issueSource($value): ?array
+    {
+        $v = (array) $value;
+        $c = PortalSchema::ISSUE_COLUMNS;
+        $out = [
+            'key' => strval(array_get($v, $c['source_key'], '')),
+            'url' => strval(array_get($v, $c['source_url'], '')),
+            'cby' => strval(array_get($v, $c['source_created_by'], '')),
+            'cd' => $this->fmtAt(array_get($v, $c['source_created_at'])),
+            'uby' => strval(array_get($v, $c['source_updated_by'], '')),
+            'ud' => $this->fmtAt(array_get($v, $c['source_updated_at'])),
+            'cf' => strval(array_get($v, $c['custom_fields'], '')),
+        ];
+        if (!preg_match('#^https?://#i', $out['url'])) {
+            $out['url'] = '';
+        }
+
+        return implode('', $out) === '' ? null : $out;
     }
 
     /**

@@ -369,10 +369,14 @@ class PortalUpgrade
 
             static::repairPluginMenu();
 
-            // Schema 25: one sidebar entry (ISS00256). Once, on the way past
-            // 25, so a node an administrator later makes under one of these
-            // names is left alone.
-            if ($applied < 25) {
+            // Schema 25: one sidebar entry (ISS00256). On the way past 26,
+            // not 25: an install that took 1.5.0 from its branch (ex1task)
+            // ran the Backlog columns as 25 and so never met this. It finds
+            // the plugin's entries by their internal menu_name
+            // (pm_portal_root and the like), which nobody types for a menu
+            // of their own, so a second pass on an install that did run
+            // 1.4.1's 25 finds nothing left to take.
+            if ($applied < 26) {
                 $tidied = static::tidyLegacyMenus($names);
                 if ($tidied > 0) {
                     $steps[] = PortalDefinition::trans('upgrade.step_menus', ['count' => $tidied]);

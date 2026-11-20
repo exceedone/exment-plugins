@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.4.1 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.5.0 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.5.0 / 1.5.0 で変わったこと**
+
+- Room for what a Backlog import brings (schema 26). Issues get the source key and URL, who raised and last changed them at the source and when, and the source's custom attributes; the issue detail shows them under 移行元 and カスタム属性. Milestones get an archived flag, wiki pages get tags and their source. All empty for anything not imported. Press **データ構造の更新** in the plugin settings once after updating.
+  Backlog から取り込むときの入れ先を足しました（スキーマ 26）。課題に、移行元の課題キー・URL・登録者・登録日時・更新者・更新日時と、カスタム属性が入ります。課題の詳細の「移行元」「カスタム属性」に出ます。マイルストーンに「アーカイブ済み」、Wiki に「タグ」と移行元が入ります。取り込んでいないものは空のままです。更新したあと、プラグインの設定で **データ構造の更新** を 1 回押します。
 
 **Changed in 1.4.1 / 1.4.1 で変わったこと**
 
