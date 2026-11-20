@@ -1541,7 +1541,7 @@ class PortalUpgrade
      *
      * @param array<string, string> $names
      * @param int $applied the version the install's once-only steps reached
-     * @return int permission rows removed
+     * @return int permission rows removed or narrowed
      */
     protected static function revokeRetiredGrants(array $names, int $applied): int
     {
@@ -1568,7 +1568,12 @@ class PortalUpgrade
                     if (!static::samePermissions($row->permissions, $grant['permissions'])) {
                         continue;
                     }
-                    $row->delete();
+                    if (isset($grant['keep'])) {
+                        $row->permissions = array_values($grant['keep']);
+                        $row->save();
+                    } else {
+                        $row->delete();
+                    }
                     $removed++;
                 }
             }

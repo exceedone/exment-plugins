@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.1 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.2 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.6.2 / 1.6.2 で変わったこと**
+
+- The member role group's permissions are tidied (schema 28). Press **データ構造の更新** once after updating. People are added to a project on its member settings, as before.
+  メンバーのロールグループの権限を整理しました（スキーマ 28）。更新したあと、**データ構造の更新** を 1 回押します。プロジェクトに人を足すのは、今までどおりメンバーの設定からです。
 
 **Changed in 1.6.1 / 1.6.1 で変わったこと**
 
