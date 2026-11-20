@@ -345,7 +345,6 @@ window.PmPortalBoot = function () {
         if (!s) { return null; }
         return Math.round((new Date(s + 'T00:00:00') - new Date(D.today + 'T00:00:00')) / 86400000);
     }
-    // The due date with its time (schema 22), e.g. 11/20 15:00.
     // Schema 25: where an imported issue came from - its old key (a link
     // when the server vouched for the URL), and who raised and last changed
     // it there. '' for an issue made here, so the row stays away.
@@ -360,6 +359,7 @@ window.PmPortalBoot = function () {
         if (src.uby || src.ud) { out.push(esc(L.src_updated) + ' ' + esc([src.uby, src.ud].filter(Boolean).join(' '))); }
         return out.join('<br>');
     }
+    // The due date with its time (schema 22), e.g. 11/20 15:00.
     function dueText(iss) { return d2(iss.dd) + (iss.dt ? ' ' + iss.dt : ''); }
     // The clock now, HH:MM, on this computer.
     function nowHM() {
@@ -2294,9 +2294,7 @@ window.PmPortalBoot = function () {
             [L.lbl_pg, pbar(i.pg)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#issue-' + esc(parentIssue.id) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_source, sourceHtml(res.source)],
-            [L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/
-?
-/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : ''],
+            [L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : ''],
             [L.lbl_watch, '<i class="fa fa-eye" style="color:var(--bl-faint);"></i> ' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people))]
         ];
         // Status, priority, assignees and the due date are on the summary row
