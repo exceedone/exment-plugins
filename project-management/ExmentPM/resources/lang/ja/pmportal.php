@@ -376,6 +376,8 @@ return [
     'cmt_less' => '折りたたむ',
     'child_add' => '子課題を追加',
     'issue_copy' => '複製',
+    'link_copy' => 'リンクをコピー',
+    'link_copied' => '課題のURLをコピーしました',
     // Moving an issue to another project, and deleting one (snoro 2026-11-19)
     'issue_move' => '移動',
     'move_title' => '別のプロジェクトへ移動',

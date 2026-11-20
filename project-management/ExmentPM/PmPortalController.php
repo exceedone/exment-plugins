@@ -349,6 +349,120 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * A short link to one issue, the way Backlog writes them: /view/KEY.
+     *
+     * KEY is the portal's PROJECTKEY-id, the issue_key (ISS00123), or for an
+     * imported issue its key at the source (MIGRE_TEST_2026-2). It answers
+     * with a redirect to the project's page, which opens the issue from the
+     * part after the #. A ?c=<comment id> is carried along, so a link to a
+     * comment is short too.
+     *
+     * Looked for in this order, so a key means what it says first:
+     * 1. PROJECTKEY-id whose project is still that project
+     * 2. the source key of an imported issue
+     * 3. the issue_key column
+     * 4. PROJECTKEY-id of an issue since moved to another project
+     * An issue the user may not open is answered as if it were not there.
+     */
+    public function viewIssue(Request $request, $key)
+    {
+        if (PortalSetup::needsSetup()) {
+            return redirect(PortalDefinition::url('setup'));
+        }
+        if (!isset($this->project_table) || !isset($this->issue_table)) {
+            abort(404);
+        }
+        $key = trim(strval($key));
+        $issue = $this->issueByKey($key);
+        if (!isset($issue)) {
+            abort(404);
+        }
+        $project = $this->project_table->getValueModel()->find($issue->parent_id);
+        if (!isset($project) || $project->enableAccess() !== true) {
+            abort(404);
+        }
+        $url = $this->issueUrl($project, $issue->id, false);
+        $comment = strval($request->query('c', ''));
+        if (ctype_digit($comment)) {
+            $url .= '?c=' . $comment;
+        }
+
+        return redirect($url);
+    }
+
+    /**
+     * The issue a short-link key names, or null. See viewIssue().
+     *
+     * @param string $key
+     * @return \Exceedone\Exment\Model\CustomValue|null
+     */
+    protected function issueByKey(string $key)
+    {
+        if ($key === '' || strlen($key) > 200) {
+            return null;
+        }
+        $model = $this->issue_table->getValueModel();
+        $mine = function ($issue) {
+            return isset($issue) && $issue->parent_type == $this->project_table->table_name
+                && $issue->enableAccess() === true ? $issue : null;
+        };
+
+        $byId = null;
+        if (preg_match('/^(.+)-(\d+)$/', $key, $m)) {
+            $byId = $mine($model->find(intval($m[2])));
+            if (isset($byId)) {
+                $project = $this->project_table->getValueModel()->find($byId->parent_id);
+                if (isset($project) && strcasecmp($this->issueKey($project, $byId->id), $key) === 0) {
+                    return $byId;
+                }
+            }
+        }
+        $columns = [PortalSchema::ISSUE_COLUMNS['source_key'], array_get($this->def['issue'], 'key', 'issue_key')];
+        foreach ($columns as $column) {
+            if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
+                continue;
+            }
+            $found = $mine($model->where('value->' . $column, $key)->first());
+            if (isset($found)) {
+                return $found;
+            }
+        }
+
+        return $byId;
+    }
+
+    /**
+     * A short link to a project: /projects/PROJECTKEY, like Backlog's.
+     * Redirects to the project's page; the number in its address stays.
+     */
+    public function viewProject(Request $request, $code)
+    {
+        if (PortalSetup::needsSetup()) {
+            return redirect(PortalDefinition::url('setup'));
+        }
+        if (!isset($this->project_table) || !isset($this->issue_table)) {
+            abort(404);
+        }
+        $code = trim(strval($code));
+        $column = strval(array_get($this->def['project'], 'key', ''));
+        if ($code === '' || strlen($code) > 200 || $column === '' || CustomColumn::getEloquent($column, $this->project_table) === null) {
+            abort(404);
+        }
+        // The key is shown upper-cased (issueKey()), so either case finds it.
+        $project = $this->project_table->getValueModel()
+            ->whereIn('value->' . $column, array_unique([$code, strtoupper($code), strtolower($code)]))
+            ->get()
+            ->first(function ($row) {
+                return $row->enableAccess() === true;
+            });
+        if (!isset($project)) {
+            abort(404);
+        }
+
+        return redirect(PortalDefinition::url($project->id));
+    }
+
+    /**
      * One project's portal.
      */
     public function show(Request $request, Content $content, $id = null)
@@ -1142,7 +1256,7 @@ class PmPortalController extends AdminControllerBase
 
         return response()->json([
             'ok' => true,
-            'url' => $this->issueUrl($target, $issue->id),
+            'url' => $this->issueUrl($target, $issue->id, false),
             'message' => strval(PortalDefinition::trans('message.moved', [
                 'name' => strval(array_get($target->value, array_get($this->def['project'], 'name', 'name'), '')),
             ])),
@@ -1463,14 +1577,24 @@ class PmPortalController extends AdminControllerBase
     /**
      * Where one issue opens in the portal, as a full URL for a mail.
      *
+     * Short (/view/KEY, see viewIssue()) when the project has a key: the
+     * link then reads like Backlog's and still opens after the issue moves
+     * to another project. Otherwise, or with $short off, the project's page
+     * with the issue after the #.
+     *
      * @param \Exceedone\Exment\Model\CustomValue $project
      * @param mixed $issue_id
+     * @param bool $short
      */
-    public function issueUrl($project, $issue_id): string
+    public function issueUrl($project, $issue_id, bool $short = true): string
     {
         $key = $this->issueKey($project, $issue_id);
+        $keyed = $key !== '' && strpos($key, '#') === false;
+        if ($short && $keyed) {
+            return PortalDefinition::url('view', $key);
+        }
 
-        return PortalDefinition::url($project->id) . '#issue-' . ($key !== '' && strpos($key, '#') === false ? $key : strval($issue_id));
+        return PortalDefinition::url($project->id) . '#issue-' . ($keyed ? $key : strval($issue_id));
     }
 
     /**
