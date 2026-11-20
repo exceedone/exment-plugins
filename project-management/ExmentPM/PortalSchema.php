@@ -1079,8 +1079,9 @@ class PortalSchema
      * it created and nothing else: a row whose permissions differ was changed
      * by an administrator and stays.
      *
-     * An entry with 'keep' is narrowed to that set instead of removed: the
-     * row stays, without the permissions the version withdrew.
+     * An entry with 'keep' is narrowed instead of removed: the permissions
+     * in 'permissions' but not in 'keep' are taken off the row, whatever
+     * else it holds, and the row stays.
      *
      * @param array<string, string> $n
      * @return array<int, array<int, array{group: string, table: string, permissions: array<int, string>, keep?: array<int, string>}>>

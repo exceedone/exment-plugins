@@ -163,6 +163,9 @@ trait PortalTopbarTrait
             // ISS00256: the portal settings open from the top bar, for
             // administrators only (the sidebar keeps a single entry).
             'settings_url' => static::topbarIsAdmin() ? PortalDefinition::url('settings') : '',
+            // A new version waits for its データ構造の更新: said on every page
+            // to whoever can press it, so it is not left undone.
+            'upgrade_needed' => static::topbarIsAdmin() && PortalUpgrade::needed(),
         ];
     }
 

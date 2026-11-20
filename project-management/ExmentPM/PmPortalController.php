@@ -361,7 +361,8 @@ class PmPortalController extends AdminControllerBase
      * 1. PROJECTKEY-id whose project is still that project
      * 2. the source key of an imported issue
      * 3. the issue_key column
-     * 4. PROJECTKEY-id of an issue since moved to another project
+     * 4. PROJECTKEY-id of an issue since moved to another project, when
+     *    PROJECTKEY is still some project's key
      * An issue the user may not open is answered as if it were not there.
      */
     public function viewIssue(Request $request, $key)
@@ -428,7 +429,27 @@ class PmPortalController extends AdminControllerBase
             }
         }
 
-        return $byId;
+        // A moved issue: its old project's key still names a project.
+        return isset($byId) && isset($m[1]) && $this->projectByCode($m[1]) !== null ? $byId : null;
+    }
+
+    /**
+     * The project whose key is $code (either case), whether or not this user
+     * may open it, or null.
+     *
+     * @param string $code
+     * @return \Exceedone\Exment\Model\CustomValue|null
+     */
+    protected function projectByCode(string $code)
+    {
+        $column = strval(array_get($this->def['project'], 'key', ''));
+        if ($code === '' || strlen($code) > 200 || $column === '' || CustomColumn::getEloquent($column, $this->project_table) === null) {
+            return null;
+        }
+
+        return $this->project_table->getValueModel()
+            ->whereIn('value->' . $column, array_unique([$code, strtoupper($code), strtolower($code)]))
+            ->first();
     }
 
     /**

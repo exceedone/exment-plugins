@@ -55,6 +55,9 @@
 .pp-top .pp-top-home.on{box-shadow:inset 0 -3px 0 var(--bl-accent,#4cae93);font-weight:700;}
 .pp-top .pp-top-dd{position:relative;display:flex;}
 .pp-top .pp-top-settings{color:var(--bl-sub,#8a97a3);}
+.pp-top .pp-top-upgrade{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:14px;
+    background:var(--bl-amber,#eda62a);color:#fff;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;}
+.pp-top .pp-top-upgrade:hover{color:#fff;text-decoration:none;filter:brightness(.95);}
 .pp-top .fa-caret-down{color:var(--bl-sub,#8a97a3);font-size:11px;}
 .pp-top .pp-top-menu{position:absolute;top:100%;left:0;min-width:270px;max-width:480px;max-height:420px;overflow-y:auto;
     overscroll-behavior:contain;background:var(--bl-box,#fff);border:1px solid var(--bl-line,#dfe5ea);
@@ -302,6 +305,11 @@
     <a class="pp-top-home pp-top-settings" href="{{ $topbar['settings_url'] }}" title="設定">
         <i class="fa fa-cog"></i><span>設定</span>
     </a>
+    @if(!empty($topbar['upgrade_needed']))
+    <a class="pp-top-upgrade" href="{{ $topbar['settings_url'] }}" title="{{ $tt('upgrade_needed_tip') }}">
+        <i class="fa fa-exclamation-circle"></i><span>{{ $tt('upgrade_needed') }}</span>
+    </a>
+    @endif
     @endif
 </nav>
 
