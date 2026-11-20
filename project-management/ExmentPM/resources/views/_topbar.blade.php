@@ -78,7 +78,9 @@
 /* project menu - the dashboard's project panel, in a dropdown ---------- */
 /* The header, the filter box and プロジェクトの追加 stay put; only the
    list moves, so the box you are typing in never scrolls away. */
-.pp-top .pp-top-pjmenu{width:720px;min-width:0;max-width:calc(100vw - 32px);
+/* Wide enough for a long name and key on one line (snoro 2026-11-21:
+   names were cut off at 720px). */
+.pp-top .pp-top-pjmenu{width:980px;min-width:0;max-width:calc(100vw - 32px);
     max-height:none;overflow:hidden;}
 /* As tall as the window allows: the script sets the exact height when the
    menu opens; this is what holds until then (and without javascript). */
@@ -119,14 +121,14 @@
 .pp-top .pp-pjm-row.drop-after{box-shadow:inset 0 -3px 0 var(--bl-accent,#4cae93);}
 .pp-top .pp-pjm-row .mn{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;}
 .pp-top .pp-pjm-row .l1{flex:1 1 0;min-width:90px;display:flex;align-items:center;gap:6px;}
-.pp-top .pp-pjm-row .nm{flex:0 1 auto;min-width:0;font-size:13px;font-weight:700;
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pp-top .pp-pjm-row .nm{flex:0 1 auto;min-width:0;font-size:13px;font-weight:700;line-height:1.35;
+    overflow-wrap:anywhere;}
 .pp-top .pp-pjm-row .nm:hover{text-decoration:underline;}
 .pp-top .pp-pjm-row.cur{background:var(--bl-chip,#eef3f6);box-shadow:inset 3px 0 0 var(--bl-accent,#4cae93);}
 .pp-top .pp-pjm-row.cur .nm{color:var(--bl-accent-d,#3d9a80);}
 .pp-top .pp-pjm-row .up{flex:0 2 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     font-size:10.5px;color:var(--bl-sub,#8a97a3);}
-.pp-top .pp-pjm-row .cd{flex:none;width:104px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.pp-top .pp-pjm-row .cd{flex:none;width:170px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     background:var(--bl-chip,#eef3f6);border-radius:3px;padding:0 6px;
     font-size:10.5px;font-weight:700;color:var(--bl-sub,#51616f);font-family:Menlo,Consolas,monospace;}
 .pp-top .pp-pjm-row .cd.none{background:none;}
@@ -743,6 +745,7 @@
         var l1 = el('div', 'l1');
         var name = el('a', 'nm', p.name);
         name.href = url;
+        name.title = String(p.name || '');
         l1.appendChild(name);
         if (p.archived) { l1.appendChild(el('span', 'ar', LANG.archived_tag)); }
         // nested rows already show their parent by position; only a top-level

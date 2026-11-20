@@ -19,6 +19,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 - The member role group's permissions are tidied (schema 28). Press **データ構造の更新** once after updating. People are added to a project on its member settings, as before.
   メンバーのロールグループの権限を整理しました（スキーマ 28）。更新したあと、**データ構造の更新** を 1 回押します。プロジェクトに人を足すのは、今までどおりメンバーの設定からです。
+- The project menu (**プロジェクト ▼**) is wider, and a long project name wraps instead of being cut off. Keys get a wider column there and on the dashboard.
+  プロジェクトのメニュー（**プロジェクト ▼**）を広げ、長いプロジェクト名は「…」で切らずに折り返すようにしました。キーの欄も、メニューとダッシュボードで広げました。
 
 **Changed in 1.6.1 / 1.6.1 で変わったこと**
 
