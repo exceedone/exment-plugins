@@ -1,14 +1,16 @@
 @extends(\App\Plugins\ExmentITSupport\Its::view('public._layout'))
 @php($Its = \App\Plugins\ExmentITSupport\Its::class)
+@section('mainclass', 'narrow')
 @section('content')
 <div class="card">
-    <h1>自分の依頼を見る</h1>
-    <p>依頼したときのメールアドレスを入れてください。依頼の一覧を見るリンクを、そのアドレスにお送りします（パスワードは要りません）。</p>
-    <form method="post" action="{{ $Its::publicUrl('mine') }}">
+    <div class="bigicon" aria-hidden="true"><svg class="ic"><use href="#i-mail"/></svg></div>
+    <h1 class="center">自分の依頼を見る</h1>
+    <p class="lead center">依頼したときのメールアドレスを入れてください。依頼の一覧を見るリンクを、そのアドレスにお送りします（パスワードは要りません）。</p>
+    <form method="post" action="{{ $Its::publicUrl('mine') }}" style="margin-top:20px">
         @csrf
-        <label class="f">メールアドレス</label>
-        <input type="email" name="email" required maxlength="200" autocomplete="email">
-        <div style="margin-top:14px"><button class="btn primary" type="submit">リンクを送る</button></div>
+        <label class="f" for="email">メールアドレス</label>
+        <input type="email" id="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@example.co.jp">
+        <div style="margin-top:18px"><button class="btn primary big" type="submit"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>リンクを送る</button></div>
     </form>
 </div>
 @endsection
