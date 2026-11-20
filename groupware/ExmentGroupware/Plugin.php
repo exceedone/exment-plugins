@@ -70,6 +70,10 @@ class Plugin extends PluginPageBase
      */
     public function index()
     {
+        // Without the file server the Office part has nothing to open: the top page is the mail.
+        if (!OfficeOpener::fileServerAvailable() && Accounts::ready()) {
+            return $this->webMail()->page();
+        }
         $office = new IbisOffice($this->plugin);
         $user = \Exment::user();
         return $this->pluginView('index', [
