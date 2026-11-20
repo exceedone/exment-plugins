@@ -12,7 +12,7 @@ ITサポート・ヘルプデスクの Exment プラグインです。お客様�
 
 | フォルダ | プラグイン | ダウンロード |
 |---|---|---|
-| [`ExmentITSupport/`](ExmentITSupport/) | Exment Plugin IT Support（ITサポート） — 内部名 `ExmentITSupport`・URL `/admin/plugins/exment_it_support` | まだリリースしていません |
+| [`ExmentITSupport/`](ExmentITSupport/) | Exment Plugin IT Support（ITサポート） — 内部名 `ExmentITSupport`・URL `/admin/plugins/exment_it_support` | [ExmentITSupport-1.0.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentITSupport-v1.0.0/ExmentITSupport-1.0.0.zip) |
 
 - 動く Exment: 7.0 以上（PHP 8.2）
 - 追加の PHP 拡張は要りません（IMAP もメールの解析もプラグインの中で行います）
