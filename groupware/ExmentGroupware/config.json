@@ -2,15 +2,173 @@
     "plugin_name": "ExmentGroupware",
     "uuid": "9eef3996-557e-4a1e-990d-9d5302fa35a8",
     "plugin_view_name": "Exment Plugin Groupware",
-    "description": "グループウェアの機能。まず、ファイルサーバーの Word・Excel・PowerPoint を、ブラウザーの Office（ibisOffice）で開いて編集・保存します（保存すると新しい版になります）。",
+    "description": "グループウェアの機能。Web メール（Xserver・KAGOYA・Microsoft 365・Gmail などの今のメールサーバーに IMAP・SMTP でつなぎ、ブラウザーで読む・書く・送る）と、ファイルサーバーの Word・Excel・PowerPoint をブラウザーの Office（ibisOffice）で開いて編集・保存する機能。",
     "author": "Exceedone",
-    "version": "0.1.0",
+    "version": "0.2.1",
     "plugin_type": "page",
     "uri": "exment_groupware",
     "icon": "fa-briefcase",
     "route": [
-        { "method": "get", "uri": "", "function": "index" },
-        { "method": "post", "uri": "install", "function": "install" },
-        { "method": "get", "uri": "office/{workspace}/{node}", "function": "office" }
+        {
+            "method": "get",
+            "uri": "",
+            "function": "index"
+        },
+        {
+            "method": "post",
+            "uri": "install",
+            "function": "install"
+        },
+        {
+            "method": "get",
+            "uri": "office/{workspace}/{node}",
+            "function": "office"
+        },
+        {
+            "method": "get",
+            "uri": "mail",
+            "function": "mail"
+        },
+        {
+            "method": "get",
+            "uri": "mail/accounts",
+            "function": "mailAccounts"
+        },
+        {
+            "method": "post",
+            "uri": "mail/account",
+            "function": "postMailAccount",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "mail/account/{id}/delete",
+            "function": "postMailAccountDelete",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "mail/account/{id}/signin",
+            "function": "mailSignin"
+        },
+        {
+            "method": "get",
+            "uri": "mail/oauth/callback",
+            "function": "mailOauthCallback"
+        },
+        {
+            "method": "get",
+            "uri": "mail/api/poll",
+            "function": "mailPoll",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "mail/api/{account}/folders",
+            "function": "mailFolders",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "mail/api/{account}/messages",
+            "function": "mailMessages",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "mail/api/{account}/message",
+            "function": "mailMessage",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "mail/api/{account}/attachment",
+            "function": "mailAttachment",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "mail/api/{account}/eml",
+            "function": "mailEml",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "mail/api/{account}/flag",
+            "function": "mailFlag",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "mail/api/{account}/move",
+            "function": "mailMove",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "mail/api/{account}/delete",
+            "function": "mailDelete",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "mail/api/{account}/folder",
+            "function": "mailCreateFolder",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "mail/api/{account}/send",
+            "function": "mailSend",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "mail/api/{account}/draft",
+            "function": "mailDraft",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        }
     ]
 }
