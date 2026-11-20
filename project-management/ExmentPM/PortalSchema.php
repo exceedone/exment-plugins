@@ -122,8 +122,13 @@ class PortalSchema
      * so naming someone tells them. The author is Exment's own created_user
      * (or, for an import, the source's author) and the watchers are the
      * notify column, so neither needs a column of its own.
+     *
+     * 28: the member group's grant on projects, issues and wiki pages is
+     * edit only. Who is on a project is set through its members columns,
+     * which PortalMembership keeps in step. Narrowed in place on the way
+     * past 28 (retiredGrants()), so members keep editing what they edit.
      */
-    const VERSION = 27;
+    const VERSION = 28;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -1036,17 +1041,18 @@ class PortalSchema
             $viewer[$n[$role]] = ['custom_value_view_all'];
         }
 
-        // A project and its issues: assigned rows only, and members may share
-        // one on. Import and export stay with the administrator, because a CSV
-        // is how a whole table gets overwritten by accident.
+        // A project and its issues: assigned rows only. Import and export stay
+        // with the administrator, because a CSV is how a whole table gets
+        // overwritten by accident. Members edit only (schema 28): who is
+        // on a project is set through its members columns.
         foreach (['project_table', 'issue_table'] as $role) {
             $admin[$n[$role]] = ['custom_value_edit_all', 'custom_value_import', 'custom_value_export', 'custom_view'];
-            $member[$n[$role]] = ['custom_value_edit', 'custom_value_share'];
+            $member[$n[$role]] = ['custom_value_edit'];
             $viewer[$n[$role]] = ['custom_value_view'];
         }
 
         $admin[$n['wiki_table']] = ['custom_value_edit_all', 'custom_value_share'];
-        $member[$n['wiki_table']] = ['custom_value_edit', 'custom_value_share'];
+        $member[$n['wiki_table']] = ['custom_value_edit'];
         $viewer[$n['wiki_table']] = ['custom_value_view'];
 
         // The two lists a project picks from. Nobody is assigned to a
@@ -1073,15 +1079,26 @@ class PortalSchema
      * it created and nothing else: a row whose permissions differ was changed
      * by an administrator and stays.
      *
+     * An entry with 'keep' is narrowed to that set instead of removed: the
+     * row stays, without the permissions the version withdrew.
+     *
      * @param array<string, string> $n
-     * @return array<int, array<int, array{group: string, table: string, permissions: array<int, string>}>>
+     * @return array<int, array<int, array{group: string, table: string, permissions: array<int, string>, keep?: array<int, string>}>>
      */
     public static function retiredGrants(array $n): array
     {
+        $narrow = ['permissions' => ['custom_value_edit', 'custom_value_share'], 'keep' => ['custom_value_edit']];
+
         return [
             17 => [
                 ['group' => self::ROLE_GROUP_MEMBER, 'table' => $n['related_table'], 'permissions' => ['custom_value_edit_all']],
                 ['group' => self::ROLE_GROUP_VIEWER, 'table' => $n['related_table'], 'permissions' => ['custom_value_view_all']],
+            ],
+            // Schema 28: the member group edits only.
+            28 => [
+                ['group' => self::ROLE_GROUP_MEMBER, 'table' => $n['project_table']] + $narrow,
+                ['group' => self::ROLE_GROUP_MEMBER, 'table' => $n['issue_table']] + $narrow,
+                ['group' => self::ROLE_GROUP_MEMBER, 'table' => $n['wiki_table']] + $narrow,
             ],
         ];
     }
