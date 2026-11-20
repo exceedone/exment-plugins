@@ -93,8 +93,17 @@ class PortalSchema
      * template, whose importer silently skips notifications, so no install
      * ever got it and assignees heard nothing when their issue changed
      * (ISS00343).
+     *
+     * 25: what a Backlog import has nowhere else to put (ISS00070, ISS00113).
+     * Issues get where they came from - the source key and URL, who raised
+     * and last changed them there and when - because Exment's own created_at
+     * and created_user are the importer's, not the original author's; and
+     * the source's custom attributes, as "name: value" lines until the
+     * portal has per-project custom fields of its own. Milestones get the
+     * archived flag Backlog has, and wiki pages get tags and their source.
+     * All empty for anything not imported.
      */
-    const VERSION = 24;
+    const VERSION = 25;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -135,6 +144,27 @@ class PortalSchema
         'recurrence' => 'recurrence',
         // Schema 22: the time on the due date, or empty for the whole day.
         'due_time' => 'due_time',
+        // Schema 25: where an imported issue came from (Backlog and the like).
+        'source_key' => 'source_key',
+        'source_url' => 'source_url',
+        'source_created_by' => 'source_created_by',
+        'source_created_at' => 'source_created_at',
+        'source_updated_by' => 'source_updated_by',
+        'source_updated_at' => 'source_updated_at',
+        'custom_fields' => 'custom_fields',
+    ];
+
+    /** Columns added to the milestone table by this schema (25). */
+    const MILESTONE_COLUMNS = [
+        'archived' => 'archived',
+    ];
+
+    /** Columns added to the wiki table by this schema (25). */
+    const WIKI_COLUMNS = [
+        'tags' => 'tags',
+        'source_url' => 'source_url',
+        'source_created_by' => 'source_created_by',
+        'source_created_at' => 'source_created_at',
     ];
 
     /**
@@ -436,7 +466,85 @@ class PortalSchema
             $tables[] = static::categoryAdditions($n['category_table']);
         }
 
+        // Schema 25: Backlog's archived milestones, and wiki tags and source.
+        if (!is_nullorempty(array_get($n, 'milestone_table'))) {
+            $tables[] = static::milestoneAdditions($n['milestone_table']);
+        }
+        if (!is_nullorempty(array_get($n, 'wiki_table'))) {
+            $tables[] = static::wikiAdditions($n['wiki_table']);
+        }
+
         return $tables;
+    }
+
+    /**
+     * Backlog archives a milestone that is over instead of deleting it, so
+     * the issues that point at it keep their history. Off by default.
+     *
+     * @param string $tableName
+     * @return array<string, mixed>
+     */
+    protected static function milestoneAdditions(string $tableName): array
+    {
+        $c = self::MILESTONE_COLUMNS;
+
+        return [
+            'table_name' => $tableName,
+            'custom_columns' => [
+                static::column($c['archived'], 'milestone.archived', 'yesno', [
+                    'default' => '0',
+                    'index_enabled' => '1',
+                    'help' => PortalDefinition::trans('schema.help.milestone_archived'),
+                ], 93),
+            ],
+        ];
+    }
+
+    /**
+     * A wiki page's tags, and for an imported page where it came from.
+     *
+     * @param string $tableName
+     * @return array<string, mixed>
+     */
+    protected static function wikiAdditions(string $tableName): array
+    {
+        $c = self::WIKI_COLUMNS;
+
+        return [
+            'table_name' => $tableName,
+            'custom_columns' => array_merge([
+                static::column($c['tags'], 'wiki.tags', 'text', [
+                    'freeword_search' => '1',
+                    'help' => PortalDefinition::trans('schema.help.wiki_tags'),
+                ], 94),
+            ], static::sourceColumns($c, 95, false)),
+        ];
+    }
+
+    /**
+     * The "where it came from" columns an import fills in. Exment stamps a
+     * row with the importer as its creator and the import as its time; these
+     * keep the original author and dates beside them.
+     *
+     * @param array<string, string> $c the table's column map
+     * @param int $order where the first one goes
+     * @param bool $withUpdate also the last change at the source
+     * @return array<int, array<string, mixed>>
+     */
+    protected static function sourceColumns(array $c, int $order, bool $withUpdate): array
+    {
+        $help = ['help' => PortalDefinition::trans('schema.help.source')];
+        $columns = [
+            static::column($c['source_url'], 'source.url', 'url', $help, $order),
+            static::column($c['source_created_by'], 'source.created_by', 'text', $help, $order + 1),
+            static::column($c['source_created_at'], 'source.created_at', 'datetime', $help, $order + 2),
+        ];
+        if ($withUpdate) {
+            $columns[] = static::column($c['source_updated_by'], 'source.updated_by', 'text', $help, $order + 3);
+            $columns[] = static::column($c['source_updated_at'], 'source.updated_at', 'datetime', $help, $order + 4);
+        }
+
+        return $columns;
     }
 
     /**
@@ -619,44 +727,56 @@ class PortalSchema
     {
         $ic = self::ISSUE_COLUMNS;
 
-        return [
-            'table_name' => $n['issue_table'],
-            'custom_columns' => [
-                static::column($ic['resolution'], 'issue.resolution', 'select_table', [
-                    'index_enabled' => '1',
-                    'select_target_table_name' => $n['resolution_table'],
-                    'help' => PortalDefinition::trans('schema.help.resolution'),
-                ], 20),
-                static::column($ic['versions'], 'issue.versions', 'select_table', [
-                    'multiple_enabled' => '1',
-                    'select_target_table_name' => $n['milestone_table'],
-                    'help' => PortalDefinition::trans('schema.help.versions'),
-                ], 21),
-                static::column($ic['notified_users'], 'issue.notified_users', 'user', [
-                    'multiple_enabled' => '1',
-                    'grid_style' => 'avatar',
-                    'help' => PortalDefinition::trans('schema.help.notified_users'),
-                ], 22),
-                // Schema 19: the second subject line, placed right under the
-                // subject (same order; Exment then orders by creation).
-                static::column($ic['subject_sub'], 'issue.subject_sub', 'text', [
-                    'help' => PortalDefinition::trans('schema.help.subject_sub'),
-                ], 2),
-                // Schema 20: indexed, so a run finds the few recurring issues
-                // without reading every row.
-                static::column($ic['recurrence'], 'issue.recurrence', 'select_valtext', [
-                    'index_enabled' => '1',
-                    'select_item_valtext' => static::valtext(PortalRecurrence::KINDS, 'issue.recurrences.'),
-                    'help' => PortalDefinition::trans('schema.help.recurrence'),
-                ], 23),
-                // Schema 22: a time column of its own beside the due date, so
-                // the date stays a date for the gantt, the board, CSV and the
-                // API, and an issue without a time is exactly what it was.
-                static::column($ic['due_time'], 'issue.due_time', 'time', [
-                    'help' => PortalDefinition::trans('schema.help.due_time'),
-                ], 24),
-            ],
+        $columns = [
+            static::column($ic['resolution'], 'issue.resolution', 'select_table', [
+                'index_enabled' => '1',
+                'select_target_table_name' => $n['resolution_table'],
+                'help' => PortalDefinition::trans('schema.help.resolution'),
+            ], 20),
+            static::column($ic['versions'], 'issue.versions', 'select_table', [
+                'multiple_enabled' => '1',
+                'select_target_table_name' => $n['milestone_table'],
+                'help' => PortalDefinition::trans('schema.help.versions'),
+            ], 21),
+            static::column($ic['notified_users'], 'issue.notified_users', 'user', [
+                'multiple_enabled' => '1',
+                'grid_style' => 'avatar',
+                'help' => PortalDefinition::trans('schema.help.notified_users'),
+            ], 22),
+            // Schema 19: the second subject line, placed right under the
+            // subject (same order; Exment then orders by creation).
+            static::column($ic['subject_sub'], 'issue.subject_sub', 'text', [
+                'help' => PortalDefinition::trans('schema.help.subject_sub'),
+            ], 2),
+            // Schema 20: indexed, so a run finds the few recurring issues
+            // without reading every row.
+            static::column($ic['recurrence'], 'issue.recurrence', 'select_valtext', [
+                'index_enabled' => '1',
+                'select_item_valtext' => static::valtext(PortalRecurrence::KINDS, 'issue.recurrences.'),
+                'help' => PortalDefinition::trans('schema.help.recurrence'),
+            ], 23),
+            // Schema 22: a time column of its own beside the due date, so
+            // the date stays a date for the gantt, the board, CSV and the
+            // API, and an issue without a time is exactly what it was.
+            static::column($ic['due_time'], 'issue.due_time', 'time', [
+                'help' => PortalDefinition::trans('schema.help.due_time'),
+            ], 24),
         ];
+
+        // Schema 25: an imported issue's source. The key is indexed and
+        // searchable, so an old "PROJ-123" written in a mail still finds it.
+        $columns[] = static::column($ic['source_key'], 'source.key', 'text', [
+            'index_enabled' => '1',
+            'freeword_search' => '1',
+            'help' => PortalDefinition::trans('schema.help.source'),
+        ], 60);
+        $columns = array_merge($columns, static::sourceColumns($ic, 61, true));
+        $columns[] = static::column($ic['custom_fields'], 'issue.custom_fields', 'textarea', [
+            'freeword_search' => '1',
+            'help' => PortalDefinition::trans('schema.help.custom_fields'),
+        ], 66);
+
+        return ['table_name' => $n['issue_table'], 'custom_columns' => $columns];
     }
 
     /**
