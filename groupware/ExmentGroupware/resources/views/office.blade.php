@@ -31,7 +31,11 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
 </head>
 <body>
 <div class="gw-bar">
-    <a class="gw-btn" href="{{ $back_url }}" data-gw="back">← ファイルへ戻る</a>
+    @if ($view)
+        <a class="gw-btn" href="{{ $edit_url }}" target="_blank" rel="noopener" data-gw="edit">Office で開く（編集）</a>
+    @else
+        <a class="gw-btn" href="{{ $back_url }}" data-gw="back">← ファイルへ戻る</a>
+    @endif
     <span class="gw-name" data-gw="name"></span>
     <span class="gw-state" data-gw="state">読み込み中…</span>
     <span class="gw-spacer"></span>
@@ -56,6 +60,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
         'backUrl' => $back_url,
         'userName' => $user_name,
         'locale' => $locale,
+        'view' => $view,
     ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!};
     const token = document.querySelector('meta[name="csrf-token"]').content;
     const $ = (k) => document.querySelector('[data-gw="' + k + '"]');
@@ -120,9 +125,9 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
         document.title = info.name + ' - Office';
 
         // the editor has no editing together yet: lock the file while it is open for editing
-        let readOnly = !info.can_edit;
+        let readOnly = !info.can_edit || cfg.view;
         let readOnlyMessage = '';
-        if (info.can_edit && !info.checked_out_by_me) {
+        if (info.can_edit && !info.checked_out_by_me && !cfg.view) {
             const c = await call(info.urls.checkout, 'POST', new FormData());
             if (c.ok) {
                 checkedOutHere = true;
@@ -131,7 +136,9 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
                 readOnlyMessage = c.json.message || '';
             }
         }
-        if (!info.can_edit) {
+        if (cfg.view) {
+            readOnlyMessage = 'プレビューです。編集は「Office で開く（編集）」から。';
+        } else if (!info.can_edit) {
             readOnlyMessage = info.checked_out_by
                 ? info.checked_out_by + ' さんが編集中のため、読み取り専用で開いています。'
                 : '編集の権限がないため、読み取り専用で開いています。';
@@ -223,6 +230,9 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
         window.addEventListener('beforeunload', (e) => {
             if (dirty) { e.preventDefault(); e.returnValue = ''; }
         });
+        if (cfg.view) {
+            return;
+        }
         window.addEventListener('pagehide', checkinOnLeave);
         $('back').addEventListener('click', (e) => {
             if (dirty && !confirm('保存していない変更があります。閉じますか？')) { e.preventDefault(); return; }

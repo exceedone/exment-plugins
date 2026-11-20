@@ -135,7 +135,12 @@ class Plugin extends PluginPageBase
             $userName = strval($user->base_user->getLabel());
         }
 
+        // ?view=1: read only, shown in the preview of the file page (no lock, no save)
+        $view = boolval(request()->get('view'));
+
         return response(view('exment_exment_groupware::office', [
+            'view' => $view,
+            'edit_url' => $this->plugin->getFullUrl('office', $ws, $id),
             'available' => $office->isAvailable() && $office->hostModuleUrl() !== null,
             'editor_base' => $office->baseUrl(),
             'host_module' => $office->hostModuleUrl(),

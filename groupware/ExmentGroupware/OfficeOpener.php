@@ -41,7 +41,7 @@ class OfficeOpener
      *
      * @param \Exceedone\Exment\Model\Plugin $plugin
      * @param mixed $node \Exceedone\Exment\Model\FileNode
-     * @return array{label: string, url: string, icon: string}|null
+     * @return array{label: string, url: string, icon: string, embed_url: string}|null
      */
     public static function opener($plugin, $node): ?array
     {
@@ -58,6 +58,8 @@ class OfficeOpener
             'label' => 'Office で開く',
             'url' => $plugin->getFullUrl('office', intval($node->workspace_id), intval($node->id)),
             'icon' => 'fa-pencil-square-o',
+            // shown read only in the preview of the file page
+            'embed_url' => $plugin->getFullUrl('office', intval($node->workspace_id), intval($node->id)) . '?view=1',
         ];
     }
 }
