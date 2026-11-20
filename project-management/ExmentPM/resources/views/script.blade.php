@@ -5187,7 +5187,12 @@ window.PmPortalBoot = function () {
             }
             if (res.message) { toast(res.message); }
             // Back to the list, drawn again without the issue.
-            setTimeout(function () { softReload('issues'); }, 400);
+            // Off the deleted issue first, so the redraw does not go looking
+            // for its detail; then the list again from fresh data.
+            setTimeout(function () {
+                location.hash = 'issues';
+                softReload();
+            }, 400);
         }).fail(function (xhr) {
             link.dataset.busy = '';
             toast(xhrErr(xhr, L.issue_del_fail), true);
