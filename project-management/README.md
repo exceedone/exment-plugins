@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.5.0 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.0 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.6.0 / 1.6.0 で変わったこと**
+
+- More roles on an issue (schema 27, ISS00252): **副担当者** (sub-assignees), **管理者** (managers), **レビュアー** (reviewers) and **難易度** (difficulty: 易しい・普通・難しい). They are on the edit form under the assignees, and the issue detail shows them with the **起票者** (the author; for an imported issue, the author at the source). Sub-assignees, managers and reviewers get the issue's update notices like the assignees, and have to be on the project. Watchers stay the **お知らせ先** column and the ウォッチ button. Press **データ構造の更新** in the plugin settings once after updating.
+  課題の役割を足しました（スキーマ 27、ISS00252）。**副担当者**・**管理者**・**レビュアー**・**難易度**（易しい・普通・難しい）です。編集の画面では担当者の下に並び、課題の詳細には **起票者**（取り込んだ課題は移行元の登録者）と一緒に出ます。副担当者・管理者・レビュアーにも、担当者と同じく更新のお知らせが届きます。プロジェクトに参加している人だけを選べます。ウォッチャーは、今までどおり **お知らせ先** とウォッチのボタンです。更新したあと、プラグインの設定で **データ構造の更新** を 1 回押します。
 
 **Changed in 1.5.0 / 1.5.0 で変わったこと**
 

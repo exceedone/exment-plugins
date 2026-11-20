@@ -1102,7 +1102,15 @@ class PmPortalController extends AdminControllerBase
         // People who are not on the new project.
         $roles = PortalMembership::roles((array) $target->value);
         if (!empty($roles)) {
-            foreach ([[array_get($is, 'assignees'), PortalMembership::EDITORS], [array_get($extra, 'notified_users'), null]] as [$column, $allowed]) {
+            $people = [
+                [array_get($is, 'assignees'), PortalMembership::EDITORS],
+                [array_get($extra, 'notified_users'), null],
+                // Schema 27
+                [array_get($extra, 'sub_assignees'), PortalMembership::EDITORS],
+                [array_get($extra, 'managers'), null],
+                [array_get($extra, 'reviewers'), null],
+            ];
+            foreach ($people as [$column, $allowed]) {
                 if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
                     continue;
                 }
@@ -3034,7 +3042,27 @@ class PmPortalController extends AdminControllerBase
             // column; carrying it on the row lets the project's own list do
             // the same without a second query.
             'by' => intval($issue->created_user_id) ?: null,
+            // Schema 27: sub-assignees, managers, reviewers and difficulty
+            // (empty before the upgrade).
+            'sa' => $this->userIds($v, 'sub_assignees'),
+            'mg' => $this->userIds($v, 'managers'),
+            'rv' => $this->userIds($v, 'reviewers'),
+            'df' => strval(array_get($v, array_get($this->def, 'issue_extra.difficulty', 'difficulty'), '')),
         ];
+    }
+
+    /**
+     * The user ids in one of the issue's extra people columns (schema 27).
+     *
+     * @param mixed $value the issue's value array
+     * @param string $role key in PortalSchema::ISSUE_COLUMNS
+     * @return array<int, int>
+     */
+    protected function userIds($value, string $role): array
+    {
+        $column = array_get($this->def, 'issue_extra.' . $role, $role);
+
+        return array_values(array_filter(array_map('intval', (array) array_get((array) $value, $column, []))));
     }
 
     /**
