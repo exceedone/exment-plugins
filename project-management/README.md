@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.4 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.5 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,15 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.6.5 / 1.6.5 で変わったこと**
+
+- Faster after a save (ISS00257): saving an issue or a wiki page, posting a comment that changes the status, uploading a file or deleting an issue no longer reloads the whole page. The portal fetches the project's data once and draws the list and the detail again in place (on ex1task, about 400KB of data instead of a 724KB page and everything it loads after). If the data cannot be fetched, it reloads as before.
+  保存したあとが速くなりました（ISS00257）。課題・Wiki の保存、状態を変えるコメント、ファイルのアップロード、課題の削除のあと、ページ全体を読み直さず、プロジェクトのデータだけを取り直して、一覧と詳細をその場で描き直します（ex1task では、724KB のページとそのあとの読み込みの代わりに、約 400KB のデータ 1 回）。データが取れないときは、今までどおり読み直します。
+- A short link `/view/KEY-12` for a moved issue only counts KEY when it is a project you can open.
+  短いリンク `/view/KEY-12` で移した課題を開くときの KEY は、自分が開けるプロジェクトのキーだけを見ます。
+- Note for 1.6.4: an install that already ran データ構造の更新 to schema 28 with 1.6.2 or 1.6.3 does not run the member role group tidy again. If an administrator had added permissions to that group, check it in the role group settings.
+  1.6.4 の補足: 1.6.2・1.6.3 でスキーマ 28 まで更新した環境では、メンバーのロールグループの整理はもう一度は流れません。そのグループに管理者が権限を足していた場合は、ロールグループの設定で確かめてください。
 
 **Changed in 1.6.4 / 1.6.4 で変わったこと**
 
