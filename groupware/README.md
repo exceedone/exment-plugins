@@ -14,6 +14,7 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
 - **Office** (0.1.0, P3): opens the Word (.docx), Excel (.xlsx) and PowerPoint (.pptx) files of the **file server** of Exment in a browser Office, [ibisOffice](https://github.com/ibisjp/ibis-office) by ibis inc.:
 
 - The page of such a file gets an **Office で開く** (Open in Office) button. It opens the editor in a new tab.
+- When the server has no LibreOffice (no PDF preview), the editor is shown **read-only** in the preview of the file page (0.2.2). It does not check the file out.
 - **Save** in the editor adds a new version of the file (the version history of the file server keeps the older ones).
 - While the file is open for editing it is **checked out**: nobody else can change it (ibisOffice has no editing together yet). It is checked in when the editor is closed. A user who may only view the file, or a file someone else has checked out, opens read-only.
 - A save from an old version (someone saved in between) is refused, so nothing is overwritten.
@@ -92,6 +93,7 @@ Exment のグループウェア（ex1task ISS00233）です。今あるのは次
 - **Office**（0.1.0、P3）: Exment の**ファイルサーバー**にある Word（.docx）・Excel（.xlsx）・PowerPoint（.pptx）のファイルを、株式会社アイビスのブラウザーで動く Office、[ibisOffice](https://github.com/ibisjp/ibis-office) で開きます。
 
 - そのファイルの画面に **Office で開く** ボタンが出ます。押すと、新しいタブでエディターが開きます。
+- サーバーに LibreOffice がない（PDF のプレビューを作れない）ときは、ファイルの画面のプレビューの欄に、エディターを**読み取り専用**で埋め込みます（0.2.2）。チェックアウトはしません。
 - エディターで**保存**すると、ファイルの新しい版になります（前の版はファイルサーバーの版の履歴に残ります）。
 - 編集のために開いている間は**チェックアウト**（編集中）になり、ほかの人は変更できません（ibisOffice にはまだ同時編集がないため）。エディターを閉じるとチェックインします。見るだけの権限の人や、ほかの人がチェックアウトしているファイルは、読み取り専用で開きます。
 - 古い版から保存しようとしたとき（間にほかの人が保存したとき）は断るので、上書きで消えることはありません。
