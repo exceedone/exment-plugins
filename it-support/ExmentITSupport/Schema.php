@@ -345,14 +345,19 @@ class Schema
     }
 
     /**
-     * Apply a newer schema by itself the first time anyone opens the desk or
-     * the customer pages after an update, so a forgotten "テーブルを更新" can
+     * Apply a newer schema by itself the first time an agent opens the desk or
+     * the batch runs after an update, so a forgotten "テーブルを更新" can
      * not leave the plugin writing to columns that are not there yet (Exment
      * drops values for unknown columns without a word).
      */
     public static function ensureCurrent(): void
     {
         if (!static::needsUpgrade()) {
+            return;
+        }
+        // After a failed attempt, wait a while instead of retrying the whole
+        // install on every request.
+        if (\Illuminate\Support\Facades\Cache::has('its_schema_upgrade_failed')) {
             return;
         }
         $lock = \Illuminate\Support\Facades\Cache::lock('its_schema_upgrade', 300);
@@ -362,8 +367,14 @@ class Schema
         try {
             Its::forget();
             if (static::needsUpgrade()) {
-                static::install(false);
+                $result = static::install(false);
+                if (!$result['ok']) {
+                    \Illuminate\Support\Facades\Cache::put('its_schema_upgrade_failed', true, 900);
+                }
             }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Cache::put('its_schema_upgrade_failed', true, 900);
+            throw $e;
         } finally {
             $lock->release();
         }
@@ -591,10 +602,13 @@ class Schema
 
     /**
      * Messages written before schema 2 do not say which files they carried.
-     * Link a file to a customer message or a reply only when it is certain:
-     * same ticket, a name the message lists, saved within two minutes of the
-     * message, and only one such message. Anything unclear stays hidden from
-     * the customer, as it should.
+     * A file is linked to a customer message or a reply only when nothing
+     * else could own it: attach() stores the file just before it saves the
+     * message, so the file must be 0-30 seconds older than the message; no
+     * other message of any kind (an internal note included) may list the
+     * same name in that window; and the message may not have a second file
+     * of that name in it. Anything unclear stays hidden from the customer.
+     * Ticket by ticket, so a large install is not read at once.
      */
     public static function backfillAttachmentUuids(): int
     {
@@ -604,26 +618,47 @@ class Schema
             return 0;
         }
         $scope = \Exceedone\Exment\Model\CustomValueModelScope::class;
-        $linked = 0;
-        $candidates = $messages->getValueModel()->query()->withoutGlobalScope($scope)
+        $ticketIds = $messages->getValueModel()->query()->withoutGlobalScope($scope)
             ->where('parent_type', Its::T_TICKET)->whereIn('value->kind', ['customer', 'reply'])
-            ->whereNotNull('value->attachments')->get();
-        foreach ($candidates->groupBy('parent_id') as $ticketId => $rows) {
+            ->whereNotNull('value->attachments')->where('value->attachments', '<>', '')
+            ->distinct()->pluck('parent_id')->all();
+
+        $names = function ($m) {
+            return array_values(array_filter(array_map('trim', explode(',', strval(array_get($m->value, 'attachments'))))));
+        };
+        $inWindow = function ($docAt, $msgAt) {
+            $gap = $msgAt - $docAt;
+
+            return $gap >= 0 && $gap <= 30;
+        };
+
+        $linked = 0;
+        foreach ($ticketIds as $ticketId) {
+            $all = $messages->getValueModel()->query()->withoutGlobalScope($scope)
+                ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticketId)->get();
             $files = $docs->getValueModel()->query()->withoutGlobalScope($scope)
                 ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticketId)->get();
             foreach ($files as $doc) {
                 $name = strval(array_get($doc->value, 'document_name'));
-                $at = \Carbon\Carbon::parse($doc->created_at);
-                $hits = $rows->filter(function ($m) use ($name, $at) {
-                    $names = array_map('trim', explode(',', strval(array_get($m->value, 'attachments'))));
-
-                    return in_array($name, $names, true) && abs(\Carbon\Carbon::parse($m->created_at)->diffInSeconds($at)) <= 120;
+                $docAt = \Carbon\Carbon::parse($doc->created_at)->getTimestamp();
+                $owners = $all->filter(function ($m) use ($name, $docAt, $names, $inWindow) {
+                    return in_array($name, $names($m), true) && $inWindow($docAt, \Carbon\Carbon::parse($m->created_at)->getTimestamp());
                 });
-                if ($hits->count() !== 1) {
+                if ($owners->count() !== 1) {
                     continue;
                 }
-                $m = $hits->first();
-                $have = array_filter(array_map('trim', explode(',', strval(array_get($m->value, 'attachment_uuids')))));
+                $m = $owners->first();
+                if (!in_array(strval(array_get($m->value, 'kind')), ['customer', 'reply'], true)) {
+                    continue;
+                }
+                $msgAt = \Carbon\Carbon::parse($m->created_at)->getTimestamp();
+                $twins = $files->filter(function ($d) use ($name, $msgAt, $inWindow) {
+                    return strval(array_get($d->value, 'document_name')) === $name && $inWindow(\Carbon\Carbon::parse($d->created_at)->getTimestamp(), $msgAt);
+                });
+                if ($twins->count() !== 1) {
+                    continue;
+                }
+                $have = array_values(array_filter(array_map('trim', explode(',', strval(array_get($m->value, 'attachment_uuids'))))));
                 $uuid = strval(array_get($doc->value, 'file_uuid'));
                 if ($uuid === '' || in_array($uuid, $have, true)) {
                     continue;

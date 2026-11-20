@@ -27,7 +27,6 @@ class PublicController extends Controller
         if (!Its::isInstalled() || Its::setting('public_enabled', '1') !== '1') {
             abort(404);
         }
-        Schema::ensureCurrent();
     }
 
     protected function page(string $view, array $data = [], int $status = 200)

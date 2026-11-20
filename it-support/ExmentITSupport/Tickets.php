@@ -381,6 +381,8 @@ class Tickets
                     'requester_email' => $email ?: array_get($ticket->value, 'requester_email'),
                     'requester_name' => $name ?: array_get($ticket->value, 'requester_name'),
                     'assignee' => array_get($ticket->value, 'assignee'),
+                    'customer_visible' => array_get($ticket->value, 'customer_visible', '1'),
+                    'require_otp' => array_get($ticket->value, 'require_otp', '0'),
                 ], ['body' => $body, 'message_id' => $messageId], $files);
 
                 return $new;
