@@ -29,7 +29,12 @@ use Illuminate\Support\Facades\Log;
 class Schema
 {
     /** Bumped whenever this file gains something an install has to apply. */
-    const VERSION = 1;
+    /**
+     * 2: messages remember which files they carry (attachment_uuids), so the
+     * customer pages show only files from the customer's own conversation;
+     * the menu gets the desk itself (受付箱) as its first entry.
+     */
+    const VERSION = 2;
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -180,6 +185,7 @@ class Schema
                     ['message_id', 'Message-ID', 'text', ['index_enabled' => '1']],
                     ['time_spent', '作業時間（分）', 'integer', ['number_min' => '0', 'default' => '0']],
                     ['attachments', '添付ファイル', 'text', []],
+                    ['attachment_uuids', '添付ファイルの ID', 'text', ['help' => 'このやりとりに付いたファイル。お客様のページには、お客様とのやりとりのファイルだけを出します。']],
                 ],
             ],
             Its::T_KNOWLEDGE => [
@@ -345,7 +351,10 @@ class Schema
     {
         $tables = [];
         $relations = [];
-        $menuOrder = 1;
+        // Under ITサポート: the desk first, then the tables in the order
+        // people reach for them.
+        $menuOrder = [Its::T_TICKET => 2, Its::T_CUSTOMER => 3, Its::T_CONTACT => 4, Its::T_ASSET => 5,
+            Its::T_KNOWLEDGE => 6, Its::T_TEMPLATE => 7, Its::T_CATEGORY => 8, Its::T_SLA => 9];
         $menu = [[
             'order' => '40',
             'title' => 'ITサポート',
@@ -355,6 +364,17 @@ class Schema
             'menu_name' => 'its_root',
             'parent_name' => null,
             'menu_target_name' => null,
+            'options' => null,
+        ], [
+            'order' => '1',
+            'title' => '受付箱',
+            'icon' => 'fa-inbox',
+            'uri' => '',
+            'menu_type' => 'plugin',
+            'menu_name' => 'its_desk',
+            'parent_name' => 'its_root',
+            // Resolved by plugin name (Menu::importReplaceJson).
+            'menu_target_name' => Its::PLUGIN_NAME,
             'options' => null,
         ]];
 
@@ -385,9 +405,9 @@ class Schema
                 'custom_column_multisettings' => [],
             ];
 
-            if ($table_name !== Its::T_MESSAGE) {
+            if (isset($menuOrder[$table_name])) {
                 $menu[] = [
-                    'order' => strval($menuOrder++),
+                    'order' => strval($menuOrder[$table_name]),
                     'title' => $table['label'],
                     'icon' => $table['icon'],
                     'uri' => $table_name,
