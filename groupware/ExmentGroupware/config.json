@@ -1,0 +1,16 @@
+{
+    "plugin_name": "ExmentGroupware",
+    "uuid": "9eef3996-557e-4a1e-990d-9d5302fa35a8",
+    "plugin_view_name": "Exment Plugin Groupware",
+    "description": "グループウェアの機能。まず、ファイルサーバーの Word・Excel・PowerPoint を、ブラウザーの Office（ibisOffice）で開いて編集・保存します（保存すると新しい版になります）。",
+    "author": "Exceedone",
+    "version": "0.1.0",
+    "plugin_type": "page",
+    "uri": "exment_groupware",
+    "icon": "fa-briefcase",
+    "route": [
+        { "method": "get", "uri": "", "function": "index" },
+        { "method": "post", "uri": "install", "function": "install" },
+        { "method": "get", "uri": "office/{workspace}/{node}", "function": "office" }
+    ]
+}
