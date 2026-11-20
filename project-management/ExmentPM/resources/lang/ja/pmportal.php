@@ -593,7 +593,7 @@ return [
     'form_style_saved' => 'フォームのスタイルを変更しました',
     'form_styles' => [
         'card' => 'カード',
-        'card_desc' => 'ふんわり浮かぶカード。Backlog に近い落ち着いた既定スタイル。',
+        'card_desc' => 'ふんわり浮かぶカード。落ち着いた既定のスタイル。',
         'sheet' => 'シート',
         'sheet_desc' => 'Notion 風。枠を消してラベルは薄く、入力欄は下線。',
         'compact' => 'コンパクト',
@@ -849,7 +849,7 @@ return [
     ],
     'schema' => [
         'template_name' => 'プロジェクト管理追加構造',
-        'template_description' => 'プロジェクト管理がBacklog相当の項目を扱うために追加するテーブルと列です。',
+        'template_description' => 'プロジェクト管理が課題・マイルストーンなどを扱うために追加するテーブルと列です。',
         'table' => [
             'status' => '状態',
             'issue_type' => '種別',
@@ -1265,7 +1265,7 @@ return [
         'opt_mask_pii' => 'メールアドレス・電話番号をマスクして送る',
         'opt_mask_pii_help' => '判定に不要な個人情報を送信前に [email] / [phone] に置き換えます。',
         'opt_top_is_high' => '優先度一覧の先頭が最も高い',
-        'opt_top_is_high_help' => 'Backlog 式に「至急・高・中・低」の順で並べている場合はオン。逆順に並べている場合はオフにします。',
+        'opt_top_is_high_help' => '「至急・高・中・低」のように、上ほど優先度が高い順で並べている場合はオン。逆順に並べている場合はオフにします。',
         'opt_severe_bump' => 'セキュリティ・データ消失の疑いで優先度を 1 段階上げる',
         'opt_severe_bump_help' => '権限の誤り、データの消失や破損、バックアップ失敗が書かれている課題は、影響範囲と緊急度から出た優先度を 1 段階引き上げます。',
         // The key field is write-only: what it says instead of the key.

@@ -2,7 +2,7 @@
     "plugin_name": "ExmentPM",
     "uuid": "00da3e93-1a24-4f44-b993-d61367e43649",
     "plugin_view_name": "Exment Plugin PM（プロジェクト管理）",
-    "description": "Backlog 風のプロジェクト管理（課題・ボード・ガントチャート・Wiki・ファイル・データ移行）。Exment の標準テーブル上に構築します。",
+    "description": "プロジェクト管理（課題・ボード・ガントチャート・Wiki・ファイル・データ移行）。Exment の標準テーブル上に構築します。",
     "author": "Exceedone",
     "version": "1.4.0",
     "plugin_type": "page,validator,event,batch",

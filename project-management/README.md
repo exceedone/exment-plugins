@@ -1,7 +1,7 @@
 # Exment Plugin Project Management
 
-Project and ticket management for Exment: a Backlog-like portal with issues, board, Gantt chart, wiki and files, built on Exment's own tables.
-Exment のプロジェクト管理・チケット管理のプラグインです。Backlog に似たポータルで、課題・ボード・ガントチャート・Wiki・ファイルを Exment のテーブルの上に作ります。
+Project and ticket management for Exment: a portal with issues, board, Gantt chart, wiki and files, built on Exment's own tables.
+Exment のプロジェクト管理・チケット管理のプラグインです。課題・ボード・ガントチャート・Wiki・ファイルをまとめたポータルを、Exment のテーブルの上に作ります。
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
