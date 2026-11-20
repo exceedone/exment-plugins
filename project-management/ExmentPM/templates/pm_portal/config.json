@@ -1,12 +1,12 @@
 {
     "template_name": "pm_portal",
     "template_view_name": "プロジェクト管理",
-    "description": "Backlog 風のプロジェクト管理。プロジェクト・課題・マイルストーン・カテゴリー・Wiki と、カンバン／ガント／カレンダー表示を含みます。ロールグループと担当者への通知は PortalSchema が追加します。",
+    "description": "プロジェクト管理。プロジェクト・課題・マイルストーン・カテゴリー・Wiki と、カンバン／ガント／カレンダー表示を含みます。ロールグループと担当者への通知は PortalSchema が追加します。",
     "custom_tables": [
         {
             "table_name": "task_category",
             "table_view_name": "カテゴリー",
-            "description": "Backlog のカテゴリーに相当するマスタ。担当チームや機能領域で課題を分類する。",
+            "description": "課題のカテゴリーのマスタ。担当チームや機能領域で課題を分類する。",
             "system_flg": "0",
             "showlist_flg": "1",
             "order": "0",
@@ -68,7 +68,7 @@
         {
             "table_name": "task_milestone",
             "table_view_name": "マイルストーン",
-            "description": "Backlog のマイルストーンに相当するマスタ。期間を持つ区切り。",
+            "description": "マイルストーンのマスタ。期間を持つ区切り。",
             "system_flg": "0",
             "showlist_flg": "1",
             "order": "0",
@@ -159,7 +159,7 @@
         {
             "table_name": "project",
             "table_view_name": "プロジェクト",
-            "description": "Backlog のプロジェクトに相当。カテゴリー・マイルストーン・バージョンはこの単位で分かれます。",
+            "description": "プロジェクト。カテゴリー・マイルストーン・バージョンはこの単位で分かれます。",
             "system_flg": "0",
             "showlist_flg": "1",
             "order": "0",
@@ -433,7 +433,7 @@
         {
             "table_name": "pm_wiki",
             "table_view_name": "Wiki",
-            "description": "プロジェクトごとの Wiki ページ。Backlog の Wiki に相当。",
+            "description": "プロジェクトごとの Wiki ページ。",
             "system_flg": "0",
             "showlist_flg": "1",
             "order": "0",
