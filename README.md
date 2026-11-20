@@ -20,9 +20,9 @@ Exment Plugin Project Management is one Exment plugin:
 
 | Folder | Plugin | What it does | Download (for your own server) |
 |---|---|---|---|
-| [`project-management/ExmentPluginPM/`](project-management/ExmentPluginPM/) | Exment Plugin PM（プロジェクト管理） — plugin name `ExmentPluginPM` (was `PmPortal` until 1.2.0) | Projects and tickets, and moving a project to another Exment (**⚙ Settings → データ移行**) | [ExmentPluginPM-1.3.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentPluginPM-v1.3.0/ExmentPluginPM-1.3.0.zip) |
+| [`project-management/ExmentPM/`](project-management/ExmentPM/) | Exment Plugin PM（プロジェクト管理） — plugin name `ExmentPM` (was `PmPortal` until 1.2.0 and `ExmentPluginPM` in 1.3.0) | Projects and tickets, and moving a project to another Exment (**⚙ Settings → データ移行**) | [ExmentPM-1.4.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentPM-v1.4.0/ExmentPM-1.4.0.zip) |
 
-Since 1.3.0 the plugin's internal name is `ExmentPluginPM` (it was `PmPortal`). The address (`/admin/plugins/pm_portal`), the screens and your data do not change. **If you already use PmPortal, do not upload the new zip as it is** — Exment refuses it. Follow [Moving from PmPortal to ExmentPluginPM](project-management/README.md#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) once; after that, updates are uploaded as usual.
+Since 1.4.0 the plugin's internal name is `ExmentPM` (it was `PmPortal` until 1.2.0 and `ExmentPluginPM` in 1.3.0) and its address is `/admin/plugins/exment_pm` (it was `/admin/plugins/pm_portal`). The screens and your data do not change. **Links and bookmarks to the old address stop working** (Exment does not redirect them). **If you already use PmPortal or ExmentPluginPM, do not upload the new zip as it is** — Exment refuses it. Follow [Moving to ExmentPM](project-management/README.md#moving-to-exmentpm-from-pmportal-or-exmentpluginpm--exmentpm-への移行) once; after that, updates are uploaded as usual.
 
 Data migration used to be the separate PmMigrate plugin. Since 1.2.0 it is part of this plugin (**⚙ Settings → データ移行**, system administrators only), so PmMigrate is retired: after updating you can delete PmMigrate in **Admin settings → Plugins**. Its last version stays on [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1).
 
@@ -50,7 +50,7 @@ In Exment, open **Admin → Plugin market → Install**.
 **Download**
 
 1. Open **[Releases](https://github.com/exceedone/exment-plugins/releases)** (right side of this page).
-2. Under the newest release of the plugin (for example **ExmentPluginPM 1.3.0**), click the zip in **Assets** (for example `ExmentPluginPM-1.3.0.zip`). Do not unzip it.
+2. Under the newest release of the plugin (for example **ExmentPM 1.4.0**), click the zip in **Assets** (for example `ExmentPM-1.4.0.zip`). Do not unzip it.
 
 Do not use the green **Code → Download ZIP** button: that is the whole repository, and Exment cannot read it.
 
@@ -64,8 +64,8 @@ Do not use the green **Code → Download ZIP** button: that is the whole reposit
 **Update to a newer version**
 
 1. Download the newer zip from Releases and upload it the same way. The plugin is replaced; your data stays.
-2. For Project Management (ExmentPluginPM): open it and press **⚙ Settings → Update data structure** if it asks.
-3. Coming from PmPortal (1.2.0 or older)? The upload is refused with "UUID exists but the plugin name is wrong". Do [Moving from PmPortal to ExmentPluginPM](project-management/README.md#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) first.
+2. For Project Management (ExmentPM): open it and press **⚙ Settings → Update data structure** if it asks.
+3. Coming from PmPortal (1.2.0 or older) or ExmentPluginPM (1.3.0)? The upload is refused with "UUID exists but the plugin name is wrong". Do [Moving to ExmentPM](project-management/README.md#moving-to-exmentpm-from-pmportal-or-exmentpluginpm--exmentpm-への移行) first.
 
 ### GitHub and the market: what is different
 
@@ -103,6 +103,27 @@ Issues and pull requests are welcome.
 |---|---|
 | `main` | The latest release |
 | `feature/*` | Work in progress, merged into `main` by pull request |
+
+### Naming rule for official plugins
+
+Every official plugin (a plugin in this repository) puts "Exment" first, so that it never collides with a plugin of a customer or another vendor. Exment does not check that an address (`uri`) is unique: when two plugins have the same one, the first plugin found answers and the other is silently unreachable.
+
+| What | Rule | Example |
+|---|---|---|
+| Internal name: `plugin_name`, folder, PHP namespace, zip, release tag | `Exment<Name>` (no "Plugin") | `ExmentPM`, `App\Plugins\ExmentPM`, `ExmentPM-1.4.0.zip`, `ExmentPM-v1.4.0` |
+| Address: `uri` in `config.json` (always write it) | `exment_<name>` | `exment_pm` → `/admin/plugins/exment_pm` |
+| Name in the plugin list: `plugin_view_name` | `Exment Plugin <Name>（日本語名）` | `Exment Plugin PM（プロジェクト管理）` |
+
+- Plugins of customers and other vendors must not use the `Exment` / `exment_` prefix.
+- Exment turns `plugin_name` into the namespace and the folder with its own Pascal-case rule, and it must come back unchanged: `ExmentPM` stays `ExmentPM`. When `config.json` has no `uri`, Exment derives it from `plugin_name` (`ExmentPM` would become `exment_p_m`), so `uri` is always written.
+- The `uri` must stay unique on an Exment. Besides the `uri`, Exment also matches an address against the Pascal case of every `plugin_name` (`exment_pm` → `ExmentPm`), so no plugin may be named like the Pascal case of another plugin's `uri`.
+- Never change `uuid`. Changing `plugin_name` or `uri` of a released plugin needs manual work on every install and breaks stored links, so decide them before the first release.
+
+Folders in this repository and the rule:
+
+| Folder | `plugin_name` | `uri` | Name in the list | Follows the rule |
+|---|---|---|---|---|
+| `project-management/ExmentPM/` | `ExmentPM` | `exment_pm` | Exment Plugin PM（プロジェクト管理） | Yes (since 1.4.0) |
 
 ### CI
 
@@ -145,9 +166,9 @@ Exment Plugin Project Management は、1 つの Exment プラグインです。
 
 | フォルダ | プラグイン | できること | ダウンロード（自分のサーバー用） |
 |---|---|---|---|
-| [`project-management/ExmentPluginPM/`](project-management/ExmentPluginPM/) | Exment Plugin PM（プロジェクト管理） — プラグイン名 `ExmentPluginPM`（1.2.0 までは `PmPortal`） | プロジェクトとチケットの管理、プロジェクトを別の Exment に移す（**⚙ 設定 → データ移行**） | [ExmentPluginPM-1.3.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentPluginPM-v1.3.0/ExmentPluginPM-1.3.0.zip) |
+| [`project-management/ExmentPM/`](project-management/ExmentPM/) | Exment Plugin PM（プロジェクト管理） — プラグイン名 `ExmentPM`（1.2.0 までは `PmPortal`、1.3.0 は `ExmentPluginPM`） | プロジェクトとチケットの管理、プロジェクトを別の Exment に移す（**⚙ 設定 → データ移行**） | [ExmentPM-1.4.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentPM-v1.4.0/ExmentPM-1.4.0.zip) |
 
-1.3.0 から、プラグインの内部の名前が `ExmentPluginPM` になりました（前は `PmPortal`）。アドレス（`/admin/plugins/pm_portal`）・画面・データは変わりません。**すでに PmPortal を使っている場合は、新しい zip をそのままアップロードしないでください**（Exment が受け付けません）。先に 1 回だけ [PmPortal から ExmentPluginPM への移行](project-management/README.md#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) をします。そのあとは、今までどおりアップロードで新しくできます。
+1.4.0 から、プラグインの内部の名前が `ExmentPM` に（1.2.0 までは `PmPortal`、1.3.0 は `ExmentPluginPM`）、アドレスが `/admin/plugins/exment_pm` に（前は `/admin/plugins/pm_portal`）なりました。画面とデータは変わりません。**古いアドレスへのリンクやブックマークは開けなくなります**（Exment は転送しません）。**すでに PmPortal か ExmentPluginPM を使っている場合は、新しい zip をそのままアップロードしないでください**（Exment が受け付けません）。先に 1 回だけ [ExmentPM への移行](project-management/README.md#moving-to-exmentpm-from-pmportal-or-exmentpluginpm--exmentpm-への移行) をします。そのあとは、今までどおりアップロードで新しくできます。
 
 データ移行は、前は別のプラグイン PmMigrate でした。1.2.0 からはこのプラグインの **⚙ 設定 → データ移行**（システム管理者だけ）に入ったので、PmMigrate は使い終わりです。プラグインを新しくしたあと、**管理者設定 → プラグイン** で PmMigrate を消してかまいません。PmMigrate の最後の版は [Releases](https://github.com/exceedone/exment-plugins/releases/tag/PmMigrate-v1.0.1) に残っています。
 
@@ -175,7 +196,7 @@ Exment の **管理 → プラグインマーケット → インストール** 
 **ダウンロード**
 
 1. このページの右側にある **[Releases](https://github.com/exceedone/exment-plugins/releases)** を開きます。
-2. 入れたいプラグインのいちばん新しい版（例: **ExmentPluginPM 1.3.0**）の **Assets** にある zip（例: `ExmentPluginPM-1.3.0.zip`）をクリックして保存します。zip は展開しません。
+2. 入れたいプラグインのいちばん新しい版（例: **ExmentPM 1.4.0**）の **Assets** にある zip（例: `ExmentPM-1.4.0.zip`）をクリックして保存します。zip は展開しません。
 
 緑の **Code → Download ZIP** ボタンは使わないでください。リポジトリ全体の zip なので、Exment は読めません。
 
@@ -189,8 +210,8 @@ Exment の **管理 → プラグインマーケット → インストール** 
 **新しい版にする**
 
 1. Releases から新しい版の zip をダウンロードし、同じようにアップロードします。プラグインが置きかわります。データは消えません。
-2. プロジェクト管理（ExmentPluginPM）の場合: 画面を開き、言われたら **⚙ 設定 → データ構造の更新** を押します。
-3. PmPortal（1.2.0 まで）から新しくする場合: アップロードは「UUIDは存在しますが、プラグイン名が正しくありません」と出て止まります。先に [PmPortal から ExmentPluginPM への移行](project-management/README.md#moving-from-pmportal-to-exmentpluginpm--pmportal-から-exmentpluginpm-への移行) をします。
+2. プロジェクト管理（ExmentPM）の場合: 画面を開き、言われたら **⚙ 設定 → データ構造の更新** を押します。
+3. PmPortal（1.2.0 まで）か ExmentPluginPM（1.3.0）から新しくする場合: アップロードは「UUIDは存在しますが、プラグイン名が正しくありません」と出て止まります。先に [ExmentPM への移行](project-management/README.md#moving-to-exmentpm-from-pmportal-or-exmentpluginpm--exmentpm-への移行) をします。
 
 ### GitHub とマーケットの違い
 
@@ -228,6 +249,27 @@ Issue・プルリクエストを歓迎します。
 |---|---|
 | `main` | 最新の版 |
 | `feature/*` | 作業中。プルリクエストで `main` に入れる |
+
+### 公式プラグインの名前の決まり
+
+公式プラグイン（このリポジトリのプラグイン）は、どれも名前の先頭に「Exment」を付けます。お客様や他社のプラグインと重ならないようにするためです。Exment は、アドレス（`uri`）が重なっていないかを調べません。2 つのプラグインが同じ `uri` だと、先に見つかったほうだけが動き、もう片方は何も言われないまま開けなくなります。
+
+| 対象 | 決まり | 例 |
+|---|---|---|
+| 内部の名前（`plugin_name`・フォルダ・PHP の namespace・zip・リリースのタグ） | `Exment<名前>`（「Plugin」は入れない） | `ExmentPM`、`App\Plugins\ExmentPM`、`ExmentPM-1.4.0.zip`、`ExmentPM-v1.4.0` |
+| アドレス（`config.json` の `uri`。必ず書く） | `exment_<名前>` | `exment_pm` → `/admin/plugins/exment_pm` |
+| プラグインの一覧に出る名前（`plugin_view_name`） | `Exment Plugin <名前>（日本語名）` | `Exment Plugin PM（プロジェクト管理）` |
+
+- お客様や他社のプラグインでは、`Exment`・`exment_` で始まる名前を使わないでください。
+- Exment は `plugin_name` を自分のパスカルケースの決まりで namespace とフォルダ名に直します。直しても同じ形のままになる名前にします（`ExmentPM` は `ExmentPM` のまま）。`config.json` に `uri` がないと、Exment は `plugin_name` からアドレスを作る（`ExmentPM` は `exment_p_m` になる）ので、`uri` は必ず書きます。
+- `uri` は、その Exment の中で 1 つだけにします。Exment はアドレスを、`uri` のほかに、すべての `plugin_name` のパスカルケースとも比べます（`exment_pm` → `ExmentPm`）。ほかのプラグインの `uri` をパスカルケースにした名前のプラグインは作りません。
+- `uuid` は変えません。出したあとで `plugin_name` や `uri` を変えると、入っている環境すべてで手作業が必要になり、保存されているリンクも切れます。最初に出す前に決めます。
+
+このリポジトリのフォルダと、決まりに合っているか:
+
+| フォルダ | `plugin_name` | `uri` | 一覧に出る名前 | 決まりに合っているか |
+|---|---|---|---|---|
+| `project-management/ExmentPM/` | `ExmentPM` | `exment_pm` | Exment Plugin PM（プロジェクト管理） | 合っている（1.4.0 から） |
 
 ### 自動チェック（CI）
 
