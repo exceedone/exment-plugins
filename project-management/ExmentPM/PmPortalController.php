@@ -349,6 +349,141 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * A short link to one issue, the way Backlog writes them: /view/KEY.
+     *
+     * KEY is the portal's PROJECTKEY-id, the issue_key (ISS00123), or for an
+     * imported issue its key at the source (MIGRE_TEST_2026-2). It answers
+     * with a redirect to the project's page, which opens the issue from the
+     * part after the #. A ?c=<comment id> is carried along, so a link to a
+     * comment is short too.
+     *
+     * Looked for in this order, so a key means what it says first:
+     * 1. PROJECTKEY-id whose project is still that project
+     * 2. the source key of an imported issue
+     * 3. the issue_key column
+     * 4. PROJECTKEY-id of an issue since moved to another project, when
+     *    PROJECTKEY is still some project's key
+     * An issue the user may not open is answered as if it were not there.
+     */
+    public function viewIssue(Request $request, $key)
+    {
+        if (PortalSetup::needsSetup()) {
+            return redirect(PortalDefinition::url('setup'));
+        }
+        if (!isset($this->project_table) || !isset($this->issue_table)) {
+            abort(404);
+        }
+        $key = trim(strval($key));
+        $issue = $this->issueByKey($key);
+        if (!isset($issue)) {
+            abort(404);
+        }
+        $project = $this->project_table->getValueModel()->find($issue->parent_id);
+        if (!isset($project) || $project->enableAccess() !== true) {
+            abort(404);
+        }
+        $url = $this->issueUrl($project, $issue->id, false);
+        $comment = strval($request->query('c', ''));
+        if (ctype_digit($comment)) {
+            $url .= '?c=' . $comment;
+        }
+
+        return redirect($url);
+    }
+
+    /**
+     * The issue a short-link key names, or null. See viewIssue().
+     *
+     * @param string $key
+     * @return \Exceedone\Exment\Model\CustomValue|null
+     */
+    protected function issueByKey(string $key)
+    {
+        if ($key === '' || strlen($key) > 200) {
+            return null;
+        }
+        $model = $this->issue_table->getValueModel();
+        $mine = function ($issue) {
+            return isset($issue) && $issue->parent_type == $this->project_table->table_name
+                && $issue->enableAccess() === true ? $issue : null;
+        };
+
+        $byId = null;
+        if (preg_match('/^(.+)-(\d+)$/', $key, $m)) {
+            $byId = $mine($model->find(intval($m[2])));
+            if (isset($byId)) {
+                $project = $this->project_table->getValueModel()->find($byId->parent_id);
+                if (isset($project) && strcasecmp($this->issueKey($project, $byId->id), $key) === 0) {
+                    return $byId;
+                }
+            }
+        }
+        $columns = [PortalSchema::ISSUE_COLUMNS['source_key'], array_get($this->def['issue'], 'key', 'issue_key')];
+        foreach ($columns as $column) {
+            if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
+                continue;
+            }
+            $found = $mine($model->where('value->' . $column, $key)->first());
+            if (isset($found)) {
+                return $found;
+            }
+        }
+
+        // A moved issue: its old project's key still names a project.
+        return isset($byId) && isset($m[1]) && $this->projectByCode($m[1]) !== null ? $byId : null;
+    }
+
+    /**
+     * The project whose key is $code (either case), whether or not this user
+     * may open it, or null.
+     *
+     * @param string $code
+     * @return \Exceedone\Exment\Model\CustomValue|null
+     */
+    protected function projectByCode(string $code)
+    {
+        $column = strval(array_get($this->def['project'], 'key', ''));
+        if ($code === '' || strlen($code) > 200 || $column === '' || CustomColumn::getEloquent($column, $this->project_table) === null) {
+            return null;
+        }
+
+        return $this->project_table->getValueModel()
+            ->whereIn('value->' . $column, array_unique([$code, strtoupper($code), strtolower($code)]))
+            ->first();
+    }
+
+    /**
+     * A short link to a project: /projects/PROJECTKEY, like Backlog's.
+     * Redirects to the project's page; the number in its address stays.
+     */
+    public function viewProject(Request $request, $code)
+    {
+        if (PortalSetup::needsSetup()) {
+            return redirect(PortalDefinition::url('setup'));
+        }
+        if (!isset($this->project_table) || !isset($this->issue_table)) {
+            abort(404);
+        }
+        $code = trim(strval($code));
+        $column = strval(array_get($this->def['project'], 'key', ''));
+        if ($code === '' || strlen($code) > 200 || $column === '' || CustomColumn::getEloquent($column, $this->project_table) === null) {
+            abort(404);
+        }
+        // The key is shown upper-cased (issueKey()), so either case finds it.
+        $project = $this->project_table->getValueModel()
+            ->whereIn('value->' . $column, array_unique([$code, strtoupper($code), strtolower($code)]))
+            ->get()
+            ->first(function ($row) {
+                return $row->enableAccess() === true;
+            });
+        if (!isset($project)) {
+            abort(404);
+        }
+
+        return redirect(PortalDefinition::url($project->id));
+    }
+
+    /**
      * One project's portal.
      */
     public function show(Request $request, Content $content, $id = null)
@@ -757,6 +892,9 @@ class PmPortalController extends AdminControllerBase
                 'files' => $files,
                 'reads' => $reads,
                 'reactions' => (object) ($issue_reactions[strval($issue->id)] ?? []),
+                // Schema 25: where an imported issue came from, and the
+                // source's custom attributes. Empty for an issue made here.
+                'source' => $this->issueSource($issue->value),
             ];
             if ($partial) {
                 $out[strval($issue->id)]['partial'] = true;
@@ -764,6 +902,34 @@ class PmPortalController extends AdminControllerBase
         }
 
         return $out;
+    }
+
+    /**
+     * An imported issue's source (schema 25), or null for one made here.
+     * The URL is only handed on when it is http(s): the screen makes a link
+     * of it, and the column takes whatever an import wrote.
+     *
+     * @param mixed $value the issue's value array
+     * @return array<string, string>|null
+     */
+    protected function issueSource($value): ?array
+    {
+        $v = (array) $value;
+        $c = PortalSchema::ISSUE_COLUMNS;
+        $out = [
+            'key' => strval(array_get($v, $c['source_key'], '')),
+            'url' => strval(array_get($v, $c['source_url'], '')),
+            'cby' => strval(array_get($v, $c['source_created_by'], '')),
+            'cd' => $this->fmtAt(array_get($v, $c['source_created_at'])),
+            'uby' => strval(array_get($v, $c['source_updated_by'], '')),
+            'ud' => $this->fmtAt(array_get($v, $c['source_updated_at'])),
+            'cf' => strval(array_get($v, $c['custom_fields'], '')),
+        ];
+        if (!preg_match('#^https?://#i', $out['url'])) {
+            $out['url'] = '';
+        }
+
+        return implode('', $out) === '' ? null : $out;
     }
 
     /**
@@ -1071,7 +1237,15 @@ class PmPortalController extends AdminControllerBase
         // People who are not on the new project.
         $roles = PortalMembership::roles((array) $target->value);
         if (!empty($roles)) {
-            foreach ([[array_get($is, 'assignees'), PortalMembership::EDITORS], [array_get($extra, 'notified_users'), null]] as [$column, $allowed]) {
+            $people = [
+                [array_get($is, 'assignees'), PortalMembership::EDITORS],
+                [array_get($extra, 'notified_users'), null],
+                // Schema 27
+                [array_get($extra, 'sub_assignees'), PortalMembership::EDITORS],
+                [array_get($extra, 'managers'), null],
+                [array_get($extra, 'reviewers'), null],
+            ];
+            foreach ($people as [$column, $allowed]) {
                 if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
                     continue;
                 }
@@ -1103,7 +1277,7 @@ class PmPortalController extends AdminControllerBase
 
         return response()->json([
             'ok' => true,
-            'url' => $this->issueUrl($target, $issue->id),
+            'url' => $this->issueUrl($target, $issue->id, false),
             'message' => strval(PortalDefinition::trans('message.moved', [
                 'name' => strval(array_get($target->value, array_get($this->def['project'], 'name', 'name'), '')),
             ])),
@@ -1424,14 +1598,24 @@ class PmPortalController extends AdminControllerBase
     /**
      * Where one issue opens in the portal, as a full URL for a mail.
      *
+     * Short (/view/KEY, see viewIssue()) when the project has a key: the
+     * link then reads like Backlog's and still opens after the issue moves
+     * to another project. Otherwise, or with $short off, the project's page
+     * with the issue after the #.
+     *
      * @param \Exceedone\Exment\Model\CustomValue $project
      * @param mixed $issue_id
+     * @param bool $short
      */
-    public function issueUrl($project, $issue_id): string
+    public function issueUrl($project, $issue_id, bool $short = true): string
     {
         $key = $this->issueKey($project, $issue_id);
+        $keyed = $key !== '' && strpos($key, '#') === false;
+        if ($short && $keyed) {
+            return PortalDefinition::url('view', $key);
+        }
 
-        return PortalDefinition::url($project->id) . '#issue-' . ($key !== '' && strpos($key, '#') === false ? $key : strval($issue_id));
+        return PortalDefinition::url($project->id) . '#issue-' . ($keyed ? $key : strval($issue_id));
     }
 
     /**
@@ -3003,7 +3187,27 @@ class PmPortalController extends AdminControllerBase
             // column; carrying it on the row lets the project's own list do
             // the same without a second query.
             'by' => intval($issue->created_user_id) ?: null,
+            // Schema 27: sub-assignees, managers, reviewers and difficulty
+            // (empty before the upgrade).
+            'sa' => $this->userIds($v, 'sub_assignees'),
+            'mg' => $this->userIds($v, 'managers'),
+            'rv' => $this->userIds($v, 'reviewers'),
+            'df' => strval(array_get($v, array_get($this->def, 'issue_extra.difficulty', 'difficulty'), '')),
         ];
+    }
+
+    /**
+     * The user ids in one of the issue's extra people columns (schema 27).
+     *
+     * @param mixed $value the issue's value array
+     * @param string $role key in PortalSchema::ISSUE_COLUMNS
+     * @return array<int, int>
+     */
+    protected function userIds($value, string $role): array
+    {
+        $column = array_get($this->def, 'issue_extra.' . $role, $role);
+
+        return array_values(array_filter(array_map('intval', (array) array_get((array) $value, $column, []))));
     }
 
     /**

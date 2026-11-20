@@ -687,6 +687,11 @@ class PortalRules
         $checks = [
             [static::column($def, 'issue.assignees', ''), PortalMembership::EDITORS, 'rules.assignee_not_member'],
             [static::column($def, 'issue_extra.notified_users', ''), null, 'rules.notify_not_member'],
+            // Schema 27. A sub-assignee does the work too; a manager or a
+            // reviewer only has to be on the project.
+            [static::column($def, 'issue_extra.sub_assignees', ''), PortalMembership::EDITORS, 'rules.sub_assignee_not_member'],
+            [static::column($def, 'issue_extra.managers', ''), null, 'rules.manager_not_member'],
+            [static::column($def, 'issue_extra.reviewers', ''), null, 'rules.reviewer_not_member'],
         ];
 
         $asked = false;

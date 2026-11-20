@@ -93,8 +93,42 @@ class PortalSchema
      * template, whose importer silently skips notifications, so no install
      * ever got it and assignees heard nothing when their issue changed
      * (ISS00343).
+     *
+     * 25: the sidebar is tidied to the single "プロジェクト管理" entry
+     * (ISS00256). PortalUpgrade::tidyLegacyMenus() takes away the menus
+     * older versions created - the portal / settings / master branch and the
+     * bundled template's table branch - and lifts the portal entry to the
+     * top level. Only the plugin's own entries, found by name; the screens
+     * stay, opened from the portal's ⚙ 設定.
+     *
+     * 26: what a Backlog import has nowhere else to put (ISS00070, ISS00113).
+     * Issues get where they came from - the source key and URL, who raised
+     * and last changed them there and when - because Exment's own created_at
+     * and created_user are the importer's, not the original author's; and
+     * the source's custom attributes, as "name: value" lines until the
+     * portal has per-project custom fields of its own. Milestones get the
+     * archived flag Backlog has, and wiki pages get tags and their source.
+     * All empty for anything not imported.
+     *
+     * 26 was 25 on its own branch (PR #33), and ex1task ran it as 25
+     * before 1.4.1's menu tidy took that number. Both are safe to run
+     * again: the template importer only adds a column a table has not
+     * got, and the menu tidy removes entries by name.
+     *
+     * 27: who else an issue belongs to (ISS00252). Beside the assignees, the
+     * sub-assignees who help, the managers who answer for it and the
+     * reviewers who check it, and how hard it is. The three people columns
+     * join the issue notification's targets the way the notify column did,
+     * so naming someone tells them. The author is Exment's own created_user
+     * (or, for an import, the source's author) and the watchers are the
+     * notify column, so neither needs a column of its own.
+     *
+     * 28: the member group's grant on projects, issues and wiki pages is
+     * edit only. Who is on a project is set through its members columns,
+     * which PortalMembership keeps in step. Narrowed in place on the way
+     * past 28 (retiredGrants()), so members keep editing what they edit.
      */
-    const VERSION = 24;
+    const VERSION = 28;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -135,6 +169,42 @@ class PortalSchema
         'recurrence' => 'recurrence',
         // Schema 22: the time on the due date, or empty for the whole day.
         'due_time' => 'due_time',
+        // Schema 26: where an imported issue came from (Backlog and the like).
+        'source_key' => 'source_key',
+        'source_url' => 'source_url',
+        'source_created_by' => 'source_created_by',
+        'source_created_at' => 'source_created_at',
+        'source_updated_by' => 'source_updated_by',
+        'source_updated_at' => 'source_updated_at',
+        'custom_fields' => 'custom_fields',
+        // Schema 27: the other roles on an issue, and its difficulty.
+        'sub_assignees' => 'sub_assignees',
+        'managers' => 'managers',
+        'reviewers' => 'reviewers',
+        'difficulty' => 'difficulty',
+    ];
+
+    /**
+     * Schema 27: the people columns besides the assignees, in the order the
+     * screens show them. Each is told about the issue like the notify
+     * column, and has to be on the project.
+     */
+    const ROLE_COLUMNS = ['sub_assignees', 'managers', 'reviewers'];
+
+    /** Schema 27: the difficulty choices, easiest first. */
+    const DIFFICULTIES = ['easy', 'normal', 'hard'];
+
+    /** Columns added to the milestone table by this schema (26). */
+    const MILESTONE_COLUMNS = [
+        'archived' => 'archived',
+    ];
+
+    /** Columns added to the wiki table by this schema (26). */
+    const WIKI_COLUMNS = [
+        'tags' => 'tags',
+        'source_url' => 'source_url',
+        'source_created_by' => 'source_created_by',
+        'source_created_at' => 'source_created_at',
     ];
 
     /**
@@ -172,6 +242,13 @@ class PortalSchema
     const MENU_PAGE = 'pm_portal_page';
     const MENU_SETTINGS = 'pm_portal_settings';
     const MENU_MASTER = 'pm_portal_master';
+
+    /**
+     * Menu node the bundled template created before 1.4.1, with the plugin's
+     * data tables under it. The template no longer ships a menu (ISS00256);
+     * the name stays so PortalUpgrade::tidyLegacyMenus() can find the node.
+     */
+    const MENU_TEMPLATE = 'pm_internal';
 
     /**
      * Role groups the portal sets up, in the order they are offered.
@@ -384,11 +461,15 @@ class PortalSchema
                         // In-app, not mail: whoever has to act on the issue,
                         // whoever asked to hear about it, and whoever opened it
                         // - the circle Backlog tells on every update.
-                        'notify_action_target' => [
+                        'notify_action_target' => array_merge([
                             $n['issue_table'] . '.' . array_get($issue, 'assignees'),
                             $n['issue_table'] . '.' . array_get($extra, 'notified_users', 'notified_users'),
+                        ], array_map(function ($role) use ($n, $extra) {
+                            // Schema 27: sub-assignees, managers, reviewers.
+                            return $n['issue_table'] . '.' . array_get($extra, $role, $role);
+                        }, self::ROLE_COLUMNS), [
                             'created_user',
-                        ],
+                        ]),
                         // Exment expands ${value:column} when it sends. The
                         // placeholder is named :field rather than :subject so
                         // that the colon inside the value cannot collide with
@@ -436,7 +517,85 @@ class PortalSchema
             $tables[] = static::categoryAdditions($n['category_table']);
         }
 
+        // Schema 26: Backlog's archived milestones, and wiki tags and source.
+        if (!is_nullorempty(array_get($n, 'milestone_table'))) {
+            $tables[] = static::milestoneAdditions($n['milestone_table']);
+        }
+        if (!is_nullorempty(array_get($n, 'wiki_table'))) {
+            $tables[] = static::wikiAdditions($n['wiki_table']);
+        }
+
         return $tables;
+    }
+
+    /**
+     * Backlog archives a milestone that is over instead of deleting it, so
+     * the issues that point at it keep their history. Off by default.
+     *
+     * @param string $tableName
+     * @return array<string, mixed>
+     */
+    protected static function milestoneAdditions(string $tableName): array
+    {
+        $c = self::MILESTONE_COLUMNS;
+
+        return [
+            'table_name' => $tableName,
+            'custom_columns' => [
+                static::column($c['archived'], 'milestone.archived', 'yesno', [
+                    'default' => '0',
+                    'index_enabled' => '1',
+                    'help' => PortalDefinition::trans('schema.help.milestone_archived'),
+                ], 93),
+            ],
+        ];
+    }
+
+    /**
+     * A wiki page's tags, and for an imported page where it came from.
+     *
+     * @param string $tableName
+     * @return array<string, mixed>
+     */
+    protected static function wikiAdditions(string $tableName): array
+    {
+        $c = self::WIKI_COLUMNS;
+
+        return [
+            'table_name' => $tableName,
+            'custom_columns' => array_merge([
+                static::column($c['tags'], 'wiki.tags', 'text', [
+                    'freeword_search' => '1',
+                    'help' => PortalDefinition::trans('schema.help.wiki_tags'),
+                ], 94),
+            ], static::sourceColumns($c, 95, false)),
+        ];
+    }
+
+    /**
+     * The "where it came from" columns an import fills in. Exment stamps a
+     * row with the importer as its creator and the import as its time; these
+     * keep the original author and dates beside them.
+     *
+     * @param array<string, string> $c the table's column map
+     * @param int $order where the first one goes
+     * @param bool $withUpdate also the last change at the source
+     * @return array<int, array<string, mixed>>
+     */
+    protected static function sourceColumns(array $c, int $order, bool $withUpdate): array
+    {
+        $help = ['help' => PortalDefinition::trans('schema.help.source')];
+        $columns = [
+            static::column($c['source_url'], 'source.url', 'url', $help, $order),
+            static::column($c['source_created_by'], 'source.created_by', 'text', $help, $order + 1),
+            static::column($c['source_created_at'], 'source.created_at', 'datetime', $help, $order + 2),
+        ];
+        if ($withUpdate) {
+            $columns[] = static::column($c['source_updated_by'], 'source.updated_by', 'text', $help, $order + 3);
+            $columns[] = static::column($c['source_updated_at'], 'source.updated_at', 'datetime', $help, $order + 4);
+        }
+
+        return $columns;
     }
 
     /**
@@ -619,44 +778,74 @@ class PortalSchema
     {
         $ic = self::ISSUE_COLUMNS;
 
-        return [
-            'table_name' => $n['issue_table'],
-            'custom_columns' => [
-                static::column($ic['resolution'], 'issue.resolution', 'select_table', [
-                    'index_enabled' => '1',
-                    'select_target_table_name' => $n['resolution_table'],
-                    'help' => PortalDefinition::trans('schema.help.resolution'),
-                ], 20),
-                static::column($ic['versions'], 'issue.versions', 'select_table', [
-                    'multiple_enabled' => '1',
-                    'select_target_table_name' => $n['milestone_table'],
-                    'help' => PortalDefinition::trans('schema.help.versions'),
-                ], 21),
-                static::column($ic['notified_users'], 'issue.notified_users', 'user', [
-                    'multiple_enabled' => '1',
-                    'grid_style' => 'avatar',
-                    'help' => PortalDefinition::trans('schema.help.notified_users'),
-                ], 22),
-                // Schema 19: the second subject line, placed right under the
-                // subject (same order; Exment then orders by creation).
-                static::column($ic['subject_sub'], 'issue.subject_sub', 'text', [
-                    'help' => PortalDefinition::trans('schema.help.subject_sub'),
-                ], 2),
-                // Schema 20: indexed, so a run finds the few recurring issues
-                // without reading every row.
-                static::column($ic['recurrence'], 'issue.recurrence', 'select_valtext', [
-                    'index_enabled' => '1',
-                    'select_item_valtext' => static::valtext(PortalRecurrence::KINDS, 'issue.recurrences.'),
-                    'help' => PortalDefinition::trans('schema.help.recurrence'),
-                ], 23),
-                // Schema 22: a time column of its own beside the due date, so
-                // the date stays a date for the gantt, the board, CSV and the
-                // API, and an issue without a time is exactly what it was.
-                static::column($ic['due_time'], 'issue.due_time', 'time', [
-                    'help' => PortalDefinition::trans('schema.help.due_time'),
-                ], 24),
-            ],
+        $columns = [
+            static::column($ic['resolution'], 'issue.resolution', 'select_table', [
+                'index_enabled' => '1',
+                'select_target_table_name' => $n['resolution_table'],
+                'help' => PortalDefinition::trans('schema.help.resolution'),
+            ], 20),
+            static::column($ic['versions'], 'issue.versions', 'select_table', [
+                'multiple_enabled' => '1',
+                'select_target_table_name' => $n['milestone_table'],
+                'help' => PortalDefinition::trans('schema.help.versions'),
+            ], 21),
+            static::column($ic['notified_users'], 'issue.notified_users', 'user', [
+                'multiple_enabled' => '1',
+                'grid_style' => 'avatar',
+                'help' => PortalDefinition::trans('schema.help.notified_users'),
+            ], 22),
+            // Schema 19: the second subject line, placed right under the
+            // subject (same order; Exment then orders by creation).
+            static::column($ic['subject_sub'], 'issue.subject_sub', 'text', [
+                'help' => PortalDefinition::trans('schema.help.subject_sub'),
+            ], 2),
+            // Schema 20: indexed, so a run finds the few recurring issues
+            // without reading every row.
+            static::column($ic['recurrence'], 'issue.recurrence', 'select_valtext', [
+                'index_enabled' => '1',
+                'select_item_valtext' => static::valtext(PortalRecurrence::KINDS, 'issue.recurrences.'),
+                'help' => PortalDefinition::trans('schema.help.recurrence'),
+            ], 23),
+            // Schema 22: a time column of its own beside the due date, so
+            // the date stays a date for the gantt, the board, CSV and the
+            // API, and an issue without a time is exactly what it was.
+            static::column($ic['due_time'], 'issue.due_time', 'time', [
+                'help' => PortalDefinition::trans('schema.help.due_time'),
+            ], 24),
         ];
+
+        // Schema 26: an imported issue's source. The key is indexed and
+        // searchable, so an old "PROJ-123" written in a mail still finds it.
+        $columns[] = static::column($ic['source_key'], 'source.key', 'text', [
+            'index_enabled' => '1',
+            'freeword_search' => '1',
+            'help' => PortalDefinition::trans('schema.help.source'),
+        ], 60);
+        $columns = array_merge($columns, static::sourceColumns($ic, 61, true));
+        $columns[] = static::column($ic['custom_fields'], 'issue.custom_fields', 'textarea', [
+            'freeword_search' => '1',
+            'help' => PortalDefinition::trans('schema.help.custom_fields'),
+        ], 66);
+
+        // Schema 27: the other people on the issue, right after the
+        // assignees (same order; Exment then orders by creation), and the
+        // difficulty with the other judgements. Indexed: the lists filter
+        // on them like on the assignees.
+        foreach (self::ROLE_COLUMNS as $role) {
+            $columns[] = static::column($ic[$role], 'issue.' . $role, 'user', [
+                'multiple_enabled' => '1',
+                'index_enabled' => '1',
+                'grid_style' => 'avatar',
+                'help' => PortalDefinition::trans('schema.help.' . $role),
+            ], 7);
+        }
+        $columns[] = static::column($ic['difficulty'], 'issue.difficulty', 'select_valtext', [
+            'index_enabled' => '1',
+            'select_item_valtext' => static::valtext(self::DIFFICULTIES, 'issue.difficulties.'),
+            'help' => PortalDefinition::trans('schema.help.difficulty'),
+        ], 25);
+
+        return ['table_name' => $n['issue_table'], 'custom_columns' => $columns];
     }
 
     /**
@@ -777,9 +966,7 @@ class PortalSchema
     }
 
     /**
-     * A menu branch of the plugin's own, kept apart from the raw data tables
-     * the template already put under "project management": the portal and its
-     * settings on one side, the master lists that feed them on the other.
+     * The plugin's sidebar menu: one top-level entry that opens the portal.
      *
      * @param array<string, string> $n
      * @param string $prefix
@@ -787,16 +974,12 @@ class PortalSchema
      */
     public static function menus(array $n, string $prefix): array
     {
-        $root = $prefix . self::MENU_ROOT;
-        $master = $prefix . self::MENU_MASTER;
-
         // ISS00256 (snoro 2026-11-18): the sidebar gets a single entry,
         // "プロジェクト管理", that opens the portal. Settings and the master
         // lists open from the portal's own top bar (⚙ 設定, administrators
         // only). The old root / settings / master branch is no longer created,
-        // so a schema upgrade does not bring it back.
-        unset($root, $master);
-
+        // so a schema upgrade does not bring it back, and an install that
+        // still has it loses it in schema 25 (PortalUpgrade::tidyLegacyMenus).
         return [
             static::menu($prefix . self::MENU_PAGE, 'menu.single', 'plugin', null, 'fa-tasks', '34', [
                 // Menu::importReplaceJson resolves this through Plugin::getEloquent,
@@ -858,17 +1041,18 @@ class PortalSchema
             $viewer[$n[$role]] = ['custom_value_view_all'];
         }
 
-        // A project and its issues: assigned rows only, and members may share
-        // one on. Import and export stay with the administrator, because a CSV
-        // is how a whole table gets overwritten by accident.
+        // A project and its issues: assigned rows only. Import and export stay
+        // with the administrator, because a CSV is how a whole table gets
+        // overwritten by accident. Members edit only (schema 28): who is
+        // on a project is set through its members columns.
         foreach (['project_table', 'issue_table'] as $role) {
             $admin[$n[$role]] = ['custom_value_edit_all', 'custom_value_import', 'custom_value_export', 'custom_view'];
-            $member[$n[$role]] = ['custom_value_edit', 'custom_value_share'];
+            $member[$n[$role]] = ['custom_value_edit'];
             $viewer[$n[$role]] = ['custom_value_view'];
         }
 
         $admin[$n['wiki_table']] = ['custom_value_edit_all', 'custom_value_share'];
-        $member[$n['wiki_table']] = ['custom_value_edit', 'custom_value_share'];
+        $member[$n['wiki_table']] = ['custom_value_edit'];
         $viewer[$n['wiki_table']] = ['custom_value_view'];
 
         // The two lists a project picks from. Nobody is assigned to a
@@ -895,15 +1079,27 @@ class PortalSchema
      * it created and nothing else: a row whose permissions differ was changed
      * by an administrator and stays.
      *
+     * An entry with 'keep' is narrowed instead of removed: the permissions
+     * in 'permissions' but not in 'keep' are taken off the row, whatever
+     * else it holds, and the row stays.
+     *
      * @param array<string, string> $n
-     * @return array<int, array<int, array{group: string, table: string, permissions: array<int, string>}>>
+     * @return array<int, array<int, array{group: string, table: string, permissions: array<int, string>, keep?: array<int, string>}>>
      */
     public static function retiredGrants(array $n): array
     {
+        $narrow = ['permissions' => ['custom_value_edit', 'custom_value_share'], 'keep' => ['custom_value_edit']];
+
         return [
             17 => [
                 ['group' => self::ROLE_GROUP_MEMBER, 'table' => $n['related_table'], 'permissions' => ['custom_value_edit_all']],
                 ['group' => self::ROLE_GROUP_VIEWER, 'table' => $n['related_table'], 'permissions' => ['custom_value_view_all']],
+            ],
+            // Schema 28: the member group edits only.
+            28 => [
+                ['group' => self::ROLE_GROUP_MEMBER, 'table' => $n['project_table']] + $narrow,
+                ['group' => self::ROLE_GROUP_MEMBER, 'table' => $n['issue_table']] + $narrow,
+                ['group' => self::ROLE_GROUP_MEMBER, 'table' => $n['wiki_table']] + $narrow,
             ],
         ];
     }

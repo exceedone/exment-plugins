@@ -369,6 +369,20 @@ class PortalUpgrade
 
             static::repairPluginMenu();
 
+            // Schema 25: one sidebar entry (ISS00256). On the way past 26,
+            // not 25: an install that took 1.5.0 from its branch (ex1task)
+            // ran the Backlog columns as 25 and so never met this. It finds
+            // the plugin's entries by their internal menu_name
+            // (pm_portal_root and the like), which nobody types for a menu
+            // of their own, so a second pass on an install that did run
+            // 1.4.1's 25 finds nothing left to take.
+            if ($applied < 26) {
+                $tidied = static::tidyLegacyMenus($names);
+                if ($tidied > 0) {
+                    $steps[] = PortalDefinition::trans('upgrade.step_menus', ['count' => $tidied]);
+                }
+            }
+
             if ($convert) {
                 foreach (PortalSchema::conversions($names) as $conversion) {
                     $result = static::convert($conversion);
@@ -534,7 +548,8 @@ class PortalUpgrade
     }
 
     /**
-     * Put the notified-users column on the saved notification's target list.
+     * Put the notified-users column, and since schema 27 the sub-assignee,
+     * manager and reviewer columns, on the saved notification's target list.
      *
      * missingNotifies() only ever adds whole notifications, so an install
      * that already had the issue notification when the column arrived kept
@@ -547,18 +562,29 @@ class PortalUpgrade
      */
     protected static function syncNotifyTargets(array $names): int
     {
-        $column_name = array_get(PortalDefinition::config(), 'issue_extra.notified_users', PortalSchema::ISSUE_COLUMNS['notified_users']);
         $table = CustomTable::getEloquent($names['issue_table']);
-        $column = isset($table) ? CustomColumn::getEloquent($column_name, $table) : null;
-        if (!isset($column)) {
+        if (!isset($table)) {
             return 0;
         }
-        // A saved notification names its column targets by id - the
-        // assignees target already reads "651", not "pm_issue.assignees".
-        // The dotted form only exists inside template files, where the
-        // importer translates it; stored raw it would never match a user.
-        $target = strval($column->id);
-        $dotted = $names['issue_table'] . '.' . $column_name;
+        // Schema 27: the sub-assignees, managers and reviewers are told too.
+        $wanted = [];
+        $dotted = [];
+        foreach (array_merge(['notified_users'], PortalSchema::ROLE_COLUMNS) as $role) {
+            $column_name = array_get(PortalDefinition::config(), 'issue_extra.' . $role, PortalSchema::ISSUE_COLUMNS[$role]);
+            $column = CustomColumn::getEloquent($column_name, $table);
+            if (!isset($column)) {
+                continue;
+            }
+            // A saved notification names its column targets by id - the
+            // assignees target already reads "651", not "pm_issue.assignees".
+            // The dotted form only exists inside template files, where the
+            // importer translates it; stored raw it would never match a user.
+            $wanted[] = strval($column->id);
+            $dotted[] = $names['issue_table'] . '.' . $column_name;
+        }
+        if (empty($wanted)) {
+            return 0;
+        }
 
         $changed = 0;
         $name = PortalSetup::prefix() . PortalSchema::NOTIFY_ISSUE_SAVED;
@@ -575,10 +601,12 @@ class PortalUpgrade
                 }
                 // absorb the dotted form an earlier run may have written
                 $cleaned = array_values(array_filter($targets, function ($t) use ($dotted) {
-                    return $t !== $dotted;
+                    return !in_array($t, $dotted, true);
                 }));
-                if (!in_array($target, $cleaned)) {
-                    $cleaned[] = $target;
+                foreach ($wanted as $target) {
+                    if (!in_array($target, $cleaned)) {
+                        $cleaned[] = $target;
+                    }
                 }
                 if ($cleaned == $targets) {
                     continue;
@@ -1234,6 +1262,124 @@ class PortalUpgrade
     }
 
     /**
+     * Take the sidebar down to the single "プロジェクト管理" entry (ISS00256).
+     *
+     * Before 1.4.1 an install got two branches: the schema's (a root node
+     * with the portal, the settings link and a master node holding the five
+     * master tables) and the bundled template's (a node with the project,
+     * issue, milestone and category tables). Neither is created any more;
+     * this removes what older versions left behind and lifts the portal entry
+     * to the top level, in the root's place.
+     *
+     * Only the plugin's own rows go, found by their menu_name: a table entry
+     * only while it still sits under the node the plugin put it in, a node
+     * only once nothing else is left under it. Anything an administrator
+     * added or moved there therefore stays, and so does its parent. Nothing
+     * else changes - the tables, the views and the screens are all still
+     * there, and the settings and master lists open from the portal's
+     * ⚙ 設定. The portal entry keeps any title or icon an administrator gave
+     * it; only the old defaults are replaced.
+     *
+     * @param array<string, string> $names
+     * @return int menu rows removed or moved
+     */
+    protected static function tidyLegacyMenus(array $names): int
+    {
+        $prefix = PortalSetup::prefix();
+        $count = 0;
+
+        $find = function (string $name) {
+            return Menu::query()->where('menu_name', $name)->first();
+        };
+
+        // Table entries under a node, by the names the plugin gave them.
+        $dropTables = function ($node, array $tableNames) use (&$count) {
+            if (!isset($node)) {
+                return;
+            }
+            $rows = Menu::query()->where('parent_id', $node->id)
+                ->where('menu_type', MenuType::TABLE)
+                ->whereIn('menu_name', array_values(array_unique(array_filter($tableNames))))
+                ->get();
+            foreach ($rows as $row) {
+                $row->delete();
+                $count++;
+            }
+        };
+
+        // A node goes only when nothing is left under it.
+        $dropNode = function ($node) use (&$count) {
+            if (!isset($node) || Menu::query()->where('parent_id', $node->id)->exists()) {
+                return;
+            }
+            $node->delete();
+            $count++;
+        };
+
+        $root = $find($prefix . PortalSchema::MENU_ROOT);
+        $master = $find($prefix . PortalSchema::MENU_MASTER);
+        $settings = $find($prefix . PortalSchema::MENU_SETTINGS);
+        $page = $find($prefix . PortalSchema::MENU_PAGE);
+        $template = $find($prefix . PortalSchema::MENU_TEMPLATE);
+
+        // The schema's master node: the five master tables, then the node.
+        // Before 17 the priority and resolution tables did not follow the
+        // install prefix, so the unprefixed name counts too - under this
+        // node it can only be the plugin's own entry.
+        $masterTables = [];
+        foreach (PortalSchema::TABLE_ROLES as $role => $default) {
+            $masterTables[] = array_get($names, $role);
+            $masterTables[] = $prefix . $default;
+            $masterTables[] = $default;
+        }
+        $dropTables($master, $masterTables);
+        if (isset($master) && $master->menu_type == MenuType::PARENT_NODE) {
+            $dropNode($master);
+        }
+
+        // The settings link: a plain link to the settings screen.
+        if (isset($settings) && $settings->menu_type == MenuType::CUSTOM) {
+            $settings->delete();
+            $count++;
+        }
+
+        // The portal entry, out of the root and in its place.
+        if (isset($page) && isset($root) && $page->parent_id == $root->id) {
+            $page->parent_id = $root->parent_id;
+            $page->order = $root->order;
+            $count++;
+        }
+        if (isset($page)) {
+            // Titles the plugin itself has used for this entry.
+            if (in_array(trim(strval($page->title)), ['ポータル', 'プロジェクトポータル'], true)) {
+                $page->title = PortalDefinition::trans('schema.menu.single');
+            }
+            if (strval($page->icon) === 'fa-dashboard') {
+                $page->icon = 'fa-tasks';
+            }
+            if ($page->isDirty()) {
+                $page->save();
+            }
+        }
+        if (isset($root) && $root->menu_type == MenuType::PARENT_NODE) {
+            $dropNode($root);
+        }
+
+        // The bundled template's node with the four data tables.
+        $templateTables = [];
+        foreach (['project_table', 'issue_table', 'milestone_table', 'category_table'] as $role) {
+            $templateTables[] = array_get($names, $role);
+            $templateTables[] = $prefix . array_get(PortalDefinition::TABLE_ROLES, $role);
+        }
+        $dropTables($template, $templateTables);
+        if (isset($template) && $template->menu_type == MenuType::PARENT_NODE) {
+            $dropNode($template);
+        }
+
+        return $count;
+    }
+
+    /**
      * Point the settings menu entry at the plugin's current path.
      *
      * The portal entry is a plugin menu, which Exment resolves to the live
@@ -1395,7 +1541,7 @@ class PortalUpgrade
      *
      * @param array<string, string> $names
      * @param int $applied the version the install's once-only steps reached
-     * @return int permission rows removed
+     * @return int permission rows removed or narrowed
      */
     protected static function revokeRetiredGrants(array $names, int $applied): int
     {
@@ -1419,6 +1565,21 @@ class PortalUpgrade
                     ->where('role_group_target_id', $table->id)
                     ->get();
                 foreach ($rows as $row) {
+                    // A narrowing takes the withdrawn permissions off the
+                    // group's row whatever else an administrator added to it:
+                    // the withdrawal is the point, the rest stays theirs.
+                    if (isset($grant['keep'])) {
+                        $drop = array_values(array_diff($grant['permissions'], $grant['keep']));
+                        $have = static::permissionList($row->permissions);
+                        $left = array_values(array_diff($have, $drop));
+                        if (count($left) === count($have)) {
+                            continue;
+                        }
+                        $row->permissions = $left;
+                        $row->save();
+                        $removed++;
+                        continue;
+                    }
                     if (!static::samePermissions($row->permissions, $grant['permissions'])) {
                         continue;
                     }
@@ -1436,6 +1597,22 @@ class PortalUpgrade
     }
 
     /**
+     * A stored permission list as plain strings, once each.
+     *
+     * @param mixed $stored
+     * @return array<int, string>
+     */
+    public static function permissionList($stored): array
+    {
+        if (is_string($stored)) {
+            $decoded = json_decode($stored, true);
+            $stored = is_array($decoded) ? $decoded : [$stored];
+        }
+
+        return array_values(array_unique(array_map('strval', (array) $stored)));
+    }
+
+    /**
      * Whether a stored permission list holds exactly the given permissions,
      * in any order.
      *
@@ -1445,11 +1622,7 @@ class PortalUpgrade
      */
     public static function samePermissions($stored, array $wanted): bool
     {
-        if (is_string($stored)) {
-            $decoded = json_decode($stored, true);
-            $stored = is_array($decoded) ? $decoded : [$stored];
-        }
-        $have = array_values(array_unique(array_map('strval', (array) $stored)));
+        $have = static::permissionList($stored);
         $want = array_values(array_unique(array_map('strval', $wanted)));
         sort($have);
         sort($want);

@@ -345,6 +345,20 @@ window.PmPortalBoot = function () {
         if (!s) { return null; }
         return Math.round((new Date(s + 'T00:00:00') - new Date(D.today + 'T00:00:00')) / 86400000);
     }
+    // Schema 25: where an imported issue came from - its old key (a link
+    // when the server vouched for the URL), and who raised and last changed
+    // it there. '' for an issue made here, so the row stays away.
+    function sourceHtml(src) {
+        if (!src) { return ''; }
+        var out = [];
+        if (src.key || src.url) {
+            var label = esc(src.key || src.url);
+            out.push(src.url ? '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">' + label + ' <i class="fa fa-external-link"></i></a>' : label);
+        }
+        if (src.cby || src.cd) { out.push(esc(L.src_created) + ' ' + esc([src.cby, src.cd].filter(Boolean).join(' '))); }
+        if (src.uby || src.ud) { out.push(esc(L.src_updated) + ' ' + esc([src.uby, src.ud].filter(Boolean).join(' '))); }
+        return out.join('<br>');
+    }
     // The due date with its time (schema 22), e.g. 11/20 15:00.
     function dueText(iss) { return d2(iss.dd) + (iss.dt ? ' ' + iss.dt : ''); }
     // The clock now, HH:MM, on this computer.
@@ -2241,6 +2255,7 @@ window.PmPortalBoot = function () {
                 '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) + '</a><span class="m" hidden>' +
             (res.description ? '<a class="pp-quote pp-dquote" href="javascript:void(0);"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
             (CAN_ADD_ISSUE ? '<a class="pp-issuecopy" href="javascript:void(0);"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
+            '<a class="pp-linkcopy" href="javascript:void(0);"><i class="fa fa-link"></i> ' + esc(L.link_copy) + '</a>' +
             '<a class="pp-mailbtn" href="javascript:void(0);"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
             (res.movable ? '<a class="pp-issuemove" href="javascript:void(0);"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
             (res.deletable ? '<a class="pp-issuedel" href="javascript:void(0);"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
@@ -2272,6 +2287,13 @@ window.PmPortalBoot = function () {
         var props = [
             [L.col_st, pill(i.st)], [L.col_pr, prio(i.pr)],
             [L.col_as, (i.as || []).map(function (u) { return avname(u); }).join('<br>') || '—'],
+            // Schema 27 (ISS00252): the other people on the issue.
+            [L.lbl_sub_assignees, (i.sa || []).map(function (u) { return avname(u); }).join('<br>')],
+            [L.lbl_managers, (i.mg || []).map(function (u) { return avname(u); }).join('<br>')],
+            [L.lbl_reviewers, (i.rv || []).map(function (u) { return avname(u); }).join('<br>')],
+            [L.lbl_difficulty, i.df ? esc(L['df_' + i.df] || i.df) : ''],
+            // An import's author is the source's; Exment's is the importer.
+            [L.lbl_author, res.source && res.source.cby ? esc(res.source.cby) : (i.by ? avname(i.by) : '')],
             [L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:5px;"></i>' + esc(ms.l) : '—'],
             [L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
@@ -2279,6 +2301,8 @@ window.PmPortalBoot = function () {
             [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
             [L.lbl_pg, pbar(i.pg)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#issue-' + esc(parentIssue.id) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
+            [L.lbl_source, sourceHtml(res.source)],
+            [L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : ''],
             [L.lbl_watch, '<i class="fa fa-eye" style="color:var(--bl-faint);"></i> ' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people))]
         ];
         // Status, priority, assignees and the due date are on the summary row
@@ -5188,10 +5212,25 @@ window.PmPortalBoot = function () {
             toast(xhrErr(xhr, L.cmt_del_fail), true);
         });
     }
+    // The short link to an issue, /view/KEY like Backlog's (1.6.1): the
+    // server redirects it to the project page. Only for a real key - an
+    // issue on a project without a key keeps the long form.
+    function issueShortUrl(i) {
+        var key = i && i.key ? String(i.key) : '';
+        if (!key || key.indexOf('#') >= 0) { return null; }
+        var base = location.pathname.replace(/\/\d+\/?$/, '');
+        return location.origin + base + '/view/' + encodeURIComponent(key);
+    }
     function cmtCopyLink(cid) {
         var issue = issueById(currentIssue);
-        copyText(location.origin + location.pathname + '#' +
+        var short = issueShortUrl(issue);
+        copyText(short ? short + '?c=' + cid : location.origin + location.pathname + '#' +
             (issue ? issueHash(issue.id) : 'issue-' + currentIssue) + '?c=' + cid, L.cmt_copied);
+    }
+    function issueCopyLink() {
+        var issue = issueById(currentIssue);
+        copyText(issueShortUrl(issue) || location.origin + location.pathname + '#' +
+            (issue ? issueHash(issue.id) : 'issue-' + currentIssue), L.link_copied);
     }
     // Clipboard with the execCommand fallback the admin's iframe context
     // still needs on older browsers.
@@ -6209,6 +6248,9 @@ window.PmPortalBoot = function () {
         var x = D.issue_extra_cols || {};
         var rows = [
             [c.status || null, c.assignees || null],
+            // Schema 27: the other people, beside the assignees.
+            [x.sub_assignees || null, x.managers || null],
+            [x.reviewers || null, x.difficulty || null],
             [c.priority || null, c.milestone || null],
             [c.category || null, x.versions || null],
             [c.start || null, c.due || null],
@@ -10020,6 +10062,8 @@ window.PmPortalBoot = function () {
         if (cdel) { cmtDelete(cdel); return; }
         var addChild = ev.target.closest('.pp-addchild');
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
+        var linkCopy = ev.target.closest('.pp-linkcopy');
+        if (linkCopy) { issueCopyLink(); return; }
         var mailBtn = ev.target.closest('.pp-mailbtn');
         if (mailBtn) { mailOpen(currentIssue); return; }
         var issueCopy = ev.target.closest('.pp-issuecopy');

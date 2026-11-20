@@ -1,0 +1,73 @@
+<?php
+
+namespace App\Plugins\ExmentITSupport;
+
+use Illuminate\Support\Facades\Route;
+
+/**
+ * The pages customers open without logging in: /support/...
+ *
+ * Exment gives plugin routes the admin login on purpose and lets config.json
+ * take away only middlewares that cost time, never the login. A help desk
+ * needs a door for people who have no account, so these routes are
+ * registered here, from PluginPage's constructor, which Exment runs while it
+ * boots (ExmentServiceProvider::load). They sit next to Exment's own public
+ * form (/publicform) and use the same idea: the URL carries the secret, the
+ * page shows only what that secret opens.
+ *
+ * What protects them: a token that opens one ticket or one address's list
+ * (Tokens), CSRF and the session from the "adminweb" group, a rate limit per
+ * IP, noindex, and nothing internal on the page (notes, other tickets,
+ * agents' addresses).
+ *
+ * The intake endpoints take a shared key instead of a session; they are
+ * machine-to-machine.
+ */
+class PublicRoutes
+{
+    const PREFIX = 'support';
+
+    /** @var bool */
+    protected static $registered = false;
+
+    public static function register(): void
+    {
+        if (static::$registered || app()->routesAreCached()) {
+            return;
+        }
+        static::$registered = true;
+
+        $c = PublicController::class;
+
+        Route::group(['prefix' => static::PREFIX, 'middleware' => ['adminweb']], function () use ($c) {
+            Route::get('/', $c . '@home');
+            Route::get('request', $c . '@requestForm');
+            Route::post('request', $c . '@postRequest');
+            Route::get('faq', $c . '@faq');
+            Route::get('faq/search', $c . '@faqSearch');
+            Route::get('faq/{id}', $c . '@faqShow')->where('id', '[0-9]+');
+            Route::post('faq/{id}/vote', $c . '@faqVote')->where('id', '[0-9]+');
+            Route::get('mine', $c . '@mineForm');
+            Route::post('mine', $c . '@postMine');
+            Route::get('mine/{token}', $c . '@mineList');
+            Route::get('t/{token}', $c . '@ticket');
+            Route::post('t/{token}/reply', $c . '@postReply');
+            Route::post('t/{token}/otp/send', $c . '@postOtpSend');
+            Route::post('t/{token}/otp', $c . '@postOtp');
+            Route::post('t/{token}/rate', $c . '@postRate');
+            Route::post('t/{token}/solved', $c . '@postSolved');
+            Route::get('t/{token}/file/{uuid}', $c . '@file');
+        });
+
+        // Machine to machine: no session, no CSRF, a key instead.
+        Route::group(['prefix' => static::PREFIX . '/intake'], function () use ($c) {
+            Route::post('alert', $c . '@intakeAlert');
+            Route::post('mail', $c . '@intakeMail');
+        });
+    }
+
+    public static function url(string ...$parts): string
+    {
+        return url(implode('/', array_merge([static::PREFIX], $parts)));
+    }
+}

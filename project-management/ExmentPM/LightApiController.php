@@ -931,7 +931,10 @@ class LightApiController
             // The description is editor HTML; the mail carries its text.
             $description = trim(html_entity_decode(strip_tags(preg_replace('/<br\s*\/?>|<\/p>/i', "\n", $description) ?? ''), ENT_QUOTES, 'UTF-8'));
             $body = strval(PortalDefinition::trans('mail_new_issue')) . ($description !== '' ? "\n\n" . $description : '');
-            $url = PortalDefinition::url($row->parent_id) . '#issue-' . (strpos($key, '#') === false ? $key : strval($row->id));
+            // Short like the other mails (PmPortalController::issueUrl()).
+            $url = strpos($key, '#') === false
+                ? PortalDefinition::url('view', $key)
+                : PortalDefinition::url($row->parent_id) . '#issue-' . strval($row->id);
             PortalMail::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), '[' . $key . '] ' . $subject, $body, $url);
         } catch (\Throwable $e) {
             Log::error('pm_portal mail for new issue ' . $row->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);

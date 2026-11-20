@@ -15,7 +15,8 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 | Folder | Name | What it does | Status |
 |---|---|---|---|
 | [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification, data migration) | In use on Exment SaaS |
-| [`groupware/`](groupware/) | Exment Plugin Groupware | Open the Word, Excel and PowerPoint files of the file server in a browser Office (ibisOffice) and save them as new versions | In development (needs the file server of Exment) |
+| [`it-support/`](it-support/) | Exment Plugin IT Support | IT support / help desk (mail intake, no-login progress links, customer portal, SLA, knowledge base, IT assets, alert intake, reports) | Released 1.0.0 — [ExmentITSupport-1.0.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentITSupport-v1.0.0/ExmentITSupport-1.0.0.zip) |
+| [`groupware/`](groupware/) | Exment Plugin Groupware | Web mail (Xserver, KAGOYA, Microsoft 365, Gmail over IMAP and SMTP), and opening the Word, Excel and PowerPoint files of the file server in a browser Office (ibisOffice) | 0.2.2 in development (Office needs the file server of Exment) |
 
 Exment Plugin Project Management is one Exment plugin:
 
@@ -162,7 +163,8 @@ cd .github/ci && composer update --ignore-platform-req='ext-*' && vendor/bin/php
 | フォルダ | 名前 | できること | 状態 |
 |---|---|---|---|
 | [`project-management/`](project-management/) | Exment Plugin Project Management | プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知・データ移行） | Exment SaaS で利用中 |
-| [`groupware/`](groupware/) | Exment Plugin Groupware | ファイルサーバーの Word・Excel・PowerPoint をブラウザーの Office（ibisOffice）で開き、新しい版として保存 | 開発中（Exment のファイルサーバーが必要） |
+| [`it-support/`](it-support/) | Exment Plugin IT Support | ITサポート・ヘルプデスク（メール受付・ログインなしの進み具合の共有・顧客ポータル・SLA・ナレッジ・IT 資産・監視からの起票・レポート） | 1.0.0 — [ExmentITSupport-1.0.0.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentITSupport-v1.0.0/ExmentITSupport-1.0.0.zip) |
+| [`groupware/`](groupware/) | Exment Plugin Groupware | Web メール（Xserver・KAGOYA・Microsoft 365・Gmail に IMAP・SMTP でつなぐ）と、ファイルサーバーの Word・Excel・PowerPoint をブラウザーの Office（ibisOffice）で開いて新しい版として保存 | 0.2.2 開発中（Office は Exment のファイルサーバーが必要） |
 
 Exment Plugin Project Management は、1 つの Exment プラグインです。
 

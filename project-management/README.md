@@ -1,11 +1,11 @@
 # Exment Plugin Project Management
 
-Project and ticket management for Exment: a Backlog-like portal with issues, board, Gantt chart, wiki and files, built on Exment's own tables.
-Exment のプロジェクト管理・チケット管理のプラグインです。Backlog に似たポータルで、課題・ボード・ガントチャート・Wiki・ファイルを Exment のテーブルの上に作ります。
+Project and ticket management for Exment: a portal with issues, board, Gantt chart, wiki and files, built on Exment's own tables.
+Exment のプロジェクト管理・チケット管理のプラグインです。課題・ボード・ガントチャート・Wiki・ファイルをまとめたポータルを、Exment のテーブルの上に作ります。
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.4.0 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.4 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,47 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.6.4 / 1.6.4 で変わったこと**
+
+- When a new version is waiting for **データ構造の更新**, administrators see **データ構造の更新があります** at the top of the portal; it opens the settings.
+  新しい版で **データ構造の更新** がまだのときは、管理者にだけ、画面の上に **データ構造の更新があります** と出します。押すと設定の画面が開きます。
+- The tidy of the member role group (1.6.2) also covers a group an administrator added permissions to. Press **データ構造の更新** once after updating.
+  1.6.2 のメンバーのロールグループの権限の整理が、管理者が権限を足したグループにも効くようにしました。更新したあと、**データ構造の更新** を 1 回押します。
+- A short link `/view/KEY-12` opens issue 12 only when KEY is a project's key.
+  短いリンク `/view/KEY-12` は、KEY がどれかのプロジェクトのキーのときだけ課題 12 を開きます。
+
+**Changed in 1.6.3 / 1.6.3 で変わったこと**
+
+- The project menu (**プロジェクト ▼**) is wider, and a long project name wraps instead of being cut off. Keys get a wider column there and on the dashboard.
+  プロジェクトのメニュー（**プロジェクト ▼**）を広げ、長いプロジェクト名は「…」で切らずに折り返すようにしました。キーの欄も、メニューとダッシュボードで広げました。
+
+**Changed in 1.6.2 / 1.6.2 で変わったこと**
+
+- The member role group's permissions are tidied (schema 28). Press **データ構造の更新** once after updating. People are added to a project on its member settings, as before.
+  メンバーのロールグループの権限を整理しました（スキーマ 28）。更新したあと、**データ構造の更新** を 1 回押します。プロジェクトに人を足すのは、今までどおりメンバーの設定からです。
+
+**Changed in 1.6.1 / 1.6.1 で変わったこと**
+
+- Short links like Backlog's: `/plugins/exment_pm/view/EXMENT_CLOUD-407` opens an issue and `/plugins/exment_pm/projects/EXMENT_CLOUD` a project (on a self-hosted Exment, `/admin/plugins/exment_pm/...`). An issue also opens by its issue_key (`view/ISS00252`) and, if imported, by its key at the source (`view/MIGRE_TEST_2026-2`). The mails and **リンクをコピー** (in the issue's … menu, and on a comment) give the short form. The old `/15#issue-...` links keep working. No データ構造の更新 needed.
+  Backlog のような短いリンクにしました。`/plugins/exment_pm/view/EXMENT_CLOUD-407` で課題が、`/plugins/exment_pm/projects/EXMENT_CLOUD` でプロジェクトが開きます（自分のサーバーの Exment では `/admin/plugins/exment_pm/...`）。課題キー（`view/ISS00252`）や、取り込んだ課題は移行元のキー（`view/MIGRE_TEST_2026-2`）でも開けます。メールと **リンクをコピー**（課題の「…」のメニューとコメント）は短い形になります。今までの `/15#issue-...` のリンクもそのまま開けます。データ構造の更新はいりません。
+
+**Changed in 1.6.0 / 1.6.0 で変わったこと**
+
+- More roles on an issue (schema 27, ISS00252): **副担当者** (sub-assignees), **管理者** (managers), **レビュアー** (reviewers) and **難易度** (difficulty: 易しい・普通・難しい). They are on the edit form under the assignees, and the issue detail shows them with the **起票者** (the author; for an imported issue, the author at the source). Sub-assignees, managers and reviewers get the issue's update notices like the assignees, and have to be on the project. Watchers stay the **お知らせ先** column and the ウォッチ button. Press **データ構造の更新** in the plugin settings once after updating.
+  課題の役割を足しました（スキーマ 27、ISS00252）。**副担当者**・**管理者**・**レビュアー**・**難易度**（易しい・普通・難しい）です。編集の画面では担当者の下に並び、課題の詳細には **起票者**（取り込んだ課題は移行元の登録者）と一緒に出ます。副担当者・管理者・レビュアーにも、担当者と同じく更新のお知らせが届きます。プロジェクトに参加している人だけを選べます。ウォッチャーは、今までどおり **お知らせ先** とウォッチのボタンです。更新したあと、プラグインの設定で **データ構造の更新** を 1 回押します。
+
+**Changed in 1.5.0 / 1.5.0 で変わったこと**
+
+- Room for what a Backlog import brings (schema 26). Issues get the source key and URL, who raised and last changed them at the source and when, and the source's custom attributes; the issue detail shows them under 移行元 and カスタム属性. Milestones get an archived flag, wiki pages get tags and their source. All empty for anything not imported. Press **データ構造の更新** in the plugin settings once after updating.
+  Backlog から取り込むときの入れ先を足しました（スキーマ 26）。課題に、移行元の課題キー・URL・登録者・登録日時・更新者・更新日時と、カスタム属性が入ります。課題の詳細の「移行元」「カスタム属性」に出ます。マイルストーンに「アーカイブ済み」、Wiki に「タグ」と移行元が入ります。取り込んでいないものは空のままです。更新したあと、プラグインの設定で **データ構造の更新** を 1 回押します。
+
+**Changed in 1.4.1 / 1.4.1 で変わったこと**
+
+- The left menu has a single entry, **プロジェクト管理**, which opens the portal. A new install no longer creates the other entries (プロジェクトポータル, the settings link, マスタ and the template's table entries). The settings and the master lists open from **⚙ 設定** at the top of the portal (administrators only).
+  左のメニューは **プロジェクト管理** 1 つだけになりました（開くとポータル）。新しく入れたときに、ほかのメニュー（プロジェクトポータル・設定・マスタ・テンプレートの表のメニュー）を作りません。設定とマスタは、ポータルの上の **⚙ 設定** から開きます（管理者だけ）。
+- An install that already has the old entries: press **⚙ 設定 → データ構造の更新** once. It removes only the plugin's own entries, found by their names, and moves プロジェクト管理 to the top of the menu. An entry an administrator added stays (and so does the folder it is in). The screens and the data do not change. The **PM データ移行** entry (PmMigrate) no longer shows once the PmMigrate plugin is deleted.
+  古いメニューがある環境では、**⚙ 設定 → データ構造の更新** を 1 回押します。プラグインが作ったメニューだけを名前で見つけて外し、プロジェクト管理をメニューのいちばん上の段に移します。管理者が足したメニュー（と、それが入っているフォルダ）は残ります。画面とデータは変わりません。**PM データ移行** のメニュー（PmMigrate）は、PmMigrate プラグインを消すと出なくなります。
 
 **Changed in 1.4.0 / 1.4.0 で変わったこと**
 

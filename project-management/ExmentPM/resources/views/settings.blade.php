@@ -412,7 +412,10 @@ use App\Plugins\ExmentPM\PortalDefinition as PD;
         running: @json(PD::trans('upgrade.running')),
         upgradeConfirm: @json(PD::trans('upgrade.confirm')),
         upgraded: @json(PD::trans('upgrade.success')),
-        reload: @json(PD::trans('upgrade.reload'))
+        reload: @json(PD::trans('upgrade.reload')),
+        already: @json(PD::trans('upgrade.already')),
+        idleNote: @json(PD::trans('upgrade.idle_note')),
+        versionNow: @json(PD::trans('upgrade.version_now', ['current' => $schema['target']]))
     };
     // The sentences for a failure the portal did not word itself - an expired
     // session, a proxy's error page, no answer at all - picked by HTTP status.
@@ -777,6 +780,34 @@ use App\Plugins\ExmentPM\PortalDefinition as PD;
 
     // ---- schema upgrade -------------------------------------------------
 
+    function showUpgraded(runner, log) {
+        var box = document.getElementById('pp-upgrade-box');
+        var count = box.querySelector('.pp-cfg-count');
+        if (count) { count.textContent = text.versionNow; }
+        var todo = box.querySelector('.pp-cfg-state.todo');
+        if (todo) {
+            var ok = document.createElement('div');
+            ok.className = 'pp-cfg-state ok';
+            var icon = document.createElement('i');
+            icon.className = 'fa fa-check-circle';
+            var words = document.createElement('div');
+            var b = document.createElement('b');
+            b.textContent = text.already;
+            var span = document.createElement('span');
+            span.textContent = text.idleNote;
+            words.appendChild(b);
+            words.appendChild(span);
+            ok.appendChild(icon);
+            ok.appendChild(words);
+            todo.parentNode.replaceChild(ok, todo);
+        }
+        // The lead, the backup warning and the button were for the run
+        // that is now over.
+        box.querySelectorAll('.pp-cfg-body > .pp-cfg-hint, .pp-cfg-body > .pp-cfg-warn').forEach(function (el) { el.style.display = 'none'; });
+        runner.style.display = 'none';
+        log.style.marginTop = '12px';
+    }
+
     var runner = document.getElementById('pp-upgrade-run');
     if (runner) {
         runner.addEventListener('click', function () {
@@ -814,6 +845,10 @@ use App\Plugins\ExmentPM\PortalDefinition as PD;
                     });
                     log.appendChild(list);
                 }
+                // Done: the box says so at once, the way it reads after a
+                // reload - up to date, at the new version, no button - and
+                // keeps what each step did below it for the administrator.
+                if (done) { showUpgraded(runner, log); }
                 // Left for the administrator to read before the page moves
                 // on: a step may report values it could not convert.
                 if (done) {
