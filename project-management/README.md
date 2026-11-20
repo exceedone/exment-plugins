@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.3 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.4 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,15 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.6.4 / 1.6.4 で変わったこと**
+
+- When a new version is waiting for **データ構造の更新**, administrators see **データ構造の更新があります** at the top of the portal; it opens the settings.
+  新しい版で **データ構造の更新** がまだのときは、管理者にだけ、画面の上に **データ構造の更新があります** と出します。押すと設定の画面が開きます。
+- The tidy of the member role group (1.6.2) also covers a group an administrator added permissions to. Press **データ構造の更新** once after updating.
+  1.6.2 のメンバーのロールグループの権限の整理が、管理者が権限を足したグループにも効くようにしました。更新したあと、**データ構造の更新** を 1 回押します。
+- A short link `/view/KEY-12` opens issue 12 only when KEY is a project's key.
+  短いリンク `/view/KEY-12` は、KEY がどれかのプロジェクトのキーのときだけ課題 12 を開きます。
 
 **Changed in 1.6.3 / 1.6.3 で変わったこと**
 

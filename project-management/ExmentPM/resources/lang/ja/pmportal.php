@@ -106,6 +106,8 @@ return [
         'no_recent' => '最近見た課題はまだありません',
         'no_projects' => '表示できるプロジェクトがありません',
         'add_project' => 'プロジェクトの追加',
+        'upgrade_needed' => 'データ構造の更新があります',
+        'upgrade_needed_tip' => '新しい版のプラグインが入っています。設定の画面で「データ構造の更新」を押してください。',
         // Project menu: the dashboard's project panel, in a dropdown.
         'pj_cross' => 'プロジェクト横断：',
         'pj_find' => '課題の検索',

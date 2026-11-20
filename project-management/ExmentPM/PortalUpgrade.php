@@ -1565,15 +1565,25 @@ class PortalUpgrade
                     ->where('role_group_target_id', $table->id)
                     ->get();
                 foreach ($rows as $row) {
+                    // A narrowing takes the withdrawn permissions off the
+                    // group's row whatever else an administrator added to it:
+                    // the withdrawal is the point, the rest stays theirs.
+                    if (isset($grant['keep'])) {
+                        $drop = array_values(array_diff($grant['permissions'], $grant['keep']));
+                        $have = static::permissionList($row->permissions);
+                        $left = array_values(array_diff($have, $drop));
+                        if (count($left) === count($have)) {
+                            continue;
+                        }
+                        $row->permissions = $left;
+                        $row->save();
+                        $removed++;
+                        continue;
+                    }
                     if (!static::samePermissions($row->permissions, $grant['permissions'])) {
                         continue;
                     }
-                    if (isset($grant['keep'])) {
-                        $row->permissions = array_values($grant['keep']);
-                        $row->save();
-                    } else {
-                        $row->delete();
-                    }
+                    $row->delete();
                     $removed++;
                 }
             }
@@ -1587,6 +1597,22 @@ class PortalUpgrade
     }
 
     /**
+     * A stored permission list as plain strings, once each.
+     *
+     * @param mixed $stored
+     * @return array<int, string>
+     */
+    public static function permissionList($stored): array
+    {
+        if (is_string($stored)) {
+            $decoded = json_decode($stored, true);
+            $stored = is_array($decoded) ? $decoded : [$stored];
+        }
+
+        return array_values(array_unique(array_map('strval', (array) $stored)));
+    }
+
+    /**
      * Whether a stored permission list holds exactly the given permissions,
      * in any order.
      *
@@ -1596,11 +1622,7 @@ class PortalUpgrade
      */
     public static function samePermissions($stored, array $wanted): bool
     {
-        if (is_string($stored)) {
-            $decoded = json_decode($stored, true);
-            $stored = is_array($decoded) ? $decoded : [$stored];
-        }
-        $have = array_values(array_unique(array_map('strval', (array) $stored)));
+        $have = static::permissionList($stored);
         $want = array_values(array_unique(array_map('strval', $wanted)));
         sort($have);
         sort($want);
