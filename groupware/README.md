@@ -8,7 +8,10 @@
 
 ## What it does
 
-The groupware of Exment (ex1task ISS00233). This first version, 0.1.0, opens the Word (.docx), Excel (.xlsx) and PowerPoint (.pptx) files of the **file server** of Exment in a browser Office, [ibisOffice](https://github.com/ibisjp/ibis-office) by ibis inc.:
+The groupware of Exment (ex1task ISS00233). Two parts so far:
+
+- **Web mail** (0.2.0, P2): a mail program in the browser, like Outlook or Gmail. See [Web mail](#web-mail).
+- **Office** (0.1.0, P3): opens the Word (.docx), Excel (.xlsx) and PowerPoint (.pptx) files of the **file server** of Exment in a browser Office, [ibisOffice](https://github.com/ibisjp/ibis-office) by ibis inc.:
 
 - The page of such a file gets an **Office で開く** (Open in Office) button. It opens the editor in a new tab.
 - **Save** in the editor adds a new version of the file (the version history of the file server keeps the older ones).
@@ -49,13 +52,44 @@ ibisOffice is software of ibis inc. under **AGPL-3.0-only** and a commercial lic
 
 Before offering it on Exment SaaS, check with ibis inc. whether the AGPL terms are enough for that use (see ISS00233).
 
+<a id="web-mail"></a>
+
+## Web mail
+
+Exment does not run a mail server. Like Outlook, it connects to the server the company already uses, over **IMAP** (read) and **SMTP** (send), so the same mailbox stays open in Outlook and on the phone. Nothing of the mail is copied into Exment; every screen reads the server.
+
+- Folders, list (newest first, 50 a page), reading pane, search (subject, sender, recipient, body; Japanese works), unread / flagged filters, flags, move (also by dragging onto a folder), junk, delete to the trash, new folders.
+- Write, reply, reply all, forward (with the attachments), Cc / Bcc, attachments (up to 25 MB a mail), simple formatting, signature, drafts. Ctrl+Enter sends.
+- Several accounts per user. The unread count of each inbox is checked every minute.
+- Japanese mail as it is: ISO-2022-JP and Shift_JIS, encoded names and file names.
+
+| Service | Sign-in | Servers |
+|---|---|---|
+| Xserver | password (user name = the mail address) | `sv****.xserver.jp`, IMAP 993 / SMTP 465 (SSL) |
+| KAGOYA | password (user name = the mail account name) | IMAP `m***.kagoya.net` 993, SMTP `smtp.kagoya.net` 465 (SSL) |
+| Microsoft 365 | sign in with Microsoft (OAuth 2.0) | `outlook.office365.com` 993, `smtp.office365.com` 587 (STARTTLS) |
+| Gmail / Google Workspace | sign in with Google (OAuth 2.0), or an app password | `imap.gmail.com` 993, `smtp.gmail.com` 465 |
+| Others | password | any IMAP / SMTP server |
+
+**Microsoft 365 and Google** need an app registered once by the system administrator, in the plugin's settings (**Admin settings → Plugins → Exment Plugin Groupware → settings**). The settings page shows the redirect URI to register (`…/admin/plugins/exment_groupware/mail/oauth/callback`).
+
+- Microsoft: Azure portal → App registrations → a web app. Delegated permissions of Office 365 Exchange Online: `IMAP.AccessAsUser.All`, `SMTP.Send`, and `offline_access openid email profile`. SMTP AUTH must be allowed for the mailboxes. Tenant: empty = `organizations`.
+- Google: Google Cloud console → an OAuth client ID (web application), scope `https://mail.google.com/`. For a Google Workspace used inside the company, an "internal" app needs no review by Google.
+
+**Security.** Passwords and tokens are encrypted with the app key (`APP_KEY`). HTML mail is cleaned on the server and shown in a sandboxed iframe without scripts; images from outside are blocked until the user presses 画像を表示. Users can connect only to public addresses on the mail ports; for a mail server in the company network (on-premises Exment), the administrator turns on **社内のネットワークのメールサーバーを許可する** in the settings. Every call checks that the account belongs to the signed-in user.
+
+The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrations`).
+
 ---
 
 <a id="japanese"></a>
 
 ## できること
 
-Exment のグループウェア（ex1task ISS00233）です。最初の版 0.1.0 では、Exment の**ファイルサーバー**にある Word（.docx）・Excel（.xlsx）・PowerPoint（.pptx）のファイルを、株式会社アイビスのブラウザーで動く Office、[ibisOffice](https://github.com/ibisjp/ibis-office) で開きます。
+Exment のグループウェア（ex1task ISS00233）です。今あるのは次の 2 つです。
+
+- **Web メール**（0.2.0、P2）: Outlook・Gmail のような、ブラウザーのメールソフト。[Web メール](#web-mail-ja)を参照。
+- **Office**（0.1.0、P3）: Exment の**ファイルサーバー**にある Word（.docx）・Excel（.xlsx）・PowerPoint（.pptx）のファイルを、株式会社アイビスのブラウザーで動く Office、[ibisOffice](https://github.com/ibisjp/ibis-office) で開きます。
 
 - そのファイルの画面に **Office で開く** ボタンが出ます。押すと、新しいタブでエディターが開きます。
 - エディターで**保存**すると、ファイルの新しい版になります（前の版はファイルサーバーの版の履歴に残ります）。
@@ -91,3 +125,31 @@ ibisOffice は株式会社アイビスのソフトウェアで、**AGPL-3.0-only
 - エディターの画面とプラグインの画面に、https://github.com/ibisjp/ibis-office へのリンク付きで **「Powered by ibisOffice」** を表示します（[商標の決まり](https://github.com/ibisjp/ibis-office/blob/main/docs/TRADEMARK.md)で必須）。
 
 Exment SaaS で提供する前に、その使い方が AGPL の条件で足りるかをアイビスに確認してください（ISS00233 を参照）。
+
+<a id="web-mail-ja"></a>
+
+## Web メール
+
+Exment はメールサーバーを持ちません。Outlook と同じように、会社が今使っているメールサーバーに **IMAP**（受信）と **SMTP**（送信）でつなぎます。メールはサーバーに残るので、Outlook やスマホのメールと並べて使えます。Exment にメールをコピーしません（画面を開くたびにサーバーを読みます）。
+
+- フォルダー・一覧（新しい順、1 ページ 50 件）・閲覧ウィンドウ・検索（件名・差出人・宛先・本文。日本語も可）・未読／フラグ付きの絞り込み・フラグ・移動（フォルダーへのドラッグも可）・迷惑メール・ごみ箱へ削除・フォルダーの作成
+- 新規・返信・全員に返信・転送（添付ごと）・Cc／Bcc・添付（1 通 25 MB まで）・簡単な書式・署名・下書き。Ctrl+Enter で送信
+- 1 人で複数のアカウント。受信トレイの未読数を 1 分ごとに確かめます
+- 日本語のメール（ISO-2022-JP・Shift_JIS、エンコードされた名前・ファイル名）をそのまま読めます
+
+| サービス | ログイン | サーバー |
+|---|---|---|
+| Xserver | パスワード（ユーザー名はメールアドレス） | `sv****.xserver.jp`、IMAP 993／SMTP 465（SSL） |
+| KAGOYA | パスワード（ユーザー名はメールアカウント名） | IMAP `m***.kagoya.net` 993、SMTP `smtp.kagoya.net` 465（SSL） |
+| Microsoft 365 | Microsoft でサインイン（OAuth 2.0） | `outlook.office365.com` 993、`smtp.office365.com` 587（STARTTLS） |
+| Gmail・Google Workspace | Google でサインイン（OAuth 2.0）、またはアプリ パスワード | `imap.gmail.com` 993、`smtp.gmail.com` 465 |
+| そのほか | パスワード | どの IMAP・SMTP サーバーでも |
+
+**Microsoft 365・Google** は、システム管理者がアプリを一度登録し、プラグインの設定（**管理者設定 → プラグイン → Exment Plugin Groupware → 設定**）に入れます。設定の画面に、登録するリダイレクト URI（`…/admin/plugins/exment_groupware/mail/oauth/callback`）が出ます。
+
+- Microsoft: Azure portal →「アプリの登録」→ Web アプリ。Office 365 Exchange Online の委任のアクセス許可 `IMAP.AccessAsUser.All`・`SMTP.Send` と `offline_access openid email profile`。メールボックスで SMTP 認証が許可されている必要があります。テナントは空なら `organizations`。
+- Google: Google Cloud console → OAuth クライアント ID（ウェブ アプリケーション）、スコープ `https://mail.google.com/`。社内で使う Google Workspace なら「内部」のアプリにすれば Google の審査は要りません。
+
+**セキュリティ**: パスワード・トークンはアプリの鍵（`APP_KEY`）で暗号化します。HTML のメールはサーバーで危ない部分を取り除き、スクリプトの動かない iframe（sandbox）で表示します。外部の画像は「画像を表示」を押すまで読み込みません。つなげるのはインターネットのアドレスのメールのポートだけです。社内のネットワークのメールサーバー（オンプレミスの Exment）につなぐときは、管理者が設定の **社内のネットワークのメールサーバーを許可する** をオンにします。どの操作でも、アカウントがログインしている本人のものかを確かめます。
+
+テーブル `gw_mail_accounts` は zip をアップロードしたときに作られます（`database/migrations`）。

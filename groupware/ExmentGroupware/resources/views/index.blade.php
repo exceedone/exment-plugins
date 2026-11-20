@@ -1,4 +1,17 @@
-{{-- Exment Plugin Groupware: the state of the browser Office (ibisOffice) and its installation. --}}
+{{-- Exment Plugin Groupware: the top page. Web mail, and the state of the browser Office (ibisOffice) and its installation. --}}
+<div class="box card">
+    <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-envelope-o" aria-hidden="true"></i> Web メール</h3></div>
+    <div class="box-body">
+        <p>今お使いのメール（Xserver・KAGOYA・Microsoft 365・Gmail・そのほかの IMAP / SMTP のサーバー）に、ブラウザーからつないで、読む・書く・送る・検索する・フォルダーで整理することができます。メールはサーバーに残るので、Outlook やスマホのメールと並べて使えます。</p>
+        @if (!$mail_ready)
+            <p class="text-warning"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> テーブルがまだありません。プラグインの zip をもう一度アップロードしてください。</p>
+        @else
+            <a href="{{ $mail_url }}" class="btn btn-primary"><i class="fa fa-inbox" aria-hidden="true"></i> メールを開く</a>
+            <a href="{{ $mail_url }}/accounts" class="btn btn-default">{{ $mail_accounts ? 'アカウントの設定（' . $mail_accounts . '）' : 'アカウントを追加する' }}</a>
+        @endif
+    </div>
+</div>
+
 <div class="box card">
     <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-file-word-o" aria-hidden="true"></i> Office（ブラウザーで Word・Excel・PowerPoint を開く）</h3></div>
     <div class="box-body">
