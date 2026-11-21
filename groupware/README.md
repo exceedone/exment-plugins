@@ -23,6 +23,7 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
   Only attachments (not the values of file columns) can be edited, by those who may edit the record (and, when `exment.file_delete_useronly` is on, only by the one who uploaded the file). A save takes up to 50 MB (or Exment's upload limit, if smaller).
   Two things to know: **an archived project of Exment Plugin PM does not stop editing** here, and on an Exment without older versions of attachments, **deleting the attachment does not delete the earlier contents** kept by edits: they stay readable from the links in the comments, for those who may read the record. On an Exment that has them (the 「差し替え」 of the attachment list, exceedone/exment PR #1866), each earlier content is also an older version of the attachment (「版 n」, up to `exment.document_version_limit`) and is deleted with it.
 - **The menu "Mail"** (0.4.2): installing the plugin (or updating it to 0.4.2) makes one menu, "Mail", to the web mail (`plugins/exment_groupware/mail`). When the mail is not used (Feature management), the menu is hidden as its pages are. A site that has a menu to the mail already gets no second one, and a menu an administrator removed does not come back.
+- **Where "Mail" is** (0.4.3): the menu is right below "File server" (or "HOME"), not below "Admin Setting". A site updated from 0.4.2 has it moved there, only when it is still where 0.4.2 put it (at the top level, below "Admin Setting"); a menu an administrator moved stays.
 - **Feature management** (0.4.1): on an Exment with Feature management (Admin setting → Feature management), the web mail is a feature of its own (`exment_groupware.mail`): an administrator turns it on or off and chooses the role groups that may use it. A site that had the plugin before keeps it on; on a new site it starts off. The Office part follows the file server's feature. On an Exment without Feature management nothing changes.
 
 | Folder | Plugin |
@@ -110,6 +111,7 @@ Exment のグループウェア（ex1task ISS00233）です。今あるのは次
   編集できるのは添付だけです（ファイルの列の値は対象外）。そのデータを編集できる人だけが編集でき、`exment.file_delete_useronly` が on のときは、ファイルを上げた人だけです。保存できる大きさは 50MB まで（Exment のアップロードの上限のほうが小さければ、そちら）です。
   気をつけること: **Exment Plugin PM のアーカイブ中のプロジェクトでも、ここからの編集は止まりません**。また、添付の古い版の仕組みがない Exment では、**添付を消しても、編集で残した前の中身は消えません**。データを見られる人は、コメントのリンクから読めたままです。仕組みがある Exment（添付の一覧の「差し替え」、exceedone/exment PR #1866）では、前の中身は添付の古い版（「版 n」、`exment.document_version_limit` まで）にもなり、添付を消すと一緒に消えます。
 - **メニュー「メール」**（0.4.2）: プラグインを入れたとき（0.4.2 に上げたときも）、Web メール（`plugins/exment_groupware/mail`）へのメニュー「メール」を 1 つ作ります。機能の管理でメールを「使わない」にしたときは、ページと同じくメニューも隠れます。メールへのメニューがもうあるサイトには作らず、管理者が消したメニューは戻りません。
+- **「メール」の場所**（0.4.3）: メニューは「管理者設定」の下ではなく、「ファイルサーバー」（なければ「HOME」）のすぐ下です。0.4.2 から上げたサイトでは、0.4.2 が作った場所（トップの、管理者設定より下）にあるときだけ動かします。管理者が動かしたメニューはそのままです。
 - **機能の管理**（0.4.1）: 「機能の管理」（管理者設定）のある Exment では、Web メールが 1 つの機能（`exment_groupware.mail`）になり、管理者が使う・使わないと、使える役割グループを決めます。前からこのプラグインを入れているサイトでは「使う」のまま、新しいサイトでははじめ「使わない」です。Office はファイルサーバーの機能に従います。機能の管理のない Exment では、今までと同じです。
 
 ## 必要なもの
