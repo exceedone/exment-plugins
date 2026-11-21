@@ -93,6 +93,17 @@ class PmPortalController extends AdminControllerBase
     /** @var array<string, string> */
     protected $label_cache = [];
 
+    /**
+     * ISS00257: the feed and the issue screens diff many of the same
+     * revisions; each is decoded and compared once per request.
+     *
+     * @var array<string, array<int, array<int, string>>>
+     */
+    protected $diff_cache = [];
+
+    /** @var array<int, array<int, array<string, mixed>>> decoded [old, new] by revision id */
+    protected $revision_values = [];
+
     public function __construct()
     {
         $this->def = PortalDefinition::config();
@@ -723,6 +734,7 @@ class PmPortalController extends AdminControllerBase
         foreach ($revision_rows as $rev) {
             $revisions[intval($rev->revisionable_id)][] = $rev;
         }
+        $this->primeLabels($this->issue_table, $revision_rows);
 
         $comment_rows = getModelName(SystemTableName::COMMENT)::whereIn('parent_id', $ids)
             ->where('parent_type', $issue_name)
@@ -786,8 +798,11 @@ class PmPortalController extends AdminControllerBase
             // they were current. Changes to who is on a project are another
             // matter; see buildFeed.
             foreach (($revisions[intval($issue->id)] ?? []) as $rev) {
+                if (intval($rev->revision_no) <= 1) {
+                    continue;
+                }
                 $changes = $this->diffRevision($this->issue_table, $rev);
-                if (empty($changes) || intval($rev->revision_no) <= 1) {
+                if (empty($changes)) {
                     continue;
                 }
                 $timeline[] = [
@@ -3230,7 +3245,9 @@ class PmPortalController extends AdminControllerBase
         $keys = collect($rows)->keyBy('id');
         $feed = [];
 
-        foreach ($this->revisionsOf($issue_name, $issues->pluck('id')->toArray(), 60) as $rev) {
+        $issue_revisions = $this->revisionsOf($issue_name, $issues->pluck('id')->toArray(), 60);
+        $this->primeLabels($this->issue_table, $issue_revisions);
+        foreach ($issue_revisions as $rev) {
             $row = $keys->get(intval($rev->revisionable_id));
             if (!$row) {
                 continue;
@@ -3314,7 +3331,9 @@ class PmPortalController extends AdminControllerBase
         // other changes (name, dates, status...) but not the people columns.
         // Issue history is shown to every reader; see detailsFor.
         $hide = PortalMembership::canManage($project) ? [] : $this->peopleColumns();
-        foreach ($this->revisionsOf($this->project_table->table_name, [$project->id], 10) as $rev) {
+        $project_revisions = $this->revisionsOf($this->project_table->table_name, [$project->id], 10);
+        $this->primeLabels($this->project_table, $project_revisions, $hide);
+        foreach ($project_revisions as $rev) {
             if (intval($rev->revision_no) <= 1) {
                 continue;
             }
@@ -4294,8 +4313,29 @@ class PmPortalController extends AdminControllerBase
      */
     protected function diffRevision($custom_table, $rev, array $hide = [])
     {
-        $old = json_decode(strval($rev->old_value), true) ?: [];
-        $new = json_decode(strval($rev->new_value), true) ?: [];
+        $memo = isset($rev->id)
+            ? strval($custom_table->id) . ':' . strval($rev->id) . ':' . implode(',', $hide)
+            : null;
+        if ($memo !== null && array_key_exists($memo, $this->diff_cache)) {
+            return $this->diff_cache[$memo];
+        }
+        $changes = $this->diffRevisionValues($custom_table, $rev, $hide);
+        if ($memo !== null) {
+            $this->diff_cache[$memo] = $changes;
+        }
+
+        return $changes;
+    }
+
+    /**
+     * @param CustomTable $custom_table
+     * @param object $rev
+     * @param array<int, string> $hide
+     * @return array<int, array<int, string>>
+     */
+    protected function diffRevisionValues($custom_table, $rev, array $hide)
+    {
+        list($old, $new) = $this->revisionValues($rev);
 
         $changes = [];
         foreach (array_unique(array_merge(array_keys($old), array_keys($new))) as $column_name) {
@@ -4304,7 +4344,8 @@ class PmPortalController extends AdminControllerBase
             }
             $before = array_get($old, $column_name);
             $after = array_get($new, $column_name);
-            if (json_encode($before) === json_encode($after)) {
+            // long bodies are most of a revision; compare strings as they are
+            if ((is_string($before) && is_string($after)) ? $before === $after : json_encode($before) === json_encode($after)) {
                 continue;
             }
             $custom_column = $this->columnOf($custom_table, $column_name);
@@ -4336,6 +4377,79 @@ class PmPortalController extends AdminControllerBase
         }
 
         return $changes;
+    }
+
+    /**
+     * A revision's old and new values, decoded once.
+     *
+     * @param object $rev
+     * @return array<int, array<string, mixed>>
+     */
+    protected function revisionValues($rev)
+    {
+        $id = isset($rev->id) ? intval($rev->id) : null;
+        if ($id !== null && isset($this->revision_values[$id])) {
+            return $this->revision_values[$id];
+        }
+        $pair = [
+            json_decode(strval($rev->old_value), true) ?: [],
+            json_decode(strval($rev->new_value), true) ?: [],
+        ];
+        if ($id !== null) {
+            $this->revision_values[$id] = $pair;
+        }
+
+        return $pair;
+    }
+
+    /**
+     * ISS00257: the people, statuses, types... the revisions' changes name,
+     * read one query per table up front instead of one per value in labelOf.
+     *
+     * @param CustomTable $custom_table
+     * @param array<int, object> $revs
+     * @param array<int, string> $hide
+     */
+    protected function primeLabels($custom_table, array $revs, array $hide = [])
+    {
+        $wanted = [];
+        foreach ($revs as $rev) {
+            if (intval($rev->revision_no) <= 1) {
+                continue;
+            }
+            list($old, $new) = $this->revisionValues($rev);
+            foreach (array_unique(array_merge(array_keys($old), array_keys($new))) as $column_name) {
+                if (in_array(strval($column_name), $hide, true)) {
+                    continue;
+                }
+                $before = array_get($old, $column_name);
+                $after = array_get($new, $column_name);
+                $custom_column = $this->columnOf($custom_table, $column_name);
+                if (!isset($custom_column) || !in_array($custom_column->column_type, [ColumnType::USER, ColumnType::ORGANIZATION, ColumnType::SELECT_TABLE])) {
+                    continue;
+                }
+                $target = $custom_column->select_target_table;
+                if (!isset($target) || json_encode($before) === json_encode($after)) {
+                    continue;
+                }
+                foreach (array_merge((array) $before, (array) $after) as $v) {
+                    if (is_scalar($v) && !is_nullorempty($v) && !array_key_exists(strval($target->id) . ':' . strval($v), $this->label_cache)) {
+                        $wanted[$target->id][0] = $target;
+                        $wanted[$target->id][1][strval($v)] = true;
+                    }
+                }
+            }
+        }
+        foreach ($wanted as list($target, $values)) {
+            $records = $target->getValueModel()->whereIn('id', array_keys($values))->get()->keyBy('id');
+            foreach (array_keys($values) as $v) {
+                $record = $records->get($v);
+                // what is not found stays out, for labelOf to settle as before
+                if (isset($record)) {
+                    $this->label_cache[strval($target->id) . ':' . strval($v)] = strval($record->getLabel());
+                }
+            }
+        }
     }
 
     /**
@@ -4428,15 +4542,15 @@ class PmPortalController extends AdminControllerBase
      */
     protected function samePrefixLength($a, $b)
     {
-        $a = mb_str_split($a);
-        $b = mb_str_split($b);
-        $max = min(count($a), count($b));
-        $n = 0;
-        while ($n < $max && $a[$n] === $b[$n]) {
-            $n++;
+        // Bytes first (XOR is zero where they agree), then back to the start
+        // of the character the first difference falls in.
+        $max = min(strlen($a), strlen($b));
+        $bytes = strspn(substr($a, 0, $max) ^ substr($b, 0, $max), "\0");
+        while ($bytes > 0 && $bytes < $max && (ord($a[$bytes]) & 0xC0) === 0x80) {
+            $bytes--;
         }
 
-        return $n;
+        return mb_strlen(substr($a, 0, $bytes));
     }
 
     /**
