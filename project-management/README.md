@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.1 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.2 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.7.2 / 1.7.2 で変わったこと**
+
+- The 基本情報 (fields) of the issue edit screen in two columns: on a wide screen it showed four narrow ones, with inputs about 150px wide and help of five lines or more. Fields read together stand on one row (status and assignee, start and due date, the two hour counts...), and the label is level with its input. One column when the screen is narrow.
+  課題の編集画面の基本情報を 2 列にしました。広い画面では 4 列になり、入力欄が 150px ほど、説明が 5 行以上になっていました。一緒に見る項目を同じ行に並べ（状態と担当者、開始日と期限日、予定と実績の工数など）、名前を入力欄の高さにそろえました。狭い画面では 1 列です。
 
 **Changed in 1.7.1 / 1.7.1 で変わったこと**
 
