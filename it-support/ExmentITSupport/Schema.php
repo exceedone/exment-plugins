@@ -640,9 +640,23 @@ class Schema
                 ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticketId)->get();
             foreach ($files as $doc) {
                 $name = strval(array_get($doc->value, 'document_name'));
+                // A row without a time cannot be placed: leave the file hidden.
+                $listing = $all->filter(function ($m) use ($name, $names) {
+                    return in_array($name, $names($m), true);
+                });
+                $sameName = $files->filter(function ($d) use ($name) {
+                    return strval(array_get($d->value, 'document_name')) === $name;
+                });
+                if (empty($doc->created_at) || $listing->contains(function ($m) {
+                    return empty($m->created_at);
+                }) || $sameName->contains(function ($d) {
+                    return empty($d->created_at);
+                })) {
+                    continue;
+                }
                 $docAt = \Carbon\Carbon::parse($doc->created_at)->getTimestamp();
-                $owners = $all->filter(function ($m) use ($name, $docAt, $names, $inWindow) {
-                    return in_array($name, $names($m), true) && $inWindow($docAt, \Carbon\Carbon::parse($m->created_at)->getTimestamp());
+                $owners = $listing->filter(function ($m) use ($docAt, $inWindow) {
+                    return $inWindow($docAt, \Carbon\Carbon::parse($m->created_at)->getTimestamp());
                 });
                 if ($owners->count() !== 1) {
                     continue;
@@ -652,8 +666,8 @@ class Schema
                     continue;
                 }
                 $msgAt = \Carbon\Carbon::parse($m->created_at)->getTimestamp();
-                $twins = $files->filter(function ($d) use ($name, $msgAt, $inWindow) {
-                    return strval(array_get($d->value, 'document_name')) === $name && $inWindow(\Carbon\Carbon::parse($d->created_at)->getTimestamp(), $msgAt);
+                $twins = $sameName->filter(function ($d) use ($msgAt, $inWindow) {
+                    return $inWindow(\Carbon\Carbon::parse($d->created_at)->getTimestamp(), $msgAt);
                 });
                 if ($twins->count() !== 1) {
                     continue;
