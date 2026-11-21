@@ -5296,7 +5296,8 @@ window.PmPortalBoot = function () {
     function issueShortUrl(i) {
         var key = i && i.key ? String(i.key) : '';
         if (!key || key.indexOf('#') >= 0) { return null; }
-        var base = location.pathname.replace(/\/\d+\/?$/, '');
+        // The page is /<plugin>/<project key or number> (1.8.0: the key).
+        var base = location.pathname.replace(/\/[^\/]+\/?$/, '');
         return location.origin + base + '/view/' + encodeURIComponent(key);
     }
     function cmtCopyLink(cid) {

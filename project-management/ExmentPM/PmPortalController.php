@@ -193,7 +193,7 @@ class PmPortalController extends AdminControllerBase
                 'order' => strval(array_get($value->value, 'display_order', '')),
                 'archived' => $archived,
                 'count' => 0,
-                'url' => PortalDefinition::url($value->id),
+                'url' => PortalDefinition::projectUrl($value),
                 'star_url' => PortalDefinition::url($value->id, 'star'),
                 // The hover menu offers 設定 only to somebody who could
                 // actually open that tab, which is the project's manager
@@ -469,7 +469,7 @@ class PmPortalController extends AdminControllerBase
 
     /**
      * A short link to a project: /projects/PROJECTKEY, like Backlog's.
-     * Redirects to the project's page; the number in its address stays.
+     * Redirects to the project's page, whose address is the key (1.8.0).
      */
     public function viewProject(Request $request, $code)
     {
@@ -495,7 +495,17 @@ class PmPortalController extends AdminControllerBase
             abort(404);
         }
 
-        return redirect(PortalDefinition::url($project->id));
+        return redirect(PortalDefinition::projectUrl($project));
+    }
+
+    /**
+     * The URL with the request's query string, if it has one.
+     */
+    protected function withQuery(Request $request, string $url): string
+    {
+        $query = strval($request->getQueryString());
+
+        return $query === '' ? $url : $url . '?' . $query;
     }
 
     /**
@@ -507,8 +517,27 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::url('setup'));
         }
 
+        // 1.8.0: the page's address is the project's key. A key opens the
+        // project (only one the user may open: otherwise "not found", as the
+        // short link answers); the number of a project that has a key moves
+        // to it, so the links already sent keep working. The part after the
+        // # stays with the browser across the redirect.
+        $id = strval($id);
+        if ($id !== '' && !ctype_digit($id)) {
+            $project = $this->projectByCode($id);
+            if (!isset($project)) {
+                abort(404);
+            }
+            if (PortalDefinition::projectCode($project) !== $id) {
+                return redirect($this->withQuery($request, PortalDefinition::projectUrl($project)));
+            }
+        } else {
+            $project = $this->findProject($id);
+            if (PortalDefinition::projectCode($project) !== null) {
+                return redirect($this->withQuery($request, PortalDefinition::projectUrl($project)));
+            }
+        }
         PortalRecurrence::tick();
-        $project = $this->findProject($id);
 
         $this->setPageInfo(
             PortalDefinition::trans('title'),
@@ -1634,7 +1663,7 @@ class PmPortalController extends AdminControllerBase
             return PortalDefinition::url('view', $key);
         }
 
-        return PortalDefinition::url($project->id) . '#issue-' . ($keyed ? $key : strval($issue_id));
+        return PortalDefinition::projectUrl($project) . '#issue-' . ($keyed ? $key : strval($issue_id));
     }
 
     /**
