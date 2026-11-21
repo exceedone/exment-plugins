@@ -140,6 +140,8 @@ return [
     'ned_close' => '閉じる',
     'ned_cancel' => 'キャンセル',
     'ned_readonly' => '編集不可',
+    'ned_more' => 'その他の項目',
+    'ned_more_filled' => ':n 件入力あり',
     'ned_required' => 'この項目は必須です',
     'ned_no_edit' => 'この行を編集する権限がありません。',
     'ned_pick_user' => '担当者を選択',
