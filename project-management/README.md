@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.6 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.0 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.7.0 / 1.7.0 で変わったこと**
+
+- Word, Excel and PowerPoint attachments open on the screen (ISS00416): the files of issues, comments, wiki pages and the project's file list get a **表示** (View) button that shows the file read only in a window on the page, without downloading it. It uses Exment Plugin Groupware 0.3.0 or later (ibisOffice, a browser with WebGPU); without it, the files download as before. The file is read from its usual download address, so nobody sees more than before.
+  課題・コメント・Wiki・プロジェクトのファイルの Word・Excel・PowerPoint に **表示** ボタンが付き、ダウンロードせずに画面の中で読み取り専用で開けるようになりました（ISS00416）。Exment Plugin Groupware 0.3.0 以降（ibisOffice、WebGPU のあるブラウザー）を使います。入っていないときは今までどおりダウンロードです。ファイルはいつものダウンロードの URL から読むので、見られる人は変わりません。
 
 **Changed in 1.6.6 / 1.6.6 で変わったこと**
 

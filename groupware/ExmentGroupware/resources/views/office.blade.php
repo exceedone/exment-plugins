@@ -31,7 +31,9 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
 </head>
 <body>
 <div class="gw-bar">
-    @if ($view)
+    @if (!empty($file))
+        <a class="gw-btn" href="{{ $file['download'] }}" data-gw="download">ダウンロード</a>
+    @elseif ($view)
         <a class="gw-btn" href="{{ $edit_url }}" target="_blank" rel="noopener" data-gw="edit">Office で開く（編集）</a>
     @else
         <a class="gw-btn" href="{{ $back_url }}" data-gw="back">← ファイルへ戻る</a>
@@ -61,6 +63,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
         'userName' => $user_name,
         'locale' => $locale,
         'view' => $view,
+        'file' => $file ?? null,
     ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!};
     const token = document.querySelector('meta[name="csrf-token"]').content;
     const $ = (k) => document.querySelector('[data-gw="' + k + '"]');
@@ -111,16 +114,21 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
 
     async function start() {
         if (!('gpu' in navigator)) {
-            stop('<p><strong>このブラウザーでは Office を開けません。</strong></p><p>ibisOffice は WebGPU を使います。Chrome・Edge、または Safari 26 以降で開いてください。ファイルは <a href="' + cfg.backUrl + '">ファイルの画面</a> からダウンロードできます。</p>');
+            stop('<p><strong>このブラウザーでは Office を開けません。</strong></p><p>ibisOffice は WebGPU を使います。Chrome・Edge、または Safari 26 以降で開いてください。ファイルは <a href="' + cfg.backUrl + '">' + (cfg.file ? 'ここ' : 'ファイルの画面') + '</a> からダウンロードできます。</p>');
             return;
         }
 
-        const r = await call(cfg.infoUrl);
-        if (!r.ok) {
-            stop('<p>' + (r.json.message || 'ファイルを開けません。') + '</p>');
-            return;
+        if (cfg.file) {
+            // an attachment of a record: read only, no versions, no lock
+            info = { name: cfg.file.name, can_edit: false, version: '1', version_no: 1, urls: { download: cfg.file.download } };
+        } else {
+            const r = await call(cfg.infoUrl);
+            if (!r.ok) {
+                stop('<p>' + (r.json.message || 'ファイルを開けません。') + '</p>');
+                return;
+            }
+            info = r.json;
         }
-        info = r.json;
         $('name').textContent = info.name;
         document.title = info.name + ' - Office';
 
@@ -136,7 +144,9 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
                 readOnlyMessage = c.json.message || '';
             }
         }
-        if (cfg.view) {
+        if (cfg.file) {
+            readOnlyMessage = '表示だけです。';
+        } else if (cfg.view) {
             readOnlyMessage = 'プレビューです。編集は「Office で開く（編集）」から。';
         } else if (!info.can_edit) {
             readOnlyMessage = info.checked_out_by
@@ -167,7 +177,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
             options: {
                 locale: cfg.locale,
                 user: { name: cfg.userName || 'Exment' },
-                ui: { closeButton: true, downloadButton: false, startWindow: false },
+                ui: { closeButton: !cfg.file, downloadButton: false, startWindow: false },
                 features: { localFiles: false },
             },
             host: {
@@ -197,7 +207,8 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
                     dirty = !!event.dirty;
                     if (dirty) { state('保存していない変更があります', 'warn'); }
                 } else if (event.type === 'closeRequested') {
-                    closeEditor();
+                    // an attachment shown inside another screen: that screen closes it
+                    if (!cfg.file) { closeEditor(); }
                 } else if (event.type === 'error') {
                     state(event.message || 'エラー', 'error');
                 }

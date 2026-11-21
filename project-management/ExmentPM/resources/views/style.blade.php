@@ -652,6 +652,20 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 .pmportal .bl-tl .act a.on{color:#f2b01e;}
 .pmportal .bl-file{display:inline-flex;align-items:center;gap:6px;background:var(--bl-hover);border:1px solid var(--bl-line);
   border-radius:var(--bl-radius-s,4px);padding:3px 10px;font-size:12px;margin-top:6px;text-decoration:none;color:var(--bl-ink);}
+.pmportal .pp-officeview{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:12px;color:var(--bl-accent-d);text-decoration:none;white-space:nowrap;}
+.pmportal .pp-officeview:hover{text-decoration:underline;}
+/* ISS00416: the Office view dialog sits on <body>, outside .pmportal */
+.pp-officebox{position:fixed;inset:0;z-index:10040;background:rgba(20,28,36,.55);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;}
+.pp-officebox-in{display:flex;flex-direction:column;width:min(1280px,100%);height:100%;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.35);}
+.pp-officebox-hd{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #dfe5ea;font-size:13px;color:#24323f;}
+.pp-officebox-hd .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pp-officebox-tab{font-size:12px;color:#3d9a80;text-decoration:none;white-space:nowrap;}
+.pp-officebox-x{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:#6b7a88;padding:0 4px;}
+.pp-officebox iframe{flex:1;width:100%;border:0;display:block;background:#fff;}
+@media (prefers-color-scheme: dark){
+  .pp-officebox-in{background:#1e2329;}
+  .pp-officebox-hd{border-color:#333b44;color:#e3e8ed;}
+}
 .pmportal .bl-cmtform{border:2px solid var(--bl-line);border-radius:8px;margin-top:12px;background:var(--bl-box);}
 .pmportal .bl-cmtform:focus-within{border-color:var(--bl-accent);}
 .pmportal .bl-cmtform textarea{border:0;width:100%;padding:10px 12px;min-height:74px;resize:vertical;outline:none;

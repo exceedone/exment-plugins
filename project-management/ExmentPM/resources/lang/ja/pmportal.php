@@ -380,6 +380,11 @@ return [
     'issue_copy' => '複製',
     'link_copy' => 'リンクをコピー',
     'link_copied' => '課題のURLをコピーしました',
+    // ISS00416: Office files shown in place (Exment Plugin Groupware / ibisOffice)
+    'office_view' => '表示',
+    'office_view_tip' => 'ダウンロードせずにこの画面で表示します（ibisOffice）',
+    'office_close' => '閉じる',
+    'office_newtab' => '別のタブで開く',
     // Moving an issue to another project, and deleting one (snoro 2026-11-19)
     'issue_move' => '移動',
     'move_title' => '別のプロジェクトへ移動',

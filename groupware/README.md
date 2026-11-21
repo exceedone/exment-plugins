@@ -18,6 +18,7 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
 - **Save** in the editor adds a new version of the file (the version history of the file server keeps the older ones).
 - While the file is open for editing it is **checked out**: nobody else can change it (ibisOffice has no editing together yet). It is checked in when the editor is closed. A user who may only view the file, or a file someone else has checked out, opens read-only.
 - A save from an old version (someone saved in between) is refused, so nothing is overwritten.
+- **Attachments of records** (0.3.0, ISS00416): other plugins can show a Word, Excel or PowerPoint file attached to a record read only, at `view/{uuid}` (Exment Plugin PM does, for the files of issues, wiki pages and projects). The file is read from its usual download address, so only those who may download it can see it. This part does not need the file server.
 
 | Folder | Plugin |
 |---|---|
@@ -97,6 +98,7 @@ Exment のグループウェア（ex1task ISS00233）です。今あるのは次
 - エディターで**保存**すると、ファイルの新しい版になります（前の版はファイルサーバーの版の履歴に残ります）。
 - 編集のために開いている間は**チェックアウト**（編集中）になり、ほかの人は変更できません（ibisOffice にはまだ同時編集がないため）。エディターを閉じるとチェックインします。見るだけの権限の人や、ほかの人がチェックアウトしているファイルは、読み取り専用で開きます。
 - 古い版から保存しようとしたとき（間にほかの人が保存したとき）は断るので、上書きで消えることはありません。
+- **データの添付**（0.3.0、ISS00416）: データに添付した Word・Excel・PowerPoint を、ほかのプラグインの画面から読み取り専用で表示できます（`view/{uuid}`。Exment Plugin PM の課題・Wiki・プロジェクトのファイルで使います）。ファイルはいつものダウンロードの URL から読むので、ダウンロードできる人だけが見られます。ここはファイルサーバーがなくても動きます。
 
 ## 必要なもの
 
