@@ -113,6 +113,39 @@ class PortalDefinition
     }
 
     /**
+     * The address of a project's page: its key, as Backlog's
+     * (/plugins/exment_pm/EX1_BIZ), or its number when it has no key that
+     * can stand there (1.8.0). A key is upper case, letters, digits and _
+     * (PortalRules::CODE_PATTERN) and taken once across the space, so it
+     * never reads as one of the portal's own pages (lower case) or as a
+     * number. The data the page asks for keeps the number.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     */
+    public static function projectUrl($project): string
+    {
+        $code = static::projectCode($project);
+
+        return static::url($code ?? $project->id);
+    }
+
+    /**
+     * The project's key, if it can be its address (see projectUrl), or null.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     */
+    public static function projectCode($project): ?string
+    {
+        $column = strval(array_get(static::config(), 'project.key', ''));
+        if ($column === '') {
+            return null;
+        }
+        $code = strtoupper(trim(strval(array_get($project->value, $column, ''))));
+
+        return $code !== '' && strlen($code) <= PortalRules::CODE_MAX && preg_match(PortalRules::CODE_PATTERN, $code) ? $code : null;
+    }
+
+    /**
      * The portal's script and stylesheet, served as files of their own so the
      * browser keeps them between pages instead of reading half a megabyte of
      * inline code on every one. Both are written as blade views (script.blade

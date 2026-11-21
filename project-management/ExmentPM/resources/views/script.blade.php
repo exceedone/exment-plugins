@@ -5296,7 +5296,8 @@ window.PmPortalBoot = function () {
     function issueShortUrl(i) {
         var key = i && i.key ? String(i.key) : '';
         if (!key || key.indexOf('#') >= 0) { return null; }
-        var base = location.pathname.replace(/\/\d+\/?$/, '');
+        // The page is /<plugin>/<project key or number> (1.8.0: the key).
+        var base = location.pathname.replace(/\/[^\/]+\/?$/, '');
         return location.origin + base + '/view/' + encodeURIComponent(key);
     }
     function cmtCopyLink(cid) {
@@ -6327,26 +6328,31 @@ window.PmPortalBoot = function () {
         var c = D.issue_cols || {};
         var x = D.issue_extra_cols || {};
         // Two to a row on a wide card (each pair starts a row, see
-        // nedRenderForm), so the pairs are fields read together: the
-        // people, then how it is weighed, where it belongs, when, and how
-        // far along it is.
+        // nedRenderForm), so the pairs are fields read together.
+        // rows: Backlog's eight, always shown. more: the rest, folded under
+        // 「その他の項目」 (1.8.0) - it opens by itself when one of them has a
+        // value or an error, and stays open for whoever opened it.
+        var keep = function (r) { return r.some(Boolean); };
         var rows = [
             [c.status || null, c.assignees || null],
+            [c.priority || null, c.milestone || null],
+            [c.category || null, x.versions || null],
+            [c.start || null, c.due || null]
+        ].filter(keep);
+        var more = [
             // Schema 27: the other people, beside the assignees.
             [x.sub_assignees || null, x.managers || null],
             [x.reviewers || null, x.notified_users || null],
-            [c.priority || null, x.difficulty || null],
-            [c.milestone || null, x.versions || null],
-            [c.category || null, x.recurrence || null],
-            [c.start || null, c.due || null],
+            [x.difficulty || null, x.recurrence || null],
             [x.due_time || null, x.subject_sub || null],
             [c.estimate || null, c.actual || null],
             [c.progress || null, x.resolution || null]
-        ].filter(function (r) { return r.some(Boolean); });
+        ].filter(keep);
 
         return {
             top: [c.parent || null, c.type || null].filter(Boolean),
-            rows: rows
+            rows: rows,
+            more: more
         };
     }
     // A column with nothing to say until the row exists. A resolution is how
@@ -7441,6 +7447,18 @@ window.PmPortalBoot = function () {
         if (helpText) {
             var help = document.createElement('div'); help.className = 'help'; help.textContent = helpText;
             wrap.appendChild(help);
+            // In the 基本情報 card the help is a (?) beside the name, shown
+            // on hover or focus, as Backlog does: two lines of help under
+            // every field made the card twice as tall (CSS picks which).
+            var q = document.createElement('span');
+            q.className = 'pp-ne-q';
+            q.tabIndex = 0;
+            q.setAttribute('role', 'note');
+            q.setAttribute('aria-label', helpText);
+            q.textContent = '?';
+            var tip = document.createElement('span'); tip.className = 'pp-ne-tip'; tip.textContent = helpText;
+            q.appendChild(tip);
+            lbl.appendChild(q);
         }
         var err = document.createElement('div'); err.className = 'err'; err.hidden = true;
         wrap.appendChild(err);
@@ -7913,6 +7931,7 @@ window.PmPortalBoot = function () {
         var errEl = fg.querySelector('.err');
         if (isEmpty) {
             fg.classList.add('err');
+            nedRevealField(fg);
             if (errEl) { errEl.textContent = nedGetLangKey('ned_required'); errEl.hidden = false; }
             return false;
         }
@@ -7955,6 +7974,52 @@ window.PmPortalBoot = function () {
     // keepDraft is set when this render IS the draft restore, so the bar does
     // not turn round and offer to restore what it just restored, and so the
     // pristine server payload stays available for a second restore.
+    // 「その他の項目」 (1.8.0): the issue fields Backlog does not show, folded.
+    // Open when one of them holds something (an issue with a reviewer shows
+    // its reviewer) or when its owner left it open last time.
+    var NED_MORE_KEY = 'pp_ne_more_open';
+    function nedMoreRemembered() {
+        try { return window.localStorage.getItem(NED_MORE_KEY) === '1'; } catch (e) { return false; }
+    }
+    function nedMoreRemember(open) {
+        try { window.localStorage.setItem(NED_MORE_KEY, open ? '1' : '0'); } catch (e) { /* private window */ }
+    }
+    function nedHasValue(v) {
+        if (v == null || v === '' || v === 0 || v === '0') { return false; }
+        if (Array.isArray(v)) { return v.length > 0; }
+        if (typeof v === 'object') { return Object.keys(v).length > 0; }
+        return true;
+    }
+    function nedMoreSetOpen(box, btn, open) {
+        box.hidden = !open;
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.classList.toggle('open', open);
+    }
+    function nedMountMore(grid, box) {
+        var names = Array.prototype.map.call(box.querySelectorAll('[data-fname]'), function (el) { return el.dataset.fname; });
+        var filled = names.filter(function (n) { return nedHasValue(NED.values[n]); }).length;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pp-ne-more-btn';
+        btn.innerHTML = '<i class="fa fa-chevron-right"></i> ' + esc(nedGetLangKey('ned_more', 'その他の項目')) +
+            ' <span class="n">' + names.length + '</span>' +
+            (filled ? ' <span class="filled">' + esc(String(nedGetLangKey('ned_more_filled', ':n 件入力あり')).replace(':n', filled)) + '</span>' : '');
+        btn.addEventListener('click', function () {
+            var open = box.hidden;
+            nedMoreSetOpen(box, btn, open);
+            nedMoreRemember(open);
+        });
+        grid.appendChild(btn);
+        grid.appendChild(box);
+        nedMoreSetOpen(box, btn, filled > 0 || nedMoreRemembered());
+    }
+    // A field with an error must be seen: open the fold it is in.
+    function nedRevealField(fg) {
+        var box = fg && fg.closest ? fg.closest('.pp-ne-more') : null;
+        if (!box || !box.hidden) { return; }
+        var btn = box.previousElementSibling;
+        if (btn && btn.classList.contains('pp-ne-more-btn')) { nedMoreSetOpen(box, btn, true); } else { box.hidden = false; }
+    }
     function nedRenderForm(payload, keepDraft) {
         var epoch = NED.epoch;
         if (!keepDraft) { NED._payload = payload; }
@@ -8047,24 +8112,36 @@ window.PmPortalBoot = function () {
                 slots.top.hidden = false;
                 taken[name] = true;
             });
-            layout.rows.forEach(function (pair) {
-                // The first field of a pair starts a row of the two-column
-                // card, so a missing field leaves a gap rather than pulling
-                // every field after it into the wrong pair.
-                var first = true;
-                pair.forEach(function (name) {
-                    if (!waiting(name)) { return; }
-                    built[name].classList.toggle('pp-ne-rowstart', first);
-                    first = false;
-                    slots.grid.appendChild(built[name]);
-                    taken[name] = true;
+            // The first field of a pair starts a row of the two-column
+            // card, so a missing field leaves a gap rather than pulling
+            // every field after it into the wrong pair.
+            var place = function (rows, into) {
+                rows.forEach(function (pair) {
+                    var first = true;
+                    pair.forEach(function (name) {
+                        if (!waiting(name)) { return; }
+                        built[name].classList.toggle('pp-ne-rowstart', first);
+                        first = false;
+                        into.appendChild(built[name]);
+                        taken[name] = true;
+                    });
                 });
+            };
+            place(layout.rows, slots.grid);
+            var moreBox = document.createElement('div');
+            moreBox.className = 'pp-ne-more';
+            place(layout.more, moreBox);
+            // Any other column of the issue table (added since, or the
+            // imported issue's source) is folded with them.
+            metaOrder.filter(function (name) { return !taken[name]; }).forEach(function (name) {
+                moreBox.appendChild(built[name]);
+                taken[name] = true;
             });
+            if (moreBox.children.length) { nedMountMore(slots.grid, moreBox); }
             metaOrder = metaOrder.filter(function (name) { return !taken[name]; });
         }
-        // Whatever the layout did not name: every column of every other table,
-        // and any column added to the issue table since. These keep the old
-        // behaviour and follow in column order.
+        // Whatever the layout did not name: every column of every other table.
+        // These keep the old behaviour and follow in column order.
         metaOrder.forEach(function (name) { slots.grid.appendChild(built[name]); });
 
         // A type may bring a template subject and description (Backlog's
@@ -9082,6 +9159,7 @@ window.PmPortalBoot = function () {
                     var fg = nedFieldEl(k);
                     if (!fg) { return; }
                     fg.classList.add('err');
+                    nedRevealField(fg);
                     var e = fg.querySelector('.err');
                     if (e) { e.hidden = false; e.textContent = Array.isArray(res.body.fields[k]) ? res.body.fields[k].join(' ') : String(res.body.fields[k]); }
                 });
