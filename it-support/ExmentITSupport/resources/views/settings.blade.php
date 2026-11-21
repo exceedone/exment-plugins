@@ -25,6 +25,9 @@
             <label for="s-imap-folder">フォルダ</label><input type="text" id="s-imap-folder" name="imap_folder" value="{{ $s['imap_folder'] }}">
             <label for="s-unknown">知らない差出人</label>
             <select id="s-unknown" name="unknown_sender"><option value="accept" @selected($s['unknown_sender'] === 'accept')>チケットにする（お客様なし）</option><option value="ignore" @selected($s['unknown_sender'] === 'ignore')>取り込まない（登録したお客様だけ）</option></select>
+            <label for="s-mail-auth">差出人の確認</label>
+            <select id="s-mail-auth" name="mail_auth"><option value="require" @selected($s['mail_auth'] === 'require')>受信サーバーの確認（DMARC・DKIM・SPF）に合格したメールだけ信じる（おすすめ）</option><option value="fail_only" @selected($s['mail_auth'] === 'fail_only')>確認に落ちたメールだけ疑う（確認の結果を付けないサーバー向け）</option></select>
+            <label for="s-mail-authserv">受信サーバーの名前</label><input type="text" id="s-mail-authserv" name="mail_authserv_id" value="{{ $s['mail_authserv_id'] }}" placeholder="例: mx.example.co.jp（Authentication-Results の先頭の名前。空なら一番上のヘッダーだけを見ます）">
         </div>
         <div class="its-sub its-foot"><i class="fa fa-lock" aria-hidden="true"></i> パスワードはアプリの鍵で暗号化して保存します。最後の確認: <span class="its-num">{{ $state['imap_checked_at'] ?? '—' }}</span></div>
     </div>

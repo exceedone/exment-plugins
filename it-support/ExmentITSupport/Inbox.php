@@ -103,7 +103,7 @@ class Inbox
         $files = array_map(function ($a) {
             return ['name' => $a['name'], 'content' => $a['content']];
         }, array_slice($mail['attachments'], 0, 20));
-        $suspicious = MimeParser::authFailed($mail);
+        $suspicious = static::senderUnproven($mail);
 
         // Which ticket is this a reply to: the number in the subject, else
         // the mail it answers.
@@ -136,12 +136,15 @@ class Inbox
         }
 
         if (isset($ticket) && !$suspicious) {
+            if (Its::normalizeEmail(strval(array_get($ticket->value, 'requester_email'))) === Its::normalizeEmail($mail['from'])) {
+                Tickets::markAddressVerified($ticket);
+            }
             $after = Tickets::customerWrote($ticket, $body, 'mail', $mail['from'], $mail['from_name'], $mail['message_id'] ?: null, $files);
 
             return intval($after->id) === intval($ticket->id) ? 'appended' : 'created';
         }
 
-        [$customer] = Tickets::identify($mail['from'], $mail['from_name']);
+        [$customer] = Tickets::identify($mail['from'], $mail['from_name'], null, !$suspicious);
         if (!isset($customer) && Its::setting('unknown_sender', 'accept') === 'ignore') {
             return 'skipped';
         }
@@ -153,7 +156,8 @@ class Inbox
             'channel' => 'mail',
             'requester_email' => $mail['from'],
             'requester_name' => $mail['from_name'],
-            'cc' => implode(', ', array_slice($mail['cc'], 0, 10)),
+            // a CC may write into the ticket (senderBelongs): only from a sender who was checked
+            'cc' => $suspicious ? '' : implode(', ', array_slice($mail['cc'], 0, 10)),
             'priority' => static::guessPriority($subject . "\n" . $body),
         ];
         if ($suspicious) {
@@ -162,13 +166,29 @@ class Inbox
             $values['customer_visible'] = '0';
             $values['tags'] = 'なりすましの疑い';
         }
-        $ticket = Tickets::create($values, ['body' => $body, 'message_id' => $mail['message_id'] ?: null], $files);
+        $ticket = Tickets::create($values, ['body' => $body, 'message_id' => $mail['message_id'] ?: null], $files, !$suspicious);
 
         if (!$suspicious) {
             static::acknowledge($ticket);
         }
 
         return 'created';
+    }
+
+    /**
+     * The From of this mail may be someone else's. With the default setting
+     * ("require"), a mail counts as the sender's only when the receiving
+     * server's checks passed for the From's domain (MimeParser::authPassed);
+     * with "fail_only", only a mail that failed them is doubted (the old rule,
+     * for a server that adds no Authentication-Results header).
+     */
+    public static function senderUnproven(array $mail): bool
+    {
+        if (Its::setting('mail_auth', 'require') === 'fail_only') {
+            return MimeParser::authFailed($mail);
+        }
+
+        return !MimeParser::authPassed($mail, strval(Its::setting('mail_authserv_id', '')));
     }
 
     /**

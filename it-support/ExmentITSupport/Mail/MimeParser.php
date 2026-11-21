@@ -428,6 +428,75 @@ class MimeParser
      * What the receiving server said about SPF/DKIM/DMARC. "fail" only when
      * a check positively failed - a missing header is not evidence.
      */
+    /**
+     * The receiving server says the From address is the sender's: DMARC
+     * passed, or (when the domain has no DMARC) DKIM or SPF passed for the
+     * From's own domain. Only the newest Authentication-Results header is
+     * read - the one our server added on top; older ones came with the mail
+     * and anyone can write them - or, when the server's name (authserv-id)
+     * is set, only the headers carrying that name.
+     */
+    public static function authPassed(array $mail, string $authservId = ''): bool
+    {
+        $from = strtolower(strval($mail['from']));
+        $domain = substr(strrchr($from, '@') ?: '', 1);
+        if ($domain === '') {
+            return false;
+        }
+        $all = array_values($mail['headers']['authentication-results'] ?? []);
+        $authservId = strtolower(trim($authservId));
+        if ($authservId === '') {
+            $all = array_slice($all, 0, 1);
+        } else {
+            $all = array_values(array_filter($all, function ($h) use ($authservId) {
+                $id = strtolower(trim(preg_replace('/\s+\d+$/', '', trim(strstr($h . ';', ';', true))) ?? ''));
+
+                return $id === $authservId;
+            }));
+        }
+        if (empty($all)) {
+            return false;
+        }
+        $results = strtolower(implode(';', $all));
+        if (preg_match('/\bdmarc=fail\b/', $results) === 1) {
+            return false;
+        }
+        if (preg_match('/\bdmarc=pass\b/', $results) === 1) {
+            return !preg_match('/\bdmarc=pass\b[^;]*\bheader\.from=([^\s;]+)/', $results, $m)
+                || static::alignedDomain(trim($m[1], '"<>'), $domain);
+        }
+        if (preg_match_all('/\bdkim=pass\b[^;]*?\bheader\.(?:d|i)=@?([^\s;]+)/', $results, $ms)) {
+            foreach ($ms[1] as $d) {
+                if (static::alignedDomain(trim($d, '"<>'), $domain)) {
+                    return true;
+                }
+            }
+        }
+        if (preg_match_all('/\bspf=pass\b[^;]*?\bsmtp\.mailfrom=([^\s;]+)/', $results, $ms)) {
+            foreach ($ms[1] as $d) {
+                $d = trim($d, '"<>');
+                $d = strpos($d, '@') !== false ? substr(strrchr($d, '@'), 1) : $d;
+                if (static::alignedDomain($d, $domain)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** The same domain, or one inside the other (example.co.jp and mail.example.co.jp). */
+    protected static function alignedDomain(string $a, string $b): bool
+    {
+        $a = rtrim(strtolower($a), '.');
+        $b = rtrim(strtolower($b), '.');
+        if ($a === '' || $b === '') {
+            return false;
+        }
+
+        return $a === $b || str_ends_with($a, '.' . $b) || str_ends_with($b, '.' . $a);
+    }
+
     public static function authFailed(array $mail): bool
     {
         $results = strtolower(implode(';', $mail['headers']['authentication-results'] ?? []));

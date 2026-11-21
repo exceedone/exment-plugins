@@ -163,6 +163,9 @@ class Its
         'public_enabled' => '1',
         'link_days_after_close' => '30',
         'unknown_sender' => 'accept',
+        // Mail whose From is not shown to be the sender's (see Inbox::senderUnproven).
+        'mail_auth' => 'require',
+        'mail_authserv_id' => '',
         // Error-log intake.
         'intake_key' => '',
         // Text shown on the public pages.
