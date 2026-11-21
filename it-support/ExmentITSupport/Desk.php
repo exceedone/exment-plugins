@@ -88,10 +88,12 @@ class Desk
         if (!Its::isInstalled()) {
             return redirect(Its::url('setup'));
         }
-        Schema::ensureCurrent();
         if ($adminOnly ? !static::isAdmin() : !static::isAgent()) {
             return $adminOnly ? response($this->view('denied')->render(), 403) : redirect(Its::url('my'));
         }
+        // Only for agents: someone who is merely logged in should not be able
+        // to start the upgrade.
+        Schema::ensureCurrent();
 
         return null;
     }
