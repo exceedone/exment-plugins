@@ -35,9 +35,8 @@ class Feature
     }
 
     /**
-     * Called from PluginPage's constructor. Order matters: Exment takes the
-     * first feature whose endpoint matches, so "my requests" comes before
-     * the desk, which covers the whole plugin.
+     * Called from PluginPage's constructor. The names are keys of
+     * resources/lang, translated when Exment shows them.
      *
      * @param \Exceedone\Exment\Model\Plugin $plugin
      */
@@ -48,21 +47,23 @@ class Feature
         }
         $core = static::CORE;
         $base = $plugin->getRouteUri();
+        $lang = 'exment_' . snake_case($plugin->plugin_name) . '::its.feature.';
+        // existing: a site that had the plugin before feature management keeps it on.
         $core::register(static::PORTAL, [
-            'label' => 'ITサポート：お客様の窓口 / IT Support: customer portal',
-            'description' => 'ログインなしの窓口（/support）・メールのリンク・メールと監視からの受付・「自分の依頼」。受付箱がオンのときだけ動きます。'
-                . ' / The no-login portal, links in mails, mail and alert intake, "my requests". Needs the desk.',
+            'label' => $lang . 'portal',
+            'description' => $lang . 'portal_help',
             'endpoints' => [$base . '/my'],
             'plugin' => $plugin->plugin_name,
             'requires' => static::DESK,
             'who' => false,
+            'existing' => true,
         ]);
         $core::register(static::DESK, [
-            'label' => 'ITサポート：受付箱 / IT Support: desk',
-            'description' => '担当者の画面（受付箱・ダッシュボード・設定・セットアップ）と 5 分ごとの処理。セットアップの前にオンにします。'
-                . ' / The agents\' screens and the batch. Turn it on before the setup.',
+            'label' => $lang . 'desk',
+            'description' => $lang . 'desk_help',
             'endpoints' => [$base],
             'plugin' => $plugin->plugin_name,
+            'existing' => true,
         ]);
     }
 
