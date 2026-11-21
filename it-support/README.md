@@ -74,6 +74,8 @@ Exment の **管理者設定 → 機能の管理** に、ITサポートの入口
 
 機能は入口の門で、ITサポートの **設定**（メールを受信する・お客様の窓口を使う など）はその中の細かい設定です。両方がオンのときに動きます。機能の管理のない Exment では、今までどおり全部使えます。機能の管理の入った版に上げたとき、前から ITサポートを使っていたサイトでは 2 つともオンのまま残ります（新しく入れたサイトでは、はじめはオフです）。
 
+受付箱を「使わない」にしても、チケットなどのテーブルはデータとして残り、メニューの「ITサポート」から Exment のふつうのテーブルとして開けます。見せたくないときは、役割グループでテーブルの権限を外してください。
+
 ### 監視・エラーログから起票する
 
 ```sh
@@ -133,6 +135,8 @@ An IT support / help desk plugin for Exment. Requests from customers (mail, a pu
 **Features**: a dedicated three-pane agent desk (queues, ticket list, conversation and properties) that switches tickets without reloading, with keyboard shortcuts, drafts and dark mode; mail intake (IMAP, Japanese encodings, attachments, threading by ticket number and Message-ID, quoted text stripped), public request form with FAQ suggestions, phone intake, monitor / error-log intake with de-duplication, asset expiry tickets; replies by mail, internal notes, canned replies, knowledge suggestions, "someone else is replying" warning; secret no-login links (one ticket per link, hashed, expiring, revocable, logged) with optional one-time codes, a "my requests" link by mail, and a logged-in customer portal; SLA per customer and priority counted in business hours and Japanese holidays, paused while waiting for the customer; auto assignment, reminders, auto resolve/close, satisfaction survey; reports including work time per customer against the contract; partial-match search with AND/OR tags. Every table is an ordinary Exment custom table, so fields, views, workflows and the API are all customisable without code.
 
 **Install**: upload the zip in **Admin settings → Plugins**, open **ITサポート** and press **セットアップする**, then fill in the mailbox in **設定**. Agents go in the role group **ITサポート 担当者**, logged-in customers in **ITサポート お客様**. Customers use `https://your-exment/support`. The automation runs every five minutes through Exment's scheduler.
+
+**Feature management** (Exment versions that have it): IT Support adds two features, *desk* and *customer portal* (the portal needs the desk). New installs start with both off; sites that had the plugin before keep them on. Turning the desk off stops the desk, the portal and the batch, but the tables (tickets and so on) stay as data and can still be opened as ordinary Exment tables; to hide them, remove the table permissions in the role groups.
 
 **No-login pages**: Exment does not let a plugin's `config.json` open a route without login, on purpose. A help desk needs a door for people without an account, so this plugin registers `/support/...` itself while Exment boots (`PublicRoutes.php`), the same idea as Exment's public form: the secret in the URL opens one thing and nothing else.
 
