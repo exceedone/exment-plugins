@@ -718,6 +718,30 @@ window.PmPortalBoot = function () {
     var SAVED_KEY = userKey('sf');
     var SAVED_MAX = 20;
 
+    // The tab last used, so that opening a project from the list goes back to
+    // it instead of always to Home: most people work on the issue list, and
+    // made the extra click every time. Per person and per project, with the
+    // last tab used in any project as the default for one not opened yet.
+    // Settings is not kept (it is a visit, not a place to work), and an issue
+    // counts as the list it was opened from.
+    var LAST_TAB_KEY = userKey('tab');
+    var LAST_TAB_ANY_KEY = 'pmportal.tab.u' + String(D.me || 0);
+    var LAST_TABS = { home: 1, board: 1, issues: 1, gantt: 1, burndown: 1, wiki: 1, files: 1 };
+    function lastTabSave(scr) {
+        var tab = scr === 'issue' ? 'issues' : scr;
+        if (!LAST_TABS[tab]) { return; }
+        try {
+            localStorage.setItem(LAST_TAB_KEY, tab);
+            localStorage.setItem(LAST_TAB_ANY_KEY, tab);
+        } catch (e) { /* storage unavailable: Home as before */ }
+    }
+    function lastTab() {
+        var tab = null;
+        try { tab = localStorage.getItem(LAST_TAB_KEY) || localStorage.getItem(LAST_TAB_ANY_KEY); } catch (e) { tab = null; }
+
+        return tab && LAST_TABS[tab] ? tab : null;
+    }
+
     // Tree view of the issue list (ISS00253). Off unless the user turns it
     // on, so the flat list is what everyone keeps seeing by default. Both the
     // switch and the folded parents are per person and per project.
@@ -9491,6 +9515,7 @@ window.PmPortalBoot = function () {
         if (!el) { scr = 'home'; el = document.getElementById('pp-home'); }
         el.classList.add('on');
         currentScreen = scr;
+        lastTabSave(scr);
         if (scr !== 'issue') { detailEpoch++; cmtSetBusy(false); }
         // Read-only while archived: the comment, status and upload routes all
         // refuse, so the composer is not offered rather than offered and
@@ -10818,6 +10843,15 @@ window.PmPortalBoot = function () {
     renderFiles();
     syncUploadUi();
     nedDraftPurge();
+    // A bare address (the project list, the dashboard, the top bar) opens the
+    // tab last used. A hash is a link to somewhere and is followed as it is.
+    if (!location.hash || location.hash === '#') {
+        var startTab = lastTab();
+        if (startTab && startTab !== 'home' && !screenOff(startTab)
+            && document.getElementById('pp-' + startTab) && history.replaceState) {
+            history.replaceState(null, '', location.pathname + location.search + '#' + startTab);
+        }
+    }
     route();
     // Whatever the page we just replaced wanted to warm up is not worth a
     // request any more; this page's own data goes first.
