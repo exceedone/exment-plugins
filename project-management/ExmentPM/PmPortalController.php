@@ -13,6 +13,7 @@ use Exceedone\Exment\Enums\SystemTableName;
 use Exceedone\Exment\Enums\ViewKindType;
 use Exceedone\Exment\Model\CustomColumn;
 use Exceedone\Exment\Model\CustomTable;
+use Exceedone\Exment\Model\CustomValue;
 use Exceedone\Exment\Model\CustomView;
 use Exceedone\Exment\Model\File as ExmentFile;
 use Exceedone\Exment\Model\NotifyNavbar;
@@ -193,7 +194,7 @@ class PmPortalController extends AdminControllerBase
                 'order' => strval(array_get($value->value, 'display_order', '')),
                 'archived' => $archived,
                 'count' => 0,
-                'url' => PortalDefinition::url($value->id),
+                'url' => PortalDefinition::projectUrl($value),
                 'star_url' => PortalDefinition::url($value->id, 'star'),
                 // The hover menu offers 設定 only to somebody who could
                 // actually open that tab, which is the project's manager
@@ -393,7 +394,7 @@ class PmPortalController extends AdminControllerBase
         if (!isset($project) || $project->enableAccess() !== true) {
             abort(404);
         }
-        $url = $this->issueUrl($project, $issue->id, false);
+        $url = $this->issueUrl($project, $issue);
         $comment = strval($request->query('c', ''));
         if (ctype_digit($comment)) {
             $url .= '?c=' . $comment;
@@ -468,8 +469,40 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * The project an address names by code (ISS00440): the one whose code it
+     * is now, or else the one that had it before a rename (ProjectCodes).
+     * Only a project this user may open, so an address does not tell
+     * whether a project the user cannot see has, or had, that code.
+     *
+     * @param string $code
+     * @return \Exceedone\Exment\Model\CustomValue|null
+     */
+    protected function projectByAnyCode(string $code)
+    {
+        $code = trim($code);
+        if (PortalDefinition::codeSegment($code) === null) {
+            return null;
+        }
+        $project = $this->projectByCode($code);
+        if (isset($project)) {
+            return $project;
+        }
+        $column = strval(array_get($this->def['project'], 'key', ''));
+        foreach (ProjectCodes::projectIds($code) as $id) {
+            $row = $this->project_table->getValueModel()->find($id);
+            if (isset($row) && $row->enableAccess() === true
+                && strcasecmp(strval(array_get($row->value, $column, '')), $code) !== 0) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * A short link to a project: /projects/PROJECTKEY, like Backlog's.
-     * Redirects to the project's page; the number in its address stays.
+     * Redirects to the project's page, which is addressed by the code too
+     * since ISS00440.
      */
     public function viewProject(Request $request, $code)
     {
@@ -479,23 +512,13 @@ class PmPortalController extends AdminControllerBase
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
         }
-        $code = trim(strval($code));
-        $column = strval(array_get($this->def['project'], 'key', ''));
-        if ($code === '' || strlen($code) > 200 || $column === '' || CustomColumn::getEloquent($column, $this->project_table) === null) {
-            abort(404);
-        }
-        // The key is shown upper-cased (issueKey()), so either case finds it.
-        $project = $this->project_table->getValueModel()
-            ->whereIn('value->' . $column, array_unique([$code, strtoupper($code), strtolower($code)]))
-            ->get()
-            ->first(function ($row) {
-                return $row->enableAccess() === true;
-            });
+        // Either case, and an old code after a rename (projectByAnyCode()).
+        $project = $this->projectByAnyCode(strval($code));
         if (!isset($project)) {
             abort(404);
         }
 
-        return redirect(PortalDefinition::url($project->id));
+        return redirect(PortalDefinition::projectUrl($project));
     }
 
     /**
@@ -507,8 +530,17 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::url('setup'));
         }
 
-        PortalRecurrence::tick();
         $project = $this->findProject($id);
+        // ISS00440: the page's address is the project's code. An id, a code in
+        // another case or an old code is sent on to it; the browser keeps the
+        // part after the #, and the script rewrites an old #issue- there.
+        $segment = PortalDefinition::projectSegment($project);
+        if (strval($id) !== $segment) {
+            $query = strval($request->getQueryString());
+
+            return redirect(PortalDefinition::projectUrl($project) . ($query !== '' ? '?' . $query : ''));
+        }
+        PortalRecurrence::tick();
 
         $this->setPageInfo(
             PortalDefinition::trans('title'),
@@ -1132,7 +1164,7 @@ class PmPortalController extends AdminControllerBase
                 \Exment::getUserId(),
                 '[' . $this->issueKey($project, $issue->id) . '] ' . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
                 implode("\n", $lines),
-                $this->issueUrl($project, $issue->id)
+                $this->issueUrl($project, $issue)
             );
         }
 
@@ -1296,7 +1328,7 @@ class PmPortalController extends AdminControllerBase
 
         return response()->json([
             'ok' => true,
-            'url' => $this->issueUrl($target, $issue->id, false),
+            'url' => $this->issueUrl($target, $issue),
             'message' => strval(PortalDefinition::trans('message.moved', [
                 'name' => strval(array_get($target->value, array_get($this->def['project'], 'name', 'name'), '')),
             ])),
@@ -1503,7 +1535,7 @@ class PmPortalController extends AdminControllerBase
             $issue,
             '[' . $this->issueKey($project, $issue->id) . '] ' . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
             $body,
-            $this->issueUrl($project, $issue->id)
+            $this->issueUrl($project, $issue)
         );
 
         // Picked but not able to open the issue: said, not mailed.
@@ -1615,26 +1647,23 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
-     * Where one issue opens in the portal, as a full URL for a mail.
+     * Where one issue opens in the portal, as a full URL for a mail or a
+     * redirect: the project's page by its code, with the issue key after the
+     * # (/plugins/exment_pm/EXMENT_CUSTOMER#issue-ISS00239, ISS00440).
      *
-     * Short (/view/KEY, see viewIssue()) when the project has a key: the
-     * link then reads like Backlog's and still opens after the issue moves
-     * to another project. Otherwise, or with $short off, the project's page
-     * with the issue after the #.
+     * The short /view/KEY links of earlier mails still open (viewIssue()).
      *
      * @param \Exceedone\Exment\Model\CustomValue $project
-     * @param mixed $issue_id
-     * @param bool $short
+     * @param \Exceedone\Exment\Model\CustomValue|mixed $issue the issue, or its id
      */
-    public function issueUrl($project, $issue_id, bool $short = true): string
+    public function issueUrl($project, $issue): string
     {
-        $key = $this->issueKey($project, $issue_id);
-        $keyed = $key !== '' && strpos($key, '#') === false;
-        if ($short && $keyed) {
-            return PortalDefinition::url('view', $key);
+        if (!$issue instanceof CustomValue) {
+            $issue = $this->issue_table->getValueModel()->newQueryWithoutScopes()->find($issue)
+                ?? (object) ['id' => $issue, 'value' => []];
         }
 
-        return PortalDefinition::url($project->id) . '#issue-' . ($keyed ? $key : strval($issue_id));
+        return PortalDefinition::issuePageUrl($project, $issue);
     }
 
     /**
@@ -2809,6 +2838,9 @@ class PmPortalController extends AdminControllerBase
             ],
             'urls' => [
                 'base' => PortalDefinition::url($project->id),
+                // The page's own address, by code (ISS00440): what links and
+                // "copy URL" are made of. base stays the id for the requests.
+                'page' => PortalDefinition::projectUrl($project),
                 'create_issue' => admin_url('data', [$issue_name, 'create']) . '?select_parent=' . $project->id,
                 'issue_data' => admin_url('data', [$issue_name]),
                 'data_base' => admin_url('data'),
@@ -3196,6 +3228,8 @@ class PmPortalController extends AdminControllerBase
         return [
             'id' => $issue->id,
             'key' => $this->issueKey($project, $issue->id),
+            // The issue key (ISS00239) the address uses (ISS00440).
+            'ik' => PortalDefinition::issueKeyOf($issue),
             'url' => admin_url('data', [$this->issue_table->table_name, $issue->id]),
             'edit_url' => admin_url('data', [$this->issue_table->table_name, $issue->id, 'edit']),
             'subject' => strval(array_get($v, array_get($is, 'subject'), '')),
@@ -3745,7 +3779,17 @@ class PmPortalController extends AdminControllerBase
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
         }
-        $project = $this->project_table->getValueModel()->find($id);
+        $ref = trim(strval($id));
+        if (!ctype_digit($ref)) {
+            // By code (ISS00440). Not there and not allowed answer alike.
+            $project = $this->projectByAnyCode($ref);
+            if (!isset($project)) {
+                abort(404);
+            }
+
+            return $project;
+        }
+        $project = $this->project_table->getValueModel()->find($ref);
         if (!isset($project)) {
             abort(404);
         }

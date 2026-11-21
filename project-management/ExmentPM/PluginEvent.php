@@ -147,6 +147,14 @@ class PluginEvent extends PluginEventBase
             }
         });
 
+        // A renamed project keeps answering to its old code (ISS00440).
+        Event::listen('eloquent.saving: *', function ($eventName, array $data) {
+            $model = $data[0] ?? null;
+            if ($model instanceof CustomValue) {
+                ProjectCodes::saving($model);
+            }
+        });
+
         // Someone joining or leaving a team, or a team deleted or restored,
         // changes who is on every project that names the team, without any
         // project being saved. See PortalMembership::teamsChanging().
@@ -271,6 +279,7 @@ class PluginEvent extends PluginEventBase
             if ($table_name === array_get($def, 'project_table')) {
                 GitRepo::forgetProject($id);
                 AiLog::forgetProject($id);
+                ProjectCodes::forget($id);
             } elseif ($table_name === array_get($def, 'issue_table')) {
                 AiLog::forgetIssue($id);
             }

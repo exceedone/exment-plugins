@@ -113,6 +113,113 @@ class PortalDefinition
     }
 
     /**
+     * First segments the portal's own routes use (config.json). A project
+     * whose code reads the same is addressed by its id instead.
+     */
+    const RESERVED_SEGMENTS = ['setup', 'settings', 'form-style', 'asset', 'lightapi', 'search', 'projects', 'ranking', 'view'];
+
+    /**
+     * How a project is written in an address (ISS00440): its code, such as
+     * EXMENT_CUSTOMER, upper-cased the way the portal shows it. The id when
+     * the project has no code, or one that would not read as a code - an old
+     * code written before the format rule, or one that names a route.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     */
+    public static function projectSegment($project): string
+    {
+        $code = array_get((array) $project->value, strval(array_get(static::config(), 'project.key', 'project_code')));
+
+        return static::codeSegment($code) ?? strval($project->id);
+    }
+
+    /**
+     * The code as an address segment, or null when it cannot be one.
+     *
+     * @param mixed $code
+     */
+    public static function codeSegment($code): ?string
+    {
+        $code = is_scalar($code) ? trim(strval($code)) : '';
+        if (!preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $code) || in_array(strtolower($code), static::RESERVED_SEGMENTS, true)) {
+            return null;
+        }
+
+        return strtoupper($code);
+    }
+
+    /**
+     * A project's page: /plugins/exment_pm/EXMENT_CUSTOMER.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     */
+    public static function projectUrl($project): string
+    {
+        return static::url(static::projectSegment($project));
+    }
+
+    /**
+     * A project's page by its id, for a caller that holds only the id (a
+     * mail, a bell). Read without the permission scope: the address is for
+     * someone who may open the issue it leads to, and the project's own
+     * page still checks who opens it.
+     *
+     * @param mixed $projectId
+     */
+    public static function projectUrlById($projectId): string
+    {
+        try {
+            $table = CustomTable::getEloquent(strval(array_get(static::config(), 'project_table')));
+            $project = isset($table) ? $table->getValueModel()->newQueryWithoutScopes()->find($projectId) : null;
+            if (isset($project)) {
+                return static::projectUrl($project);
+            }
+        } catch (\Throwable $e) {
+            // The id is still a working address.
+        }
+
+        return static::url(strval($projectId));
+    }
+
+    /**
+     * How an issue is written after #issue- (ISS00440): its issue key, such as
+     * ISS00239. The id when the issue has no key that can stand in an address.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     */
+    public static function issueAnchor($issue): string
+    {
+        $key = static::issueKeyOf($issue);
+
+        return $key !== '' ? $key : strval($issue->id);
+    }
+
+    /**
+     * The issue key (ISS00239), or '' when it has none that can stand in an
+     * address.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     */
+    public static function issueKeyOf($issue): string
+    {
+        $key = array_get((array) $issue->value, strval(array_get(static::config(), 'issue.key', 'issue_key')));
+        $key = is_scalar($key) ? trim(strval($key)) : '';
+
+        return preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $key) ? $key : '';
+    }
+
+    /**
+     * Where one issue opens: its project's page with #issue-ISS00239.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     */
+    public static function issuePageUrl($project, $issue): string
+    {
+        return static::projectUrl($project) . '#issue-' . rawurlencode(static::issueAnchor($issue));
+    }
+
+    /**
      * The portal's script and stylesheet, served as files of their own so the
      * browser keeps them between pages instead of reading half a megabyte of
      * inline code on every one. Both are written as blade views (script.blade
@@ -540,7 +647,7 @@ class PortalDefinition
         $def = static::config();
         $table_name = optional($custom_value->custom_table)->table_name;
         if ($table_name === $def['project_table']) {
-            return static::url($custom_value->id);
+            return static::projectUrl($custom_value);
         }
         if ($table_name !== $def['issue_table'] && $table_name !== $def['wiki_table']) {
             return null;
@@ -548,8 +655,10 @@ class PortalDefinition
         if ($custom_value->parent_type !== $def['project_table'] || is_nullorempty($custom_value->parent_id)) {
             return null;
         }
-        $anchor = ($table_name === $def['issue_table'] ? '#issue-' : '#wiki-') . $custom_value->id;
-        return static::url($custom_value->parent_id) . $anchor;
+        $anchor = $table_name === $def['issue_table']
+            ? '#issue-' . rawurlencode(static::issueAnchor($custom_value))
+            : '#wiki-' . $custom_value->id;
+        return static::projectUrlById($custom_value->parent_id) . $anchor;
     }
 
     /**

@@ -637,7 +637,7 @@ window.PmPortalBoot = function () {
             var ic = own(FEED_IC, f.tp) || FEED_IC.chg;
             var link;
             if (f.kind === 'issue') {
-                link = '<a class="bl-issuelink" href="#issue-' + esc(f.id) + '">' + esc(f.key) + ' ' + esc(f.label) + '</a>';
+                link = '<a class="bl-issuelink" href="#' + esc(issueHash(f.id)) + '">' + esc(f.key) + ' ' + esc(f.label) + '</a>';
             } else if (f.kind === 'wiki') {
                 link = '<a class="bl-issuelink pp-wikilink" href="#wiki" data-wiki="' + esc(f.id) + '">' + esc(f.label) + '</a>';
             } else if (f.kind === 'file') {
@@ -1110,7 +1110,13 @@ window.PmPortalBoot = function () {
     //
     // A project with no key of its own makes issueKey() fall back to '#-<id>',
     // and a '#' inside a fragment truncates the URL - stay numeric there.
+    //
+    // ISS00440: the address uses the issue key (#issue-ISS00239), which does
+    // not change when the project is renamed. PROJECTKEY-id and the bare id
+    // still resolve (resolveIssueRef), and route() rewrites them to this.
     function keyRef(i) {
+        var ik = i && i.ik ? String(i.ik) : '';
+        if (/^[A-Za-z0-9_-]+$/.test(ik)) { return ik; }
         var key = i && i.key ? String(i.key) : '';
         return (key && key.indexOf('#') < 0) ? key : String(i ? i.id : '');
     }
@@ -1125,11 +1131,26 @@ window.PmPortalBoot = function () {
         var want = String(ref).toUpperCase();
         var found = null;
         (D.issues || []).forEach(function (i) {
-            if (String(i.key).toUpperCase() === want) { found = i; }
+            if (String(i.ik || '').toUpperCase() === want || String(i.key).toUpperCase() === want) { found = i; }
         });
+        // OLDKEY-239 after the project was renamed: the number is the row id,
+        // and the row is one this project is carrying.
+        var old = found ? null : want.match(/^(.+)-(\d+)$/);
+        if (old) { found = issueById(old[2]); }
         return found ? String(found.id) : null;
     }
 
+    // The issue with this issue key (ISS00239), either case, or null.
+    var IK_MAP = null, IK_LEN = -1;
+    function issueByIk(word) {
+        var list = D.issues || [];
+        if (!IK_MAP || IK_LEN !== list.length) {
+            IK_MAP = {};
+            IK_LEN = list.length;
+            list.forEach(function (i) { if (i.ik) { IK_MAP[String(i.ik).toUpperCase()] = i; } });
+        }
+        return own(IK_MAP, String(word).toUpperCase()) || null;
+    }
     // The number at the end of a key - "292" out of "PORTAL-292". Written on
     // its own after a '#' by anyone who is not looking at the key itself.
     function issueByKeyNum(num) {
@@ -1372,7 +1393,7 @@ window.PmPortalBoot = function () {
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
                 '<td' + edAttr('ty') + '>' + tag(i.ty) + '</td>' +
-                '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a></td>' +
+                '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a>' + ikCopyButton(i) + '</td>' +
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
                 // stacked to its right so both lines start at the same place
                 (TREE_ON ? '<td class="pp-tcol">' + ind + '</td>' : '') +
@@ -2255,7 +2276,7 @@ window.PmPortalBoot = function () {
         // The way back sits on the head row itself, so it costs no line of
         // its own above the issue (the same button closes the page too).
         var head = '<div class="bl-dhead"><a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' + tag(i.ty) +
-            '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' +
+            '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' + ikCopyButton(i) +
             issueNav(i) +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
@@ -2320,7 +2341,7 @@ window.PmPortalBoot = function () {
             [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
             [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
             [L.lbl_pg, pbar(i.pg)],
-            [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#issue-' + esc(parentIssue.id) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
+            [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_source, sourceHtml(res.source)],
             [L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : ''],
             [L.lbl_watch, '<i class="fa fa-eye" style="color:var(--bl-faint);"></i> ' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people))]
@@ -3371,6 +3392,15 @@ window.PmPortalBoot = function () {
             return keep('<a class="bl-issuelink pp-card" href="#' +
                 (hit ? esc(issueHash(hit.id)) : ('issue-' + num)) + '"' +
                 (hit ? ' data-issue="' + esc(hit.id) + '"' : '') + '>' + m + '</a>');
+        });
+        // An issue key written out - ISS00239 (ISS00440). Linked only when it
+        // is one of the issues this page carries, which are the ones the
+        // reader may open; any other is left as it was written.
+        html = html.replace(/(^|[^\w&;\-])([A-Za-z][A-Za-z0-9_]*\d)(?![\w\-])/g, function (m, lead, word) {
+            var hit = issueByIk(word);
+            if (!hit) { return m; }
+            return lead + keep('<a class="bl-issuelink pp-card" href="#' + esc(issueHash(hit.id)) +
+                '" data-issue="' + esc(hit.id) + '">' + word + '</a>');
         });
         // The other way an issue gets written - "#292" - which is what the
         // key is under the surface and what anyone types when they are not
@@ -5299,16 +5329,48 @@ window.PmPortalBoot = function () {
         var base = location.pathname.replace(/\/\d+\/?$/, '');
         return location.origin + base + '/view/' + encodeURIComponent(key);
     }
+    // ISS00440: what is copied is the page's own address by the project's
+    // code, with the issue key after the # - the form every link now has.
+    function pageUrl() {
+        return (D.urls && D.urls.page) ? String(D.urls.page) : location.origin + location.pathname;
+    }
+    function issuePageUrl(id) {
+        return pageUrl() + '#' + issueHash(id);
+    }
     function cmtCopyLink(cid) {
-        var issue = issueById(currentIssue);
-        var short = issueShortUrl(issue);
-        copyText(short ? short + '?c=' + cid : location.origin + location.pathname + '#' +
-            (issue ? issueHash(issue.id) : 'issue-' + currentIssue) + '?c=' + cid, L.cmt_copied);
+        copyText(issuePageUrl(currentIssue) + '?c=' + cid, L.cmt_copied);
     }
     function issueCopyLink() {
-        var issue = issueById(currentIssue);
-        copyText(issueShortUrl(issue) || location.origin + location.pathname + '#' +
-            (issue ? issueHash(issue.id) : 'issue-' + currentIssue), L.link_copied);
+        copyText(issuePageUrl(currentIssue), L.link_copied);
+    }
+    // The copy button by the issue key (ISS00440, like Backlog's): a click
+    // copies "ISS00239 subject", Shift+click the key alone. As text and as
+    // a link, so a paste into Teams, OneNote, Outlook or Word is a link to
+    // the issue; plain text where the browser has no ClipboardItem.
+    function ikText(i) {
+        return String((i && (i.ik || i.key)) || '');
+    }
+    function ikCopyButton(i) {
+        return '<button type="button" class="pp-ikcopy" data-issue="' + esc(i.id) + '" title="' + esc(L.ik_copy_tip) +
+            '" aria-label="' + esc(L.ik_copy_tip) + '"><i class="fa fa-clipboard"></i></button>';
+    }
+    function ikCopy(id, keyOnly) {
+        var i = issueById(id);
+        if (!i) { return; }
+        var key = ikText(i);
+        var text = keyOnly ? key : key + ' ' + String(i.subject || '');
+        var html = '<a href="' + esc(issuePageUrl(i.id)) + '">' + esc(text) + '</a>';
+        var done = function () { toast(keyOnly ? L.ik_key_copied : L.ik_copied); };
+        try {
+            if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+                navigator.clipboard.write([new window.ClipboardItem({
+                    'text/plain': new Blob([text], { type: 'text/plain' }),
+                    'text/html': new Blob([html], { type: 'text/html' })
+                })]).then(done, function () { copyText(text, keyOnly ? L.ik_key_copied : L.ik_copied); });
+                return;
+            }
+        } catch (e) { /* plain text below */ }
+        copyText(text, keyOnly ? L.ik_key_copied : L.ik_copied);
     }
     // Clipboard with the execCommand fallback the admin's iframe context
     // still needs on older browsers.
@@ -9373,7 +9435,7 @@ window.PmPortalBoot = function () {
         var i = issueById(issueId);
         if (!i) { return; }
         var entry = {
-            u: location.pathname + '#issue-' + keyRef(i),
+            u: pageUrl().replace(/^https?:\/\/[^\/]+/, '') + '#issue-' + keyRef(i),
             k: String(i.key || ''),
             s: String(i.subject || ''),
             p: String((D.project && D.project.name) || ''),
@@ -9591,7 +9653,23 @@ window.PmPortalBoot = function () {
                 // detail can be fetched on its own (fetchDetails asks the
                 // server, which checks it belongs here).
                 var km = String(m[1]).toUpperCase().match(/^(.+)-(\d+)$/);
-                if (km && km[1] === String(D.project.key || '#').toUpperCase()) { id = km[2]; }
+                if (km && km[1] === String(D.project.key || '#').toUpperCase()) {
+                    id = km[2];
+                } else {
+                    // An issue key (ISS00239) or an old project key names
+                    // nothing until the archived rows are here: fetch them,
+                    // then ask again. AR.loaded keeps this to one round.
+                    loadArchived().then(function () { if (alive()) { route(); } },
+                        function () { if (alive()) { show('issues'); } });
+                    return;
+                }
+            }
+            // ISS00440: an older address (#issue-PROJECTKEY-id, an old project
+            // key, the bare id) is rewritten to the issue key in place.
+            var canon = issueById(id);
+            if (id !== null && canon && history.replaceState && String(m[1]) !== keyRef(canon)) {
+                path = 'issue-' + keyRef(canon);
+                history.replaceState(null, '', '#' + path + (h.query ? '?' + h.query : ''));
             }
             if (id === null) {
                 // A key this project is not carrying: a stale bookmark, or a
@@ -10004,6 +10082,15 @@ window.PmPortalBoot = function () {
         else if (nedHit.create) { nedPrewarmCreateForm(nedHit.create); }
     });
     root.addEventListener('click', function (ev) {
+        // The copy button by an issue key: copies, and neither opens the row
+        // under it nor follows anything (ISS00440).
+        var ikBtn = ev.target.closest('.pp-ikcopy');
+        if (ikBtn) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ikCopy(ikBtn.getAttribute('data-issue'), !!ev.shiftKey);
+            return;
+        }
         // Click-to-collapse card head (基本情報 / 子課題). Bail if the click
         // landed on an interactive descendant so the collapse doesn't
         // swallow buttons or links added later.

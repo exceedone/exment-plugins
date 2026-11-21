@@ -94,6 +94,8 @@
 .pmportal .bl-prio svg{vertical-align:-2px;}
 .pmportal .bl-key{font-weight:700;color:var(--bl-sub);white-space:nowrap;}
 .pmportal a.bl-key:hover{color:var(--bl-accent-d);}
+.pmportal .pp-ikcopy{border:0;background:none;padding:0 4px;margin-left:2px;color:var(--bl-faint);cursor:pointer;font-size:12px;line-height:1;vertical-align:baseline;}
+.pmportal .pp-ikcopy:hover,.pmportal .pp-ikcopy:focus-visible{color:var(--bl-accent-d);}
 .pmportal .bl-due{white-space:nowrap;}
 .pmportal .bl-due.over{color:var(--bl-red);font-weight:700;}
 .pmportal .bl-due.soon{color:#b57c0e;font-weight:700;}
