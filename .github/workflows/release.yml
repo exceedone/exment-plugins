@@ -19,13 +19,13 @@ permissions:
 
 # The free official plugins (ExmentPM, ExmentITSupport, ExmentGroupware) also go,
 # as the same zip and its release record NOT signed, into a pull request to
-# exceedone/exment-official-plugins (Exment bundles them, ISS00419). The key is
+# exceedone/exment-plugins-release (Exment bundles them, ISS00419). The key is
 # only on the computer of the person who signs; that pull request is signed there
 # (php tools/release.php sign ...) and merged. Exment uses only signed releases.
 # A fix for safety: put "security: <one line>" in the message of an annotated tag
 #   git tag -a ExmentITSupport-v1.0.6 -m "security: <note>"
 # Needs the secret OFFICIAL_PLUGINS_TOKEN (a fine-grained token: contents and pull
-# requests of exment-official-plugins only). Variables (optional):
+# requests of exment-plugins-release only). Variables (optional):
 # EXMENT_REQUIRES_<PLUGIN NAME IN CAPITALS>, e.g. EXMENT_REQUIRES_EXMENTITSUPPORT = ">=7.2.0 <7.3"
 
 jobs:
@@ -95,18 +95,18 @@ jobs:
           php-version: '8.2'
           extensions: sodium, zip
 
-      - name: Its release (not signed) into a pull request to exment-official-plugins
+      - name: Its release (not signed) into a pull request to exment-plugins-release
         if: steps.official.outputs.yes == '1'
         env:
           GH_TOKEN: ${{ secrets.OFFICIAL_PLUGINS_TOKEN }}
           NOTE: ${{ steps.official.outputs.note }}
           REQUIRES: ${{ vars[steps.official.outputs.var] }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then echo "::warning::No OFFICIAL_PLUGINS_TOKEN: the release is not put into exment-official-plugins"; exit 0; fi
+          if [ -z "$GH_TOKEN" ]; then echo "::warning::No OFFICIAL_PLUGINS_TOKEN: the release is not put into exment-plugins-release"; exit 0; fi
           name="${{ steps.plugin.outputs.name }}"
           version="${{ steps.plugin.outputs.version }}"
           base="$name-$version"
-          git clone -q "https://x-access-token:${GH_TOKEN}@github.com/exceedone/exment-official-plugins.git" official
+          git clone -q "https://x-access-token:${GH_TOKEN}@github.com/exceedone/exment-plugins-release.git" official
           # the first safe version carries over from the version before (ISS00421 "5")
           prev="$(ls official/releases/$name-*.json 2>/dev/null | head -1)"
           min="$(php -r '$r = json_decode((string) @file_get_contents($argv[1]), true); echo is_array($r) ? ($r["security_min"] ?? "") : "";' "$prev")"
@@ -122,4 +122,4 @@ jobs:
           git add -A releases
           git -c user.name="exment-release" -c user.email="exment-release@users.noreply.github.com" commit -q -m "release: $base (not signed)"
           git push -q origin "$branch"
-          gh pr create --repo exceedone/exment-official-plugins --base main --head "$branch"             --title "release: $base"             --body "Built by the release of exment-plugins ($GITHUB_REF_NAME). **Not signed yet**: sign it on the computer with the key (\`php tools/release.php sign releases/$base.json <key-folder>/release-2026-1.key\`), push, then merge."
+          gh pr create --repo exceedone/exment-plugins-release --base main --head "$branch"             --title "release: $base"             --body "Built by the release of exment-plugins ($GITHUB_REF_NAME). **Not signed yet**: sign it on the computer with the key (\`php tools/release.php sign releases/$base.json <key-folder>/release-2026-1.key\`), push, then merge."
