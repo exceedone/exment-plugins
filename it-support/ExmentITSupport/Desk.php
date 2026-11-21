@@ -665,6 +665,9 @@ class Desk
 
             return $this->back($url, "リンクを {$n} 件取り消しました。前に送ったリンクは開けなくなります。");
         }
+        if (!Its::portalOn()) {
+            return $this->back($url, 'お客様の窓口を使っていないので、リンクは作れません。', true);
+        }
         $email = Its::normalizeEmail(strval(array_get($ticket->value, 'requester_email')));
         $link = Tokens::linkFor(intval($ticket->id), Its::isEmail($email) ? $email : null);
         if ($request->ajax() || $request->wantsJson()) {
@@ -944,6 +947,11 @@ class Desk
             'intakeAlert' => Its::publicUrl('intake', 'alert'),
             'intakeMail' => Its::publicUrl('intake', 'mail'),
             'mailFrom' => Mailer::fromAddress(),
+            'featureOff' => [
+                'portal' => !Feature::enabled(Feature::PORTAL),
+                'mail' => !Feature::enabled(Feature::MAIL),
+                'alerts' => !Feature::enabled(Feature::ALERTS),
+            ],
         ]);
     }
 

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Crypt;
 class Its
 {
     const PLUGIN_NAME = 'ExmentITSupport';
+    const PLUGIN_URI = 'exment_it_support';
 
     const SETTINGS_KEY = 'its_settings';
     const STATE_KEY = 'its_state';
@@ -324,6 +325,15 @@ class Its
         }
 
         return $plugin->getFullUrl(...$parts);
+    }
+
+    /**
+     * Whether the customer pages and their links are used: on in this
+     * plugin's settings and in Exment's feature management (see Feature).
+     */
+    public static function portalOn(): bool
+    {
+        return static::setting('public_enabled', '1') === '1' && Feature::enabled(Feature::PORTAL);
     }
 
     /** Public screens (no login). See PublicRoutes. */

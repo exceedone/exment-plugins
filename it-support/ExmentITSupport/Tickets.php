@@ -369,7 +369,7 @@ class Tickets
             $to = strval(array_get($ticket->value, 'requester_email'));
             if (Its::isEmail($to)) {
                 $cc = array_filter(array_map('trim', explode(',', strval($input['cc'] ?? array_get($ticket->value, 'cc', '')))));
-                $link = boolval(array_get($ticket->value, 'customer_visible', '1')) && Its::setting('public_enabled', '1') === '1'
+                $link = boolval(array_get($ticket->value, 'customer_visible', '1')) && Its::portalOn()
                     ? Tokens::linkFor(intval($ticket->id), $to) : null;
                 $id = Mailer::send($ticket, [$to], Mailer::subjectFor($ticket), Mailer::customerBody($ticket, $body, $link), $cc);
                 $mailed = $id !== null;
