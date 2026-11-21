@@ -26,6 +26,10 @@ class Tokens
 
     const OTP_MINUTES = 10;
     const OTP_ATTEMPTS = 5;
+    /** Codes sent for one link in an hour. */
+    const OTP_SENDS_PER_HOUR = 5;
+    /** Wrong codes for one link in a day, over all its codes: sending a new code does not start again. */
+    const OTP_FAILS_PER_DAY = 10;
 
     public static function hash(string $token): string
     {
@@ -192,21 +196,79 @@ class Tokens
         return $code;
     }
 
+    /** True while this link may be sent another code (a few an hour). */
+    public static function canSendOtp(object $token): bool
+    {
+        if (static::otpLocked($token)) {
+            return false;
+        }
+
+        return DB::table('its_otps')->where('token_id', $token->id)
+            ->where('created_at', '>', Carbon::now()->subHour())->count() < static::OTP_SENDS_PER_HOUR;
+    }
+
+    /**
+     * True when too many wrong codes were tried for this link today. Counted
+     * over all the link's codes, so asking for a new code does not give a
+     * fresh set of tries.
+     */
+    public static function otpLocked(object $token): bool
+    {
+        // "attempts" holds the wrong tries only (a right try is taken back when the code is used)
+        $fails = intval(DB::table('its_otps')->where('token_id', $token->id)
+            ->where('created_at', '>', Carbon::now()->subDay())->sum('attempts'));
+
+        return $fails >= static::OTP_FAILS_PER_DAY;
+    }
+
+    /**
+     * Run $fn with the link's row locked, so requests for the same link at
+     * the same moment take turns (the per-link limits are read, then written).
+     *
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     */
+    public static function withLinkLock(object $token, callable $fn)
+    {
+        return DB::transaction(function () use ($token, $fn) {
+            DB::table('its_tokens')->where('id', $token->id)->lockForUpdate()->first();
+
+            return $fn();
+        });
+    }
+
     public static function checkOtp(object $token, string $code): bool
     {
+        return static::withLinkLock($token, function () use ($token, $code) {
+            return static::checkOtpLocked($token, $code);
+        });
+    }
+
+    protected static function checkOtpLocked(object $token, string $code): bool
+    {
         $code = preg_replace('/\D/', '', $code);
+        if (static::otpLocked($token)) {
+            return false;
+        }
         $row = DB::table('its_otps')->where('token_id', $token->id)->whereNull('used_at')->orderByDesc('id')->first();
-        if (!isset($row) || Carbon::parse($row->expires_at)->isPast() || $row->attempts >= static::OTP_ATTEMPTS) {
+        if (!isset($row) || Carbon::parse($row->expires_at)->isPast()) {
+            return false;
+        }
+        // Count the try before comparing, in one statement: requests sent at
+        // the same moment cannot all get the same "attempts so far".
+        $counted = DB::table('its_otps')->where('id', $row->id)->whereNull('used_at')
+            ->where('attempts', '<', static::OTP_ATTEMPTS)->increment('attempts');
+        if ($counted !== 1) {
             return false;
         }
         if (!hash_equals($row->code_hash, static::hash($token->id . ':' . $code))) {
-            DB::table('its_otps')->where('id', $row->id)->update(['attempts' => $row->attempts + 1]);
-
             return false;
         }
-        DB::table('its_otps')->where('id', $row->id)->update(['used_at' => now()]);
 
-        return true;
+        // only one request can use the code; the right try is not a wrong one
+        return DB::table('its_otps')->where('id', $row->id)->whereNull('used_at')
+            ->update(['used_at' => now(), 'attempts' => DB::raw('attempts - 1')]) === 1;
     }
 
     // ---- throttling ------------------------------------------------------

@@ -425,6 +425,127 @@ class MimeParser
     }
 
     /**
+     * One Authentication-Results header (RFC 8601), read as the server wrote
+     * it: the server's name, then one result per ";"-separated part, each
+     * "method=result" followed by "property=value" words. Comments and quoted
+     * strings are taken out first, so text the sender controls (a local part
+     * such as "dmarc=pass"@example.com) is never read as a result.
+     *
+     * @return array{id: string, results: array<int, array{method: string, result: string, props: array<string, string>}>}
+     */
+    public static function parseAuthResults(string $header): array
+    {
+        $h = strtolower(preg_replace('/\s+/', ' ', $header) ?? '');
+        $h = preg_replace('/"(?:[^"\\\\]|\\\\.)*"/', 'q', $h) ?? '';
+        for ($i = 0; $i < 5 && strpos($h, '(') !== false; $i++) {
+            $h = preg_replace('/\([^()]*\)/', ' ', $h) ?? '';
+        }
+        $parts = explode(';', $h);
+        // The server's name comes first - except where the server writes none
+        // (Microsoft 365 starts with "spf=pass ..."): then the first part is a result.
+        $id = '';
+        if (strpos(strval($parts[0] ?? ''), '=') === false) {
+            $id = trim(preg_replace('/\s+\d+$/', '', trim(array_shift($parts))) ?? '');
+        }
+        $results = [];
+        foreach ($parts as $part) {
+            $words = preg_split('/\s+/', trim($part), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            if (empty($words) || !preg_match('#^([a-z0-9_-]+)(?:/\d+)?=([a-z]+)$#', $words[0], $m)) {
+                continue;
+            }
+            $props = [];
+            foreach (array_slice($words, 1) as $w) {
+                if (preg_match('/^([a-z0-9_-]+\.[a-z0-9_-]+)=(.+)$/', $w, $pm) && !isset($props[$pm[1]])) {
+                    $props[$pm[1]] = trim($pm[2], '<>');
+                }
+            }
+            $results[] = ['method' => $m[1], 'result' => $m[2], 'props' => $props];
+        }
+
+        return ['id' => $id, 'results' => $results];
+    }
+
+    /**
+     * The receiving server says the From address is the sender's: DMARC
+     * passed for the From's domain, or (no DMARC failure) DKIM or SPF passed
+     * for the From's domain or a parent of it.
+     *
+     * Only headers our own server wrote count, and nothing in the mail tells
+     * which those are: anyone can put an Authentication-Results header in a
+     * mail, and a server that adds none leaves the sender's on top. So either
+     * the server's name (authserv-id) is set, and only the topmost header
+     * with that name is read, or, for a server
+     * that writes its header on top without a name (Microsoft 365), $topOnly
+     * reads the topmost header alone. With neither, nothing is proven.
+     */
+    public static function authPassed(array $mail, string $authservId = '', bool $topOnly = false): bool
+    {
+        $from = strtolower(strval($mail['from']));
+        $domain = substr(strrchr($from, '@') ?: '', 1);
+        $authservId = strtolower(trim($authservId));
+        if ($domain === '' || ($authservId === '' && !$topOnly)) {
+            return false;
+        }
+        // One header only - the topmost of ours. A lower one with the same name
+        // may have come with the mail (a server does not always strip its own
+        // name from incoming headers), so it never fills in a check the top one
+        // did not report. A server that writes one header per check (separate
+        // milters) is then read by its top header alone: that errs on the safe side.
+        $ours = null;
+        foreach (array_values($mail['headers']['authentication-results'] ?? []) as $h) {
+            $parsed = static::parseAuthResults($h);
+            if ($topOnly || $parsed['id'] === $authservId) {
+                $ours = $parsed;
+                break;
+            }
+        }
+        if ($ours === null) {
+            return false;
+        }
+        $passed = false;
+        foreach ($ours['results'] as $r) {
+            $method = $r['method'];
+            if ($method === 'dmarc' && in_array($r['result'], ['fail', 'quarantine', 'reject'], true)) {
+                return false;
+            }
+            if ($r['result'] !== 'pass') {
+                continue;
+            }
+            if ($method === 'dmarc') {
+                $passed = $passed || strtolower(strval($r['props']['header.from'] ?? '')) === $domain;
+            } elseif ($method === 'dkim') {
+                $d = strval($r['props']['header.d'] ?? '');
+                if ($d === '' && isset($r['props']['header.i'])) {
+                    $d = substr(strrchr($r['props']['header.i'], '@') ?: '', 1);
+                }
+                $passed = $passed || static::coversDomain($d, $domain);
+            } elseif ($method === 'spf') {
+                $d = strval($r['props']['smtp.mailfrom'] ?? '');
+                $d = strpos($d, '@') !== false ? substr(strrchr($d, '@'), 1) : $d;
+                $passed = $passed || static::coversDomain($d, $domain);
+            }
+        }
+
+        return $passed;
+    }
+
+    /**
+     * The checked domain speaks for the From's domain: the same, or a parent
+     * of it (example.co.jp for support.example.co.jp) - not a sub-domain,
+     * which on shared hosting may belong to someone else.
+     */
+    protected static function coversDomain(string $checked, string $from): bool
+    {
+        $checked = rtrim(strtolower(trim($checked)), '.');
+        $from = rtrim(strtolower($from), '.');
+        if ($checked === '' || $from === '' || strpos($checked, '.') === false) {
+            return false;
+        }
+
+        return $checked === $from || str_ends_with($from, '.' . $checked);
+    }
+
+    /**
      * What the receiving server said about SPF/DKIM/DMARC. "fail" only when
      * a check positively failed - a missing header is not evidence.
      */

@@ -28,5 +28,8 @@
 @if(!empty($needsUpgrade))
 <div class="its-warn" role="status"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i><div>プラグインが新しくなりました。<a href="{{ $Its::url('setup') }}">セットアップ</a>から「テーブルを更新」を押してください（データはそのままです）。</div></div>
 @endif
+@if(!empty($mailAuthUnset))
+<div class="its-warn" role="status"><i class="fa fa-shield" aria-hidden="true"></i><div>受け取ったメールの差出人を確かめる設定が済んでいません。いまはメールで来たチケットが、すべて「なりすましの疑い」（社内だけ）になります。管理者が<a href="{{ $Its::url('settings') }}">設定</a>の「受信サーバーの名前」を入れてください。</div></div>
+@endif
 @if(!empty($flash))<div class="its-flash" role="status"><i class="fa fa-check-circle" aria-hidden="true"></i><div>{{ $flash }}</div></div>@endif
 @if(!empty($flashError))<div class="its-flash error" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"></i><div>{{ $flashError }}</div></div>@endif

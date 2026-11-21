@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\DB;
  */
 class Tickets
 {
+    /** On a ticket whose requester's address nobody has shown to be theirs yet (the public form). */
+    const TAG_UNVERIFIED = 'メール未確認';
+
     public static function table(): CustomTable
     {
         $table = Its::table(Its::T_TICKET);
@@ -57,8 +60,10 @@ class Tickets
      * @param array<string, mixed> $values ticket columns
      * @param array<string, mixed> $first first message: body, kind, author_name, author_email, via, message_id
      * @param array<int, array{name: string, content: string}> $files
+     * @param bool $makeContact false when the address is not known to be the sender's (the
+     *   public form, a mail that did not pass the sender checks): no contact is made from it
      */
-    public static function create(array $values, array $first = [], array $files = []): CustomValue
+    public static function create(array $values, array $first = [], array $files = [], bool $makeContact = true): CustomValue
     {
         $values = array_merge([
             'status' => 'new',
@@ -75,7 +80,7 @@ class Tickets
         $email = Its::normalizeEmail($values['requester_email'] ?? '');
         if ($email !== '') {
             $values['requester_email'] = $email;
-            [$customer, $contact] = static::identify($email, strval($values['requester_name'] ?? ''), !empty($values['customer']) ? $values['customer'] : null);
+            [$customer, $contact] = static::identify($email, strval($values['requester_name'] ?? ''), !empty($values['customer']) ? $values['customer'] : null, $makeContact);
             if (isset($customer) && empty($values['customer'])) {
                 $values['customer'] = $customer->id;
             }
@@ -119,7 +124,7 @@ class Tickets
      *
      * @return array{0: ?CustomValue, 1: ?CustomValue}
      */
-    public static function identify(string $email, string $name = '', $customerId = null): array
+    public static function identify(string $email, string $name = '', $customerId = null, bool $makeContact = true): array
     {
         $email = Its::normalizeEmail($email);
         $contacts = Its::table(Its::T_CONTACT);
@@ -140,6 +145,9 @@ class Tickets
         if (!isset($customer)) {
             return [null, null];
         }
+        if (!$makeContact) {
+            return [$customer, null];
+        }
 
         $contact = $contacts->getValueModel();
         $contact->setValue([
@@ -150,6 +158,42 @@ class Tickets
         $contact->save();
 
         return [$customer, $contact];
+    }
+
+    /**
+     * The requester showed the address is theirs (sent something through the
+     * link mailed to it, or entered the code sent to it): the "not verified"
+     * tag goes, and the contact is made as for any other ticket.
+     */
+    public static function markAddressVerified(CustomValue $ticket): void
+    {
+        $tags = array_values(array_filter(array_map('trim', explode(',', strval(array_get($ticket->value, 'tags'))))));
+        if (!in_array(static::TAG_UNVERIFIED, $tags, true)) {
+            return;
+        }
+        $values = ['tags' => implode(', ', array_values(array_diff($tags, [static::TAG_UNVERIFIED])))];
+        $email = strval(array_get($ticket->value, 'requester_email'));
+        if ($email !== '' && empty(array_get($ticket->value, 'contact'))) {
+            [, $contact] = static::identify($email, strval(array_get($ticket->value, 'requester_name')), array_get($ticket->value, 'customer') ?: null);
+            if (isset($contact)) {
+                $values['contact'] = $contact->id;
+            }
+        }
+        $ticket->setValue($values);
+        $ticket->save();
+        static::addMessage($ticket, ['kind' => 'system', 'body' => 'メールで送ったリンク（またはコード）から操作がありました。このアドレスにメールが届くことは確かめられました（依頼の中身を書いた人が本人かどうかまでは分かりません）。', 'via' => 'portal']);
+    }
+
+    /** Add a tag to the ticket (once). */
+    public static function addTag(CustomValue $ticket, string $tag): void
+    {
+        $tags = array_values(array_filter(array_map('trim', explode(',', strval(array_get($ticket->value, 'tags'))))));
+        if (in_array($tag, $tags, true)) {
+            return;
+        }
+        $tags[] = $tag;
+        $ticket->setValue(['tags' => mb_substr(implode(', ', $tags), 0, 200)]);
+        $ticket->save();
     }
 
     public static function customerByDomain(string $email): ?CustomValue

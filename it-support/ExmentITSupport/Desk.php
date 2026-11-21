@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * The agents' screens (behind Exment's login).
  *
- * Who is an agent: someone who may edit the ticket table - by default the
+ * Who is an agent: someone who may edit every ticket ("edit all" on the
+ * ticket table) - by default the
  * members of the "ITサポート 担当者" role group the setup made, and system
  * administrators. Anybody else who opens the plugin (a customer in the
  * customer role group) is sent to their own list.
@@ -51,7 +52,9 @@ class Desk
         }
         $table = Its::table(Its::T_TICKET);
 
-        return isset($table) && $table->hasPermission(Permission::AVAILABLE_EDIT_CUSTOM_VALUE);
+        // The desk shows and changes every ticket, so it needs "edit all" on
+        // the ticket table (or the table's own admin), not "edit own records".
+        return isset($table) && $table->hasPermission([Permission::CUSTOM_TABLE, Permission::CUSTOM_VALUE_EDIT_ALL]);
     }
 
     protected function view(string $name, array $data = [])
@@ -61,6 +64,9 @@ class Desk
             'flash' => session()->get('its_flash'),
             'flashError' => session()->get('its_flash_error'),
             'needsUpgrade' => Schema::needsUpgrade(),
+            // mail comes in, but no sender can be proven (see MimeParser::authPassed)
+            'mailAuthUnset' => Its::setting('mail_auth', 'require') === 'require' && trim(strval(Its::setting('mail_authserv_id', ''))) === ''
+                && (Its::setting('imap_enabled', '0') === '1' || !empty(array_get(Its::state(), 'mail_unproven_on'))),
         ], $data));
     }
 

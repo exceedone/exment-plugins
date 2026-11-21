@@ -115,7 +115,14 @@ class PublicController extends Controller
 
         $categories = Tickets::options(Its::T_CATEGORY);
         $body = trim($data['body']) . (!empty($data['company']) ? "\n\n（会社名: " . $data['company'] . '）' : '');
+        // Anyone can type any address here. Until its owner opens the link
+        // mailed to it, the ticket says so, and no contact is made from it
+        // (a contact of a customer may write into that customer's tickets).
+        // ...except a logged-in user of the portal asking from their own address
+        $user = \Exment::user();
+        $own = isset($user) && Its::normalizeEmail(strval(optional($user->base_user)->getValue('email'))) === Its::normalizeEmail($data['email']);
         $ticket = Tickets::create([
+            'tags' => $own ? null : Tickets::TAG_UNVERIFIED,
             'subject' => $data['subject'],
             'description' => $body,
             'channel' => 'form',
@@ -123,15 +130,17 @@ class PublicController extends Controller
             'requester_email' => $data['email'],
             'category' => isset($categories[strval($data['category'] ?? '')]) ? $data['category'] : null,
             'priority' => !empty($data['urgent']) ? 'high' : Inbox::guessPriority($data['subject'] . "\n" . $data['body']),
-        ], ['body' => $body], $files);
+        ], ['body' => $body], $files, $own);
 
-        Inbox::acknowledge($ticket);
-        $link = Tokens::linkFor(intval($ticket->id), Its::normalizeEmail($data['email']));
+        // The link goes only to the address, never on this page: else anyone
+        // could ask in somebody else's name and read the agents' answers.
+        $mailed = Inbox::acknowledge($ticket);
 
         return $this->page('message', [
             'heading' => '受け付けました',
-            'text' => 'チケット番号は ' . array_get($ticket->value, 'ticket_no') . ' です。確認のメールを ' . $data['email'] . ' にお送りしました。進み具合は次のリンクからいつでも見られます（ログインは要りません）。',
-            'link' => $link,
+            'text' => 'チケット番号は ' . array_get($ticket->value, 'ticket_no') . ' です。' . ($mailed
+                ? '確認のメールを ' . $data['email'] . ' にお送りしました。進み具合は、メールにあるリンクからいつでも見られます（ログインは要りません）。メールが届かないときは、アドレスをお確かめのうえ、もう一度お送りください。'
+                : 'いま確認のメールをお送りできませんでした。担当者から ' . $data['email'] . ' にご連絡します。'),
             'warnPassword' => Its::looksLikePassword($data['body']),
         ]);
     }
@@ -303,6 +312,18 @@ class PublicController extends Controller
         return [$row, $ticket];
     }
 
+    /**
+     * Someone acted through a link mailed to the requester's address (or
+     * entered the code sent to it): that address is theirs.
+     */
+    protected function addressShown(object $row, CustomValue $ticket): void
+    {
+        $email = Its::normalizeEmail(strval($row->email ?? ''));
+        if ($email !== '' && $email === Its::normalizeEmail(strval(array_get($ticket->value, 'requester_email')))) {
+            Tickets::markAddressVerified($ticket);
+        }
+    }
+
     protected function otpPassed(object $row, CustomValue $ticket): bool
     {
         if (!$this->followedMerge && !boolval(array_get($ticket->value, 'require_otp', '0'))) {
@@ -364,6 +385,7 @@ class PublicController extends Controller
                 $files[] = ['name' => $file->getClientOriginalName(), 'content' => file_get_contents($file->getRealPath())];
             }
         }
+        $this->addressShown($row, $ticket);
         $email = strval($row->email ?: array_get($ticket->value, 'requester_email'));
         $after = Tickets::customerWrote($ticket, trim($data['body']), 'portal', $email, strval(array_get($ticket->value, 'requester_name')), null, $files);
         Tokens::touch($row, 'reply');
@@ -389,6 +411,7 @@ class PublicController extends Controller
             $ticket->setValue(['status' => 'resolved']);
             $ticket->save();
             Tokens::touch($row, 'solved');
+            $this->addressShown($row, $ticket);
         }
         session()->flash('its_flash', 'ありがとうございました。解決にしました。');
 
@@ -415,6 +438,7 @@ class PublicController extends Controller
             $ticket->setValue($values);
             $ticket->save();
             Tokens::touch($row, 'rate');
+            $this->addressShown($row, $ticket);
         }
         session()->flash('its_flash', 'ご意見ありがとうございました。');
 
@@ -431,9 +455,19 @@ class PublicController extends Controller
         if (!isset($row)) {
             return $this->notFound();
         }
+        // A few codes an hour for one link, whatever the IP: a mailbox is not
+        // flooded, and new codes do not give new tries (see Tokens::otpLocked).
+        if (Tokens::otpLocked($row)) {
+            return $this->page('message', ['heading' => 'このリンクのコードは使えません', 'text' => 'まちがったコードが続いたので、このリンクのコードは明日まで使えません。お急ぎのときは、担当者にご連絡ください（新しいリンクをお送りします）。'], 429);
+        }
         $email = strval($row->email ?: array_get($ticket->value, 'requester_email'));
-        if (Its::isEmail($email)) {
-            $code = Tokens::newOtp($row);
+        $code = Its::isEmail($email) ? Tokens::withLinkLock($row, function () use ($row) {
+            return Tokens::canSendOtp($row) ? Tokens::newOtp($row) : null;
+        }) : '';
+        if ($code === null) {
+            return $this->tooMany();
+        }
+        if ($code !== '') {
             try {
                 \Illuminate\Support\Facades\Mail::raw("確認のコード: {$code}\n\n" . Tokens::OTP_MINUTES . " 分以内に画面に入れてください。\nこのメールに心当たりがないときは、何もしないでください。", function ($m) use ($email, $ticket) {
                     $from = Mailer::fromAddress();
@@ -466,9 +500,12 @@ class PublicController extends Controller
             // Good for this browser for 12 hours.
             session()->put('its_otp_ok_' . $row->id, time() + 12 * 3600);
             Tokens::log($row->id, $row->ticket_id, 'otp_ok');
+            $this->addressShown($row, $ticket);
         } else {
             Tokens::log($row->id, $row->ticket_id, 'otp_ng');
-            session()->flash('its_otp_error', 'コードがちがうか、期限が切れています。');
+            session()->flash('its_otp_error', Tokens::otpLocked($row)
+                ? 'まちがいが続いたので、このリンクのコードは明日まで使えません。担当者にご連絡ください。'
+                : 'コードがちがうか、期限が切れています。');
         }
 
         return redirect(Its::publicUrl('t', strval($token)));
