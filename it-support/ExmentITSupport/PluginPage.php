@@ -25,7 +25,7 @@ class PluginPage extends PluginPageBase
         parent::__construct($plugin);
 
         try {
-            Feature::register();
+            Feature::register($plugin);
         } catch (\Throwable $e) {
             \Log::error('ExmentITSupport could not register its features: ' . $e->getMessage());
         }

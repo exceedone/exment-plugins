@@ -35,8 +35,8 @@ class Inbox
     public static function fetch(): array
     {
         $result = ['ok' => true, 'created' => 0, 'appended' => 0, 'skipped' => 0, 'message' => ''];
-        if (!Feature::enabled(Feature::MAIL)) {
-            $result['message'] = 'メール受付は、管理者設定の「機能の管理」で使っていません。';
+        if (!Feature::on(Feature::PORTAL)) {
+            $result['message'] = '「お客様の窓口」を、管理者設定の「機能の管理」で使っていません。';
 
             return $result;
         }

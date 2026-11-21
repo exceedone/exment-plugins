@@ -26,6 +26,9 @@ class PluginEvent extends PluginEventBase
 
     public function execute()
     {
+        if (!Feature::on(Feature::DESK)) {
+            return true;
+        }
         $model = $this->custom_value;
         if (!isset($model) || !isset($model->custom_table) || $model->custom_table->table_name !== Its::T_TICKET) {
             return true;

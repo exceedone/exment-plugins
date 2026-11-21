@@ -333,7 +333,7 @@ class Its
      */
     public static function portalOn(): bool
     {
-        return static::setting('public_enabled', '1') === '1' && Feature::enabled(Feature::PORTAL);
+        return static::setting('public_enabled', '1') === '1' && Feature::on(Feature::PORTAL);
     }
 
     /** Public screens (no login). See PublicRoutes. */

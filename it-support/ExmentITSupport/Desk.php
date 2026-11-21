@@ -947,11 +947,8 @@ class Desk
             'intakeAlert' => Its::publicUrl('intake', 'alert'),
             'intakeMail' => Its::publicUrl('intake', 'mail'),
             'mailFrom' => Mailer::fromAddress(),
-            'featureOff' => [
-                'portal' => !Feature::enabled(Feature::PORTAL),
-                'mail' => !Feature::enabled(Feature::MAIL),
-                'alerts' => !Feature::enabled(Feature::ALERTS),
-            ],
+            'portalDoorShut' => !Feature::on(Feature::PORTAL),
+            'featureUrl' => Feature::manageUrl(),
         ]);
     }
 

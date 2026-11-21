@@ -571,7 +571,7 @@ class PublicController extends Controller
      */
     public function intakeAlert(Request $request)
     {
-        if (!Feature::enabled(Feature::ALERTS)) {
+        if (!Feature::on(Feature::PORTAL)) {
             abort(404);
         }
         if (!Its::isInstalled()) {
@@ -599,7 +599,7 @@ class PublicController extends Controller
      */
     public function intakeMail(Request $request)
     {
-        if (!Feature::enabled(Feature::MAIL)) {
+        if (!Feature::on(Feature::PORTAL)) {
             abort(404);
         }
         if (!Its::isInstalled()) {

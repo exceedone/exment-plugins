@@ -3,27 +3,29 @@
 namespace App\Plugins\ExmentITSupport;
 
 /**
- * The parts of IT Support in Exment's feature management (Admin setting →
- * Feature management, Exment 7.1.3 and later). A part that is not turned on
- * there is not used: its pages answer "not found" and the batch skips it.
+ * IT Support in Exment's feature management (Admin setting → Feature
+ * management, in the Exment versions that have it). Two doors:
  *
- * - desk:   the agents' screens (inbox, dashboard, settings, setup) and the
- *           batch (SLA, reminders, closing, assets)
- * - portal: the pages for customers and employees: /support (no login), the
- *           links in the mails, and "my requests" inside Exment
- * - mail:   reading the mailbox, and /support/intake/mail
- * - alerts: tickets from monitoring (/support/intake/alert)
+ * - desk:   the agents' screens (inbox, dashboard, settings, setup), the
+ *           batch (mail, SLA, reminders, closing, assets) and the ticket
+ *           rules on save. Who may use it is chosen there.
+ * - portal: the ways in for customers: /support (no login), the links in
+ *           the mails, the mailbox and /support/intake/mail, the alerts
+ *           (/support/intake/alert), and "my requests" inside Exment. It
+ *           needs the desk: nobody would answer.
+ *
+ * A feature is the door; the switches in this plugin's settings (receive
+ * mail, use the customer pages, ...) are the details behind it, and both
+ * must be on.
  *
  * /support is outside the admin pages, so Exment cannot stop it by its path;
- * PublicController asks enabled() itself. Before 7.1.3 (no feature
- * management) every part counts as on, as it did.
+ * PublicController asks on() itself. In Exment versions without feature
+ * management every door counts as open, as before.
  */
 class Feature
 {
     const DESK = 'exment_it_support.desk';
     const PORTAL = 'exment_it_support.portal';
-    const MAIL = 'exment_it_support.mail';
-    const ALERTS = 'exment_it_support.alerts';
 
     const CORE = '\\Exceedone\\Exment\\Services\\Features';
 
@@ -34,65 +36,53 @@ class Feature
 
     /**
      * Called from PluginPage's constructor. Order matters: Exment takes the
-     * first feature whose endpoint matches, so the narrower paths come before
-     * the desk's, which covers the whole plugin.
+     * first feature whose endpoint matches, so "my requests" comes before
+     * the desk, which covers the whole plugin.
+     *
+     * @param \Exceedone\Exment\Model\Plugin $plugin
      */
-    public static function register(): void
+    public static function register($plugin): void
     {
         if (!static::available()) {
             return;
         }
         $core = static::CORE;
-        $base = 'plugins/' . Its::PLUGIN_URI;
+        $base = $plugin->getRouteUri();
         $core::register(static::PORTAL, [
-            'label' => 'ITサポート：窓口',
-            'description' => 'お客様・社員の窓口（ログインなしの /support、メールの進み具合のリンク、Exment の「自分の依頼」）。',
+            'label' => 'ITサポート：お客様の窓口 / IT Support: customer portal',
+            'description' => 'ログインなしの窓口（/support）・メールのリンク・メールと監視からの受付・「自分の依頼」。受付箱がオンのときだけ動きます。'
+                . ' / The no-login portal, links in mails, mail and alert intake, "my requests". Needs the desk.',
             'endpoints' => [$base . '/my'],
-            'plugin' => Its::PLUGIN_NAME,
-        ]);
-        $core::register(static::MAIL, [
-            'label' => 'ITサポート：メール受付',
-            'description' => 'メールボックスを読んでチケットにする、メールの取り込み口（/support/intake/mail）。',
-            'endpoints' => [$base . '/settings/fetch-now'],
-            'plugin' => Its::PLUGIN_NAME,
-        ]);
-        $core::register(static::ALERTS, [
-            'label' => 'ITサポート：監視からの起票',
-            'description' => '監視のアラートをチケットにする取り込み口（/support/intake/alert）。同じアラートは 1 件にまとめる。',
-            'endpoints' => [],
-            'plugin' => Its::PLUGIN_NAME,
+            'plugin' => $plugin->plugin_name,
+            'requires' => static::DESK,
+            'who' => false,
         ]);
         $core::register(static::DESK, [
-            'label' => 'ITサポート：受付箱',
-            'description' => '担当者の画面（受付箱・ダッシュボード・設定・セットアップ）と、5 分ごとの処理（SLA・返事待ち・自動の完了・IT 資産の期限）。',
+            'label' => 'ITサポート：受付箱 / IT Support: desk',
+            'description' => '担当者の画面（受付箱・ダッシュボード・設定・セットアップ）と 5 分ごとの処理。セットアップの前にオンにします。'
+                . ' / The agents\' screens and the batch. Turn it on before the setup.',
             'endpoints' => [$base],
-            'plugin' => Its::PLUGIN_NAME,
+            'plugin' => $plugin->plugin_name,
         ]);
     }
 
-    /** Whether the part is used on the site. */
-    public static function enabled(string $key): bool
+    /** Whether the door is open on the site (the portal needs the desk). */
+    public static function on(string $key): bool
     {
         if (!static::available()) {
             return true;
         }
         $core = static::CORE;
+        if ($key === static::PORTAL && !$core::enabled(static::DESK)) {
+            return false;
+        }
 
         return $core::enabled($key);
     }
 
-    /**
-     * Whether the user (the login user by default) may use the part.
-     *
-     * @param mixed $user
-     */
-    public static function allowed(string $key, $user = null): bool
+    /** The page of Exment's feature management (null: none). */
+    public static function manageUrl(): ?string
     {
-        if (!static::available()) {
-            return true;
-        }
-        $core = static::CORE;
-
-        return $core::allowed($key, $user);
+        return static::available() ? admin_url('feature') : null;
     }
 }
