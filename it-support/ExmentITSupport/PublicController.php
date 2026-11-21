@@ -118,8 +118,11 @@ class PublicController extends Controller
         // Anyone can type any address here. Until its owner opens the link
         // mailed to it, the ticket says so, and no contact is made from it
         // (a contact of a customer may write into that customer's tickets).
+        // ...except a logged-in user of the portal asking from their own address
+        $user = \Exment::user();
+        $own = isset($user) && Its::normalizeEmail(strval(optional($user->base_user)->getValue('email'))) === Its::normalizeEmail($data['email']);
         $ticket = Tickets::create([
-            'tags' => Tickets::TAG_UNVERIFIED,
+            'tags' => $own ? null : Tickets::TAG_UNVERIFIED,
             'subject' => $data['subject'],
             'description' => $body,
             'channel' => 'form',
@@ -127,15 +130,17 @@ class PublicController extends Controller
             'requester_email' => $data['email'],
             'category' => isset($categories[strval($data['category'] ?? '')]) ? $data['category'] : null,
             'priority' => !empty($data['urgent']) ? 'high' : Inbox::guessPriority($data['subject'] . "\n" . $data['body']),
-        ], ['body' => $body], $files, false);
+        ], ['body' => $body], $files, $own);
 
         // The link goes only to the address, never on this page: else anyone
         // could ask in somebody else's name and read the agents' answers.
-        Inbox::acknowledge($ticket);
+        $mailed = Inbox::acknowledge($ticket);
 
         return $this->page('message', [
             'heading' => '受け付けました',
-            'text' => 'チケット番号は ' . array_get($ticket->value, 'ticket_no') . ' です。確認のメールを ' . $data['email'] . ' にお送りしました。進み具合は、メールにあるリンクからいつでも見られます（ログインは要りません）。メールが届かないときは、アドレスをお確かめのうえ、もう一度お送りください。',
+            'text' => 'チケット番号は ' . array_get($ticket->value, 'ticket_no') . ' です。' . ($mailed
+                ? '確認のメールを ' . $data['email'] . ' にお送りしました。進み具合は、メールにあるリンクからいつでも見られます（ログインは要りません）。メールが届かないときは、アドレスをお確かめのうえ、もう一度お送りください。'
+                : 'いま確認のメールをお送りできませんでした。担当者から ' . $data['email'] . ' にご連絡します。'),
             'warnPassword' => Its::looksLikePassword($data['body']),
         ]);
     }
@@ -313,9 +318,6 @@ class PublicController extends Controller
      */
     protected function addressShown(object $row, CustomValue $ticket): void
     {
-        if (intval($row->ticket_id) !== intval($ticket->id)) {
-            return; // a link of a merged ticket says nothing about this one's address
-        }
         $email = Its::normalizeEmail(strval($row->email ?? ''));
         if ($email !== '' && $email === Its::normalizeEmail(strval(array_get($ticket->value, 'requester_email')))) {
             Tickets::markAddressVerified($ticket);
@@ -455,12 +457,17 @@ class PublicController extends Controller
         }
         // A few codes an hour for one link, whatever the IP: a mailbox is not
         // flooded, and new codes do not give new tries (see Tokens::otpLocked).
-        if (!Tokens::canSendOtp($row)) {
-            return $this->tooMany();
+        if (Tokens::otpLocked($row)) {
+            return $this->page('message', ['heading' => 'このリンクのコードは使えません', 'text' => 'まちがったコードが続いたので、このリンクのコードは明日まで使えません。お急ぎのときは、担当者にご連絡ください（新しいリンクをお送りします）。'], 429);
         }
         $email = strval($row->email ?: array_get($ticket->value, 'requester_email'));
-        if (Its::isEmail($email)) {
-            $code = Tokens::newOtp($row);
+        $code = Its::isEmail($email) ? Tokens::withLinkLock($row, function () use ($row) {
+            return Tokens::canSendOtp($row) ? Tokens::newOtp($row) : null;
+        }) : '';
+        if ($code === null) {
+            return $this->tooMany();
+        }
+        if ($code !== '') {
             try {
                 \Illuminate\Support\Facades\Mail::raw("確認のコード: {$code}\n\n" . Tokens::OTP_MINUTES . " 分以内に画面に入れてください。\nこのメールに心当たりがないときは、何もしないでください。", function ($m) use ($email, $ticket) {
                     $from = Mailer::fromAddress();

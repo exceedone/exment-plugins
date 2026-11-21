@@ -104,6 +104,7 @@ class Inbox
             return ['name' => $a['name'], 'content' => $a['content']];
         }, array_slice($mail['attachments'], 0, 20));
         $suspicious = static::senderUnproven($mail);
+        static::noteAuthserv($mail);
 
         // Which ticket is this a reply to: the number in the subject, else
         // the mail it answers.
@@ -135,7 +136,26 @@ class Inbox
             $ticket = $target;
         }
 
-        if (isset($ticket) && !$suspicious) {
+        if (isset($ticket) && $suspicious) {
+            // A reply in the thread whose sender could not be checked: kept on
+            // the ticket for the agents only, as a flagged note - not written
+            // as the customer's, not mailed on, the ticket not reopened.
+            Tickets::addMessage($ticket, [
+                'kind' => 'note',
+                'body' => "【差出人を確かめられないメール（なりすましの疑い）】
+From: " . $mail['from'] . "
+
+" . mb_substr($body, 0, 20000),
+                'via' => 'mail',
+                'message_id' => $mail['message_id'] ?: null,
+            ], $files);
+            if ($mail['message_id'] !== '') {
+                Mailer::remember($mail['message_id'], intval($ticket->id), 'in');
+            }
+
+            return 'appended';
+        }
+        if (isset($ticket)) {
             if (Its::normalizeEmail(strval(array_get($ticket->value, 'requester_email'))) === Its::normalizeEmail($mail['from'])) {
                 Tickets::markAddressVerified($ticket);
             }
@@ -182,6 +202,20 @@ class Inbox
      * with "fail_only", only a mail that failed them is doubted (the old rule,
      * for a server that adds no Authentication-Results header).
      */
+    /**
+     * Remember the server name on top of the latest mail, so the settings can
+     * offer it for "mail_authserv_id" (which must be set for a sender to be
+     * proven; see MimeParser::authPassed).
+     */
+    protected static function noteAuthserv(array $mail): void
+    {
+        $top = strval(($mail['headers']['authentication-results'] ?? [])[0] ?? '');
+        $id = $top !== '' ? mb_substr(MimeParser::parseAuthResults($top)['id'], 0, 200) : '';
+        if ($id !== '' && strval(array_get(Its::state(), 'mail_authserv_seen')) !== $id) {
+            Its::patchState(['mail_authserv_seen' => $id]);
+        }
+    }
+
     public static function senderUnproven(array $mail): bool
     {
         if (Its::setting('mail_auth', 'require') === 'fail_only') {
@@ -208,7 +242,7 @@ class Inbox
         }
         $customerId = array_get($ticket->value, 'customer');
         if (!empty($customerId)) {
-            [$customer] = Tickets::identify($from);
+            [$customer] = Tickets::identify($from, '', null, false);
             if (isset($customer) && intval($customer->id) === intval($customerId)) {
                 return true;
             }
@@ -228,11 +262,12 @@ class Inbox
     }
 
     /** "We got it": the number and the link, so nobody has to ask. */
-    public static function acknowledge($ticket): void
+    /** @return bool whether the mail went out */
+    public static function acknowledge($ticket): bool
     {
         $to = strval(array_get($ticket->value, 'requester_email'));
         if (!Its::isEmail($to)) {
-            return;
+            return false;
         }
         $name = strval(array_get($ticket->value, 'requester_name')) ?: 'お客様';
         $link = Its::setting('public_enabled', '1') === '1' ? Tokens::linkFor(intval($ticket->id), $to) : null;
@@ -245,6 +280,8 @@ class Inbox
             'mail_status' => $id !== null ? 'sent' : 'failed',
             'message_id' => $id,
         ]);
+
+        return $id !== null;
     }
 
     /**

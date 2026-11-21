@@ -64,6 +64,9 @@ class Desk
             'flash' => session()->get('its_flash'),
             'flashError' => session()->get('its_flash_error'),
             'needsUpgrade' => Schema::needsUpgrade(),
+            // mail comes in, but no sender can be proven (see MimeParser::authPassed)
+            'mailAuthUnset' => Its::setting('mail_auth', 'require') === 'require' && trim(strval(Its::setting('mail_authserv_id', ''))) === ''
+                && (Its::setting('imap_enabled', '0') === '1' || !empty(array_get(Its::state(), 'mail_authserv_seen'))),
         ], $data));
     }
 

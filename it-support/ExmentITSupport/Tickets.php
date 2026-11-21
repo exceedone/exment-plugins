@@ -181,7 +181,7 @@ class Tickets
         }
         $ticket->setValue($values);
         $ticket->save();
-        static::addMessage($ticket, ['kind' => 'system', 'body' => 'お客様がメールのリンクから操作しました（メールアドレスを確認）。', 'via' => 'portal']);
+        static::addMessage($ticket, ['kind' => 'system', 'body' => 'メールで送ったリンク（またはコード）から操作がありました。このアドレスにメールが届くことは確かめられました（依頼の中身を書いた人が本人かどうかまでは分かりません）。', 'via' => 'portal']);
     }
 
     public static function customerByDomain(string $email): ?CustomValue

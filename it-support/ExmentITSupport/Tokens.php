@@ -221,7 +221,31 @@ class Tokens
         return $fails >= static::OTP_FAILS_PER_DAY;
     }
 
+    /**
+     * Run $fn with the link's row locked, so requests for the same link at
+     * the same moment take turns (the per-link limits are read, then written).
+     *
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     */
+    public static function withLinkLock(object $token, callable $fn)
+    {
+        return DB::transaction(function () use ($token, $fn) {
+            DB::table('its_tokens')->where('id', $token->id)->lockForUpdate()->first();
+
+            return $fn();
+        });
+    }
+
     public static function checkOtp(object $token, string $code): bool
+    {
+        return static::withLinkLock($token, function () use ($token, $code) {
+            return static::checkOtpLocked($token, $code);
+        });
+    }
+
+    protected static function checkOtpLocked(object $token, string $code): bool
     {
         $code = preg_replace('/\D/', '', $code);
         if (static::otpLocked($token)) {
