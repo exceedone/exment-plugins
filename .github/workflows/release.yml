@@ -13,6 +13,13 @@ name: release
 on:
   push:
     tags: ['*-v*']
+  # again for a tag that is there (this file of main, the files of the tag):
+  # Actions -> release -> Run workflow -> the tag, e.g. ExmentITSupport-v1.0.6
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag, e.g. ExmentITSupport-v1.0.6'
+        required: true
 
 permissions:
   contents: write
@@ -31,15 +38,20 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-24.04
+    env:
+      # the tag pushed, or the one given to "Run workflow"
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # the files of the tag (also when this is run again from main)
+          ref: refs/tags/${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
       - name: Find the plugin
         id: plugin
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${TAG}"
           name="${tag%-v*}"
           version="${tag##*-v}"
           dir=$(find . -mindepth 2 -maxdepth 2 -type d -name "$name" -not -path './.git/*' | head -1)
@@ -75,7 +87,14 @@ jobs:
             echo
             echo "Exment の **管理者設定 → プラグイン → プラグインアップロード** で \`$zip\` を選びます。更新のときは、そのあとポータルの **⚙ 設定 → データ構造の更新** を押します（表示されたとき）。"
           } > notes.md
-          gh release create "$GITHUB_REF_NAME" "$zip" --title "$name $version" --notes-file notes.md
+          # run again: the release is there already. Its zip is the one people have:
+          # the same bytes go to exment-plugins-release (the sha256 of its record)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "The release $TAG is there already: its zip is used"
+            gh release download "$TAG" -p "$zip" --clobber
+            exit 0
+          fi
+          gh release create "$TAG" "$zip" --title "$name $version" --notes-file notes.md
 
       - name: An official plugin (bundled with Exment)
         id: official
@@ -85,7 +104,7 @@ jobs:
             *) echo "yes=" >> "$GITHUB_OUTPUT" ;;
           esac
           # "security: <note>" in the message of the tag
-          note="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | sed -n 's/^security: *//p' | head -1)"
+          note="$(git tag -l --format='%(contents)' "$TAG" | sed -n 's/^security: *//p' | head -1)"
           echo "note=$note" >> "$GITHUB_OUTPUT"
           echo "var=EXMENT_REQUIRES_$(echo '${{ steps.plugin.outputs.name }}' | tr 'a-z' 'A-Z')" >> "$GITHUB_OUTPUT"
 
@@ -108,8 +127,12 @@ jobs:
           base="$name-$version"
           git clone -q "https://x-access-token:${GH_TOKEN}@github.com/exceedone/exment-plugins-release.git" official
           # the first safe version carries over from the version before (ISS00421 "5")
+          # (the first release of a plugin has none before it)
           prev="$(ls official/releases/$name-*.json 2>/dev/null | head -1)"
-          min="$(php -r '$r = json_decode((string) @file_get_contents($argv[1]), true); echo is_array($r) ? ($r["security_min"] ?? "") : "";' "$prev")"
+          min=""
+          if [ -n "$prev" ] && [ -f "$prev" ]; then
+            min="$(php -r '$r = json_decode((string) file_get_contents($argv[1]), true); echo is_array($r) ? ($r["security_min"] ?? "") : "";' "$prev")"
+          fi
           set -- "$base.zip" "$base.json" "${REQUIRES:->=7.2.0 <7.3}" ">=8.2"
           if [ -n "$NOTE" ]; then set -- "$@" --security "$NOTE"; elif [ -n "$min" ]; then set -- "$@" --security-min "$min"; fi
           php official/tools/release.php make "$@"
@@ -121,5 +144,7 @@ jobs:
           cp "../$base.zip" "../$base.json" releases/
           git add -A releases
           git -c user.name="exment-release" -c user.email="exment-release@users.noreply.github.com" commit -q -m "release: $base (not signed)"
-          git push -q origin "$branch"
-          gh pr create --repo exceedone/exment-plugins-release --base main --head "$branch"             --title "release: $base"             --body "Built by the release of exment-plugins ($GITHUB_REF_NAME). **Not signed yet**: sign it on the computer with the key (\`php tools/release.php sign releases/$base.json <key-folder>/release-2026-1.key\`), push, then merge."
+          # run again: the branch and the pull request may be there already
+          git push -q -f origin "$branch"
+          if gh pr view "$branch" --repo exceedone/exment-plugins-release >/dev/null 2>&1; then echo "The pull request is there already (pushed again)"; exit 0; fi
+          gh pr create --repo exceedone/exment-plugins-release --base main --head "$branch"             --title "release: $base"             --body "Built by the release of exment-plugins ($TAG). **Not signed yet**: sign it on the computer with the key (\`php tools/release.php sign releases/$base.json <key-folder>/release-2026-1.key\`), push, then merge."
