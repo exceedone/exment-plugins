@@ -12,6 +12,7 @@
 @csrf
     <div class="its-card">
         <h2><i class="fa fa-envelope" aria-hidden="true"></i>メールで受け付ける（IMAP）</h2>
+        @include($Its::view('_feature_note'))
         <div class="its-sub its-lead">受付用のメールボックス（例: support@…）を 5 分ごとに読みに行き、新しいメールをチケットにします。お客様が返信すると、同じチケットに入ります。Gmail・Microsoft 365・レンタルサーバーなど、IMAP が使えればどこでも動きます。</div>
         @if(!empty($state['imap_error']))<div class="its-flash error" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"></i><div><b>受信でエラーが出ています</b><br>{{ $state['imap_error'] }}</div></div>@endif
         <div class="its-form-grid">
@@ -70,6 +71,7 @@
 
     <div class="its-card">
         <h2><i class="fa fa-globe" aria-hidden="true"></i>お客様の窓口（ログインなし）</h2>
+        @include($Its::view('_feature_note'))
         <div class="its-form-grid">
             <label for="s-public">使う</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-public" name="public_enabled" value="1" @checked($s['public_enabled'] === '1')> 受付フォーム・進み具合のリンク・FAQ を使う</label>
             <span class="lbl">窓口の URL</span><span style="min-width:0;word-break:break-all"><a href="{{ $publicHome }}" target="_blank" rel="noopener">{{ $publicHome }} <i class="fa fa-external-link" aria-hidden="true"></i></a></span>
@@ -99,6 +101,7 @@
 
     <div class="its-card">
         <h3><i class="fa fa-bell" aria-hidden="true"></i>監視・エラーログから起票</h3>
+        @include($Its::view('_feature_note'))
         <div class="its-sub">監視の道具（Zabbix・Mackerel・Uptime Kuma・アプリのログなど）から次の URL に送ると、チケットになります。同じエラーは 1 件にまとめ、回数を数えます。できたチケットは、最初はお客様に見せません。</div>
         <dl class="its-props">
             <dt>URL</dt><dd><code class="its-codeline">{{ $intakeAlert }}</code></dd>

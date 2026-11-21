@@ -25,6 +25,11 @@ class PluginPage extends PluginPageBase
         parent::__construct($plugin);
 
         try {
+            Feature::register($plugin);
+        } catch (\Throwable $e) {
+            \Log::error('ExmentITSupport could not register its features: ' . $e->getMessage());
+        }
+        try {
             PublicRoutes::register();
         } catch (\Throwable $e) {
             \Log::error('ExmentITSupport could not add its public routes: ' . $e->getMessage());

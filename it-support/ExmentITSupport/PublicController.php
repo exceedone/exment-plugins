@@ -24,7 +24,7 @@ class PublicController extends Controller
 
     protected function guard(): void
     {
-        if (!Its::isInstalled() || Its::setting('public_enabled', '1') !== '1') {
+        if (!Its::isInstalled() || !Its::portalOn()) {
             abort(404);
         }
     }
@@ -571,6 +571,9 @@ class PublicController extends Controller
      */
     public function intakeAlert(Request $request)
     {
+        if (!Feature::on(Feature::PORTAL)) {
+            abort(404);
+        }
         if (!Its::isInstalled()) {
             return response()->json(['error' => 'not_installed'], 503);
         }
@@ -596,6 +599,9 @@ class PublicController extends Controller
      */
     public function intakeMail(Request $request)
     {
+        if (!Feature::on(Feature::PORTAL)) {
+            abort(404);
+        }
         if (!Its::isInstalled()) {
             return response()->json(['error' => 'not_installed'], 503);
         }

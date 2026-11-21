@@ -93,7 +93,7 @@ class Automation
                 if (Its::isEmail($to)) {
                     $name = strval(array_get($ticket->value, 'requester_name')) ?: 'お客様';
                     $text = "{$name} 様\n\n先日おたずねした件について、ご返事をお待ちしております。\nこのメールに返信していただければ、対応を続けます。" . ($resolveDays > 0 ? "\n\nご返事がない場合、数日後にこのチケットは解決とさせていただきます。" : '');
-                    $link = Its::setting('public_enabled', '1') === '1' && boolval(array_get($ticket->value, 'customer_visible', '1')) ? Tokens::linkFor(intval($ticket->id), $to) : null;
+                    $link = Its::portalOn() && boolval(array_get($ticket->value, 'customer_visible', '1')) ? Tokens::linkFor(intval($ticket->id), $to) : null;
                     $id = Mailer::send($ticket, [$to], Mailer::subjectFor($ticket), Mailer::customerBody($ticket, $text, $link));
                 }
                 Tickets::addMessage($ticket, ['kind' => 'system', 'body' => '返事のお願いを送りました。', 'via' => 'staff', 'mail_status' => $id !== null ? 'sent' : 'failed', 'message_id' => $id]);
@@ -173,7 +173,7 @@ class Automation
      */
     public static function askForRating(CustomValue $ticket): void
     {
-        if (Its::setting('csat_enabled', '1') !== '1' || Its::setting('public_enabled', '1') !== '1'
+        if (Its::setting('csat_enabled', '1') !== '1' || !Its::portalOn()
             || !boolval(array_get($ticket->value, 'customer_visible', '1')) || !empty(array_get($ticket->value, 'csat'))) {
             return;
         }

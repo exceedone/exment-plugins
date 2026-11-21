@@ -1,0 +1,1 @@
+@if(!empty($portalDoorShut))<div class="its-sub" style="color:#b45309"><i class="fa fa-info-circle" aria-hidden="true"></i> 「お客様の窓口」が、管理者設定の「機能の管理」でオフです。ここをオンにしても使われません。@if(!empty($featureUrl)) <a href="{{ $featureUrl }}">機能の管理を開く</a>@endif</div>@endif

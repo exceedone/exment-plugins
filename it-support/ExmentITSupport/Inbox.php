@@ -35,6 +35,11 @@ class Inbox
     public static function fetch(): array
     {
         $result = ['ok' => true, 'created' => 0, 'appended' => 0, 'skipped' => 0, 'message' => ''];
+        if (!Feature::on(Feature::PORTAL)) {
+            $result['message'] = '「お客様の窓口」を、管理者設定の「機能の管理」で使っていません。';
+
+            return $result;
+        }
         if (Its::setting('imap_enabled', '0') !== '1' || Its::setting('imap_host', '') === '') {
             $result['message'] = 'メールの受信はオフです。';
 
@@ -322,7 +327,7 @@ class Inbox
             return false;
         }
         $name = strval(array_get($ticket->value, 'requester_name')) ?: 'お客様';
-        $link = Its::setting('public_enabled', '1') === '1' ? Tokens::linkFor(intval($ticket->id), $to) : null;
+        $link = Its::portalOn() ? Tokens::linkFor(intval($ticket->id), $to) : null;
         $text = $name . " 様\n\nお問い合わせを受け付けました。\nチケット番号は " . array_get($ticket->value, 'ticket_no') . " です。担当者から返事をお送りします。";
         $id = Mailer::send($ticket, [$to], Mailer::subjectFor($ticket), Mailer::customerBody($ticket, $text, $link));
         Tickets::addMessage($ticket, [

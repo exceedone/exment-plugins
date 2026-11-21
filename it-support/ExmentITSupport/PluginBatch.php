@@ -12,7 +12,7 @@ class PluginBatch extends PluginBatchBase
 {
     public function execute()
     {
-        if (!Its::isInstalled()) {
+        if (!Its::isInstalled() || !Feature::on(Feature::DESK)) {
             return true;
         }
         Schema::ensureCurrent();
