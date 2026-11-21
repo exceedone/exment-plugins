@@ -143,16 +143,15 @@ class Inbox
         }
 
         if (isset($ticket) && $suspicious && in_array(strval(array_get($ticket->value, 'status')), Its::ACTIVE_STATUSES, true)
-            && empty(array_get($ticket->value, 'merged_into'))) {
+            && empty(array_get($ticket->value, 'merged_into')) && static::unprovenNotesToday($ticket) < static::UNPROVEN_NOTES_PER_DAY) {
             // A reply in the thread of an open ticket whose sender could not be
             // checked: kept on the ticket for the agents only, as a flagged
             // note (not written as the customer's, not mailed on), and the
             // ticket is tagged so somebody looks. A few a day per ticket, no
             // attachments (their names are listed): whoever knows a requester's
-            // address and a ticket number can send these.
-            if (static::unprovenNotesToday($ticket) >= static::UNPROVEN_NOTES_PER_DAY) {
-                return 'skipped';
-            }
+            // address and a ticket number can send these. Past the limit the
+            // mail goes the way of other unproven mail (a new internal ticket),
+            // so a real customer's reply is never dropped.
             $names = array_map(function ($f) {
                 return strval($f['name']);
             }, $files);

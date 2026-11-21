@@ -473,9 +473,8 @@ class MimeParser
      * Only headers our own server wrote count, and nothing in the mail tells
      * which those are: anyone can put an Authentication-Results header in a
      * mail, and a server that adds none leaves the sender's on top. So either
-     * the server's name (authserv-id) is set, and only headers with that name
-     * are read - per check, the topmost one that reports it (OpenDKIM,
-     * OpenDMARC and an SPF daemon may each add their own) - or, for a server
+     * the server's name (authserv-id) is set, and only the topmost header
+     * with that name is read, or, for a server
      * that writes its header on top without a name (Microsoft 365), $topOnly
      * reads the topmost header alone. With neither, nothing is proven.
      */
@@ -487,49 +486,43 @@ class MimeParser
         if ($domain === '' || ($authservId === '' && !$topOnly)) {
             return false;
         }
-        $headers = array_values($mail['headers']['authentication-results'] ?? []);
-        if ($topOnly) {
-            $headers = array_slice($headers, 0, 1);
-        }
-        $first = []; // method => the topmost result of ours for it
-        foreach ($headers as $h) {
+        // One header only - the topmost of ours. A lower one with the same name
+        // may have come with the mail (a server does not always strip its own
+        // name from incoming headers), so it never fills in a check the top one
+        // did not report. A server that writes one header per check (separate
+        // milters) is then read by its top header alone: that errs on the safe side.
+        $ours = null;
+        foreach (array_values($mail['headers']['authentication-results'] ?? []) as $h) {
             $parsed = static::parseAuthResults($h);
-            if (!$topOnly && $parsed['id'] !== $authservId) {
-                continue;
+            if ($topOnly || $parsed['id'] === $authservId) {
+                $ours = $parsed;
+                break;
             }
-            $seen = [];
-            foreach ($parsed['results'] as $r) {
-                if (!isset($first[$r['method']])) {
-                    $first[$r['method']] = [];
-                    $seen[$r['method']] = true;
-                }
-                if (isset($seen[$r['method']])) {
-                    $first[$r['method']][] = $r; // several results of one check in the same header
-                }
-            }
+        }
+        if ($ours === null) {
+            return false;
         }
         $passed = false;
-        foreach ($first as $method => $results) {
-            foreach ($results as $r) {
-                if ($method === 'dmarc' && in_array($r['result'], ['fail', 'quarantine', 'reject'], true)) {
-                    return false;
+        foreach ($ours['results'] as $r) {
+            $method = $r['method'];
+            if ($method === 'dmarc' && in_array($r['result'], ['fail', 'quarantine', 'reject'], true)) {
+                return false;
+            }
+            if ($r['result'] !== 'pass') {
+                continue;
+            }
+            if ($method === 'dmarc') {
+                $passed = $passed || strtolower(strval($r['props']['header.from'] ?? '')) === $domain;
+            } elseif ($method === 'dkim') {
+                $d = strval($r['props']['header.d'] ?? '');
+                if ($d === '' && isset($r['props']['header.i'])) {
+                    $d = substr(strrchr($r['props']['header.i'], '@') ?: '', 1);
                 }
-                if ($r['result'] !== 'pass') {
-                    continue;
-                }
-                if ($method === 'dmarc') {
-                    $passed = $passed || strtolower(strval($r['props']['header.from'] ?? '')) === $domain;
-                } elseif ($method === 'dkim') {
-                    $d = strval($r['props']['header.d'] ?? '');
-                    if ($d === '' && isset($r['props']['header.i'])) {
-                        $d = substr(strrchr($r['props']['header.i'], '@') ?: '', 1);
-                    }
-                    $passed = $passed || static::coversDomain($d, $domain);
-                } elseif ($method === 'spf') {
-                    $d = strval($r['props']['smtp.mailfrom'] ?? '');
-                    $d = strpos($d, '@') !== false ? substr(strrchr($d, '@'), 1) : $d;
-                    $passed = $passed || static::coversDomain($d, $domain);
-                }
+                $passed = $passed || static::coversDomain($d, $domain);
+            } elseif ($method === 'spf') {
+                $d = strval($r['props']['smtp.mailfrom'] ?? '');
+                $d = strpos($d, '@') !== false ? substr(strrchr($d, '@'), 1) : $d;
+                $passed = $passed || static::coversDomain($d, $domain);
             }
         }
 
