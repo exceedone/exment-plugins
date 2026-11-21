@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.5 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.6.6 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.6.6 / 1.6.6 で変わったこと**
+
+- Faster project data (ISS00257): each change in the history is read once per request, even when both the activity feed and the issue screens show it; the names it mentions (people, statuses, types...) are read with one query per table; and finding where a long text was changed compares bytes instead of characters. On ex1task the project data takes about 340ms instead of 420ms, and the activity feed 14 queries instead of 38.
+  プロジェクトのデータが速くなりました（ISS00257）。変更の履歴は、最近の動きと課題の詳細の両方に出るときも 1 回だけ読み解きます。履歴に出る名前（担当者・状態・種別など）は、表ごとに 1 回のクエリでまとめて読みます。長い本文のどこが変わったかを探すのも速くしました。ex1task では、プロジェクトのデータが約 420ms から約 340ms に、最近の動きのクエリが 38 から 14 になりました。
 
 **Changed in 1.6.5 / 1.6.5 で変わったこと**
 
