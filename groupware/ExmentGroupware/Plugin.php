@@ -171,7 +171,7 @@ class Plugin extends PluginPageBase
     {
         list($file, $record) = $this->attachment($uuid);
 
-        return $this->attachmentPage($file, false, $this->mayEdit($record));
+        return $this->attachmentPage($file, false, $this->mayEdit($record, $file));
     }
 
     /**
@@ -183,7 +183,7 @@ class Plugin extends PluginPageBase
         list($file, $record) = $this->attachment($uuid);
 
         // without the right to edit, the same file read only
-        return $this->attachmentPage($file, $this->mayEdit($record), false);
+        return $this->attachmentPage($file, $this->mayEdit($record, $file), false);
     }
 
     /**
@@ -201,14 +201,22 @@ class Plugin extends PluginPageBase
     public function saveFile($uuid)
     {
         list($file, $record) = $this->attachment($uuid);
-        if (!$this->mayEdit($record)) {
+        if (!$this->mayEdit($record, $file)) {
             return response()->json(['result' => false, 'message' => '編集の権限がありません。'], 403);
         }
         $upload = request()->file('file');
         if (!isset($upload) || !$upload->isValid()) {
             return response()->json(['result' => false, 'message' => 'ファイルを受け取れませんでした。'], 422);
         }
+        // every save keeps what was there, so the size is bounded
+        if ($upload->getSize() > static::maxSaveBytes()) {
+            return response()->json(['result' => false, 'message' => 'ファイルが大きすぎます。'], 413);
+        }
         $bytes = strval(file_get_contents($upload->getRealPath()));
+        // .docx, .xlsx and .pptx are zip files
+        if (strncmp($bytes, "PK\x03\x04", 4) !== 0) {
+            return response()->json(['result' => false, 'message' => 'Word・Excel・PowerPoint のファイルではありません。'], 422);
+        }
         $disk = \Illuminate\Support\Facades\Storage::disk(config('admin.upload.disk'));
 
         $lock = \Illuminate\Support\Facades\Cache::lock('exment_groupware_attachment_' . strval($file->uuid), 30);
@@ -270,18 +278,53 @@ class Plugin extends PluginPageBase
     }
 
     /**
-     * Whether the user may change the record the file hangs on (permission,
-     * workflow lock, parent records...), as Exment's own edit screen asks.
+     * Whether the user may replace the content of this file: it is an
+     * attachment of the record (a document row, not the value of a file
+     * column, which has its own checks when it is set), the user may change
+     * the record (permission, workflow lock, parent records... as Exment's
+     * own edit screen asks), and - when Exment lets only the uploader delete
+     * a file (exment.file_delete_useronly) - the user uploaded it: replacing
+     * the content is as good as deleting it.
      *
      * @param \Exceedone\Exment\Model\CustomValue $record
+     * @param \Exceedone\Exment\Model\File $file
      */
-    protected function mayEdit($record): bool
+    protected function mayEdit($record, $file): bool
     {
         try {
+            if (!is_nullorempty($file->custom_column_id)) {
+                return false;
+            }
+            $listed = getModelName(\Exceedone\Exment\Enums\SystemTableName::DOCUMENT)::where('parent_type', $file->parent_type)
+                ->where('parent_id', $file->parent_id)
+                ->where('value->file_uuid', strval($file->uuid))
+                ->exists();
+            if (!$listed) {
+                return false;
+            }
+            if (boolval(config('exment.file_delete_useronly', false)) && $file->created_user_id != \Exment::getUserId()) {
+                return false;
+            }
+
             return $record->enableEdit(true) === true;
         } catch (\Throwable $e) {
             return false;
         }
+    }
+
+    /** The largest file a save takes: Exment's upload limit, at most 50 MB. */
+    protected static function maxSaveBytes(): int
+    {
+        $limit = 50 * 1024 * 1024;
+        try {
+            $exment = intval(\Exment::getUploadMaxFileSize());
+            if ($exment > 0) {
+                $limit = min($limit, $exment);
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return $limit;
     }
 
     /**
