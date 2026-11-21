@@ -172,11 +172,15 @@ class Plugin extends PluginPageBase
         if (!$file) {
             abort(404);
         }
-        if (isset($file->parent_id) && isset($file->parent_type)) {
-            $custom_table = \Exceedone\Exment\Model\CustomTable::getEloquent($file->parent_type);
-            if (isset($custom_table) && !$custom_table->hasPermissionData($file->parent_id)) {
-                abort(403);
-            }
+        // Only a file attached to a record of a table that still exists, and
+        // that this user may read: anything else answers as if it were not
+        // there, so the page never names a file it cannot vouch for.
+        if (!isset($file->parent_id) || !isset($file->parent_type)) {
+            abort(404);
+        }
+        $custom_table = \Exceedone\Exment\Model\CustomTable::getEloquent($file->parent_type);
+        if (!isset($custom_table) || !$custom_table->hasPermissionData($file->parent_id)) {
+            abort(404);
         }
         $name = strval($file->filename);
         if (!IbisOffice::opens($name)) {
