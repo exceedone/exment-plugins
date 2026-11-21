@@ -235,6 +235,7 @@ class Plugin extends PluginPageBase
             $previous->parent_id = $file->parent_id;
             $previous->parent_type = $file->parent_type;
             $previous->save();
+            $this->addOlderVersion($file, $previous);
 
             $disk->put($file->path, $bytes);
             $file->touch();
@@ -325,6 +326,38 @@ class Plugin extends PluginPageBase
         }
 
         return $limit;
+    }
+
+    /**
+     * On an Exment that keeps older versions of attachments (core
+     * DocumentVersionService, the 「差し替え」 of the attachment list), the
+     * content kept by a save becomes one of them: it shows under 「版 n」,
+     * counts towards exment.document_version_limit, and goes when the
+     * attachment is deleted. On an older Exment, nothing is added and the
+     * earlier content stays as the file the comment links to.
+     *
+     * @param \Exceedone\Exment\Model\File $file
+     * @param \Exceedone\Exment\Model\File $previous
+     */
+    protected function addOlderVersion($file, $previous): void
+    {
+        $service = 'Exceedone\Exment\Services\DocumentVersionService';
+        try {
+            if (!class_exists($service) || !method_exists($service, 'addOlderVersion') || !\Schema::hasTable('document_versions')) {
+                return;
+            }
+            $document = getModelName(\Exceedone\Exment\Enums\SystemTableName::DOCUMENT)::where('parent_type', $file->parent_type)
+                ->where('parent_id', $file->parent_id)
+                ->where('value->file_uuid', strval($file->uuid))
+                ->first();
+            if (isset($document)) {
+                // who made the content that is now the older version
+                $by = $file->updated_user_id ?? $file->created_user_id;
+                call_user_func([$service, 'addOlderVersion'], $document, $previous, isset($by) ? intval($by) : null);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('[ExmentGroupware] could not add the older version of an edited attachment: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -21,7 +21,7 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
 - **Attachments of records** (0.3.0, ISS00416): other plugins can show a Word, Excel or PowerPoint file attached to a record read only, at `view/{uuid}` (Exment Plugin PM does, for the files of issues, wiki pages and projects). The file is read from its usual download address, so only those who may download it can see it. This part does not need the file server.
 - **Editing attachments** (0.4.0, ISS00416): a user who may edit that record gets **編集する** (Edit) on that page (`edit/{uuid}`). **Save** replaces the content of the attachment and keeps its address, so links to it go on working. The content it had is kept as a file of its own on the same record (not listed as an attachment), and a comment on the record says who edited it, with a link to that earlier file. A save from content someone else replaced in between is refused.
   Only attachments (not the values of file columns) can be edited, by those who may edit the record (and, when `exment.file_delete_useronly` is on, only by the one who uploaded the file). A save takes up to 50 MB (or Exment's upload limit, if smaller).
-  Two things to know: **an archived project of Exment Plugin PM does not stop editing** here, and **deleting the attachment does not delete the earlier contents** kept by edits: they stay readable from the links in the comments, for those who may read the record.
+  Two things to know: **an archived project of Exment Plugin PM does not stop editing** here, and on an Exment without older versions of attachments, **deleting the attachment does not delete the earlier contents** kept by edits: they stay readable from the links in the comments, for those who may read the record. On an Exment that has them (the 「差し替え」 of the attachment list, exceedone/exment PR #1866), each earlier content is also an older version of the attachment (「版 n」, up to `exment.document_version_limit`) and is deleted with it.
 
 | Folder | Plugin |
 |---|---|
@@ -104,7 +104,7 @@ Exment のグループウェア（ex1task ISS00233）です。今あるのは次
 - **データの添付**（0.3.0、ISS00416）: データに添付した Word・Excel・PowerPoint を、ほかのプラグインの画面から読み取り専用で表示できます（`view/{uuid}`。Exment Plugin PM の課題・Wiki・プロジェクトのファイルで使います）。ファイルはいつものダウンロードの URL から読むので、ダウンロードできる人だけが見られます。ここはファイルサーバーがなくても動きます。
 - **データの添付の編集**（0.4.0、ISS00416）: そのデータを編集できる人には、その画面に **編集する** が出ます（`edit/{uuid}`）。**保存**すると添付の中身が新しくなり、アドレスは変わらないので、そこへのリンクもそのまま使えます。前の中身は同じデータの別のファイルとして残し（添付の一覧には出ません）、データに「誰が編集したか」と前のファイルへのリンクをコメントで残します。開いたあとにほかの人が保存していたときは、保存を断ります。
   編集できるのは添付だけです（ファイルの列の値は対象外）。そのデータを編集できる人だけが編集でき、`exment.file_delete_useronly` が on のときは、ファイルを上げた人だけです。保存できる大きさは 50MB まで（Exment のアップロードの上限のほうが小さければ、そちら）です。
-  気をつけること: **Exment Plugin PM のアーカイブ中のプロジェクトでも、ここからの編集は止まりません**。また、**添付を消しても、編集で残した前の中身は消えません**。データを見られる人は、コメントのリンクから読めたままです。
+  気をつけること: **Exment Plugin PM のアーカイブ中のプロジェクトでも、ここからの編集は止まりません**。また、添付の古い版の仕組みがない Exment では、**添付を消しても、編集で残した前の中身は消えません**。データを見られる人は、コメントのリンクから読めたままです。仕組みがある Exment（添付の一覧の「差し替え」、exceedone/exment PR #1866）では、前の中身は添付の古い版（「版 n」、`exment.document_version_limit` まで）にもなり、添付を消すと一緒に消えます。
 
 ## 必要なもの
 
