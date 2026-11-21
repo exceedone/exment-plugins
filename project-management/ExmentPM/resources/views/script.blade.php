@@ -3158,7 +3158,7 @@ window.PmPortalBoot = function () {
                 body = '<div class="chg"><i class="fa fa-plus" style="color:#4caf93;margin-right:6px;"></i>' + esc(L.added) + '</div>';
             } else if (e.tp === 'file') {
                 body = '<div class="chg"><i class="fa fa-paperclip" style="margin-right:6px;"></i>' + esc(L.file_added) +
-                    ' <a class="bl-file" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a></div>';
+                    ' <a class="bl-file" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a>' + officeViewBtn(e) + '</div>';
             } else {
                 // Only the author may rewrite or remove what they wrote; the
                 // address of a comment is public to everyone who can read it.
@@ -3260,7 +3260,7 @@ window.PmPortalBoot = function () {
                 (f.img && imgSrcOk(f.url) ? '<img src="' + esc(f.url) + '" alt="' + esc(f.name) + '">'
                        : '<span class="ic"><i class="fa fa-file-o"></i></span>') +
                 '</a></div>' +
-                '<div class="v"><a class="n" href="' + href + '" target="_blank" rel="noopener">' + esc(f.name) + '</a>' +
+                '<div class="v"><a class="n" href="' + href + '" target="_blank" rel="noopener">' + esc(f.name) + '</a>' + officeViewBtn(f) +
                 '<span class="mt">' + esc(user(f.by).n) + ' · ' + esc(f.at) + '</span></div></div>';
         }).join('');
     }
@@ -4023,7 +4023,7 @@ window.PmPortalBoot = function () {
             (files.length ? '<span><i class="fa fa-paperclip"></i> ' + esc(L.wiki_files) + ' (' + files.length + ')</span>' : '') + '</div>' +
             (renderRichText(page.content) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>') +
             (files.length ? '<p>' + files.map(function (f) {
-                return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a> ';
+                return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + ' ';
             }).join('') + '</p>' : '');
         linkifyIssueRefs(document.getElementById('pp-wbody'));
         // Opened from the pinned list half way down a long article, the next
@@ -4042,10 +4042,61 @@ window.PmPortalBoot = function () {
     }
 
     /* ------------------------------------------------ files ------------- */
+    /* ------------------------------------------------ office view ------ */
+    // ISS00416: a Word, Excel or PowerPoint attachment opens read only on this
+    // screen, in Exment Plugin Groupware's ibisOffice page, when that plugin
+    // is installed (D.urls.office_view). The page reads the file from the
+    // same download address the link uses, so it shows only what the link
+    // would have downloaded. Without the plugin, the link downloads as before.
+    function officeViewUrl(f) {
+        var base = D.urls && D.urls.office_view;
+        if (!base || !/\.(docx|xlsx|pptx)$/i.test(String((f && f.name) || ''))) { return null; }
+        var m = /\/files\/([0-9a-f][0-9a-f-]{7,63})(?:[\/?#]|$)/i.exec(String(f.url || ''));
+        return m ? base + '/' + m[1] : null;
+    }
+    function officeViewBtn(f) {
+        var url = officeViewUrl(f);
+        if (!url || !safeHref(url)) { return ''; }
+        return ' <a class="pp-officeview" href="' + esc(url) + '" data-name="' + esc(f.name) + '" target="_blank" rel="noopener" title="' + esc(L.office_view_tip) + '">' +
+            '<i class="fa fa-eye"></i> ' + esc(L.office_view) + '</a>';
+    }
+    function officeViewClose() {
+        var box = document.getElementById('pp-officebox');
+        if (box) { box.parentNode.removeChild(box); }
+        document.removeEventListener('keydown', officeViewKey, true);
+    }
+    function officeViewKey(ev) {
+        if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); officeViewClose(); }
+    }
+    function officeViewOpen(url, name) {
+        officeViewClose();
+        var box = document.createElement('div');
+        box.id = 'pp-officebox';
+        box.className = 'pp-officebox';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-label', name);
+        box.innerHTML = '<div class="pp-officebox-in"><div class="pp-officebox-hd">' +
+            '<i class="fa fa-file-o"></i><span class="nm">' + esc(name) + '</span>' +
+            '<a class="pp-officebox-tab" href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(L.office_newtab) + '</a>' +
+            '<button type="button" class="pp-officebox-x" title="' + esc(L.office_close) + '">&times;</button></div>' +
+            '<iframe src="' + esc(url) + '" title="' + esc(name) + '" allow="clipboard-read; clipboard-write; fullscreen"></iframe></div>';
+        box.addEventListener('click', function (ev) {
+            if (ev.target === box || ev.target.closest('.pp-officebox-x')) { officeViewClose(); }
+        });
+        document.body.appendChild(box);
+        document.addEventListener('keydown', officeViewKey, true);
+    }
+    document.addEventListener('click', function (ev) {
+        var a = ev.target.closest && ev.target.closest('a.pp-officeview');
+        if (!a || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button !== 0) { return; }
+        ev.preventDefault();
+        officeViewOpen(a.getAttribute('href'), a.getAttribute('data-name') || '');
+    });
+
     function renderFiles() {
         var files = D.files || {};
         var rows = (files.rows || []).map(function (f) {
-            return '<tr><td><a class="bl-file" style="margin-top:0;" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a></td>' +
+            return '<tr><td><a class="bl-file" style="margin-top:0;" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + '</td>' +
                 '<td>' + esc(f.src) + '</td><td>' + esc(user(f.by).n) + '</td><td>' + esc(f.at) + '</td></tr>';
         }).join('');
         document.getElementById('pp-file-rows').innerHTML = rows ||

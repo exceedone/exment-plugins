@@ -155,6 +155,61 @@ class Plugin extends PluginPageBase
         ])->render())->header('X-Frame-Options', 'SAMEORIGIN');
     }
 
+    /**
+     * An attachment of a record (files/{uuid}) shown read only - the Word,
+     * Excel and PowerPoint files of other plugins' screens (ExmentPM's issues).
+     * The file itself is read from the same address its download link uses,
+     * so who may see it is decided there, as for the download; this page
+     * checks the same before it says anything about the file.
+     *
+     * @param string $uuid
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function viewFile($uuid)
+    {
+        $uuid = strval($uuid);
+        $file = \Exceedone\Exment\Model\File::getData([$uuid, pathinfo($uuid, PATHINFO_FILENAME)]);
+        if (!$file) {
+            abort(404);
+        }
+        if (isset($file->parent_id) && isset($file->parent_type)) {
+            $custom_table = \Exceedone\Exment\Model\CustomTable::getEloquent($file->parent_type);
+            if (isset($custom_table) && !$custom_table->hasPermissionData($file->parent_id)) {
+                abort(403);
+            }
+        }
+        $name = strval($file->filename);
+        if (!IbisOffice::opens($name)) {
+            abort(404);
+        }
+        $office = new IbisOffice($this->plugin);
+        $download = admin_url('files', [strval($file->uuid)]);
+
+        return response(view('exment_exment_groupware::office', [
+            'view' => true,
+            'file' => ['name' => $name, 'download' => $download],
+            'edit_url' => null,
+            'available' => $office->isAvailable() && $office->hostModuleUrl() !== null,
+            'editor_base' => $office->baseUrl(),
+            'host_module' => $office->hostModuleUrl(),
+            'office_origin' => $office->officeOrigin(),
+            'info_url' => null,
+            'back_url' => $download,
+            'settings_url' => $this->plugin->getFullUrl(),
+            'user_name' => $this->userName(),
+            'locale' => str_starts_with(strval(app()->getLocale()), 'ja') ? 'ja' : 'en',
+            'project_url' => IbisOffice::PROJECT_URL,
+            'version' => IbisOffice::VERSION,
+        ])->render())->header('X-Frame-Options', 'SAMEORIGIN');
+    }
+
+    protected function userName(): string
+    {
+        $user = \Exment::user();
+
+        return (isset($user) && isset($user->base_user)) ? strval($user->base_user->getLabel()) : '';
+    }
+
     // ---- Web mail (Mail\WebMail) ------------------------------------------
 
     protected function webMail(): WebMail

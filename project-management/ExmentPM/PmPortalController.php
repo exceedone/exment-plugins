@@ -2277,6 +2277,26 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * ISS00416: where Exment Plugin Groupware shows an attachment read only
+     * in ibisOffice (its view/{uuid}), or null when it is not installed, is
+     * off, or is older than the version that has the page. The file is read
+     * from its usual download address there, so who may see it does not change.
+     */
+    protected function officeViewBase(): ?string
+    {
+        try {
+            $plugin = \Exceedone\Exment\Model\Plugin::where('plugin_name', 'ExmentGroupware')->where('active_flg', 1)->first();
+            if (!isset($plugin) || version_compare(strval($plugin->version), '0.3.0', '<')) {
+                return null;
+            }
+
+            return rtrim(strval($plugin->getFullUrl('view')), '/');
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
      * The payload the page was built from, on its own.
      *
      * Same work as show() minus the admin layout, the blade render and the
@@ -2804,6 +2824,8 @@ class PmPortalController extends AdminControllerBase
                     && boolval($this->project_table->getOption('attachment_flg') ?? true))
                     ? admin_url('data', [$this->project_table->table_name, $project->id, 'fileupload'])
                     : null,
+                // ISS00416: Word, Excel and PowerPoint attachments shown in place
+                'office_view' => $this->officeViewBase(),
                 'temp_image_upload' => admin_url('tmpimages'),
                 'mention' => admin_url('webapi/mention/users'),
                 'form_style' => PortalDefinition::url('form-style'),
