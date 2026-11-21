@@ -28,7 +28,8 @@ class Plugin extends PluginPageBase
 
     /**
      * Exment builds the page plugin's class on every request (it asks each one
-     * for its views), so this is where the button is added to the file page.
+     * for its views), so this is where the button is added to the file page,
+     * and where the mail becomes a feature of Exment's Feature management.
      *
      * @param \Exceedone\Exment\Model\Plugin $plugin
      */
@@ -36,6 +37,7 @@ class Plugin extends PluginPageBase
     {
         parent::__construct($plugin);
         OfficeOpener::register($plugin);
+        FeatureGate::registerMail($plugin);
     }
 
     /**
@@ -71,12 +73,15 @@ class Plugin extends PluginPageBase
     public function index()
     {
         // Without the file server the Office part has nothing to open: the top page is the mail.
-        if (!OfficeOpener::fileServerAvailable() && Accounts::ready()) {
-            return $this->webMail()->page();
+        $mailUsed = FeatureGate::allowed(FeatureGate::MAIL);
+        if ($mailUsed && !OfficeOpener::fileServerUsed() && Accounts::ready()) {
+            return $this->mailDenied() ?? $this->webMail()->page();
         }
         $office = new IbisOffice($this->plugin);
         $user = \Exment::user();
         return $this->pluginView('index', [
+            'mail_used' => $mailUsed,
+            'feature_url' => FeatureGate::available() && isset($user) && $user->hasPermission(Permission::SYSTEM) ? admin_url('feature') : null,
             'mail_url' => $this->plugin->getFullUrl('mail'),
             'mail_ready' => Accounts::ready(),
             'mail_accounts' => Accounts::ready() && Accounts::currentUserId() !== null ? count(Accounts::forUser(intval(Accounts::currentUserId()))) : 0,
@@ -86,7 +91,7 @@ class Plugin extends PluginPageBase
             'available' => $office->isAvailable(),
             'can_install' => isset($user) && $user->hasPermission(Permission::SYSTEM),
             'install_url' => $this->plugin->getFullUrl('install'),
-            'file_server_url' => OfficeOpener::fileServerAvailable() ? admin_url('file_server') : null,
+            'file_server_url' => OfficeOpener::fileServerUsed() ? admin_url('file_server') : null,
             'project_url' => IbisOffice::PROJECT_URL,
             'extensions' => IbisOffice::EXTENSIONS,
         ]);
@@ -125,6 +130,9 @@ class Plugin extends PluginPageBase
     {
         if (!OfficeOpener::fileServerAvailable()) {
             abort(404);
+        }
+        if (($denied = FeatureGate::deny(FeatureGate::FILE_SERVER)) !== null) {
+            return $denied;
         }
         $office = new IbisOffice($this->plugin);
         $ws = intval($workspace);
@@ -426,99 +434,114 @@ class Plugin extends PluginPageBase
 
     // ---- Web mail (Mail\WebMail) ------------------------------------------
 
+    /**
+     * Exment's answer when the login user may not use the mail (Feature management), or null.
+     *
+     * @return \Symfony\Component\HttpFoundation\Response|null
+     */
+    protected function mailDenied()
+    {
+        return FeatureGate::deny(FeatureGate::MAIL);
+    }
+
     protected function webMail(): WebMail
     {
+        // Feature management of Exment: the mail not used, or not for this user
+        // Feature management of Exment (the pages answer with mailDenied() first)
+        if (!FeatureGate::allowed(FeatureGate::MAIL)) {
+            abort(404);
+        }
         return new WebMail($this->plugin);
     }
 
     /** The mail program draws the whole page (no page header). */
     public function mail()
     {
-        return $this->webMail()->page();
+        return $this->mailDenied() ?? $this->webMail()->page();
     }
 
     public function mailAccounts()
     {
-        return $this->webMail()->accounts();
+        return $this->mailDenied() ?? $this->webMail()->accounts();
     }
 
     public function postMailAccount()
     {
-        return $this->webMail()->postAccount(request());
+        return $this->mailDenied() ?? $this->webMail()->postAccount(request());
     }
 
     public function postMailAccountDelete($id)
     {
-        return $this->webMail()->postAccountDelete($id);
+        return $this->mailDenied() ?? $this->webMail()->postAccountDelete($id);
     }
 
     public function mailSignin($id)
     {
-        return $this->webMail()->signin($id);
+        return $this->mailDenied() ?? $this->webMail()->signin($id);
     }
 
     public function mailOauthCallback()
     {
-        return $this->webMail()->oauthCallback(request());
+        return $this->mailDenied() ?? $this->webMail()->oauthCallback(request());
     }
 
     public function mailPoll()
     {
-        return $this->webMail()->apiPoll();
+        return $this->mailDenied() ?? $this->webMail()->apiPoll();
     }
 
     public function mailFolders($account)
     {
-        return $this->webMail()->apiFolders($account);
+        return $this->mailDenied() ?? $this->webMail()->apiFolders($account);
     }
 
     public function mailMessages($account)
     {
-        return $this->webMail()->apiMessages(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiMessages(request(), $account);
     }
 
     public function mailMessage($account)
     {
-        return $this->webMail()->apiMessage(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiMessage(request(), $account);
     }
 
     public function mailAttachment($account)
     {
-        return $this->webMail()->apiAttachment(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiAttachment(request(), $account);
     }
 
     public function mailEml($account)
     {
-        return $this->webMail()->apiEml(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiEml(request(), $account);
     }
 
     public function mailFlag($account)
     {
-        return $this->webMail()->apiFlag(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiFlag(request(), $account);
     }
 
     public function mailMove($account)
     {
-        return $this->webMail()->apiMove(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiMove(request(), $account);
     }
 
     public function mailDelete($account)
     {
-        return $this->webMail()->apiDelete(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiDelete(request(), $account);
     }
 
     public function mailCreateFolder($account)
     {
-        return $this->webMail()->apiCreateFolder(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiCreateFolder(request(), $account);
     }
 
     public function mailSend($account)
     {
-        return $this->webMail()->apiSend(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiSend(request(), $account);
     }
 
     public function mailDraft($account)
     {
-        return $this->webMail()->apiDraft(request(), $account);
+        return $this->mailDenied() ?? $this->webMail()->apiDraft(request(), $account);
     }
 }

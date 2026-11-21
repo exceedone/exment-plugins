@@ -1,4 +1,5 @@
 {{-- Exment Plugin Groupware: the top page. Web mail, and the state of the browser Office (ibisOffice) and its installation. --}}
+@if ($mail_used)
 <div class="box card">
     <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-envelope-o" aria-hidden="true"></i> Web メール</h3></div>
     <div class="box-body">
@@ -11,6 +12,14 @@
         @endif
     </div>
 </div>
+@elseif ($feature_url)
+<div class="box card">
+    <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-envelope-o" aria-hidden="true"></i> Web メール</h3></div>
+    <div class="box-body">
+        <p>Web メールは「使わない」になっています。管理者設定の<a href="{{ $feature_url }}">「機能の管理」</a>で「使う」にして、使える人（役割グループ）を選ぶと使えます。</p>
+    </div>
+</div>
+@endif
 
 <div class="box card">
     <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-file-word-o" aria-hidden="true"></i> Office（ブラウザーで Word・Excel・PowerPoint を開く）</h3></div>

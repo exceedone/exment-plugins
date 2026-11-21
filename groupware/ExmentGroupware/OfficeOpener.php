@@ -20,6 +20,15 @@ class OfficeOpener
     }
 
     /**
+     * Whether the login user may use the file server: Exment has it, and
+     * (with Feature management) it is used and is for this user.
+     */
+    public static function fileServerUsed(): bool
+    {
+        return static::fileServerAvailable() && FeatureGate::allowed(FeatureGate::FILE_SERVER);
+    }
+
+    /**
      * @param \Exceedone\Exment\Model\Plugin $plugin
      */
     public static function register($plugin): void

@@ -22,6 +22,7 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
 - **Editing attachments** (0.4.0, ISS00416): a user who may edit that record gets **編集する** (Edit) on that page (`edit/{uuid}`). **Save** replaces the content of the attachment and keeps its address, so links to it go on working. The content it had is kept as a file of its own on the same record (not listed as an attachment), and a comment on the record says who edited it, with a link to that earlier file. A save from content someone else replaced in between is refused.
   Only attachments (not the values of file columns) can be edited, by those who may edit the record (and, when `exment.file_delete_useronly` is on, only by the one who uploaded the file). A save takes up to 50 MB (or Exment's upload limit, if smaller).
   Two things to know: **an archived project of Exment Plugin PM does not stop editing** here, and on an Exment without older versions of attachments, **deleting the attachment does not delete the earlier contents** kept by edits: they stay readable from the links in the comments, for those who may read the record. On an Exment that has them (the 「差し替え」 of the attachment list, exceedone/exment PR #1866), each earlier content is also an older version of the attachment (「版 n」, up to `exment.document_version_limit`) and is deleted with it.
+- **Feature management** (0.4.1): on an Exment with Feature management (Admin setting → Feature management), the web mail is a feature of its own (`exment_groupware.mail`): an administrator turns it on or off and chooses the role groups that may use it. A site that had the plugin before keeps it on; on a new site it starts off. The Office part follows the file server's feature. On an Exment without Feature management nothing changes.
 
 | Folder | Plugin |
 |---|---|
@@ -29,8 +30,10 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
 
 ## Requirements
 
-- Exment with the file server (the `feature/file-server` branch, exceedone/exment PR #1834, or a release that has it). Without it the plugin does nothing.
-- PHP 8.2 with the `zip` extension (to install ibisOffice).
+- Exment 7.1 or later (checked on 7.1 and 7.2) and PHP 8.2. The web mail and the attachments of records work on any of them.
+- To open the files of the **file server** in Office: an Exment with the file server (7.2.0 or later). Without it, that part does nothing; the rest works.
+- On Exment 7.2.0 or later: the web mail is a feature of Feature management (see above), and the older contents of an edited attachment become its older versions (exceedone/exment PR #1866).
+- The `zip` extension of PHP (to install ibisOffice).
 - A browser with WebGPU: Chrome, Edge, or Safari 26 or later. The site must be on HTTPS (`http://localhost` works while developing).
 
 ## Install
@@ -105,11 +108,14 @@ Exment のグループウェア（ex1task ISS00233）です。今あるのは次
 - **データの添付の編集**（0.4.0、ISS00416）: そのデータを編集できる人には、その画面に **編集する** が出ます（`edit/{uuid}`）。**保存**すると添付の中身が新しくなり、アドレスは変わらないので、そこへのリンクもそのまま使えます。前の中身は同じデータの別のファイルとして残し（添付の一覧には出ません）、データに「誰が編集したか」と前のファイルへのリンクをコメントで残します。開いたあとにほかの人が保存していたときは、保存を断ります。
   編集できるのは添付だけです（ファイルの列の値は対象外）。そのデータを編集できる人だけが編集でき、`exment.file_delete_useronly` が on のときは、ファイルを上げた人だけです。保存できる大きさは 50MB まで（Exment のアップロードの上限のほうが小さければ、そちら）です。
   気をつけること: **Exment Plugin PM のアーカイブ中のプロジェクトでも、ここからの編集は止まりません**。また、添付の古い版の仕組みがない Exment では、**添付を消しても、編集で残した前の中身は消えません**。データを見られる人は、コメントのリンクから読めたままです。仕組みがある Exment（添付の一覧の「差し替え」、exceedone/exment PR #1866）では、前の中身は添付の古い版（「版 n」、`exment.document_version_limit` まで）にもなり、添付を消すと一緒に消えます。
+- **機能の管理**（0.4.1）: 「機能の管理」（管理者設定）のある Exment では、Web メールが 1 つの機能（`exment_groupware.mail`）になり、管理者が使う・使わないと、使える役割グループを決めます。前からこのプラグインを入れているサイトでは「使う」のまま、新しいサイトでははじめ「使わない」です。Office はファイルサーバーの機能に従います。機能の管理のない Exment では、今までと同じです。
 
 ## 必要なもの
 
-- ファイルサーバーのある Exment（`feature/file-server` ブランチ、exceedone/exment PR #1834、またはそれを含むリリース）。ないときは何もしません。
-- PHP 8.2 と `zip` の拡張（ibisOffice のインストールに使います）。
+- Exment 7.1 以上（7.1・7.2 で確かめています）と PHP 8.2。Web メールとデータの添付は、どれでも動きます。
+- **ファイルサーバー**のファイルを Office で開くには、ファイルサーバーのある Exment（7.2.0 以降）。ないときは、その部分だけが何もせず、ほかは動きます。
+- Exment 7.2.0 以降では、Web メールは「機能の管理」の 1 つの機能になり（上の「機能の管理」）、添付を編集したときの前の中身は、その添付の前の版になります（exceedone/exment PR #1866）。
+- PHP の `zip` の拡張（ibisOffice のインストールに使います）。
 - WebGPU のあるブラウザー: Chrome・Edge、または Safari 26 以降。サイトは HTTPS（開発中は `http://localhost` でも動きます）。
 
 ## インストール
