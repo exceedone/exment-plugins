@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.3 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.4 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.7.4 / 1.7.4 で変わったこと**
+
+- Opening a project from the project list (or the dashboard, or the top bar) goes to the tab last used in it, instead of always to Home. Most people work on the issue list and clicked over to it every time. Kept per person and per project in the browser; for a project not opened yet, the tab last used in any project. A link with a tab or an issue in it still opens that. Settings is not kept.
+  プロジェクト一覧（ダッシュボード・上のバーからも）でプロジェクトを開くと、いつもホームでなく、そのプロジェクトで前に使ったタブを開くようにしました。ほとんどの人は課題の一覧で作業するので、毎回クリックしていました。人ごと・プロジェクトごとにブラウザーに覚えます。まだ開いていないプロジェクトでは、最後にどこかのプロジェクトで使ったタブです。タブや課題を指したリンクは、今までどおりそこを開きます。設定は覚えません。
 
 **Changed in 1.7.3 / 1.7.3 で変わったこと**
 
