@@ -1037,6 +1037,18 @@ body.pp-fm-open{overflow:hidden;}
 .pp-nedit .pp-ne-props .pp-ne-fg > .err,
 .pp-nedit .pp-ne-props .pp-ne-fg > .pp-ne-seg,
 .pp-nedit .pp-ne-props .pp-ne-fg > .pp-ne-check{grid-column:2;}
+/* While editing, a field holds an input and its help, not a short value:
+   the read-only card's as-many-260px-columns-as-fit made four narrow
+   columns on a wide screen, the inputs 150px wide and the help five lines
+   long. Columns of 440px at least instead: two on the editor's card (at
+   most 1240px less its padding), one when it is narrow. A pair goes to a
+   row (.pp-ne-rowstart starts one; in one column it changes nothing). The
+   label sits level with the input, not halfway down its help. */
+.pp-nedit .bl-props.pp-ne-props{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));column-gap:32px;align-items:start;}
+.pp-nedit .bl-props.pp-ne-props > .pp-ne-rowstart{grid-column:1;}
+.pp-nedit .pp-ne-props .pp-ne-fg{align-items:start;}
+.pp-nedit .pp-ne-props .pp-ne-fg > label{align-self:start;padding-top:8px;line-height:1.35;}
+.pp-nedit .pp-ne-props .pp-ne-fg > .help{margin-top:-2px;}
 .pp-nedit .pp-ne-files-row{margin-top:24px;padding:0;background:transparent;
   border:none;border-radius:0;}
 .pp-nedit .pp-ne-files-row[hidden]{display:none !important;}

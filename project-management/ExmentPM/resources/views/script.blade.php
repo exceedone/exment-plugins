@@ -6326,18 +6326,22 @@ window.PmPortalBoot = function () {
         if (!D.issue_table || NED.table !== D.issue_table) { return null; }
         var c = D.issue_cols || {};
         var x = D.issue_extra_cols || {};
+        // Two to a row on a wide card (each pair starts a row, see
+        // nedRenderForm), so the pairs are fields read together: the
+        // people, then how it is weighed, where it belongs, when, and how
+        // far along it is.
         var rows = [
             [c.status || null, c.assignees || null],
             // Schema 27: the other people, beside the assignees.
             [x.sub_assignees || null, x.managers || null],
-            [x.reviewers || null, x.difficulty || null],
-            [c.priority || null, c.milestone || null],
-            [c.category || null, x.versions || null],
+            [x.reviewers || null, x.notified_users || null],
+            [c.priority || null, x.difficulty || null],
+            [c.milestone || null, x.versions || null],
+            [c.category || null, x.recurrence || null],
             [c.start || null, c.due || null],
-            [x.recurrence || null],
+            [x.due_time || null, x.subject_sub || null],
             [c.estimate || null, c.actual || null],
-            [c.progress || null, x.resolution || null],
-            [x.notified_users || null]
+            [c.progress || null, x.resolution || null]
         ].filter(function (r) { return r.some(Boolean); });
 
         return {
@@ -8044,11 +8048,14 @@ window.PmPortalBoot = function () {
                 taken[name] = true;
             });
             layout.rows.forEach(function (pair) {
-                // The pairing is only a reading order now that the fields
-                // stand one to a row: take each name in turn and let the
-                // card's own rule space them.
+                // The first field of a pair starts a row of the two-column
+                // card, so a missing field leaves a gap rather than pulling
+                // every field after it into the wrong pair.
+                var first = true;
                 pair.forEach(function (name) {
                     if (!waiting(name)) { return; }
+                    built[name].classList.toggle('pp-ne-rowstart', first);
+                    first = false;
                     slots.grid.appendChild(built[name]);
                     taken[name] = true;
                 });
