@@ -30,8 +30,10 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
 
 ## Requirements
 
-- Exment with the file server (the `feature/file-server` branch, exceedone/exment PR #1834, or a release that has it). Without it the plugin does nothing.
-- PHP 8.2 with the `zip` extension (to install ibisOffice).
+- Exment 7.1 or later (checked on 7.1 and 7.2) and PHP 8.2. The web mail and the attachments of records work on any of them.
+- To open the files of the **file server** in Office: an Exment with the file server (7.2.0 or later). Without it, that part does nothing; the rest works.
+- On Exment 7.2.0 or later: the web mail is a feature of Feature management (see above), and the older contents of an edited attachment become its older versions (exceedone/exment PR #1866).
+- The `zip` extension of PHP (to install ibisOffice).
 - A browser with WebGPU: Chrome, Edge, or Safari 26 or later. The site must be on HTTPS (`http://localhost` works while developing).
 
 ## Install
@@ -110,8 +112,10 @@ Exment のグループウェア（ex1task ISS00233）です。今あるのは次
 
 ## 必要なもの
 
-- ファイルサーバーのある Exment（`feature/file-server` ブランチ、exceedone/exment PR #1834、またはそれを含むリリース）。ないときは何もしません。
-- PHP 8.2 と `zip` の拡張（ibisOffice のインストールに使います）。
+- Exment 7.1 以上（7.1・7.2 で確かめています）と PHP 8.2。Web メールとデータの添付は、どれでも動きます。
+- **ファイルサーバー**のファイルを Office で開くには、ファイルサーバーのある Exment（7.2.0 以降）。ないときは、その部分だけが何もせず、ほかは動きます。
+- Exment 7.2.0 以降では、Web メールは「機能の管理」の 1 つの機能になり（上の「機能の管理」）、添付を編集したときの前の中身は、その添付の前の版になります（exceedone/exment PR #1866）。
+- PHP の `zip` の拡張（ibisOffice のインストールに使います）。
 - WebGPU のあるブラウザー: Chrome・Edge、または Safari 26 以降。サイトは HTTPS（開発中は `http://localhost` でも動きます）。
 
 ## インストール
