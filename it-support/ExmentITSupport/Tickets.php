@@ -184,6 +184,18 @@ class Tickets
         static::addMessage($ticket, ['kind' => 'system', 'body' => 'メールで送ったリンク（またはコード）から操作がありました。このアドレスにメールが届くことは確かめられました（依頼の中身を書いた人が本人かどうかまでは分かりません）。', 'via' => 'portal']);
     }
 
+    /** Add a tag to the ticket (once). */
+    public static function addTag(CustomValue $ticket, string $tag): void
+    {
+        $tags = array_values(array_filter(array_map('trim', explode(',', strval(array_get($ticket->value, 'tags'))))));
+        if (in_array($tag, $tags, true)) {
+            return;
+        }
+        $tags[] = $tag;
+        $ticket->setValue(['tags' => mb_substr(implode(', ', $tags), 0, 200)]);
+        $ticket->save();
+    }
+
     public static function customerByDomain(string $email): ?CustomValue
     {
         $domain = mb_strtolower(substr(strrchr($email, '@') ?: '', 1));

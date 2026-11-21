@@ -26,9 +26,9 @@
             <label for="s-unknown">知らない差出人</label>
             <select id="s-unknown" name="unknown_sender"><option value="accept" @selected($s['unknown_sender'] === 'accept')>チケットにする（お客様なし）</option><option value="ignore" @selected($s['unknown_sender'] === 'ignore')>取り込まない（登録したお客様だけ）</option></select>
             <label for="s-mail-auth">差出人の確認</label>
-            <select id="s-mail-auth" name="mail_auth"><option value="require" @selected($s['mail_auth'] === 'require')>受信サーバーの確認（DMARC・DKIM・SPF）に合格したメールだけ信じる（おすすめ）</option><option value="fail_only" @selected($s['mail_auth'] === 'fail_only')>確認に落ちたメールだけ疑う（確認の結果を付けないサーバー向け）</option></select>
+            <select id="s-mail-auth" name="mail_auth"><option value="require" @selected($s['mail_auth'] === 'require')>受信サーバーの確認（DMARC・DKIM・SPF）に合格したメールだけ信じる（おすすめ）</option><option value="require_top" @selected($s['mail_auth'] === 'require_top')>同じ。ただし受信サーバーは名前のない確認の結果を一番上に付ける（Microsoft 365 など）</option><option value="fail_only" @selected($s['mail_auth'] === 'fail_only')>確認に落ちたメールだけ疑う（確認の結果を付けないサーバー向け）</option></select>
             <label for="s-mail-authserv">受信サーバーの名前</label><input type="text" id="s-mail-authserv" name="mail_authserv_id" value="{{ $s['mail_authserv_id'] }}" placeholder="例: mx.example.co.jp">
-            <div></div><div class="its-sub">受信サーバーが付ける Authentication-Results の、先頭の名前です。<b>これを入れるまで、メールの差出人は確かめられたことになりません</b>（メールで来たチケットは「なりすましの疑い」になります）。@if(!empty($state['mail_authserv_seen']))最近のメールの一番上: <code>{{ $state['mail_authserv_seen'] }}</code>（自分の受信サーバーの名前か、確かめてから入れてください）@endif</div>
+            <div></div><div class="its-sub">受信サーバーが付ける Authentication-Results の、先頭の名前です。<b>これを入れるまで、メールの差出人は確かめられたことになりません</b>（メールで来たチケットは「なりすましの疑い」になります）。@if(($state['mail_authserv_seen'] ?? '') === '(none)')いくつかの送り主からのメールで、一番上の確認の結果に名前がありません。Microsoft 365 などなら、上で「名前のない確認の結果を一番上に付ける」を選んでください。@elseif(!empty($state['mail_authserv_seen']))いくつかの送り主からのメールの一番上: <code>{{ $state['mail_authserv_seen'] }}</code>（自分の受信サーバーの名前か、確かめてから入れてください）。@endif 受信サーバーが確認の結果を付けないとき（Postfix から直接受けるなど）は、「確認に落ちたメールだけ疑う」にしてください。送り主が書いたヘッダーが一番上に残るからです。</div>
         </div>
         <div class="its-sub its-foot"><i class="fa fa-lock" aria-hidden="true"></i> パスワードはアプリの鍵で暗号化して保存します。最後の確認: <span class="its-num">{{ $state['imap_checked_at'] ?? '—' }}</span></div>
     </div>

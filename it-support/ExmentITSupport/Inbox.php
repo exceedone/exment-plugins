@@ -20,6 +20,12 @@ use Illuminate\Support\Facades\Log;
  */
 class Inbox
 {
+    /** The first line of a note made from a mail whose sender could not be checked. */
+    const UNPROVEN_MARK = '【差出人を確かめられないメール（なりすましの疑い）】';
+    /** The tag on a ticket that got such a note. */
+    const TAG_CHECK = '要確認';
+    const UNPROVEN_NOTES_PER_DAY = 5;
+
     /** At most this many mails per run, so one run never takes too long. */
     const BATCH = 50;
 
@@ -104,7 +110,7 @@ class Inbox
             return ['name' => $a['name'], 'content' => $a['content']];
         }, array_slice($mail['attachments'], 0, 20));
         $suspicious = static::senderUnproven($mail);
-        static::noteAuthserv($mail);
+        static::noteAuthserv($mail, $suspicious);
 
         // Which ticket is this a reply to: the number in the subject, else
         // the mail it answers.
@@ -136,26 +142,35 @@ class Inbox
             $ticket = $target;
         }
 
-        if (isset($ticket) && $suspicious) {
-            // A reply in the thread whose sender could not be checked: kept on
-            // the ticket for the agents only, as a flagged note - not written
-            // as the customer's, not mailed on, the ticket not reopened.
+        if (isset($ticket) && $suspicious && in_array(strval(array_get($ticket->value, 'status')), Its::ACTIVE_STATUSES, true)
+            && empty(array_get($ticket->value, 'merged_into'))) {
+            // A reply in the thread of an open ticket whose sender could not be
+            // checked: kept on the ticket for the agents only, as a flagged
+            // note (not written as the customer's, not mailed on), and the
+            // ticket is tagged so somebody looks. A few a day per ticket, no
+            // attachments (their names are listed): whoever knows a requester's
+            // address and a ticket number can send these.
+            if (static::unprovenNotesToday($ticket) >= static::UNPROVEN_NOTES_PER_DAY) {
+                return 'skipped';
+            }
+            $names = array_map(function ($f) {
+                return strval($f['name']);
+            }, $files);
             Tickets::addMessage($ticket, [
                 'kind' => 'note',
-                'body' => "【差出人を確かめられないメール（なりすましの疑い）】
-From: " . $mail['from'] . "
-
-" . mb_substr($body, 0, 20000),
+                'body' => static::UNPROVEN_MARK . "\nFrom: " . $mail['from']
+                    . (!empty($names) ? "\n添付（取り込んでいません）: " . implode(', ', $names) : '') . "\n\n" . mb_substr($body, 0, 20000),
                 'via' => 'mail',
                 'message_id' => $mail['message_id'] ?: null,
-            ], $files);
+            ]);
+            Tickets::addTag($ticket, static::TAG_CHECK);
             if ($mail['message_id'] !== '') {
                 Mailer::remember($mail['message_id'], intval($ticket->id), 'in');
             }
 
             return 'appended';
         }
-        if (isset($ticket)) {
+        if (isset($ticket) && !$suspicious) {
             if (Its::normalizeEmail(strval(array_get($ticket->value, 'requester_email'))) === Its::normalizeEmail($mail['from'])) {
                 Tickets::markAddressVerified($ticket);
             }
@@ -203,26 +218,64 @@ From: " . $mail['from'] . "
      * for a server that adds no Authentication-Results header).
      */
     /**
-     * Remember the server name on top of the latest mail, so the settings can
-     * offer it for "mail_authserv_id" (which must be set for a sender to be
-     * proven; see MimeParser::authPassed).
+     * What the settings can tell the admin about the headers on top of the
+     * mail that comes in: the server name seen on top of mail from at least
+     * three different sender domains (one sender can write any name on a
+     * server that adds no header of its own), or that the top header carries
+     * no name (Microsoft 365). Also when unproven mail last came, for the
+     * desk's warning.
      */
-    protected static function noteAuthserv(array $mail): void
+    protected static function noteAuthserv(array $mail, bool $unproven): void
     {
+        $state = Its::state();
+        $patch = [];
         $top = strval(($mail['headers']['authentication-results'] ?? [])[0] ?? '');
-        $id = $top !== '' ? mb_substr(MimeParser::parseAuthResults($top)['id'], 0, 200) : '';
-        if ($id !== '' && strval(array_get(Its::state(), 'mail_authserv_seen')) !== $id) {
-            Its::patchState(['mail_authserv_seen' => $id]);
+        $fromDomain = mb_substr(strtolower(substr(strrchr(strval($mail['from']), '@') ?: '', 1)), 0, 100);
+        if ($top !== '' && $fromDomain !== '') {
+            $id = MimeParser::parseAuthResults($top)['id'];
+            $key = $id === '' ? '(none)' : $id;
+            if (preg_match('/^[a-z0-9.-]{1,200}$/', $id) === 1 || $id === '') {
+                $seen = (array) array_get($state, 'mail_authserv_tops', []);
+                $domains = (array) ($seen[$key] ?? []);
+                if (!in_array($fromDomain, $domains, true) && count($domains) < 3) {
+                    $domains[] = $fromDomain;
+                    $seen[$key] = $domains;
+                    $patch['mail_authserv_tops'] = array_slice($seen, -5, 5, true);
+                    if (count($domains) >= 3) {
+                        $patch['mail_authserv_seen'] = $key;
+                    }
+                }
+            }
         }
+        if ($unproven && strval(array_get($state, 'mail_unproven_on')) !== date('Y-m-d')) {
+            $patch['mail_unproven_on'] = date('Y-m-d');
+        }
+        if (!empty($patch)) {
+            Its::patchState($patch);
+        }
+    }
+
+    protected static function unprovenNotesToday($ticket): int
+    {
+        $table = Its::table(Its::T_MESSAGE);
+        if (!isset($table)) {
+            return 0;
+        }
+
+        return $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
+            ->where('parent_type', Its::T_TICKET)->where('parent_id', $ticket->id)
+            ->where('created_at', '>=', Carbon::today())->where('value->kind', 'note')
+            ->where('value->body', 'like', static::UNPROVEN_MARK . '%')->count();
     }
 
     public static function senderUnproven(array $mail): bool
     {
-        if (Its::setting('mail_auth', 'require') === 'fail_only') {
+        $mode = Its::setting('mail_auth', 'require');
+        if ($mode === 'fail_only') {
             return MimeParser::authFailed($mail);
         }
 
-        return !MimeParser::authPassed($mail, strval(Its::setting('mail_authserv_id', '')));
+        return !MimeParser::authPassed($mail, strval(Its::setting('mail_authserv_id', '')), $mode === 'require_top');
     }
 
     /**
