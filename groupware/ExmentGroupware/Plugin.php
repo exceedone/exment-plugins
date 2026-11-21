@@ -172,6 +172,8 @@ class Plugin extends PluginPageBase
         if (!$file) {
             abort(404);
         }
+        // Keep this in step with core FileController::downloadFile (the same
+        // getData and hasPermissionData), only stricter.
         // Only a file attached to a record of a table that still exists, and
         // that this user may read: anything else answers as if it were not
         // there, so the page never names a file it cannot vouch for.

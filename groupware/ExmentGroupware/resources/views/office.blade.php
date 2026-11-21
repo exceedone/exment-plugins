@@ -207,7 +207,8 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
                     dirty = !!event.dirty;
                     if (dirty) { state('保存していない変更があります', 'warn'); }
                 } else if (event.type === 'closeRequested') {
-                    closeEditor();
+                    // an attachment shown inside another screen: that screen closes it
+                    if (!cfg.file) { closeEditor(); }
                 } else if (event.type === 'error') {
                     state(event.message || 'エラー', 'error');
                 }
