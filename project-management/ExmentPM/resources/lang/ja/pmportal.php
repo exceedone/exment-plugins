@@ -380,6 +380,10 @@ return [
     'issue_copy' => '複製',
     'link_copy' => 'リンクをコピー',
     'link_copied' => '課題のURLをコピーしました',
+    // ISS00440: the copy button by the issue key
+    'ik_copied' => '課題キーと件名をコピーしました',
+    'ik_key_copied' => '課題キーをコピーしました',
+    'ik_copy_tip' => '課題キーと件名をコピー（Shift+クリックで課題キーだけ）',
     // ISS00416: Office files shown in place (Exment Plugin Groupware / ibisOffice)
     'office_view' => '表示',
     'office_view_tip' => 'ダウンロードせずにこの画面で開きます。編集できる人は、そのまま編集・保存もできます（ibisOffice）',

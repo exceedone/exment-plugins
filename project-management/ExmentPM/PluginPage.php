@@ -147,6 +147,19 @@ class PluginPage extends PluginPageBase
         return $this->respond($this->portal()->show(request(), new Content(), $id));
     }
 
+    // The short links of 1.6.1 (/view/KEY, /projects/KEY) were routed in
+    // config.json but had no method here, so they never reached the portal
+    // and the links in earlier mails did not open (found in ISS00440).
+    public function viewIssue($key)
+    {
+        return $this->respond($this->portal()->viewIssue(request(), $key));
+    }
+
+    public function viewProject($code)
+    {
+        return $this->respond($this->portal()->viewProject(request(), $code));
+    }
+
     public function embed($id, $kind)
     {
         return $this->respond($this->portal()->embed(request(), $id, $kind));

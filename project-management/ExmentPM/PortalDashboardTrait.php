@@ -371,7 +371,7 @@ trait PortalDashboardTrait
             'id' => $issue->id,
             'key' => $key,
             'subject' => strval(array_get($v, array_get($is, 'subject'), '')),
-            'url' => $card['url'] . '#issue-' . rawurlencode($key),
+            'url' => $card['url'] . '#issue-' . rawurlencode(PortalDefinition::issueAnchor($issue)),
             'project_id' => $project_id,
             'project' => $card['name'],
             'status' => array_get($status_meta, strval(array_get($v, array_get($is, 'status'), ''))),
@@ -416,7 +416,7 @@ trait PortalDashboardTrait
                 continue;
             }
             $key = ($card['key'] !== '' ? $card['key'] : '#') . '-' . $issue->id;
-            $keys[intval($issue->id)] = ['key' => $key, 'card' => $card, 'subject' => strval(array_get($issue->value, array_get($is, 'subject'), ''))];
+            $keys[intval($issue->id)] = ['key' => $key, 'anchor' => PortalDefinition::issueAnchor($issue), 'card' => $card, 'subject' => strval(array_get($issue->value, array_get($is, 'subject'), ''))];
             $created = strval($issue->created_at);
             $updated = strval($issue->updated_at ?: $issue->created_at);
             $feed[] = [
@@ -426,7 +426,7 @@ trait PortalDashboardTrait
                 'key' => $key,
                 'label' => $keys[intval($issue->id)]['subject'],
                 'project' => $card['name'],
-                'url' => $card['url'] . '#issue-' . rawurlencode($key),
+                'url' => $card['url'] . '#issue-' . rawurlencode($keys[intval($issue->id)]['anchor']),
                 'extra' => '',
             ];
         }
@@ -450,7 +450,7 @@ trait PortalDashboardTrait
                     'key' => $target['key'],
                     'label' => $target['subject'],
                     'project' => $target['card']['name'],
-                    'url' => $target['card']['url'] . '#issue-' . rawurlencode($target['key']),
+                    'url' => $target['card']['url'] . '#issue-' . rawurlencode($target['anchor']),
                     'extra' => mb_strimwidth(strval(array_get($comment->value, 'comment_detail', '')), 0, 70, '…'),
                 ];
             }

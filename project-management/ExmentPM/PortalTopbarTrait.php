@@ -202,7 +202,7 @@ trait PortalTopbarTrait
                 'id' => $value->id,
                 'name' => strval($value->getLabel()),
                 'key' => strtoupper(strval(array_get($value->value, array_get($pj, 'key'), ''))),
-                'url' => PortalDefinition::url($value->id),
+                'url' => PortalDefinition::projectUrl($value),
                 'starred' => false,
                 'archived' => $hasArchived && boolval(array_get($value->value, 'archived')),
                 'parent_id' => $parentColumn ? strval(array_get($value->value, $parentColumn, '')) : '',
@@ -270,7 +270,7 @@ trait PortalTopbarTrait
                 'parent_id' => $parent_id,
                 'order' => strval(array_get($value->value, 'display_order', '')),
                 'archived' => $has_archived && boolval(array_get($value->value, 'archived')),
-                'url' => PortalDefinition::url($value->id),
+                'url' => PortalDefinition::projectUrl($value),
                 'star_url' => PortalDefinition::url($value->id, 'star'),
                 // The gear opens the settings tab, which is the manager's (see
                 // the dashboard cards in PmPortalController::index).
@@ -386,7 +386,7 @@ trait PortalTopbarTrait
                 'k' => $key,
                 's' => strval(array_get($issue->value, array_get($is, 'subject'), '')),
                 'p' => strval($card['name']),
-                'u' => $card['url'] . '#issue-' . rawurlencode($key),
+                'u' => $card['url'] . '#issue-' . rawurlencode(PortalDefinition::issueAnchor($issue)),
             ];
         }
 

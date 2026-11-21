@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.2 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.3 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,17 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.7.3 / 1.7.3 で変わったこと**
+
+- Addresses by the project code (ISS00440): a project opens at `/admin/plugins/exment_pm/EXMENT_CUSTOMER` instead of its number, and an issue at `#issue-ISS00239` (its issue key) instead of `#issue-EXMENT_CUSTOMER-239`. Every link, "copy URL", the bell and the mails use this form. Older addresses still open and are sent on to the new one: the number, the code in either case, the old `#issue-` form, and a code from before the project was renamed (the old codes are kept). A project the user may not open answers as before.
+  プロジェクトのアドレスを番号でなくプロジェクトキーに（`/admin/plugins/exment_pm/EXMENT_CUSTOMER`）、課題を `#issue-EXMENT_CUSTOMER-239` でなく課題キーに（`#issue-ISS00239`）しました（ISS00440）。リンク・「リンクをコピー」・ベル・メールも、この形です。前のアドレス（番号・小文字のキー・前の `#issue-` の形・名前を変える前のプロジェクトキー）も開き、新しいアドレスに移ります（前のキーは残しておきます）。見られないプロジェクトの答えは、今までと同じです。
+- A copy button by the issue key, like Backlog's, on the issue page and on each row of the list: a click copies "ISS00239 subject", Shift+click the key alone, as text and as a link (a paste into Teams, OneNote, Outlook or Word is a link to the issue).
+  課題の画面と一覧の行の課題キーの横に、Backlog のようなコピーのボタンを付けました。押すと「ISS00239 件名」を、Shift を押しながらだと課題キーだけをコピーします。文字とリンクの両方で入るので、Teams・OneNote・Outlook・Word に貼るとリンクになります。
+- An issue key written in a description or a comment (ISS00239) is a link to the issue, when it is an issue of the project the reader may open.
+  説明やコメントに書いた課題キー（ISS00239）は、その課題へのリンクになります（同じプロジェクトの、見られる課題だけ）。
+- The short links of 1.6.1 (`/view/KEY`, `/projects/KEY`) in earlier mails did not open; they do now.
+  1.6.1 の短いリンク（`/view/KEY`・`/projects/KEY`）が開かなかったのを直しました（前のメールのリンクも開きます）。
 
 **Changed in 1.7.2 / 1.7.2 で変わったこと**
 
