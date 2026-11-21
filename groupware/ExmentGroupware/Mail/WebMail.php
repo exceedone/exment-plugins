@@ -80,14 +80,14 @@ class WebMail
     public function page()
     {
         if (!Accounts::ready()) {
-            return view('exment_exment_groupware::mail_notready', ['plugin_url' => $this->plugin->getFullUrl()]);
+            return $this->screen('メール', view('exment_exment_groupware::mail_notready', ['plugin_url' => $this->plugin->getFullUrl()]));
         }
         $accounts = array_map([Accounts::class, 'toPublic'], Accounts::forUser($this->userId()));
         if (empty($accounts)) {
             return redirect($this->url('accounts'));
         }
 
-        return view('exment_exment_groupware::mail', [
+        return $this->screen('メール', view('exment_exment_groupware::mail', [
             'accounts_url' => $this->url('accounts'),
             // For the script of the page (one @json: Blade cannot take an array literal over lines there).
             'cfg' => [
@@ -97,14 +97,14 @@ class WebMail
                 'accountsUrl' => $this->url('accounts'),
                 'maxAttach' => static::MAX_ATTACH_BYTES,
             ],
-        ]);
+        ]));
     }
 
     /** Adding and changing accounts. */
     public function accounts()
     {
         if (!Accounts::ready()) {
-            return view('exment_exment_groupware::mail_notready', ['plugin_url' => $this->plugin->getFullUrl()]);
+            return $this->screen('メール', view('exment_exment_groupware::mail_notready', ['plugin_url' => $this->plugin->getFullUrl()]));
         }
         $rows = Accounts::forUser($this->userId());
         $accounts = [];
@@ -129,7 +129,7 @@ class WebMail
         $user = \Exment::user();
         $userEmail = isset($user) && isset($user->base_user) ? strval(array_get($user->base_user->value, 'email')) : '';
 
-        return view('exment_exment_groupware::mail_accounts', [
+        return $this->screen('メール', view('exment_exment_groupware::mail_accounts', [
             'accounts' => $accounts,
             'providers' => $providers,
             'mail_url' => $this->url(),
@@ -145,7 +145,29 @@ class WebMail
                 'csrf' => csrf_token(),
                 'userEmail' => $userEmail,
             ],
-        ]);
+        ]));
+    }
+
+    /**
+     * The screen with its own title ("メール" instead of the plugin's name
+     * "Exment Plugin Groupware"): the same page Exment makes for a plugin page,
+     * only with another header.
+     *
+     * @param \Illuminate\Contracts\View\View $view
+     * @return mixed
+     */
+    protected function screen(string $title, $view)
+    {
+        foreach (['ExmentAdminCore\Admin\Layout\Content', 'Encore\Admin\Layout\Content'] as $class) {
+            if (class_exists($class)) {
+                $content = new $class();
+                $content->row($view->render());
+
+                return response($content->header($title)->headericon('fa-envelope-o'));
+            }
+        }
+
+        return $view;
     }
 
     /**
