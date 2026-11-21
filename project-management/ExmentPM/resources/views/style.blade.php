@@ -1051,6 +1051,32 @@ body.pp-fm-open{overflow:hidden;}
 .pp-nedit .pp-ne-props .pp-ne-fg{align-items:start;}
 .pp-nedit .pp-ne-props .pp-ne-fg > label{align-self:start;padding-top:8px;line-height:1.35;}
 .pp-nedit .pp-ne-props .pp-ne-fg > .help{margin-top:-2px;}
+/* The help as a (?) beside the name in the card; under the field elsewhere. */
+.pp-nedit .pp-ne-q{display:none;}
+.pp-nedit .pp-ne-props .pp-ne-fg > .help{display:none;}
+.pp-nedit .pp-ne-props .pp-ne-q{display:inline-flex;align-items:center;justify-content:center;position:relative;
+  width:15px;height:15px;margin-left:5px;border:1px solid var(--bl-line);border-radius:50%;font-size:10px;line-height:1;
+  color:var(--bl-sub);cursor:help;vertical-align:1px;outline:0;}
+.pp-nedit .pp-ne-props .pp-ne-q:hover,.pp-nedit .pp-ne-props .pp-ne-q:focus{border-color:var(--bl-accent);color:var(--bl-accent-d);}
+.pp-nedit .pp-ne-q .pp-ne-tip{display:none;position:absolute;z-index:50;left:-8px;top:calc(100% + 6px);width:260px;
+  padding:8px 10px;border-radius:var(--bl-radius-s,4px);background:var(--bl-ink,#333);color:var(--bl-box,#fff);
+  font-size:12px;line-height:1.5;font-weight:400;text-align:left;white-space:normal;box-shadow:0 4px 14px rgba(0,0,0,.18);}
+.pp-nedit .pp-ne-q:hover .pp-ne-tip,.pp-nedit .pp-ne-q:focus .pp-ne-tip{display:block;}
+/* 「その他の項目」: a row of its own across the card, and the folded fields
+   on the same two columns below it. */
+.pp-nedit .pp-ne-props > .pp-ne-more-btn{grid-column:1 / -1;justify-self:start;margin:10px 0 2px;padding:5px 10px;
+  border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);background:var(--bl-box2);color:var(--bl-sub);
+  font-size:12.5px;cursor:pointer;}
+.pp-nedit .pp-ne-props > .pp-ne-more-btn:hover{border-color:var(--bl-accent);color:var(--bl-accent-d);}
+.pp-nedit .pp-ne-more-btn .fa{transition:transform .12s ease;font-size:10px;}
+.pp-nedit .pp-ne-more-btn.open .fa{transform:rotate(90deg);}
+.pp-nedit .pp-ne-more-btn .n{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--bl-line2,#e7edf2);
+  font-size:11px;line-height:16px;text-align:center;}
+.pp-nedit .pp-ne-more-btn .filled{color:var(--bl-accent-d);font-size:11.5px;}
+.pp-nedit .pp-ne-props > .pp-ne-more{grid-column:1 / -1;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));column-gap:32px;align-items:start;}
+.pp-nedit .pp-ne-props > .pp-ne-more[hidden]{display:none;}
+.pp-nedit .pp-ne-props > .pp-ne-more > .pp-ne-rowstart{grid-column:1;}
 .pp-nedit .pp-ne-files-row{margin-top:24px;padding:0;background:transparent;
   border:none;border-radius:0;}
 .pp-nedit .pp-ne-files-row[hidden]{display:none !important;}
