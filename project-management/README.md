@@ -113,8 +113,8 @@ Data migration was the separate PmMigrate plugin until 1.2.0; it is now part of 
 
 1. Download `ExmentPM-<version>.zip` from **[Releases](https://github.com/exceedone/exment-plugins/releases)**. Do not unzip it. (PmMigrate is no longer needed.)
    **[Releases](https://github.com/exceedone/exment-plugins/releases)** から `ExmentPM-<版>.zip` をダウンロードします。展開はしません（PmMigrate はもう要りません）。
-2. Upload the zip in **Admin settings → Plugins → Plugin upload**. On Exment SaaS, use **Admin → Plugin market**.
-   **管理者設定 → プラグイン → プラグインアップロード** で zip を送ります。Exment SaaS では **管理 → プラグインマーケット** から入れます。
+2. Upload the zip in **Admin settings → Plugins → Plugin upload**. On Exment SaaS (`*.exments.com`) there is nothing to upload: the operator installs and updates the official plugins for every tenant.
+   **管理者設定 → プラグイン → プラグインアップロード** で zip を送ります。Exment SaaS（`*.exments.com`）では、アップロードは要りません。公式プラグインは運営側がまとめて入れて、新しくします。
 3. Open Project Management (**プロジェクト管理** in the menu) as an administrator and run the first-time setup. It creates the tables the portal uses.
    管理者でプロジェクト管理（メニューの **プロジェクト管理**）を開き、初期設定をします。ポータルが使うテーブルが作られます。
 4. After installing a newer version, press **⚙ Settings → Update data structure** if the screen asks for it.
