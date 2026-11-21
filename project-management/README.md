@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.0 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.1 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.7.1 / 1.7.1 で変わったこと**
+
+- Word, Excel and PowerPoint attachments can be edited on the screen (ISS00416): with Exment Plugin Groupware 0.4.0 or later, the window that **表示** opens has **編集する** (Edit) for those who may edit the issue (or wiki page, or project). Saving replaces the attachment's content; the earlier content stays linked from a comment. Closing the window with unsaved changes asks first.
+  Exment Plugin Groupware 0.4.0 以降があると、**表示** で開いた窓に、その課題（Wiki・プロジェクト）を編集できる人には **編集する** が出て、Word・Excel・PowerPoint をその場で編集・保存できます（ISS00416）。保存すると添付の中身が新しくなり、前の中身はコメントのリンクから開けます。保存していない変更があるときは、窓を閉じる前に確かめます。
 
 **Changed in 1.7.0 / 1.7.0 で変わったこと**
 

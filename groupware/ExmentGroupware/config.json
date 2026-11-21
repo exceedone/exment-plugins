@@ -2,9 +2,9 @@
     "plugin_name": "ExmentGroupware",
     "uuid": "9eef3996-557e-4a1e-990d-9d5302fa35a8",
     "plugin_view_name": "Exment Plugin Groupware",
-    "description": "グループウェアの機能。Web メール（Xserver・KAGOYA・Microsoft 365・Gmail などの今のメールサーバーに IMAP・SMTP でつなぎ、ブラウザーで読む・書く・送る）と、ファイルサーバーの Word・Excel・PowerPoint をブラウザーの Office（ibisOffice）で開いて編集・保存する機能。データに添付した Word・Excel・PowerPoint をその場で表示する機能（Exment Plugin PM などから）。",
+    "description": "グループウェアの機能。Web メール（Xserver・KAGOYA・Microsoft 365・Gmail などの今のメールサーバーに IMAP・SMTP でつなぎ、ブラウザーで読む・書く・送る）と、ファイルサーバーの Word・Excel・PowerPoint をブラウザーの Office（ibisOffice）で開いて編集・保存する機能。データに添付した Word・Excel・PowerPoint をその場で表示・編集する機能（Exment Plugin PM などから）。",
     "author": "Exceedone",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "plugin_type": "page",
     "uri": "exment_groupware",
     "icon": "fa-briefcase",
@@ -28,6 +28,16 @@
             "method": "get",
             "uri": "view/{uuid}",
             "function": "viewFile"
+        },
+        {
+            "method": "get",
+            "uri": "edit/{uuid}",
+            "function": "editFile"
+        },
+        {
+            "method": "post",
+            "uri": "edit/{uuid}/save",
+            "function": "saveFile"
         },
         {
             "method": "get",

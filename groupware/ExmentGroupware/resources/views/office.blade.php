@@ -33,6 +33,9 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
 <div class="gw-bar">
     @if (!empty($file))
         <a class="gw-btn" href="{{ $file['download'] }}" data-gw="download">ダウンロード</a>
+        @if (!empty($edit_url))
+            <a class="gw-btn" href="{{ $edit_url }}" data-gw="edit">編集する</a>
+        @endif
     @elseif ($view)
         <a class="gw-btn" href="{{ $edit_url }}" target="_blank" rel="noopener" data-gw="edit">Office で開く（編集）</a>
     @else
@@ -120,7 +123,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
 
         if (cfg.file) {
             // an attachment of a record: read only, no versions, no lock
-            info = { name: cfg.file.name, can_edit: false, version: '1', version_no: 1, urls: { download: cfg.file.download } };
+            info = { name: cfg.file.name, can_edit: !!cfg.file.edit, version: cfg.file.base || '1', version_no: 1, urls: { download: cfg.file.download, version: cfg.file.save_url } };
         } else {
             const r = await call(cfg.infoUrl);
             if (!r.ok) {
@@ -134,8 +137,9 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
 
         // the editor has no editing together yet: lock the file while it is open for editing
         let readOnly = !info.can_edit || cfg.view;
+        if (cfg.file) { readOnly = !cfg.file.edit; }
         let readOnlyMessage = '';
-        if (info.can_edit && !info.checked_out_by_me && !cfg.view) {
+        if (info.can_edit && !info.checked_out_by_me && !cfg.view && !cfg.file) {
             const c = await call(info.urls.checkout, 'POST', new FormData());
             if (c.ok) {
                 checkedOutHere = true;
@@ -145,7 +149,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
             }
         }
         if (cfg.file) {
-            readOnlyMessage = '表示だけです。';
+            readOnlyMessage = cfg.file.edit ? '' : '表示だけです。';
         } else if (cfg.view) {
             readOnlyMessage = 'プレビューです。編集は「Office で開く（編集）」から。';
         } else if (!info.can_edit) {
@@ -190,7 +194,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
                     const s = await call(info.urls.version, 'POST', fd);
                     if (s.ok) {
                         version = String(s.json.version);
-                        state('v' + s.json.version_no + ' を保存しました');
+                        state(cfg.file ? '保存しました' : ('v' + s.json.version_no + ' を保存しました'));
                         return { ok: true, version: version };
                     }
                     const reasons = { 409: 'conflict', 423: 'locked', 403: 'noPermission', 404: 'notFound', 413: 'tooLarge', 401: 'unauthorized', 419: 'unauthorized' };
@@ -205,6 +209,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
             onEvent(event) {
                 if (event.type === 'dirty') {
                     dirty = !!event.dirty;
+                    window.gwDirty = dirty; // the screen around an attachment asks before it closes this
                     if (dirty) { state('保存していない変更があります', 'warn'); }
                 } else if (event.type === 'closeRequested') {
                     // an attachment shown inside another screen: that screen closes it
@@ -236,7 +241,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
             readOnly: readOnly,
             readOnlyMessage: readOnlyMessage || undefined,
         });
-        state(readOnly ? '読み取り専用' : ('v' + info.version_no + '・編集中（ほかの人は変更できません）'), readOnly ? 'warn' : '');
+        state(readOnly ? '読み取り専用' : (cfg.file ? '編集中（保存すると添付の中身が新しくなります）' : ('v' + info.version_no + '・編集中（ほかの人は変更できません）')), readOnly ? 'warn' : '');
 
         window.addEventListener('beforeunload', (e) => {
             if (dirty) { e.preventDefault(); e.returnValue = ''; }
@@ -245,6 +250,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
             return;
         }
         window.addEventListener('pagehide', checkinOnLeave);
+        if (!$('back')) { return; }
         $('back').addEventListener('click', (e) => {
             if (dirty && !confirm('保存していない変更があります。閉じますか？')) { e.preventDefault(); return; }
             e.preventDefault();

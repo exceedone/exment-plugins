@@ -4062,6 +4062,11 @@ window.PmPortalBoot = function () {
     }
     function officeViewClose() {
         var box = document.getElementById('pp-officebox');
+        // an attachment being edited in it (Groupware 0.4.0) says whether it has unsaved changes
+        try {
+            var frame = box && box.querySelector('iframe');
+            if (frame && frame.contentWindow && frame.contentWindow.gwDirty && !window.confirm(L.office_unsaved)) { return; }
+        } catch (e) {}
         if (box) { box.parentNode.removeChild(box); }
         document.removeEventListener('keydown', officeViewKey, true);
     }
