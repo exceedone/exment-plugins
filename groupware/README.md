@@ -19,6 +19,7 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
 - While the file is open for editing it is **checked out**: nobody else can change it (ibisOffice has no editing together yet). It is checked in when the editor is closed. A user who may only view the file, or a file someone else has checked out, opens read-only.
 - A save from an old version (someone saved in between) is refused, so nothing is overwritten.
 - **Attachments of records** (0.3.0, ISS00416): other plugins can show a Word, Excel or PowerPoint file attached to a record read only, at `view/{uuid}` (Exment Plugin PM does, for the files of issues, wiki pages and projects). The file is read from its usual download address, so only those who may download it can see it. This part does not need the file server.
+- **Editing attachments** (0.4.0, ISS00416): a user who may edit that record gets **編集する** (Edit) on that page (`edit/{uuid}`). **Save** replaces the content of the attachment and keeps its address, so links to it go on working. The content it had is kept as a file of its own on the same record (not listed as an attachment), and a comment on the record says who edited it, with a link to that earlier file. A save from content someone else replaced in between is refused.
 
 | Folder | Plugin |
 |---|---|
@@ -99,6 +100,7 @@ Exment のグループウェア（ex1task ISS00233）です。今あるのは次
 - 編集のために開いている間は**チェックアウト**（編集中）になり、ほかの人は変更できません（ibisOffice にはまだ同時編集がないため）。エディターを閉じるとチェックインします。見るだけの権限の人や、ほかの人がチェックアウトしているファイルは、読み取り専用で開きます。
 - 古い版から保存しようとしたとき（間にほかの人が保存したとき）は断るので、上書きで消えることはありません。
 - **データの添付**（0.3.0、ISS00416）: データに添付した Word・Excel・PowerPoint を、ほかのプラグインの画面から読み取り専用で表示できます（`view/{uuid}`。Exment Plugin PM の課題・Wiki・プロジェクトのファイルで使います）。ファイルはいつものダウンロードの URL から読むので、ダウンロードできる人だけが見られます。ここはファイルサーバーがなくても動きます。
+- **データの添付の編集**（0.4.0、ISS00416）: そのデータを編集できる人には、その画面に **編集する** が出ます（`edit/{uuid}`）。**保存**すると添付の中身が新しくなり、アドレスは変わらないので、そこへのリンクもそのまま使えます。前の中身は同じデータの別のファイルとして残し（添付の一覧には出ません）、データに「誰が編集したか」と前のファイルへのリンクをコメントで残します。開いたあとにほかの人が保存していたときは、保存を断ります。
 
 ## 必要なもの
 

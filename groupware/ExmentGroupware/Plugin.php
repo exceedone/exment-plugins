@@ -156,45 +156,177 @@ class Plugin extends PluginPageBase
     }
 
     /**
-     * An attachment of a record (files/{uuid}) shown read only - the Word,
-     * Excel and PowerPoint files of other plugins' screens (ExmentPM's issues).
+     * An attachment of a record (files/{uuid}) in ibisOffice - the Word, Excel
+     * and PowerPoint files of other plugins' screens (ExmentPM's issues,
+     * comments, wiki pages and projects). view/{uuid} shows it read only;
+     * edit/{uuid} opens it for editing when the user may edit the record it
+     * is attached to, and saving replaces its content (see saveFile).
      * The file itself is read from the same address its download link uses,
-     * so who may see it is decided there, as for the download; this page
-     * checks the same before it says anything about the file.
+     * so who may see it is decided there, as for the download.
      *
      * @param string $uuid
      * @return \Symfony\Component\HttpFoundation\Response
      */
     public function viewFile($uuid)
     {
+        list($file, $record) = $this->attachment($uuid);
+
+        return $this->attachmentPage($file, false, $this->mayEdit($record));
+    }
+
+    /**
+     * @param string $uuid
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function editFile($uuid)
+    {
+        list($file, $record) = $this->attachment($uuid);
+
+        // without the right to edit, the same file read only
+        return $this->attachmentPage($file, $this->mayEdit($record), false);
+    }
+
+    /**
+     * Save from the editor: the attachment keeps its address (links to it in
+     * comments and descriptions go on working) and gets the new content. The
+     * content it had is kept as a file of its own on the same record - not
+     * listed as an attachment, readable by the same people - and a comment on
+     * the record says who changed it, with a link to what it was before.
+     * A save made from content someone else has replaced since is refused
+     * (409), so nothing is overwritten unseen.
+     *
+     * @param string $uuid
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function saveFile($uuid)
+    {
+        list($file, $record) = $this->attachment($uuid);
+        if (!$this->mayEdit($record)) {
+            return response()->json(['result' => false, 'message' => '編集の権限がありません。'], 403);
+        }
+        $upload = request()->file('file');
+        if (!isset($upload) || !$upload->isValid()) {
+            return response()->json(['result' => false, 'message' => 'ファイルを受け取れませんでした。'], 422);
+        }
+        $bytes = strval(file_get_contents($upload->getRealPath()));
+        $disk = \Illuminate\Support\Facades\Storage::disk(config('admin.upload.disk'));
+
+        $lock = \Illuminate\Support\Facades\Cache::lock('exment_groupware_attachment_' . strval($file->uuid), 30);
+        if (!$lock->get()) {
+            return response()->json(['result' => false, 'message' => 'ほかの人が保存しているところです。少し待ってからもう一度保存してください。'], 423);
+        }
+        try {
+            $current = strval($disk->get($file->path));
+            if (!hash_equals(hash('sha256', $current), strval(request()->get('base_version')))) {
+                return response()->json(['result' => false, 'message' => '開いたあとに、ほかの人がこのファイルを保存しました。いったん閉じて開き直してください。'], 409);
+            }
+            // what it was: kept on the same record, not listed as an attachment
+            $previous = \Exceedone\Exment\Model\File::storeAs($file->file_type, $current, strval($file->local_dirname), strval($file->filename), [
+                'options' => ['exment_groupware_previous_of' => strval($file->uuid), 'saved_at' => now()->toDateTimeString()],
+            ]);
+            $previous->parent_id = $file->parent_id;
+            $previous->parent_type = $file->parent_type;
+            $previous->save();
+
+            $disk->put($file->path, $bytes);
+            $file->touch();
+        } finally {
+            $lock->release();
+        }
+
+        $this->commentEdited($record, $file, $previous);
+
+        return response()->json(['result' => true, 'version' => hash('sha256', $bytes)]);
+    }
+
+    /**
+     * The attachment and the record it hangs on, or 404. Keep this in step
+     * with core FileController::downloadFile (the same getData and
+     * hasPermissionData), only stricter: only a file attached to a record of
+     * a table that still exists, and that this user may read - anything else
+     * answers as if it were not there, so no page names a file it cannot
+     * vouch for.
+     *
+     * @param mixed $uuid
+     * @return array{0: \Exceedone\Exment\Model\File, 1: \Exceedone\Exment\Model\CustomValue}
+     */
+    protected function attachment($uuid): array
+    {
         $uuid = strval($uuid);
         $file = \Exceedone\Exment\Model\File::getData([$uuid, pathinfo($uuid, PATHINFO_FILENAME)]);
-        if (!$file) {
-            abort(404);
-        }
-        // Keep this in step with core FileController::downloadFile (the same
-        // getData and hasPermissionData), only stricter.
-        // Only a file attached to a record of a table that still exists, and
-        // that this user may read: anything else answers as if it were not
-        // there, so the page never names a file it cannot vouch for.
-        if (!isset($file->parent_id) || !isset($file->parent_type)) {
+        if (!$file || !isset($file->parent_id) || !isset($file->parent_type)) {
             abort(404);
         }
         $custom_table = \Exceedone\Exment\Model\CustomTable::getEloquent($file->parent_type);
         if (!isset($custom_table) || !$custom_table->hasPermissionData($file->parent_id)) {
             abort(404);
         }
-        $name = strval($file->filename);
-        if (!IbisOffice::opens($name)) {
+        $record = $custom_table->getValueModel($file->parent_id);
+        if (!isset($record) || !IbisOffice::opens(strval($file->filename))) {
             abort(404);
         }
+
+        return [$file, $record];
+    }
+
+    /**
+     * Whether the user may change the record the file hangs on (permission,
+     * workflow lock, parent records...), as Exment's own edit screen asks.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $record
+     */
+    protected function mayEdit($record): bool
+    {
+        try {
+            return $record->enableEdit(true) === true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * @param \Exceedone\Exment\Model\CustomValue $record
+     * @param \Exceedone\Exment\Model\File $file
+     * @param \Exceedone\Exment\Model\File $previous
+     */
+    protected function commentEdited($record, $file, $previous): void
+    {
+        try {
+            $comment = \Exceedone\Exment\Model\CustomTable::getEloquent(\Exceedone\Exment\Enums\SystemTableName::COMMENT)->getValueModel();
+            $comment->parent_id = $record->id;
+            $comment->parent_type = $record->custom_table->table_name;
+            $comment->setValue('comment_detail', '「' . strval($file->filename) . '」を Office（ibisOffice）で編集しました。'
+                . "\n" . '編集する前のファイル: ' . admin_url('files', [strval($previous->uuid)]));
+            $comment->save();
+        } catch (\Throwable $e) {
+            \Log::warning('[ExmentGroupware] could not comment on an edited attachment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * @param \Exceedone\Exment\Model\File $file
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function attachmentPage($file, bool $edit, bool $offerEdit)
+    {
         $office = new IbisOffice($this->plugin);
-        $download = admin_url('files', [strval($file->uuid)]);
+        $uuid = strval($file->uuid);
+        $download = admin_url('files', [$uuid]);
+        $hash = '';
+        if ($edit) {
+            $hash = hash('sha256', strval(\Illuminate\Support\Facades\Storage::disk(config('admin.upload.disk'))->get($file->path)));
+        }
 
         return response(view('exment_exment_groupware::office', [
-            'view' => true,
-            'file' => ['name' => $name, 'download' => $download],
-            'edit_url' => null,
+            'view' => !$edit,
+            'file' => [
+                'name' => strval($file->filename),
+                'download' => $download,
+                'edit' => $edit,
+                'base' => $hash,
+                'save_url' => $edit ? $this->plugin->getFullUrl('edit', $uuid, 'save') : null,
+            ],
+            'edit_url' => $offerEdit ? $this->plugin->getFullUrl('edit', $uuid) : null,
             'available' => $office->isAvailable() && $office->hostModuleUrl() !== null,
             'editor_base' => $office->baseUrl(),
             'host_module' => $office->hostModuleUrl(),
