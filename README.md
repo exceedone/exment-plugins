@@ -40,12 +40,16 @@ The plugins are provided in two ways. Choose by where your Exment runs.
 
 | Your Exment | Get the plugin from | How to install |
 |---|---|---|
-| Exment SaaS (`*.exments.com`) | Exment Plugin Market (https://exments.com) | [A. Exment SaaS](#a-exment-saas) |
+| Exment SaaS (`*.exments.com`) | Nothing to get: delivered with Exment, turned on by the tenant administrator | [A. Exment SaaS](#a-exment-saas) |
 | Your own server (on-premises, rental server), or you are a developer | GitHub Releases (https://github.com/exceedone/exment-plugins/releases) | [B. Your own server](#b-your-own-server) |
 
 ### A. Exment SaaS
 
-In Exment, open **Admin → Plugin market → Install**.
+There is nothing to download or upload.
+
+1. From Exment 7.2.0, the tenant administrator opens **Admin settings → Feature management** and presses **Use (install)** on the free official plugin. This installs it and does its first-time setup (for example the tables of Project Management).
+2. From then on, the operator of Exment SaaS updates it for every tenant that uses it. There is no update or roll-back button for the tenant.
+3. A plugin that no one in the tenant turned on is not installed: a new feature stays off until it is turned on.
 
 ### B. Your own server
 
@@ -188,12 +192,16 @@ Exment Plugin Project Management は、1 つの Exment プラグインです。
 
 | 使っている Exment | 入手先 | 入れ方 |
 |---|---|---|
-| Exment SaaS（`*.exments.com`） | Exment プラグインマーケット（https://exments.com） | [A. Exment SaaS の場合](#a-exment-saas-の場合) |
+| Exment SaaS（`*.exments.com`） | 入手は要りません（Exment と一緒に届き、テナントの管理者が使い始めます） | [A. Exment SaaS の場合](#a-exment-saas-の場合) |
 | 自分のサーバー（オンプレ・レンタルサーバー）、または開発者 | GitHub の Releases（https://github.com/exceedone/exment-plugins/releases） | [B. 自分のサーバーの場合](#b-自分のサーバーの場合) |
 
 ### A. Exment SaaS の場合
 
-Exment の **管理 → プラグインマーケット → インストール** から入れます。
+ダウンロードもアップロードも要りません。
+
+1. Exment 7.2.0 から、テナントの管理者が **管理者設定 → 機能の管理** の無料の公式プラグインで **使う（インストールする）** を押します。そのときに、インストールと初期セットアップ（例: プロジェクト管理のテーブルを作る）までします。
+2. そのあとは、Exment SaaS の運営側が、使っているテナントのプラグインをまとめて新しくします。テナントに、新しくする・戻すのボタンはありません。
+3. テナントでだれも使い始めていないプラグインは、入れません（新しい機能は、使い始めるまで使われない状態のままです）。
 
 ### B. 自分のサーバーの場合
 
