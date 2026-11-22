@@ -11,9 +11,10 @@ use Exceedone\Exment\Model\LoginUser;
 use Exceedone\Exment\Model\Menu;
 use Exceedone\Exment\Model\Plugin;
 use Exceedone\Exment\Model\System;
-use Exceedone\Exment\Services\Features;
 
 $ok = 0; $bad = 0;
+// Feature management is in the core from Exment 7.2.1; named as a string so an older core still runs this
+$Features = 'Exceedone\Exment\Services\Features';
 $check = function ($label, $cond, $extra = '') use (&$ok, &$bad) { echo ($cond ? 'OK  ' : 'NG  '), $label, $cond ? '' : "  $extra", "\n"; $cond ? $ok++ : $bad++; };
 
 $plugin = Plugin::where('plugin_name', 'ExmentITSupport')->first();
@@ -23,8 +24,8 @@ $I = 'App\Plugins\ExmentITSupport\Its';
 $Schema = 'App\Plugins\ExmentITSupport\Schema';
 $page = 'App\Plugins\ExmentITSupport\PluginPage';
 $desk = function () { return DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'its_desk')->get(); };
-$admin = LoginUser::whereIn('base_user_id', (array) System::system_admin_users())->first();
-$user = LoginUser::whereNotIn('base_user_id', (array) System::system_admin_users())->first();
+$admin = LoginUser::query()->whereIn('base_user_id', (array) System::system_admin_users())->first();
+$user = LoginUser::query()->whereNotIn('base_user_id', (array) System::system_admin_users())->first();
 $sees = function ($login) {
     System::clearCache();
     $login = LoginUser::find($login->id);              // its permissions read again
@@ -51,13 +52,13 @@ try {
     DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_target', strval($plugin->id))->delete();
     // the role groups get the plugin in the setup
     DB::table('role_group_permissions')->where('role_group_permission_type', RoleType::PLUGIN)->where('role_group_target_id', $plugin->id)->delete();
-    if (method_exists(Features::class, 'save')) {
+    if (class_exists($Features) && method_exists($Features, 'save')) {
         $on = [];
-        foreach (array_keys(Features::definitions()) as $key) {
+        foreach (array_keys($Features::definitions()) as $key) {
             if (strpos($key, 'exment_it_support') === 0) { $on[$key] = ['enabled' => 1]; }
         }
-        Features::save($on);
-        Features::reset();
+        $Features::save($on);
+        $Features::reset();
     }
     $check('fresh site: not set up', !$I::isInstalled());
 
@@ -81,7 +82,7 @@ try {
     $check('after the setup: the same single entry', $rows->count() === 1 && $rows->first()->id === $id);
 } finally {
     DB::rollBack();
-    if (method_exists(Features::class, 'reset')) { Features::reset(); }
+    if (class_exists($Features)) { $Features::reset(); }
 }
 
 echo "\n$ok OK, $bad NG\n";
