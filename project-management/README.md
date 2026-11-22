@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.15 / 1.7.15 で変わったこと**
+
+- Before 初期セットアップ, the left menu has the entry 「プロジェクト管理」 (in the group 「プロジェクト」 with Exment 7.2.1) for the system administrators; it opens the setup. Others see nothing until the setup, which keeps one entry. A site already set up does not change. `project-management/tools/test-menu-before-setup.php` tests it.
+  初期セットアップの前でも、左のメニューに「プロジェクト管理」を出します（Exment 7.2.1 では分類「プロジェクト」の下）。見えるのはシステム管理者だけで、開くとセットアップの画面です。ほかの人には、セットアップが終わるまで出ません。セットアップのあともメニューは 1 つです。セットアップ済みのサイトは変わりません。
+
 **Changed in 1.7.14 / 1.7.14 で変わったこと**
 
 - The issue form shows the eight fields Backlog shows (status, assignee, priority, milestone, category, version, start and due date); the others fold under 「その他の項目」, which opens by itself when one of them has a value or an error, and stays open for those who left it open. A field's help is behind the (?) next to its name.

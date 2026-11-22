@@ -34,6 +34,12 @@ class PluginPage extends PluginPageBase
         } catch (\Throwable $e) {
             \Log::error('ExmentITSupport could not add its public routes: ' . $e->getMessage());
         }
+        // before the setup: the entry in the left menu that leads to it (7.2.1)
+        try {
+            Schema::ensurePreSetupMenu();
+        } catch (\Throwable $e) {
+            \Log::error('ExmentITSupport could not add its menu before the setup: ' . $e->getMessage());
+        }
     }
 
     /** The desk draws its own header. */

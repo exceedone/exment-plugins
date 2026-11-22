@@ -559,6 +559,26 @@ class Schema
      *
      * @return bool whether the old folder was taken apart
      */
+    /**
+     * The menu entry before the setup (7.2.1): on a fresh site the plugin made it only
+     * in the setup, so nobody knew where to start. The same entry the setup keeps
+     * (its_desk, in the group "ITサポート" when the core has it), made once; the desk
+     * shows the setup until it is done. Only those who may use the plugin see an
+     * entry of a plugin - on a fresh site, the system administrators. A site that is
+     * set up is left alone.
+     */
+    public static function ensurePreSetupMenu(): void
+    {
+        if (Its::isInstalled() || !hasTable('admin_menu')) {
+            return;
+        }
+        if (\DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'its_desk')->exists()) {
+            return;
+        }
+        static::arrangeMenu();
+        \Exceedone\Exment\Model\System::clearCache();
+    }
+
     protected static function arrangeMenu(): bool
     {
         $plugin = Its::plugin();

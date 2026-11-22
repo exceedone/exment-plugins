@@ -578,6 +578,76 @@ class PortalSetup
         return is_string($at) && $at !== '' ? $at : null;
     }
 
+    /**
+     * The menu entry a site has before 初期セットアップ (7.2.1): on a fresh site the
+     * plugin made its entry only in the setup, so nobody knew where to start.
+     *
+     * One entry, "プロジェクト管理", in the group of the feature map when the core has
+     * it, pointing at the plugin; the plugin's page shows the setup screen until it
+     * is done. Only those who may use the plugin see an entry of a plugin - on a
+     * fresh site, the system administrators. Its own name, not the one the setup
+     * imports (pm_portal_page): the setup reports a name in use as taken. The setup
+     * takes it away when it has made its own (markInstalled). Made once; a site that
+     * is set up, or has any entry of the plugin, is left alone.
+     */
+    public static function ensurePreSetupMenu(): void
+    {
+        if (static::isInstalled() || !hasTable('admin_menu')) {
+            return;
+        }
+        $plugin = static::plugin();
+        if (!isset($plugin)) {
+            return;
+        }
+        $exists = \DB::table('admin_menu')->where(function ($q) use ($plugin) {
+            $q->where('menu_name', self::PRESETUP_MENU)
+                ->orWhere(function ($q) use ($plugin) {
+                    $q->where('menu_type', 'plugin')->where('menu_target', strval($plugin->id));
+                });
+        })->exists();
+        if ($exists) {
+            return;
+        }
+        $group = PortalSchema::menuGroupId();
+        $now = now();
+        \DB::table('admin_menu')->insert([
+            'parent_id' => $group ?? 0,
+            'order' => isset($group) ? 1 : 34,
+            'title' => strval(PortalDefinition::trans('schema.menu.single')),
+            'icon' => 'fa-tasks',
+            'uri' => '',
+            'menu_type' => 'plugin',
+            'menu_target' => strval($plugin->id),
+            'menu_name' => self::PRESETUP_MENU,
+            'options' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        System::clearCache();
+    }
+
+    /** The name of the entry before the setup (ensurePreSetupMenu). */
+    const PRESETUP_MENU = 'pm_portal_presetup';
+
+    /**
+     * After the setup: its own entry is there (the template's pm_portal_page), so the
+     * one from before the setup goes - one entry, as on a site set up before 7.2.1.
+     */
+    protected static function removePreSetupMenu(): void
+    {
+        if (!hasTable('admin_menu')) {
+            return;
+        }
+        $ids = \DB::table('admin_menu')->where('menu_name', self::PRESETUP_MENU)->pluck('id')->all();
+        if (empty($ids)) {
+            return;
+        }
+        if (hasTable('admin_role_menu')) {
+            \DB::table('admin_role_menu')->whereIn('menu_id', $ids)->delete();
+        }
+        \DB::table('admin_menu')->whereIn('id', $ids)->delete();
+    }
+
     protected static function markInstalled(string $prefix): void
     {
         $plugin = static::plugin();
@@ -599,6 +669,7 @@ class PortalSetup
         $plugin->save();
 
         static::$state_cache = null;
+        static::removePreSetupMenu();
         System::clearCache();
     }
 
