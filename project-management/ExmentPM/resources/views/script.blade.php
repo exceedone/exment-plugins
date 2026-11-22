@@ -373,6 +373,7 @@ window.PmPortalBoot = function () {
         }
         if (src.cby || src.cd) { out.push(esc(L.src_created) + ' ' + esc([src.cby, src.cd].filter(Boolean).join(' '))); }
         if (src.uby || src.ud) { out.push(esc(L.src_updated) + ' ' + esc([src.uby, src.ud].filter(Boolean).join(' '))); }
+        if (src.asg) { out.push(esc(L.src_assignees) + ' ' + esc(src.asg)); }
         return out.join('<br>');
     }
     // The due date with its time (schema 22), e.g. 11/20 15:00.
@@ -2351,7 +2352,9 @@ window.PmPortalBoot = function () {
             '<div class="bl-dsum">' +
             '<span class="it"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
-            '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') || '—') + '</span>' +
+            // No user here for the source's assignee (schema 29): its name, greyed.
+            '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') ||
+                (res.source && res.source.asg ? '<span style="color:var(--bl-faint);" title="' + esc(L.src_assignees_hint) + '">' + esc(res.source.asg) + '</span>' : '—')) + '</span>' +
             '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
             '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +

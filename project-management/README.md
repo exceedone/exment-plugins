@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.7 / 1.7.7 で変わったこと**
+
+- Schema 29: issues get 移行元の担当者 (`source_assignees`), the source's assignees by name. An import can only set the assignees to people who are users here; the names of the others are kept here, indexed, so the API and MCP can find the issues of one name and set the assignee later. The issue detail shows the name, greyed, while the assignee is empty. Run データ構造の更新 after updating.
+  スキーマ 29: 課題に「移行元の担当者」（`source_assignees`）を足しました。取り込みでは、Exment にユーザーがいる人しか担当者に入れられません。ほかの人の名前をここに残します。検索の対象なので、API や MCP で名前から課題を探し、あとで担当者を入れられます。担当者が空のあいだは、課題の詳細の担当者の欄に名前を薄く出します。更新したあと「データ構造の更新」を押してください。
+
 **Changed in 1.7.6 / 1.7.6 で変わったこと**
 
 - With Exment 7.2.1 or later, opening a notification of an issue or a wiki page opens it in the portal (`#issue-ISS00239`), and `${value_url}` in Exment's notification mails is the portal's address too. The notification itself stays one click away (通知の内容を見る).

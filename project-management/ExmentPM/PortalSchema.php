@@ -127,8 +127,15 @@ class PortalSchema
      * edit only. Who is on a project is set through its members columns,
      * which PortalMembership keeps in step. Narrowed in place on the way
      * past 28 (retiredGrants()), so members keep editing what they edit.
+     *
+     * 29: who an imported issue was assigned to at the source, by name
+     * (ISS00113). An import can only fill the assignees with people who are
+     * users here; the others were left empty and their names lost. The text
+     * keeps them, indexed so the API and MCP can find the issues of one
+     * name and set the assignee once that person has a user, or is mapped
+     * to one. Empty for anything not imported.
      */
-    const VERSION = 28;
+    const VERSION = 29;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -177,6 +184,9 @@ class PortalSchema
         'source_updated_by' => 'source_updated_by',
         'source_updated_at' => 'source_updated_at',
         'custom_fields' => 'custom_fields',
+        // Schema 29: the source's assignees by name, for the ones with no
+        // user here (ISS00113).
+        'source_assignees' => 'source_assignees',
         // Schema 27: the other roles on an issue, and its difficulty.
         'sub_assignees' => 'sub_assignees',
         'managers' => 'managers',
@@ -826,6 +836,12 @@ class PortalSchema
             'freeword_search' => '1',
             'help' => PortalDefinition::trans('schema.help.custom_fields'),
         ], 66);
+        // Schema 29: indexed, so "the issues of this name" is one filter.
+        $columns[] = static::column($ic['source_assignees'], 'source.assignees', 'text', [
+            'index_enabled' => '1',
+            'freeword_search' => '1',
+            'help' => PortalDefinition::trans('schema.help.source_assignees'),
+        ], 67);
 
         // Schema 27: the other people on the issue, right after the
         // assignees (same order; Exment then orders by creation), and the
