@@ -35,6 +35,12 @@ class PluginPage extends PluginPageBase
         parent::__construct($plugin);
 
         PluginEvent::registerGuards();
+        // before 初期セットアップ: the entry in the left menu that leads to it (7.2.1)
+        try {
+            PortalSetup::ensurePreSetupMenu();
+        } catch (\Throwable $e) {
+            \Log::error('ExmentPM could not add its menu before the setup: ' . $e->getMessage());
+        }
     }
 
     /**
