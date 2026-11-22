@@ -3113,7 +3113,10 @@ class PmPortalController extends AdminControllerBase
         if ($st === null || empty($done)) {
             return null;
         }
-        $cutoff = \Carbon\Carbon::now()->subDays($days)->format('Y-m-d H:i:s');
+        // From the start of the day, not this second: the same all day, so
+        // the archive summary and the burndown, cached on it, are read once
+        // a day per change of the issues rather than on every load.
+        $cutoff = \Carbon\Carbon::today()->subDays($days)->format('Y-m-d H:i:s');
         $marks = implode(',', array_fill(0, count($done), '?'));
 
         return [

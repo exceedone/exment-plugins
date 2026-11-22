@@ -15,10 +15,15 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Changed in 1.7.10 / 1.7.10 で変わったこと**
+**Changed in 1.7.11 / 1.7.11 で変わったこと**
 
 - With Exment 7.2.0 the menu entry goes under the group "プロジェクト" of the left menu (the feature map of exment.net), made when missing (`Menu::groupParentId()` of the core). A new install puts it there; an update moves it only while it is still at the top level (a migration that runs when the plugin is updated), so an entry an administrator moved stays. An older Exment keeps it at the top level.
   Exment 7.2.0 では、メニューの「プロジェクト管理」を左のメニューの分類「プロジェクト」（exment.net の機能マップ）の下に置きます（なければ作る。本体の `Menu::groupParentId()`）。新しく入れたときはそこに作り、更新では、いちばん上にあるときだけ移します（プラグインの更新で走る migration）。管理者が動かしたメニューはそのままです。古い Exment では今までどおりいちばん上です。
+
+**Changed in 1.7.10 / 1.7.10 で変わったこと**
+
+- The archive cutoff counts from the start of the day instead of this second, so the archive summary and the burndown that 1.7.9 caches are actually read from the cache: their key held the cutoff, which changed on every load.
+  アーカイブの区切りを「今の時刻」ではなく「その日の始まり」から数えるようにしました。1.7.9 のキャッシュの鍵に区切りの時刻が入っていて、毎回ちがう鍵になり、アーカイブの件数とバーンダウンがキャッシュから読まれていませんでした。
 
 **Changed in 1.7.9 / 1.7.9 で変わったこと**
 
