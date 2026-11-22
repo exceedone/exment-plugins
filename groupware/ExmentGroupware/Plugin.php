@@ -126,6 +126,29 @@ class Plugin extends PluginPageBase
      * @param string|int $node
      * @return \Symfony\Component\HttpFoundation\Response
      */
+    /**
+     * A blank Word, Excel or PowerPoint document. An empty file (0 bytes, as
+     * Windows makes with New > Word document) has nothing ibisOffice could
+     * tell the kind from - it opened as a spreadsheet - so the editor opens
+     * this instead, and the first save makes the file a real document.
+     *
+     * @param string $ext docx, xlsx or pptx
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function blank($ext)
+    {
+        $ext = strtolower(strval($ext));
+        $path = __DIR__ . '/resources/blank/blank.' . $ext;
+        if (!in_array($ext, IbisOffice::EXTENSIONS, true) || !is_file($path)) {
+            abort(404);
+        }
+        return response(strval(file_get_contents($path)), 200, [
+            'Content-Type' => 'application/octet-stream',
+            'Cache-Control' => 'private, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function office($workspace, $node)
     {
         if (!OfficeOpener::fileServerAvailable()) {
@@ -160,6 +183,7 @@ class Plugin extends PluginPageBase
             'locale' => str_starts_with(strval(app()->getLocale()), 'ja') ? 'ja' : 'en',
             'project_url' => IbisOffice::PROJECT_URL,
             'version' => IbisOffice::VERSION,
+            'blank_url' => $this->plugin->getFullUrl('blank', '__EXT__'),
         ])->render())->header('X-Frame-Options', 'SAMEORIGIN');
     }
 
@@ -422,6 +446,7 @@ class Plugin extends PluginPageBase
             'locale' => str_starts_with(strval(app()->getLocale()), 'ja') ? 'ja' : 'en',
             'project_url' => IbisOffice::PROJECT_URL,
             'version' => IbisOffice::VERSION,
+            'blank_url' => $this->plugin->getFullUrl('blank', '__EXT__'),
         ])->render())->header('X-Frame-Options', 'SAMEORIGIN');
     }
 
