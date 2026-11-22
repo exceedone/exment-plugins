@@ -124,6 +124,41 @@ class IbisOffice
         return in_array(strtolower(pathinfo($name, PATHINFO_EXTENSION)), static::EXTENSIONS, true);
     }
 
+    /** Free space needed in public/ to install (the release unpacks to ~125MB, plus its .gz copies). */
+    public const NEEDED_BYTES = 180 * 1024 * 1024;
+
+    /**
+     * What would stop an install here, in words for the administrator; empty when
+     * nothing is known to. Cheap (no network): shown on every page that offers the
+     * install. Whether GitHub can be reached is only known when the install tries.
+     *
+     * @return string[]
+     */
+    public function problems(): array
+    {
+        $problems = [];
+        if (!class_exists(\ZipArchive::class)) {
+            $problems[] = 'PHP の zip の拡張がありません（php-zip を入れてください）。';
+        }
+        // the folder it goes into, or the nearest one that is there
+        $dir = dirname($this->installDir());
+        while (!is_dir($dir) && dirname($dir) !== $dir) {
+            $dir = dirname($dir);
+        }
+        if (!is_writable($dir)) {
+            $problems[] = 'サイトの public/ に書き込めません（' . $dir . '）。Web サーバーのユーザーが書けるようにしてください。';
+        } else {
+            $free = @disk_free_space($dir);
+            if (is_float($free) && $free < static::NEEDED_BYTES) {
+                $problems[] = 'public/ のあるディスクの空きが足りません（約 180MB 要ります。今 ' . intval($free / 1048576) . 'MB）。';
+            }
+        }
+        return $problems;
+    }
+
+    /** The way round when it cannot be installed here. */
+    public const ELSEWHERE = '入れられないときは、展開した ibisOffice をほかの場所（https）に置き、プラグインの設定の「ibisOffice の場所（URL）」にその URL を入れても使えます。';
+
     /** The files a .gz copy is written for: what the browser fetches and compresses well. */
     public const GZIP_EXTENSIONS = ['wasm', 'js', 'mjs', 'css', 'json', 'html', 'svg', 'txt', 'map'];
 
@@ -250,8 +285,9 @@ HTACCESS;
      */
     public function install(): void
     {
-        if (!class_exists(\ZipArchive::class)) {
-            throw new \RuntimeException('The zip extension of PHP is needed.');
+        $problems = $this->problems();
+        if (!empty($problems)) {
+            throw new \RuntimeException(implode(' ', $problems));
         }
         $work = storage_path('app/exment_groupware_tmp/' . Str::random(16));
         if (!@mkdir($work, 0777, true) && !is_dir($work)) {
@@ -259,9 +295,13 @@ HTACCESS;
         }
         try {
             $zipPath = $work . '/ibisoffice.zip';
-            $response = Http::timeout(600)->withOptions(['sink' => $zipPath])->get(sprintf(static::RELEASE_URL, static::VERSION));
+            try {
+                $response = Http::timeout(600)->connectTimeout(15)->withOptions(['sink' => $zipPath])->get(sprintf(static::RELEASE_URL, static::VERSION));
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                throw new \RuntimeException('GitHub（github.com）につながりません。サーバーから外へつながるか（プロキシ・ファイアウォール）を確かめてください。' . static::ELSEWHERE);
+            }
             if (!$response->successful() || !is_file($zipPath)) {
-                throw new \RuntimeException('The download failed (HTTP ' . $response->status() . ').');
+                throw new \RuntimeException('ダウンロードできませんでした（HTTP ' . $response->status() . '）。' . static::ELSEWHERE);
             }
             if (!hash_equals(static::SHA256, strval(hash_file('sha256', $zipPath)))) {
                 throw new \RuntimeException('The SHA-256 of the download does not match. It was not installed.');

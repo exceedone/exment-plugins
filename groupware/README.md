@@ -6,6 +6,12 @@
 
 <a id="english"></a>
 
+**Changed in 0.4.5**
+
+- Office is a row of its own in Feature management (`exment_groupware.office`; on for the sites that had the plugin, off on a new site). While ibisOffice is not installed, the row says what it needs (the PHP zip extension, about 125 MB in `public/`, no LibreOffice) and, on an Exment whose Feature management has row buttons, gives **ibisOffice を入れる**.
+- On the page of a Word, Excel or PowerPoint file, a system administrator sees, where the preview would be, that ibisOffice could show and edit it here, with the way to install it. Others see the page as before.
+- What would stop the install is said before it is tried: no zip extension, `public/` not writable, not enough space; and when GitHub cannot be reached. Each with the way round (serve ibisOffice elsewhere and set its URL).
+
 **Changed in 0.4.4**
 
 - An empty Office file (0 bytes, as Windows makes with New > Word document) opened in ibisOffice as a spreadsheet. It now opens as a blank document of the kind its name says (docx, xlsx, pptx), and the first save makes it a real document.
@@ -119,6 +125,12 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 ---
 
 <a id="japanese"></a>
+
+**0.4.5 で変わったこと**
+
+- 機能の管理に、Office を 1 行で出しました（`exment_groupware.office`。前からプラグインを入れていたサイトは「使う」、新しいサイトは「使わない」から）。ibisOffice が入っていないあいだは、要るもの（PHP の zip の拡張・public/ に約 125MB・LibreOffice は不要）を書き、行にボタンを出せる Exment では「ibisOffice を入れる」を出します。
+- Word・Excel・PowerPoint のファイルの画面で、システム管理者には、プレビューの欄に「ibisOffice を入れると、ここで見る・編集ができます」と入れる画面への案内を出します。ほかの人の画面は今までどおりです。
+- 入れられないとき（zip の拡張がない・public/ に書けない・空きが足りない・GitHub につながらない）は、その理由と、ほかの場所に置いて URL を設定する方法を出します。
 
 **0.4.4 で変わったこと**
 

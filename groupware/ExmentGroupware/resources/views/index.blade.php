@@ -47,6 +47,13 @@
             <tr><th>使えるブラウザー</th><td>WebGPU のあるブラウザー: Chrome・Edge、Safari 26 以降（HTTPS のサイト）</td></tr>
         </table>
 
+        @if ($can_install && !$custom_url && !empty($problems))
+            <div class="alert alert-warning" style="max-width:720px">
+                <p><strong>このままでは ibisOffice を入れられません。</strong></p>
+                <ul style="margin-bottom:6px">@foreach ($problems as $p)<li>{{ $p }}</li>@endforeach</ul>
+                <p style="margin:0">{{ $elsewhere }}</p>
+            </div>
+        @endif
         @if ($can_install && !$custom_url)
             <form method="post" action="{{ $install_url }}" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'インストール中…（数分かかります）';">
                 <input type="hidden" name="_token" value="{{ csrf_token() }}">

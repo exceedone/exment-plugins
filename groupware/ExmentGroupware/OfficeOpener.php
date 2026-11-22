@@ -60,8 +60,23 @@ class OfficeOpener
         if (!IbisOffice::opens(strval($node->name))) {
             return null;
         }
-        if (!(new IbisOffice($plugin))->isAvailable()) {
+        if (!FeatureGate::allowed(FeatureGate::OFFICE)) {
             return null;
+        }
+        $office = new IbisOffice($plugin);
+        if (!$office->isAvailable()) {
+            // ISS02827: a system administrator learns, on the file itself, that it could be
+            // seen and edited here; the others see the page as before
+            $user = \Exment::user();
+            if ($office->customUrl() !== null || !isset($user) || !$user->hasPermission(\Exceedone\Exment\Enums\Permission::SYSTEM)) {
+                return null;
+            }
+            return [
+                'label' => 'ibisOffice を入れる',
+                'url' => $plugin->getFullUrl(),
+                'icon' => 'fa-download',
+                'embed_url' => $plugin->getFullUrl('office-missing'),
+            ];
         }
         return [
             'label' => 'Office で開く',

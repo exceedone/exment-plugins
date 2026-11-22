@@ -21,6 +21,7 @@ namespace App\Plugins\ExmentGroupware;
 class FeatureGate
 {
     const MAIL = 'exment_groupware.mail';
+    const OFFICE = 'exment_groupware.office';
     const FILE_SERVER = 'file_server';
 
     // a string, not ::class: an Exment without Feature management does not have the class
@@ -82,6 +83,43 @@ class FeatureGate
             // that had the plugin then (a new site starts with it off)
             'existing' => true,
         ]);
+    }
+
+    /**
+     * Office (ISS02827): a row of its own in Feature management. While ibisOffice is
+     * not there, the row says what it needs and gives the button to install it (an
+     * Exment whose Feature management has no buttons shows the words only). Its pages
+     * stop when it is turned off. It stays on in the sites that had the plugin before.
+     */
+    public static function registerOffice($plugin): void
+    {
+        if (!static::available()) {
+            return;
+        }
+        $office = new IbisOffice($plugin);
+        $missing = !$office->isAvailable() && $office->customUrl() === null;
+        $description = 'ブラウザーで Word・Excel・PowerPoint を開く・編集する（ファイルサーバーとデータの添付。Exment Plugin Groupware の ibisOffice）。';
+        if (!$missing) {
+            $description .= $office->customUrl() !== null ? ' ほかの場所の ibisOffice を使います。' : ' ibisOffice ' . IbisOffice::VERSION . ' がこのサイトに入っています。';
+        } else {
+            $description .= ' ibisOffice がまだ入っていません。入れるには、PHP の zip の拡張と、サイトの public/ に約 125MB の空きが要ります（LibreOffice は要りません）。';
+            $problems = $office->problems();
+            if (!empty($problems)) {
+                $description .= ' 今は入れられません: ' . implode(' ', $problems);
+            }
+        }
+        $definition = [
+            'label' => static::text('feature_office', 'Office（ibisOffice）'),
+            'description' => $description,
+            'endpoints' => [$plugin->getRouteUri('office'), $plugin->getRouteUri('view'), $plugin->getRouteUri('edit'), $plugin->getRouteUri('blank')],
+            'plugin' => $plugin->plugin_name,
+            'existing' => true,
+            'manual' => 'plugin_groupware?id=office',
+        ];
+        if ($missing) {
+            $definition['action'] = ['label' => 'ibisOffice を入れる', 'url' => $plugin->getFullUrl()];
+        }
+        call_user_func([static::FEATURES, 'register'], static::OFFICE, $definition);
     }
 
     /**
