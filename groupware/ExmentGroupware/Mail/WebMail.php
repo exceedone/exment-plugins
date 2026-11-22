@@ -535,7 +535,7 @@ class WebMail
             $attachments[] = ['name' => $file->getClientOriginalName(), 'type' => strval($file->getMimeType() ?: 'application/octet-stream'), 'content' => strval(file_get_contents($file->getRealPath()))];
         }
         if ($bytes > static::MAX_ATTACH_BYTES) {
-            throw new MailException('添付ファイルは合わせて ' . intval(static::MAX_ATTACH_BYTES / 1024 / 1024) . ' MB までです。大きいファイルは、ファイルサーバーの共有リンクで送ってください。');
+            throw new MailException('添付ファイルは合わせて ' . intval(static::MAX_ATTACH_BYTES / 1024 / 1024) . ' MB までです。大きいファイルは、ファイル共有の共有リンクで送ってください。');
         }
 
         return [

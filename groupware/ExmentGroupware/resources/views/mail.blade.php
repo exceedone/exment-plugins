@@ -563,7 +563,7 @@ function renderChips() {
 function addFiles(list) {
     var total = S.comp.files.concat(S.comp.keep).reduce(function (s, f) { return s + f.size; }, 0);
     Array.prototype.forEach.call(list, function (f) {
-        if (total + f.size > C.maxAttach) { toast('添付は合わせて ' + Math.round(C.maxAttach / 1048576) + ' MB までです（' + f.name + '）。大きいファイルはファイルサーバーの共有リンクで送ってください。', true); return; }
+        if (total + f.size > C.maxAttach) { toast('添付は合わせて ' + Math.round(C.maxAttach / 1048576) + ' MB までです（' + f.name + '）。大きいファイルはファイル共有の共有リンクで送ってください。', true); return; }
         total += f.size; S.comp.files.push(f);
     });
     S.comp.dirty = true; renderChips();
