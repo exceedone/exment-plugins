@@ -98,7 +98,7 @@ class FeatureGate
         }
         $office = new IbisOffice($plugin);
         $missing = !$office->isAvailable() && $office->customUrl() === null;
-        $description = 'ブラウザーで Word・Excel・PowerPoint を開く・編集する（ファイルサーバーとデータの添付。Exment Plugin Groupware の ibisOffice）。';
+        $description = 'ブラウザーで Word・Excel・PowerPoint を開く・編集する（ファイル共有とデータの添付。Exment Plugin Groupware の ibisOffice）。';
         if (!$missing) {
             $description .= $office->customUrl() !== null ? ' ほかの場所の ibisOffice を使います。' : ' ibisOffice ' . IbisOffice::VERSION . ' がこのサイトに入っています。';
         } else {
