@@ -745,6 +745,44 @@ class PmPortalController extends AdminControllerBase
      * @param mixed $me
      * @return array<string, array<string, mixed>> issue id => detail
      */
+    /**
+     * Keep the issue screens that come with the page under a size budget.
+     *
+     * Thirty screens are usually ~80KB, but one issue with a long thread
+     * can be megabytes on its own (an imported Backlog issue of 132
+     * comments made a 6MB page). The biggest go first; the screen fetches
+     * whatever is missing when it is opened, as it does for any issue past
+     * the embed limit.
+     *
+     * @param array<string, mixed> $details
+     * @return array<string, mixed>
+     */
+    protected function trimEmbedded(array $details): array
+    {
+        $budget = intval(config('exment.pmportal.embed_details_bytes', 400000));
+        if ($budget <= 0 || empty($details)) {
+            return $details;
+        }
+        $sizes = [];
+        foreach ($details as $key => $one) {
+            $sizes[$key] = strlen(strval(json_encode($one, JSON_UNESCAPED_UNICODE)));
+        }
+        $total = array_sum($sizes);
+        if ($total <= $budget) {
+            return $details;
+        }
+        arsort($sizes);
+        foreach ($sizes as $key => $size) {
+            if ($total <= $budget) {
+                break;
+            }
+            unset($details[$key]);
+            $total -= $size;
+        }
+
+        return $details;
+    }
+
     protected function detailsFor($project, $issues, $me): array
     {
         if ($issues->isEmpty()) {
@@ -2623,17 +2661,8 @@ class PmPortalController extends AdminControllerBase
 
     protected function projectStampValue($project)
     {
-        $row = $this->issue_table->getValueModel()->query()
-            ->where('parent_id', $project->id)
-            ->where('parent_type', $this->project_table->table_name)
-            ->selectRaw('count(*) as pm_n, max(updated_at) as pm_at')
-            ->first();
-
-        return implode('/', [
-            intval(array_get($row, 'pm_n', 0)),
-            substr(strval(array_get($row, 'pm_at', '')), 0, 19),
-            substr(strval($project->updated_at), 0, 19),
-        ]);
+        // count/newest change of its issues (read once per request), then the project's own
+        return $this->issueStamp(intval($project->id)) . '/' . substr(strval($project->updated_at), 0, 19);
     }
 
     /* ================================================================== */
@@ -2732,7 +2761,7 @@ class PmPortalController extends AdminControllerBase
                 return $full->get($issue->id) ?? $issue;
             })->values();
         }
-        $details = $this->detailsFor($project, $embedded, $me);
+        $details = $this->trimEmbedded($this->detailsFor($project, $embedded, $me));
 
         // Members and viewers as the screen uses them - to offer assignees
         // and to name people: those the columns name first, in their order,
@@ -2826,7 +2855,13 @@ class PmPortalController extends AdminControllerBase
             ],
             'details' => (object) $details,
             'feed' => $feed,
-            'burndown' => $features['gantt'] ? $this->buildBurndown($project, $this->withArchivedOf($project, $issues, $archive, $milestones), $milestones) : [],
+            // Issues plus their revision history: kept until an issue of the
+            // project changes, or the day does (0.16s on ex1task).
+            'burndown' => $features['gantt'] ? $this->pmCached('burndown', [
+                intval($project->id), $this->issueStamp(intval($project->id)), \Carbon\Carbon::today()->format('Y-m-d'), $milestones, $archive,
+            ], function () use ($project, $issues, $archive, $milestones) {
+                return $this->buildBurndown($project, $this->withArchivedOf($project, $issues, $archive, $milestones), $milestones);
+            }) : [],
             'archive' => $this->archiveSummary($project, $archive),
             'wiki' => $wiki,
             'files' => $files,
@@ -3107,11 +3142,19 @@ class PmPortalController extends AdminControllerBase
         $is = $this->def['issue'];
         $ms = $this->issueColumnSql(array_get($is, 'milestone')) ?? 'NULL';
         $pa = $this->issueColumnSql(array_get($is, 'parent')) ?? 'NULL';
-        $groups = $this->projectIssueQuery($project)->toBase()
-            ->whereRaw($archive['archived_sql'], $archive['bindings'])
-            ->selectRaw($archive['st'] . ' as st, ' . $ms . ' as ms, ' . $pa . ' as pa, count(*) as n')
-            ->groupByRaw($archive['st'] . ', ' . $ms . ', ' . $pa)
-            ->get();
+        // Grouping ~2,000 finished issues on columns computed from their JSON
+        // took 0.25s on ex1task; it changes only when an issue does.
+        $groups = $this->pmCached('archive', [
+            intval($project->id), $this->issueStamp(intval($project->id)), $archive['archived_sql'], $archive['bindings'], $ms, $pa,
+        ], function () use ($project, $archive, $ms, $pa) {
+            return $this->projectIssueQuery($project)->toBase()
+                ->whereRaw($archive['archived_sql'], $archive['bindings'])
+                ->selectRaw($archive['st'] . ' as st, ' . $ms . ' as ms, ' . $pa . ' as pa, count(*) as n')
+                ->groupByRaw($archive['st'] . ', ' . $ms . ', ' . $pa)
+                ->get()->map(function ($g) {
+                    return (object) (array) $g;
+                })->all();
+        });
         $out = ['days' => $archive['days'], 'count' => 0, 'by_status' => [], 'by_ms' => [], 'kids' => []];
         foreach ($groups as $g) {
             $n = intval($g->n);
