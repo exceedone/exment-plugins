@@ -587,7 +587,9 @@
     </div>
 </div>
 
-<script type="application/json" id="pmportal-data">@json($payload)</script>
+{{-- Japanese as itself (not \uXXXX, which doubled its size) and / unescaped;
+     the HEX flags still keep </script>, & and quotes from closing the tag. --}}
+<script type="application/json" id="pmportal-data">@json($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)</script>
 <script type="application/json" id="pmportal-lang">@json($lang)</script>
 {{-- The script and the stylesheet are files of their own (PortalDefinition::
      ASSETS): the browser keeps them across pages and versions them by content,

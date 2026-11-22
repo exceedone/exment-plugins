@@ -1346,6 +1346,7 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-rc { color: var(--bl-accent-d); font-size: 11px; margin-right: 2px; }
 .pmportal .bl-dback-foot{margin:14px 0 4px;}
 .pmportal .bl-dback.bl-dback-s{padding:4px 12px;font-size:12px;}
+.pmportal .bl-dback.bl-dback-proj{flex:0 0 auto;align-self:center;margin-right:4px;}
 .pmportal .bl-dsum{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-bottom:12px;padding:9px 12px;
   background:var(--bl-box2);border:1px solid var(--bl-line2);border-radius:var(--bl-radius);}
 .pmportal .bl-dsum .it{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}

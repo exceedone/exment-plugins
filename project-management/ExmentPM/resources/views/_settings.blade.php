@@ -295,6 +295,8 @@
   font-size:12px;color:var(--bl-sub);cursor:pointer;white-space:nowrap;}
 .pmportal .pp-set-row .pp-set-done input{margin:0;width:14px;height:14px;}
 .pmportal .pp-set-row .pp-set-done.on{color:var(--bl-accent-d);font-weight:700;}
+.pmportal .pp-set-donenote{margin:8px 0 2px;padding:6px 10px;border-radius:4px;background:var(--bl-box,#f7f8f8);color:var(--bl-sub,#666);font-size:12px;}
+.pmportal .pp-set-donenote.warn{background:#fff4e5;color:#8a4b00;}
 .pmportal .pp-set-tpl{border:1px solid var(--bl-line);background:var(--bl-box);color:var(--bl-sub);border-radius:4px;
   font-size:11.5px;padding:4px 9px;cursor:pointer;white-space:nowrap;flex:none;}
 .pmportal .pp-set-tpl:hover{background:var(--bl-hover);color:var(--bl-ink);}
@@ -1382,6 +1384,15 @@
             listBox.setAttribute('data-list', secKey);
             sorted.forEach(function (row) { listBox.appendChild(listRow(spec, row, listBox, host, secKey)); });
             host.appendChild(listBox);
+            if (secKey === 'statuses' && spec.done) {
+                // ISS00255: 完了以外 hides only the last status, in this
+                // order, that counts as done. Name it, so a done status added
+                // after 完了 (as an import once did) shows up here at once
+                // rather than as a 完了以外 that hides nothing.
+                listBox._doneNote = el('div', 'pp-set-donenote');
+                host.appendChild(listBox._doneNote);
+                doneNote(listBox);
+            }
 
             // -- add --
             var add = el('div', 'pp-set-addrow');
@@ -1494,7 +1505,8 @@
                 if (!v) { name.value = lastName; say(L.list_name_required, 'err'); return; }
                 var prev = lastName;
                 lastName = v;
-                patchRow(spec, row.id, { name: v }, function () { name.value = prev; lastName = prev; });
+                doneNote(listBox);
+                patchRow(spec, row.id, { name: v }, function () { name.value = prev; lastName = prev; doneNote(listBox); });
             });
             nameWrap.appendChild(name);
             el_.appendChild(nameWrap);
@@ -1522,9 +1534,11 @@
                     var patch = {};
                     patch[spec.done] = done.checked ? '1' : '0';
                     doneWrap.classList.toggle('on', done.checked);
+                    doneNote(listBox);
                     patchRow(spec, row.id, patch, function () {
                         done.checked = !done.checked;
                         doneWrap.classList.toggle('on', done.checked);
+                        doneNote(listBox);
                     });
                 });
                 doneWrap.appendChild(done);
@@ -1687,7 +1701,24 @@
             rowEl.addEventListener('dragleave', function () { rowEl.classList.remove('over'); });
             rowEl.addEventListener('drop', function (ev) { ev.preventDefault(); });
         }
+        function doneNote(listBox) {
+            var note = listBox && listBox._doneNote;
+            if (!note) { return; }
+            var done = [];
+            listBox.querySelectorAll('.pp-set-row').forEach(function (n) {
+                var cb = n.querySelector('.pp-set-done input');
+                var nm = n.querySelector('.nm .pp-set-in');
+                if (cb && cb.checked) { done.push(nm ? nm.value : ''); }
+            });
+            var last = done.length ? done[done.length - 1] : null;
+            var rest = done.slice(0, -1);
+            note.textContent = last === null ? L.list_done_none
+                : String(L.list_done_final).replace(':name', last) +
+                    (rest.length ? ' ' + String(L.list_done_others).replace(':names', rest.join('、')) : '');
+            note.classList.toggle('warn', last === null);
+        }
         function saveOrder(listBox, spec) {
+            doneNote(listBox);
             var ids = Array.prototype.map.call(
                 listBox.querySelectorAll('.pp-set-row'),
                 function (n) { return n.getAttribute('data-id'); }

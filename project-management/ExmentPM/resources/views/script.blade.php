@@ -21,7 +21,23 @@ window.PmPortalBoot = function () {
     function alive() { return document.getElementById('pmportal') === root; }
 
     var D = JSON.parse(document.getElementById('pmportal-data').textContent);
-    var L = JSON.parse(document.getElementById('pmportal-lang').textContent);
+    // The page sends its list rows packed (PmPortalController::packRows):
+    // put back what was left out before anything reads them, so every row
+    // looks exactly like one from the API.
+    (function unpackRows(pk) {
+        if (!pk) { return; }
+        var defs = pk.defaults || {};
+        (D.issues || []).forEach(function (r) {
+            Object.keys(defs).forEach(function (k) {
+                if (!(k in r)) { r[k] = Array.isArray(defs[k]) ? [] : defs[k]; }
+            });
+            if (!('url' in r)) { r.url = pk.url + '/' + r.id; }
+            if (!('edit_url' in r)) { r.edit_url = pk.url + '/' + r.id + '/edit'; }
+            if (!('key' in r)) { r.key = pk.key + '-' + r.id; }
+            if (!('up' in r)) { r.up = r.ua ? String(r.ua).slice(0, 16).replace(/-/g, '/') : ''; }
+        });
+    })(D.row_pack);
+    var L =JSON.parse(document.getElementById('pmportal-lang').textContent);
     var CSRF = $('meta[name="csrf-token"]').attr('content');
 
     /* ------------------------------------------------ request queue ----- */
@@ -561,6 +577,10 @@ window.PmPortalBoot = function () {
             return v && a.indexOf(v) === i;
         });
         document.getElementById('pp-projhead').innerHTML =
+            // Back to the list of projects, shaped and placed like the issue
+            // detail's 課題一覧へ, so the two read as one kind of button.
+            (D.urls.projects ? '<a class="bl-dback bl-dback-s bl-dback-proj" href="' + esc(D.urls.projects) + '">' +
+                '<i class="fa fa-angle-left"></i> ' + esc(L.back_projects || 'プロジェクト一覧へ') + '</a>' : '') +
             '<div class="bl-projicon"><i class="fa fa-folder-open"></i></div>' +
             // One line: name, then dates / manager / note beside it. The note
             // is cut to what fits and opens in place on a click (snoro 2026-11-18:
