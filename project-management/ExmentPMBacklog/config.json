@@ -1,0 +1,23 @@
+{
+    "plugin_name": "ExmentPMBacklog",
+    "uuid": "8b90ecb7-6868-4018-9062-5745db63ef36",
+    "plugin_view_name": "Exment Plugin PM Backlog 連携",
+    "description": "Backlog のプロジェクトの課題とコメントを、Exment PM のプロジェクトへ決まった間隔で取り込みます（Backlog が正）。Exment Plugin PM（ExmentPM 1.7.7 以降）が要ります。",
+    "author": "Exceedone",
+    "version": "0.2.0",
+    "plugin_type": "page,batch",
+    "uri": "exment_pm_backlog",
+    "batch_cron": "*/5 * * * *",
+    "templates": false,
+    "route": [
+        { "method": "get", "uri": "", "function": "index" },
+        { "method": "get", "uri": "new", "function": "create" },
+        { "method": "post", "uri": "new", "function": "store" },
+        { "method": "get", "uri": "{id}", "function": "edit" },
+        { "method": "post", "uri": "{id}", "function": "update" },
+        { "method": "post", "uri": "{id}/mapping", "function": "postMapping" },
+        { "method": "post", "uri": "{id}/run", "function": "postRun" },
+        { "method": "post", "uri": "{id}/import", "function": "postImport" },
+        { "method": "post", "uri": "{id}/delete", "function": "postDelete" }
+    ]
+}
