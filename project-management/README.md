@@ -15,10 +15,19 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Changed in 1.7.11 / 1.7.11 で変わったこと**
+**Changed in 1.7.13 / 1.7.13 で変わったこと**
 
-- With Exment 7.2.0 the menu entry goes under the group "プロジェクト" of the left menu (the feature map of exment.net), made when missing (`Menu::groupParentId()` of the core). A new install puts it there; an update moves it only while it is still at the top level (a migration that runs when the plugin is updated), so an entry an administrator moved stays. An older Exment keeps it at the top level.
-  Exment 7.2.0 では、メニューの「プロジェクト管理」を左のメニューの分類「プロジェクト」（exment.net の機能マップ）の下に置きます（なければ作る。本体の `Menu::groupParentId()`）。新しく入れたときはそこに作り、更新では、いちばん上にあるときだけ移します（プラグインの更新で走る migration）。管理者が動かしたメニューはそのままです。古い Exment では今までどおりいちばん上です。
+- With Exment 7.2.1 the menu entry goes under the group "プロジェクト" of the left menu (the feature map of exment.net), made when missing (`Menu::groupParentId()` of the core). A new install puts it there; an update moves it only while it is still at the top level (a migration that runs when the plugin is updated), so an entry an administrator moved stays. An older Exment keeps it at the top level.
+  Exment 7.2.1 では、メニューの「プロジェクト管理」を左のメニューの分類「プロジェクト」（exment.net の機能マップ）の下に置きます（なければ作る。本体の `Menu::groupParentId()`）。新しく入れたときはそこに作り、更新では、いちばん上にあるときだけ移します（プラグインの更新で走る migration）。管理者が動かしたメニューはそのままです。古い Exment では今までどおりいちばん上です。
+
+**Changed in 1.7.12 / 1.7.12 で変わったこと**
+
+- The script and the style are copied to `public/exment-pm/` once per version and linked from there, so the web server hands them out without starting PHP (2ms instead of ~0.15s locally; 1.7-1.9s on ex1task when they came with other requests). If `public/` cannot be written, or `exment.pmportal.public_assets` is false, the route serves them as before.
+  スクリプトとスタイルを版ごとに `public/exment-pm/` に置き、そこから読むようにしました。PHP を通らないので、ほかの読み込みと重なっても遅くなりません。書けないときは、これまでどおりプラグインの経路から読みます。
+- The stamp check and the read mark skip Exment's admin page set-up (as the light API does): ~0.2s → ~0.15s each locally.
+  更新の確認と既読の印は、管理画面の準備を飛ばすようにしました（軽い API と同じ）。
+- A hover card is asked for once per page.
+  マウスを重ねたときのカードは、1 ページで 1 回だけ読みます。
 
 **Changed in 1.7.10 / 1.7.10 で変わったこと**
 

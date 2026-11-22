@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * The menu "プロジェクト管理" goes into the group "プロジェクト" of the left menu
  * (the feature map of exment.net), when the core has the groups (Exment
- * 7.2.0, Menu::groupParentId()). The plugin's migrations run when it is
+ * 7.2.1, Menu::groupParentId()). The plugin's migrations run when it is
  * installed or updated, so a site gets it with the update of the plugin, also
  * when its data structure needs no update.
  *

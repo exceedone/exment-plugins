@@ -569,7 +569,7 @@ class Schema
         $desk = \DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'its_desk')->first();
         $now = now();
 
-        // the group "ITサポート" of the feature map, when the core has the groups (7.2.0)
+        // the group "ITサポート" of the feature map, when the core has the groups (7.2.1)
         $group = method_exists(\Exceedone\Exment\Model\Menu::class, 'groupParentId')
             ? \Exceedone\Exment\Model\Menu::groupParentId('it_support') : null;
 

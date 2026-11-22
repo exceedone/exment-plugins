@@ -266,7 +266,53 @@ class PortalDefinition
         $file = __DIR__ . '/resources/views/' . (static::ASSETS[$name]['file'] ?? '');
         $version = is_file($file) ? substr(md5((string) filemtime($file) . ':' . filesize($file) . ':' . md5_file($file)), 0, 12) : '0';
 
-        return static::url('asset', $name) . '?v=' . $version;
+        return static::publishedAsset($name, $version) ?? (static::url('asset', $name) . '?v=' . $version);
+    }
+
+    /** Folder under public/ the assets are copied to. */
+    const PUBLIC_ASSET_DIR = 'exment-pm';
+
+    /**
+     * The asset as a plain file under public/, written once per version, so
+     * the web server hands it out without starting PHP: through the route,
+     * each one cost a whole Exment boot (~0.25s of CPU), and the first load
+     * after an update asked for both at once (1.7-1.9s on ex1task under
+     * load). Null when public/ cannot be written, or this is turned off with
+     * exment.pmportal.public_assets = false: the route serves it as before.
+     */
+    protected static function publishedAsset(string $name, string $version): ?string
+    {
+        if (!isset(static::ASSETS[$name]) || $version === '0' || !config('exment.pmportal.public_assets', true)) {
+            return null;
+        }
+        try {
+            $ext = $name === 'script' ? 'js' : 'css';
+            $dir = public_path(static::PUBLIC_ASSET_DIR);
+            $base = $name . '.' . $version . '.' . $ext;
+            if (!is_file($dir . '/' . $base)) {
+                $body = static::assetBody($name);
+                if ($body === null || (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir))) {
+                    return null;
+                }
+                // Written aside and renamed, so a reader never gets half a file.
+                $tmp = $dir . '/.' . $base . '.' . getmypid() . '.tmp';
+                if (@file_put_contents($tmp, $body) !== strlen($body) || !@rename($tmp, $dir . '/' . $base)) {
+                    @unlink($tmp);
+                    return null;
+                }
+                @chmod($dir . '/' . $base, 0644);
+                // The versions before this one are not asked for any more.
+                foreach (glob($dir . '/' . $name . '.*.' . $ext) ?: [] as $old) {
+                    if (basename($old) !== $base) {
+                        @unlink($old);
+                    }
+                }
+            }
+
+            return asset(static::PUBLIC_ASSET_DIR . '/' . $base);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * The menu "メール" goes into the group "グループウェア" of the left menu (the
  * feature map of exment.net: グループウェア ▸ 文書管理 / メール), when the core
- * has the groups (Exment 7.2.0, Menu::groupParentId()).
+ * has the groups (Exment 7.2.1, Menu::groupParentId()).
  *
  * Only a menu still at the top level, where 2026_11_22_000000_add_gw_mail_menu
  * put it, moves: a menu an administrator moved somewhere stays there. An older

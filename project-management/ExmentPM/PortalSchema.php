@@ -983,7 +983,7 @@ class PortalSchema
 
     /**
      * The id of the group "プロジェクト" of the left menu (made when missing), or
-     * null on a core without the groups (before Exment 7.2.0).
+     * null on a core without the groups (before Exment 7.2.1).
      */
     public static function menuGroupId(): ?int
     {
@@ -1009,7 +1009,7 @@ class PortalSchema
         // so a schema upgrade does not bring it back, and an install that
         // still has it loses it in schema 25 (PortalUpgrade::tidyLegacyMenus).
         // under the group "プロジェクト" of the feature map when the core has the
-        // groups (Exment 7.2.0); at the top level on an older core
+        // groups (Exment 7.2.1); at the top level on an older core
         $group = static::menuGroupId() !== null ? 'project' : null;
         return [
             static::menu($prefix . self::MENU_PAGE, 'menu.single', 'plugin', $group, 'fa-tasks', isset($group) ? '1' : '34', [
