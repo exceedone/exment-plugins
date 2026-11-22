@@ -258,7 +258,19 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
         // name says; the first save makes the file a real one.
         let blank = false;
         const ext = String(info.name).split('.').pop().toLowerCase();
-        if (bytes.byteLength === 0 && cfg.blankUrl && ['docx', 'xlsx', 'pptx'].includes(ext)) {
+        // The blank Word document of Groupware 0.4.4-0.4.5 and of Exment's file server
+        // "New" (7.2) had no paragraph: the editor had nowhere to put the cursor and took
+        // no typing. A file still exactly that one opens as the fixed blank, and is
+        // repaired when it is saved.
+        const BROKEN_BLANKS = ['f9aae27d4adbe3aba5bfe3f531cc88df255df9320f0e69cca0881bdb9a142415'];
+        let broken = false;
+        if (ext === 'docx' && bytes.byteLength > 0 && bytes.byteLength < 65536 && window.crypto && crypto.subtle) {
+            try {
+                const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))).map((x) => x.toString(16).padStart(2, '0')).join('');
+                broken = BROKEN_BLANKS.includes(hash);
+            } catch (e) { /* not a secure page: open it as it is */ }
+        }
+        if ((bytes.byteLength === 0 || broken) && cfg.blankUrl && ['docx', 'xlsx', 'pptx'].includes(ext)) {
             const b = await fetch(cfg.blankUrl.replace('__EXT__', ext), { credentials: 'same-origin' });
             if (b.ok) {
                 bytes = await b.arrayBuffer();
