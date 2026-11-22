@@ -38,6 +38,7 @@ class Plugin extends PluginPageBase
         parent::__construct($plugin);
         OfficeOpener::register($plugin);
         FeatureGate::registerMail($plugin);
+        FeatureGate::registerOffice($plugin);
     }
 
     /**
@@ -94,6 +95,8 @@ class Plugin extends PluginPageBase
             'file_server_url' => OfficeOpener::fileServerUsed() ? admin_url('file_server') : null,
             'project_url' => IbisOffice::PROJECT_URL,
             'extensions' => IbisOffice::EXTENSIONS,
+            'problems' => $office->isInstalled() ? [] : $office->problems(),
+            'elsewhere' => IbisOffice::ELSEWHERE,
         ]);
     }
 
@@ -147,6 +150,30 @@ class Plugin extends PluginPageBase
             'Cache-Control' => 'private, max-age=86400',
             'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    /**
+     * Shown in the preview of an Office file of the file server while ibisOffice is
+     * not installed, to system administrators only (ISS02827): what it would give,
+     * what it needs, what stops it here, and the way to the install.
+     *
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function officeMissing()
+    {
+        $user = \Exment::user();
+        if (!isset($user) || !$user->hasPermission(Permission::SYSTEM)) {
+            // a plain 404 (abort() in an admin page answers 200 with the error page)
+            return response('', 404);
+        }
+        $office = new IbisOffice($this->plugin);
+        return response(view('exment_exment_groupware::office_missing', [
+            'version' => IbisOffice::VERSION,
+            'installed' => $office->isAvailable(),
+            'problems' => $office->problems(),
+            'elsewhere' => IbisOffice::ELSEWHERE,
+            'install_url' => $this->plugin->getFullUrl(),
+        ])->render())->header('X-Frame-Options', 'SAMEORIGIN');
     }
 
     public function office($workspace, $node)
