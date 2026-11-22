@@ -677,6 +677,19 @@ class PortalDefinition
     }
 
     /**
+     * A notification body with a link to where it happened at the end, cut
+     * to fit as notifyBody() does. Exment shows a notification's body as
+     * cleaned HTML, so the link is a link there; the text before it is the
+     * same as it was.
+     */
+    public static function notifyBodyWithLink(string $text, string $url): string
+    {
+        $link = "\n\n" . '<a href="' . e($url) . '">' . e($url) . '</a>';
+
+        return static::cut($text, max(1, 2000 - mb_strlen($link))) . $link;
+    }
+
+    /**
      * A notification body, cut to the 2000 characters its column holds.
      */
     public static function notifyBody(string $text): string

@@ -1735,7 +1735,9 @@ class PmPortalController extends AdminControllerBase
 
         $subject = PortalDefinition::notifySubject('[' . $this->issueKey($project, $issue->id) . '] '
             . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')));
-        $body = PortalDefinition::notifyBody($body);
+        // the issue's address under the text: on the notification's own page
+        // it is the way to the issue
+        $body = PortalDefinition::notifyBodyWithLink($body, $this->issueUrl($project, $issue));
         foreach ($targets as $target_user_id) {
             try {
                 $notify = new NotifyNavbar();
@@ -2026,9 +2028,10 @@ class PmPortalController extends AdminControllerBase
                 . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), ''))),
             // What was confirmed, under the sentence saying so: the writer may
             // have asked about several comments on the same issue.
-            'notify_body' => PortalDefinition::notifyBody(
+            'notify_body' => PortalDefinition::notifyBodyWithLink(
                 strval(PortalDefinition::trans('message.review_done_body')) . "\n\n"
-                . strval(array_get($comment->value, 'comment_detail', ''))
+                . strval(array_get($comment->value, 'comment_detail', '')),
+                $this->issueUrl($project, $issue)
             ),
             'trigger_user_id' => $me,
         ]);
