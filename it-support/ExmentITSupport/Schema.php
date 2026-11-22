@@ -33,8 +33,10 @@ class Schema
      * 2: messages remember which files they carry (attachment_uuids), so the
      * customer pages show only files from the customer's own conversation;
      * the menu gets the desk itself (受付箱) as its first entry.
+     * 3: the menu is one entry, ITサポート, that opens the desk; the tables are
+     * reached from the desk (see arrangeMenu()).
      */
-    const VERSION = 2;
+    const VERSION = 3;
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -304,7 +306,9 @@ class Schema
             $steps[] = 'テーブルを作りました（すでにあるテーブル・列はそのまま）。';
 
             static::registerPluginRow();
-            static::placeDeskMenu();
+            if (static::arrangeMenu()) {
+                $steps[] = 'メニューを「ITサポート」1 つにしました（テーブルは受付箱から開きます）。';
+            }
 
             $before = intval(array_get(Its::state(), 'schema_version', 0));
             if (!$fresh && $before < 2) {
@@ -394,33 +398,6 @@ class Schema
     {
         $tables = [];
         $relations = [];
-        // Under ITサポート: the desk first, then the tables in the order
-        // people reach for them.
-        $menuOrder = [Its::T_TICKET => 2, Its::T_CUSTOMER => 3, Its::T_CONTACT => 4, Its::T_ASSET => 5,
-            Its::T_KNOWLEDGE => 6, Its::T_TEMPLATE => 7, Its::T_CATEGORY => 8, Its::T_SLA => 9];
-        $menu = [[
-            'order' => '40',
-            'title' => 'ITサポート',
-            'icon' => 'fa-life-ring',
-            'uri' => '#',
-            'menu_type' => 'parent_node',
-            'menu_name' => 'its_root',
-            'parent_name' => null,
-            'menu_target_name' => null,
-            'options' => null,
-        ], [
-            'order' => '1',
-            'title' => '受付箱',
-            'icon' => 'fa-inbox',
-            'uri' => '',
-            'menu_type' => 'plugin',
-            'menu_name' => 'its_desk',
-            'parent_name' => 'its_root',
-            // Resolved by plugin name (Menu::importReplaceJson).
-            'menu_target_name' => Its::PLUGIN_NAME,
-            'options' => null,
-        ]];
-
         foreach (static::tables() as $table_name => $table) {
             $columns = [];
             $order = 1;
@@ -447,20 +424,6 @@ class Schema
                 'custom_columns' => $columns,
                 'custom_column_multisettings' => [],
             ];
-
-            if (isset($menuOrder[$table_name])) {
-                $menu[] = [
-                    'order' => strval($menuOrder[$table_name]),
-                    'title' => $table['label'],
-                    'icon' => $table['icon'],
-                    'uri' => $table_name,
-                    'menu_type' => 'table',
-                    'menu_name' => $table_name,
-                    'parent_name' => 'its_root',
-                    'menu_target_name' => $table_name,
-                    'options' => null,
-                ];
-            }
         }
 
         $relations[] = [
@@ -474,7 +437,6 @@ class Schema
             'custom_tables' => $tables,
             'custom_relations' => $relations,
             'custom_views' => [static::kanbanView()],
-            'admin_menu' => $menu,
         ];
     }
 
@@ -585,19 +547,68 @@ class Schema
     }
 
     /**
-     * The desk is meant to be the first entry under ITサポート. On an install
-     * where another entry already sits at that place, it goes before it.
+     * The menu is one entry, ITサポート, that opens the desk (schema 3, the same
+     * as ExmentPM in ISS00256). The tables are reached from the desk.
+     *
+     * Up to 1.0.6 the menu was the folder its_root with the desk and the
+     * tables in it. The entry takes the place of the folder, the rows the
+     * plugin made in the folder go, and the folder stays only when an
+     * administrator put something of their own in it. Once there is no
+     * folder, a later run only keeps the entry pointing at the plugin: a
+     * name or place an administrator gave it stays.
+     *
+     * @return bool whether the old folder was taken apart
      */
-    protected static function placeDeskMenu(): void
+    protected static function arrangeMenu(): bool
     {
-        $desk = \DB::table('admin_menu')->where('menu_name', 'its_desk')->first();
-        if (!isset($desk)) {
-            return;
+        $plugin = Its::plugin();
+        if (!isset($plugin)) {
+            return false;
         }
-        $min = \DB::table('admin_menu')->where('parent_id', $desk->parent_id)->where('id', '<>', $desk->id)->min('order');
-        if ($min !== null && intval($min) <= intval($desk->order)) {
-            \DB::table('admin_menu')->where('id', $desk->id)->update(['order' => max(0, intval($min) - 1)]);
+        $root = \DB::table('admin_menu')->where('menu_type', 'parent_node')->where('menu_name', 'its_root')->first();
+        $desk = \DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'its_desk')->first();
+        $now = now();
+
+        $values = ['menu_target' => $plugin->id];
+        if (isset($root)) {
+            $values += ['parent_id' => $root->parent_id, 'order' => $root->order, 'title' => 'ITサポート', 'icon' => 'fa-life-ring'];
         }
+        if (isset($desk)) {
+            $changed = array_filter($values, function ($v, $k) use ($desk) {
+                return strval($desk->{$k}) !== strval($v);
+            }, ARRAY_FILTER_USE_BOTH);
+            if (!empty($changed)) {
+                \DB::table('admin_menu')->where('id', $desk->id)->update($changed + ['updated_at' => $now]);
+            }
+        } else {
+            \DB::table('admin_menu')->insert($values + [
+                'parent_id' => 0,
+                'order' => 40,
+                'title' => 'ITサポート',
+                'icon' => 'fa-life-ring',
+                'uri' => '',
+                'menu_type' => 'plugin',
+                'menu_name' => 'its_desk',
+                'options' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
+        if (!isset($root)) {
+            return false;
+        }
+        $gone = \DB::table('admin_menu')->where('parent_id', $root->id)->where('menu_type', 'table')
+            ->whereIn('menu_name', array_keys(static::tables()))->pluck('id')->all();
+        if (!\DB::table('admin_menu')->where('parent_id', $root->id)->whereNotIn('id', $gone)->exists()) {
+            $gone[] = $root->id;
+        }
+        if (hasTable('admin_role_menu')) {
+            \DB::table('admin_role_menu')->whereIn('menu_id', $gone)->delete();
+        }
+        \DB::table('admin_menu')->whereIn('id', $gone)->delete();
+
+        return true;
     }
 
     /**

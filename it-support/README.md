@@ -61,6 +61,8 @@ ITreview の「ヘルプデスクツール」カテゴリー（2026 年 11 月�
 4. 担当者を役割グループ **ITサポート 担当者** に入れます。ログインするお客様は **ITサポート お客様** に入れ、**お客様の担当者** の「Exment のユーザー」でつなぎます。
 5. お客様には窓口の URL（`https://あなたの Exment/support`）を案内します。
 
+左のメニューは **ITサポート** 1 つだけです（開くと受付箱）。チケット表・ナレッジ・お客様・連絡先・IT 資産・定型文は受付箱の上のメニューから、すべてのテーブル（チケットの種類・SLA も）は **設定** の「テーブル・権限」から開きます。1.0.6 までの「ITサポート」のフォルダー（受付箱とテーブル 8 つ）は、1.0.7 に上げたあと、最初に受付箱を開いたとき（またはセットアップの「テーブルを更新」）に 1 つにまとまります。管理者が自分で足したメニューは残ります。
+
 自動処理（メールの受信・SLA・返事待ち・完了・資産の期限）は 5 分ごとに動きます。Exment のスケジューラー（`php artisan schedule:run` を cron で毎分）が動いている必要があります。
 
 ### 機能の管理（機能の管理の入った Exment で）
@@ -74,7 +76,7 @@ Exment の **管理者設定 → 機能の管理** に、ITサポートの入口
 
 機能は入口の門で、ITサポートの **設定**（メールを受信する・お客様の窓口を使う など）はその中の細かい設定です。両方がオンのときに動きます。機能の管理のない Exment では、今までどおり全部使えます。機能の管理の入った版に上げたとき、前から ITサポートを使っていたサイトでは 2 つともオンのまま残ります（新しく入れたサイトでは、はじめはオフです）。
 
-受付箱を「使わない」にしても、チケットなどのテーブルはデータとして残り、メニューの「ITサポート」から Exment のふつうのテーブルとして開けます。見せたくないときは、役割グループでテーブルの権限を外してください。
+受付箱を「使わない」にすると、メニューの「ITサポート」も消えます。チケットなどのテーブルはデータとして残り、Exment のふつうのテーブルとして URL（`/admin/data/its_ticket` など）や **管理者設定 → カスタムテーブル** から開けます。メニューに出したいときは、**管理者設定 → メニュー** でテーブルを足してください。見せたくないときは、役割グループでテーブルの権限を外してください。
 
 ### 監視・エラーログから起票する
 
@@ -134,9 +136,9 @@ An IT support / help desk plugin for Exment. Requests from customers (mail, a pu
 
 **Features**: a dedicated three-pane agent desk (queues, ticket list, conversation and properties) that switches tickets without reloading, with keyboard shortcuts, drafts and dark mode; mail intake (IMAP, Japanese encodings, attachments, threading by ticket number and Message-ID, quoted text stripped), public request form with FAQ suggestions, phone intake, monitor / error-log intake with de-duplication, asset expiry tickets; replies by mail, internal notes, canned replies, knowledge suggestions, "someone else is replying" warning; secret no-login links (one ticket per link, hashed, expiring, revocable, logged) with optional one-time codes, a "my requests" link by mail, and a logged-in customer portal; SLA per customer and priority counted in business hours and Japanese holidays, paused while waiting for the customer; auto assignment, reminders, auto resolve/close, satisfaction survey; reports including work time per customer against the contract; partial-match search with AND/OR tags. Every table is an ordinary Exment custom table, so fields, views, workflows and the API are all customisable without code.
 
-**Install**: upload the zip in **Admin settings → Plugins**, open **ITサポート** and press **セットアップする**, then fill in the mailbox in **設定**. Agents go in the role group **ITサポート 担当者**, logged-in customers in **ITサポート お客様**. Customers use `https://your-exment/support`. The automation runs every five minutes through Exment's scheduler.
+**Install**: upload the zip in **Admin settings → Plugins**, open **ITサポート** and press **セットアップする**, then fill in the mailbox in **設定**. Agents go in the role group **ITサポート 担当者**, logged-in customers in **ITサポート お客様**. Customers use `https://your-exment/support`. The left menu has one entry, **ITサポート**, which opens the desk; the tables are opened from the desk's top bar and from **設定** (1.0.7 folds the folder of 1.0.6 into that one entry the first time the desk is opened, keeping any menu an administrator added). The automation runs every five minutes through Exment's scheduler.
 
-**Feature management** (Exment versions that have it): IT Support adds two features, *desk* and *customer portal* (the portal needs the desk). New installs start with both off; sites that had the plugin before keep them on. Turning the desk off stops the desk, the portal and the batch, but the tables (tickets and so on) stay as data and can still be opened as ordinary Exment tables; to hide them, remove the table permissions in the role groups.
+**Feature management** (Exment versions that have it): IT Support adds two features, *desk* and *customer portal* (the portal needs the desk). New installs start with both off; sites that had the plugin before keep them on. Turning the desk off stops the desk, the portal and the batch, and its menu entry, but the tables (tickets and so on) stay as data and can still be opened as ordinary Exment tables (by URL such as `/admin/data/its_ticket`, from the custom table list, or from a menu an administrator adds); to hide them, remove the table permissions in the role groups.
 
 **No-login pages**: Exment does not let a plugin's `config.json` open a route without login, on purpose. A help desk needs a door for people without an account, so this plugin registers `/support/...` itself while Exment boots (`PublicRoutes.php`), the same idea as Exment's public form: the secret in the URL opens one thing and nothing else.
 
