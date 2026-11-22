@@ -975,6 +975,7 @@ class PmPortalController extends AdminControllerBase
             'uby' => strval(array_get($v, $c['source_updated_by'], '')),
             'ud' => $this->fmtAt(array_get($v, $c['source_updated_at'])),
             'cf' => strval(array_get($v, $c['custom_fields'], '')),
+            'asg' => strval(array_get($v, $c['source_assignees'], '')),
         ];
         if (!preg_match('#^https?://#i', $out['url'])) {
             $out['url'] = '';
