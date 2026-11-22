@@ -15,6 +15,15 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.12 / 1.7.12 で変わったこと**
+
+- The script and the style are copied to `public/exment-pm/` once per version and linked from there, so the web server hands them out without starting PHP (2ms instead of ~0.15s locally; 1.7-1.9s on ex1task when they came with other requests). If `public/` cannot be written, or `exment.pmportal.public_assets` is false, the route serves them as before.
+  スクリプトとスタイルを版ごとに `public/exment-pm/` に置き、そこから読むようにしました。PHP を通らないので、ほかの読み込みと重なっても遅くなりません。書けないときは、これまでどおりプラグインの経路から読みます。
+- The stamp check and the read mark skip Exment's admin page set-up (as the light API does): ~0.2s → ~0.15s each locally.
+  更新の確認と既読の印は、管理画面の準備を飛ばすようにしました（軽い API と同じ）。
+- A hover card is asked for once per page.
+  マウスを重ねたときのカードは、1 ページで 1 回だけ読みます。
+
 **Changed in 1.7.10 / 1.7.10 で変わったこと**
 
 - The archive cutoff counts from the start of the day instead of this second, so the archive summary and the burndown that 1.7.9 caches are actually read from the cache: their key held the cutoff, which changed on every load.

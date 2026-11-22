@@ -10005,13 +10005,21 @@ window.PmPortalBoot = function () {
             }));
         });
     }
+    // Each card is asked for once per page: hovering the same link again,
+    // or several links to the same issue, costs no request.
+    var HC_CACHE = {};
     function hcFetch(kind, id, done) {
+        var key = kind + ':' + id;
+        if (own(HC_CACHE, key)) { HC_CACHE[key].then(done); return; }
         var url = D.urls.lightapi_base + '/card/' + kind + '/' + encodeURIComponent(id) +
             '?project=' + encodeURIComponent(D.project.id);
-        fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+        HC_CACHE[key] = fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
             .then(function (r) { return r.json(); })
-            .then(done)
-            .catch(function () { done(null); });
+            .then(function (res) {
+                if (!res || !res.ok) { delete HC_CACHE[key]; }   // a failure may be asked again
+                return res;
+            }, function () { delete HC_CACHE[key]; return null; });
+        HC_CACHE[key].then(done);
     }
     function hcShow(anchor) {
         var uid = anchor.dataset.uid;
