@@ -122,16 +122,21 @@ trait PortalDashboardTrait
             $cards[$id]['progress'] = 0;
         }
 
-        $grouped = function ($apply) use ($parent_type) {
-            $query = $this->issue_table->getValueModel()->query()->where('parent_type', $parent_type);
-            $apply($query);
+        // Kept until an issue anywhere changes (issueStamp), or the day or
+        // the done statuses do.
+        $stamp = $this->issueStamp();
+        $grouped = function ($apply, string $name) use ($parent_type, $stamp, $done_ids, $today) {
+            return collect($this->pmCached('counts', [$name, $stamp, $done_ids, $today], function () use ($apply, $parent_type) {
+                $query = $this->issue_table->getValueModel()->query()->where('parent_type', $parent_type);
+                $apply($query);
 
-            return $query->selectRaw('parent_id, count(*) as cnt')->groupBy('parent_id')->pluck('cnt', 'parent_id');
+                return $query->selectRaw('parent_id, count(*) as cnt')->groupBy('parent_id')->pluck('cnt', 'parent_id')->all();
+            }));
         };
 
         $noop = function ($query) {
         };
-        $totals = $grouped($noop);
+        $totals = $grouped($noop, 'total');
 
         // An install that has not converted its status column yet has no rows
         // to flag as done, and every issue would count as open. Skipping the
@@ -139,12 +144,12 @@ trait PortalDashboardTrait
         // no progress bar rather than a bar that is always empty.
         $dones = empty($done_ids) ? collect() : $grouped(function ($query) use ($status_key, $done_ids) {
             $query->whereIn($status_key, $done_ids);
-        });
+        }, 'done');
         $overdues = empty($done_ids) ? collect() : $grouped(function ($query) use ($status_key, $due_key, $done_ids, $today) {
             $this->dashboardWhereOpen($query, $status_key, $done_ids)
                 ->whereNotNull($due_key)
                 ->where($due_key, '<', $today);
-        });
+        }, 'overdue');
 
         // Counted here rather than off the "my issues" tab, which stops at
         // forty rows: a card that said "自分 40" on every project would be
@@ -156,7 +161,7 @@ trait PortalDashboardTrait
                 $this->dashboardWhereOpen($query, $status_key, $done_ids);
             }
             $query->whereInArrayString($assignee_key, $me);
-        });
+        }, 'mine');
 
         foreach ($cards as $id => $card) {
             $total = intval($totals->get(intval($id), 0));
@@ -261,8 +266,15 @@ trait PortalDashboardTrait
                 ->take(static::$dash_list_limit)->get();
         };
 
-        $assigned = $map($byDue($open()->whereInArrayString($assignee_key, $me)));
-        $created = $map($byDue($open()->where('created_user_id', $me)));
+        // Both filter every open issue on columns computed from its JSON;
+        // kept until an issue changes, or the day or the cards do.
+        $listKey = [$this->issueStamp(), $done_ids, $today, md5(json_encode([$cards, $status_meta, $priority_meta]))];
+        $assigned = $this->pmCached('assigned', $listKey, function () use ($map, $byDue, $open, $assignee_key, $me) {
+            return $map($byDue($open()->whereInArrayString($assignee_key, $me)));
+        });
+        $created = $this->pmCached('created', $listKey, function () use ($map, $byDue, $open, $me) {
+            return $map($byDue($open()->where('created_user_id', $me)));
+        });
 
         $watched = [];
         // target_id is a string column. Not map('intval'): map() passes the
@@ -529,6 +541,50 @@ trait PortalDashboardTrait
 
     /** @var array<string, array<int, string>> table => its columns, read once per request */
     protected $dash_columns = [];
+
+    /** @var array<string, string> issue stamps read in this request */
+    protected $issue_stamps = [];
+
+    /**
+     * Count and newest change of the issues - of one project, or of all of
+     * them - which moves whenever an issue is added, edited, moved, deleted
+     * or restored. Cheap (an index range and one column), so it can key the
+     * caches of what is costly: the counts below group or filter on index
+     * columns that MariaDB computes from each issue's JSON, ~0.1-0.3s each on
+     * a project of 2,400 imported issues.
+     */
+    protected function issueStamp(?int $projectId = null): string
+    {
+        $k = strval($projectId ?? 'all');
+        if (!isset($this->issue_stamps[$k])) {
+            $query = $this->issue_table->getValueModel()->query()->where('parent_type', $this->project_table->table_name);
+            if ($projectId !== null) {
+                $query->where('parent_id', $projectId);
+            }
+            $row = $query->selectRaw('count(*) as pm_n, max(updated_at) as pm_at')->first();
+            $this->issue_stamps[$k] = intval(array_get($row, 'pm_n', 0)) . '/' . substr(strval(array_get($row, 'pm_at', '')), 0, 19);
+        }
+
+        return $this->issue_stamps[$k];
+    }
+
+    /**
+     * A costly read kept until the issues change. The key always holds the
+     * reader: Exment may narrow what a user's queries see, so one user's
+     * counts are never another's. Without a working cache it simply reads.
+     *
+     * @param array<int, mixed> $key what the result depends on (an issue stamp among them)
+     * @return mixed
+     */
+    protected function pmCached(string $name, array $key, callable $read)
+    {
+        $id = 'pmportal:' . $name . ':' . md5(json_encode(array_merge([\Exment::getUserId()], $key)));
+        try {
+            return \Illuminate\Support\Facades\Cache::remember($id, 86400, $read);
+        } catch (\Throwable $e) {
+            return $read();
+        }
+    }
 
     /**
      * Read the issues without their body. The dashboard lists show the

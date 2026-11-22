@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.9 / 1.7.9 で変わったこと**
+
+- The counts that group or filter on index columns MariaDB computes from each issue's JSON are kept in Laravel's cache until an issue changes: the project page's archive summary and burndown, and the dashboard's per-project counts and its 自分の課題 / 登録した課題 lists. The key is a cheap stamp (count and newest `updated_at` of the issues), the day and the reader, so a change shows at once and one user's counts are never another's. On ex1task these were ~0.35s, ~0.16s and ~0.5s.
+  課題の JSON から計算する列で集計・絞り込みをしているところを、課題が変わるまでキャッシュに置くようにしました（プロジェクトのアーカイブの件数・バーンダウン、トップのプロジェクトごとの件数・自分の課題・登録した課題）。課題の件数と最新の更新日時・日付・見ている人で区別するので、変更はすぐに反映され、人ごとの件数が混ざることもありません。
+
 **Changed in 1.7.8 / 1.7.8 で変わったこと**
 
 - Faster lists on MariaDB: the issue lists no longer select the index columns (`column_*`), which the model never reads. On ex1task a project list query went from 1.6s to 0.11s; the dashboard runs the same kind of query three times.
