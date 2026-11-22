@@ -5,7 +5,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 | Folder | Plugin | Version | Type |
 |---|---|---|---|
-| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.5 | page, validator, event, batch |
+| [`ExmentPM/`](ExmentPM/) | Exment Plugin PM（プロジェクト管理） | 1.7.6 | page, validator, event, batch |
 
 | Name / 名前 | Value / 値 |
 |---|---|
@@ -14,6 +14,13 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | PHP namespace | `App\Plugins\ExmentPM` |
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
+
+**Changed in 1.7.6 / 1.7.6 で変わったこと**
+
+- With Exment 7.2.1 or later, opening a notification of an issue or a wiki page opens it in the portal (`#issue-ISS00239`), and `${value_url}` in Exment's notification mails is the portal's address too. The notification itself stays one click away (通知の内容を見る).
+  Exment 7.2.1 以降では、課題や Wiki の通知を開くと、通知の画面でなく、ポータルのその課題（`#issue-ISS00239`）を開きます。Exment の通知のメールの `${value_url}` も、ポータルのアドレスになります。通知の内容は「通知の内容を見る」で見られます。
+- The portal's own notifications (a comment, a confirmation) end with the issue's address, so their page links to the issue.
+  ポータルが出す通知（コメント・確認）の本文の最後に、課題のアドレスを入れました。通知の画面から課題を開けます。
 
 **Changed in 1.7.5 / 1.7.5 で変わったこと**
 
