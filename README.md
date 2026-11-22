@@ -47,7 +47,7 @@ The plugins are provided in two ways. Choose by where your Exment runs.
 
 There is nothing to download or upload.
 
-1. From Exment 7.2.0, the tenant administrator opens **Admin settings → Feature management** and presses **Use (install)** on the free official plugin. This installs it and does its first-time setup (for example the tables of Project Management).
+1. From Exment 7.2.1, the tenant administrator opens **Admin settings → Feature management** and presses **Use (install)** on the free official plugin. This installs it and does its first-time setup (for example the tables of Project Management).
 2. From then on, the operator of Exment SaaS updates it for every tenant that uses it, data structure update (Project Management) included. There is no update or roll-back button for the tenant.
 3. A plugin that no one in the tenant turned on is not installed: a new feature stays off until it is turned on.
 
@@ -199,7 +199,7 @@ Exment Plugin Project Management は、1 つの Exment プラグインです。
 
 ダウンロードもアップロードも要りません。
 
-1. Exment 7.2.0 から、テナントの管理者が **管理者設定 → 機能の管理** の無料の公式プラグインで **使う（インストールする）** を押します。そのときに、インストールと初期セットアップ（例: プロジェクト管理のテーブルを作る）までします。
+1. Exment 7.2.1 から、テナントの管理者が **管理者設定 → 機能の管理** の無料の公式プラグインで **使う（インストールする）** を押します。そのときに、インストールと初期セットアップ（例: プロジェクト管理のテーブルを作る）までします。
 2. そのあとは、Exment SaaS の運営側が、使っているテナントのプラグインをまとめて新しくします（プロジェクト管理の「データ構造の更新」も一緒にします）。テナントに、新しくする・戻すのボタンはありません。
 3. テナントでだれも使い始めていないプラグインは、入れません（新しい機能は、使い始めるまで使われない状態のままです）。
 
