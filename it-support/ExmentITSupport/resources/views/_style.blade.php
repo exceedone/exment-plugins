@@ -45,6 +45,8 @@
 .its-tabs a i.fa{font-size:13px;width:14px;text-align:center;opacity:.8}
 .its-tabs a:hover{background:var(--its-hover);color:var(--its-ink)}
 .its-tabs a.on{background:var(--its-accent-soft);color:var(--its-accent-ink);font-weight:600}
+.its-tables{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:4px 12px}
+.its-tables a{font-size:13px}
 .its-tabs a.on i.fa{opacity:1}
 .its-tabs .sep{width:1px;height:18px;background:var(--its-line);margin:7px 6px}
 .its-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}

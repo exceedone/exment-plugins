@@ -8,8 +8,10 @@
         <a href="{{ $Its::url() }}" class="{{ ($tab ?? '') === 'inbox' ? 'on' : '' }}" @if(($tab ?? '') === 'inbox') aria-current="page" @endif><i class="fa fa-inbox" aria-hidden="true"></i>受付箱</a>
         <a href="{{ $Its::url('dashboard') }}" class="{{ ($tab ?? '') === 'dashboard' ? 'on' : '' }}" @if(($tab ?? '') === 'dashboard') aria-current="page" @endif><i class="fa fa-bar-chart" aria-hidden="true"></i>レポート</a>
         <span class="sep" aria-hidden="true"></span>
+        <a href="{{ $Its::dataUrl($Its::T_TICKET) }}" title="チケットのテーブル（かんばん・Excel 出力など）"><i class="fa fa-table" aria-hidden="true"></i>チケット表</a>
         <a href="{{ $Its::dataUrl($Its::T_KNOWLEDGE) }}"><i class="fa fa-book" aria-hidden="true"></i>ナレッジ</a>
         <a href="{{ $Its::dataUrl($Its::T_CUSTOMER) }}"><i class="fa fa-building-o" aria-hidden="true"></i>お客様</a>
+        <a href="{{ $Its::dataUrl($Its::T_CONTACT) }}" title="お客様の担当者"><i class="fa fa-address-book-o" aria-hidden="true"></i>連絡先</a>
         <a href="{{ $Its::dataUrl($Its::T_ASSET) }}"><i class="fa fa-desktop" aria-hidden="true"></i>IT 資産</a>
         <a href="{{ $Its::dataUrl($Its::T_TEMPLATE) }}"><i class="fa fa-file-text-o" aria-hidden="true"></i>定型文</a>
         @if($isAdmin)
