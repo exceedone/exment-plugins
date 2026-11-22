@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.5 / 1.7.5 で変わったこと**
+
+- A project with many open issues opens faster. The page carries its issue list packed: no addresses, project key or shown time per row (the screen rebuilds them from the id), no empty values, and Japanese as itself instead of `\uXXXX`. With 2,400 open issues the page went from 2.0MB and 1.6s to 0.9MB and 1.2s (local). Building the rows takes less than half the time.
+  開いている課題が多いプロジェクトを、速く開くようにしました。ページに入れる課題の一覧を小さくしました（行ごとのアドレス・プロジェクトキー・表示用の日時は入れず、画面で番号から組み立てる。空の値は入れない。日本語を `\uXXXX` にしない）。開いている課題が 2,400 件で、ページが 2.0MB・1.6 秒から 0.9MB・1.2 秒になりました（手元）。行を作る時間も半分以下です。
+
 **Changed in 1.7.4 / 1.7.4 で変わったこと**
 
 - Opening a project from the project list (or the dashboard, or the top bar) goes to the tab last used in it, instead of always to Home. Most people work on the issue list and clicked over to it every time. Kept per person and per project in the browser; for a project not opened yet, the tab last used in any project. A link with a tab or an issue in it still opens that. Settings is not kept.
