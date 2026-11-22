@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- The avatar of a user without an image (initials and colour) comes from Exment's `InitialsAvatar` when the core has it (Exment 7.2.1), so a person looks the same in Exment and in the portal; an older core uses the plugin's own copy, the same rules.
+  画像のないユーザーのアバター（頭文字と色）は、本体に `InitialsAvatar` があればそれを使います（Exment 7.2.1）。本体とポータルで同じ人は同じ見た目です。古い本体では、プラグインの中の同じ決まりで描きます。
+
 **Changed in 1.7.15 / 1.7.15 で変わったこと**
 
 - Before 初期セットアップ, the left menu has the entry 「プロジェクト管理」 (in the group 「プロジェクト」 with Exment 7.2.1) for the system administrators; it opens the setup. Others see nothing until the setup, which keeps one entry. A site already set up does not change. `project-management/tools/test-menu-before-setup.php` tests it.

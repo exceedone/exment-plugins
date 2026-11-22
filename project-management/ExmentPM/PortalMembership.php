@@ -289,6 +289,12 @@ class PortalMembership
      */
     public static function initials(string $name): string
     {
+        // Exment 7.2.1 draws the same avatar for a user without an image: use its
+        // helper, so the two never drift apart. This copy is for an older core.
+        $core = self::CORE_AVATAR;
+        if (class_exists($core)) {
+            return $core::initials($name);
+        }
         $s = trim(preg_replace('/[(（][^)）]*[)）]/u', '', $name) ?? '');
         if ($s === '') {
             $s = trim(preg_replace('/[()（）]/u', '', $name) ?? '');
@@ -305,6 +311,24 @@ class PortalMembership
         }
 
         return mb_substr($words[0], 0, 2);
+    }
+
+    /** Exment's helper (7.2.1), named as a string so an older core still loads this class. */
+    const CORE_AVATAR = 'Exceedone\Exment\Services\InitialsAvatar';
+
+    /** The colors of the avatars (the same as Exment's InitialsAvatar::PALETTE). */
+    const AVATAR_PALETTE = ['#16a085', '#3c8dbc', '#e67e22', '#8e44ad', '#2980b9', '#c0392b', '#27ae60', '#d35400', '#7f8c8d', '#1abc9c'];
+
+    /**
+     * The color of a person's avatar, from the name: the same in Exment (7.2.1) and here.
+     */
+    public static function avatarColor(string $name): string
+    {
+        $core = self::CORE_AVATAR;
+        if (class_exists($core)) {
+            return $core::color($name);
+        }
+        return self::AVATAR_PALETTE[abs(crc32($name)) % count(self::AVATAR_PALETTE)];
     }
 
     /**
