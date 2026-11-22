@@ -21,7 +21,23 @@ window.PmPortalBoot = function () {
     function alive() { return document.getElementById('pmportal') === root; }
 
     var D = JSON.parse(document.getElementById('pmportal-data').textContent);
-    var L = JSON.parse(document.getElementById('pmportal-lang').textContent);
+    // The page sends its list rows packed (PmPortalController::packRows):
+    // put back what was left out before anything reads them, so every row
+    // looks exactly like one from the API.
+    (function unpackRows(pk) {
+        if (!pk) { return; }
+        var defs = pk.defaults || {};
+        (D.issues || []).forEach(function (r) {
+            Object.keys(defs).forEach(function (k) {
+                if (!(k in r)) { r[k] = Array.isArray(defs[k]) ? [] : defs[k]; }
+            });
+            if (!('url' in r)) { r.url = pk.url + '/' + r.id; }
+            if (!('edit_url' in r)) { r.edit_url = pk.url + '/' + r.id + '/edit'; }
+            if (!('key' in r)) { r.key = pk.key + '-' + r.id; }
+            if (!('up' in r)) { r.up = r.ua ? String(r.ua).slice(0, 16).replace(/-/g, '/') : ''; }
+        });
+    })(D.row_pack);
+    var L =JSON.parse(document.getElementById('pmportal-lang').textContent);
     var CSRF = $('meta[name="csrf-token"]').attr('content');
 
     /* ------------------------------------------------ request queue ----- */
