@@ -77,6 +77,29 @@ class Backlog
     }
 
     /**
+     * A file, as bytes (an issue's attachment).
+     */
+    public function download(string $path): string
+    {
+        $url = $this->base . '/api/v2/' . ltrim($path, '/') . '?' . static::query(['apiKey' => $this->key]);
+        for ($try = 0; ; $try++) {
+            usleep(static::PAUSE_MS * 1000);
+            $this->calls++;
+            $res = Http::timeout(300)->get($url);
+            if ($res->status() === 429 && $try < static::MAX_RETRIES) {
+                $reset = intval($res->header('X-RateLimit-Reset'));
+                sleep($reset > 0 ? max(1, min(60, $reset - time())) : 30);
+                continue;
+            }
+            if (!$res->successful()) {
+                throw new BacklogException('Backlog ' . $res->status() . ' ' . $path, $res->status());
+            }
+
+            return strval($res->body());
+        }
+    }
+
+    /**
      * Issues of one project updated on or after a day, oldest change first,
      * page by page.
      *

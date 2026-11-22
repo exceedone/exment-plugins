@@ -135,6 +135,18 @@ class Connections
         DB::table(static::TABLE)->where('id', $id)->update(['locked_until' => null]);
     }
 
+    /** The connection's settings page, for a notice. */
+    public static function settingsUrl(int $id): string
+    {
+        try {
+            $plugin = \Exceedone\Exment\Model\Plugin::where('plugin_name', 'ExmentPMBacklog')->first();
+
+            return $plugin ? $plugin->getFullUrl(strval($id)) : '';
+        } catch (\Throwable $e) {
+            return '';
+        }
+    }
+
     /** Whether the schedule should run it now. */
     public static function due(object $conn): bool
     {

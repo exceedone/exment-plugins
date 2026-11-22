@@ -19,12 +19,13 @@ class Links
         return $row ?: null;
     }
 
-    public static function put(int $connId, string $host, string $kind, int $backlogId, int $exmentId, ?string $key = null): void
+    public static function put(int $connId, string $host, string $kind, int $backlogId, int $exmentId, ?string $key = null, ?int $parentBacklogId = null): void
     {
         $now = Carbon::now();
         DB::table(static::TABLE)->updateOrInsert(
             ['space_host' => $host, 'kind' => $kind, 'backlog_id' => $backlogId],
-            ['connection_id' => $connId, 'exment_id' => $exmentId, 'backlog_key' => $key, 'updated_at' => $now, 'created_at' => $now]
+            ['connection_id' => $connId, 'exment_id' => $exmentId, 'backlog_key' => mb_substr(strval($key), 0, 64) ?: null,
+                'parent_backlog_id' => $parentBacklogId, 'updated_at' => $now, 'created_at' => $now]
         );
     }
 

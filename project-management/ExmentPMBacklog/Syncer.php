@@ -114,6 +114,7 @@ class Syncer
                 'fail_count' => $fails,
                 'locked_until' => null,
             ]);
+            Notices::afterRun($conn, intval($conn->fail_count), $fails, $message, Connections::settingsUrl($id));
             // Keep the last 200 runs of a connection.
             $keep = DB::table('pmbl_runs')->where('connection_id', $id)->orderByDesc('id')->skip(200)->take(1)->value('id');
             if ($keep) {
@@ -196,6 +197,79 @@ class Syncer
                 $this->problem(Lang::t('problem_parent_refused', ['key' => $child->backlog_key, 'reason' => static::firstError($e)]));
             }
         }
+
+        // Once a day: the issues gone from this Backlog project. Only after a
+        // run that took everything, so a half-done first import is not
+        // mistaken for deletions.
+        $last = $this->conn->last_full_check_at ?? null;
+        if (!$failed && count($todo) < $limit && (!$last || Carbon::parse($last)->lt(Carbon::now()->subDay()))) {
+            try {
+                $this->fullCheck($host);
+                Connections::patch(intval($this->conn->id), ['last_full_check_at' => Carbon::now()]);
+            } catch (\Throwable $e) {
+                $this->problem(Lang::t('problem_full_check', ['message' => mb_substr($e->getMessage(), 0, 300)]));
+            }
+        }
+    }
+
+    /** Issues looked up one by one in a single check, at most. */
+    const MAX_GONE_LOOKUPS = 50;
+
+    /**
+     * Compare every issue number in Backlog with the ones taken. One missing
+     * was deleted (Backlog answers 404) or moved to another project. A moved
+     * one whose new project has a connection too is left to that connection,
+     * which moves it on its next run; otherwise it is marked, with a comment
+     * on the Exment issue. Nothing is deleted from Exment.
+     */
+    protected function fullCheck(string $host): void
+    {
+        $present = [];
+        foreach ($this->bl->issues(intval($this->map['backlog_project_id'])) as $issue) {
+            $present[intval($issue['id'])] = true;
+        }
+        $links = DB::table('pmbl_links')->where('connection_id', $this->conn->id)
+            ->where('kind', 'issue')->whereNull('gone_at')->get();
+        $looked = 0;
+        foreach ($links as $link) {
+            if (isset($present[intval($link->backlog_id)])) {
+                continue;
+            }
+            if (++$looked > static::MAX_GONE_LOOKUPS) {
+                break;
+            }
+            $projectKey = null;
+            try {
+                $now = (array) $this->bl->get('issues/' . $link->backlog_id);
+                $pid = intval($now['projectId'] ?? 0);
+                if ($pid === intval($this->map['backlog_project_id'])) {
+                    continue;
+                }
+                $other = DB::table('pmbl_connections')->where('backlog_project_id', $pid)->where('id', '!=', $this->conn->id)->get()
+                    ->first(function ($c) use ($host) {
+                        return strtolower(strval(parse_url($c->space_url, PHP_URL_HOST))) === $host;
+                    });
+                if ($other) {
+                    continue;
+                }
+                $projectKey = explode('-', strval($now['issueKey'] ?? ''))[0];
+                $reason = 'moved:' . $projectKey;
+            } catch (BacklogException $e) {
+                if ($e->getCode() !== 404) {
+                    throw $e;
+                }
+                $reason = 'deleted';
+            }
+            DB::table('pmbl_links')->where('id', $link->id)->update(['gone_at' => Carbon::now(), 'gone_reason' => $reason]);
+            $row = $this->issueTable->getValueModel($link->exment_id);
+            if ($row) {
+                $this->addComment($row, $reason === 'deleted'
+                    ? Lang::t('comment_deleted', ['key' => $link->backlog_key, 'date' => Carbon::now()->format('Y-m-d')])
+                    : Lang::t('comment_moved', ['key' => $link->backlog_key, 'project' => $projectKey]));
+            }
+            $k = $reason === 'deleted' ? 'deleted' : 'moved';
+            $this->counts[$k] = ($this->counts[$k] ?? 0) + 1;
+        }
     }
 
     /**
@@ -217,6 +291,20 @@ class Syncer
             Links::forget($link->id);
             $link = null;
         }
+        if ($row && intval($link->connection_id) !== intval($this->conn->id)) {
+            // Moved in Backlog from another connection's project to this
+            // one's: the Exment issue follows, with this project's statuses,
+            // types, categories and milestones (mapped above).
+            $this->problem(Lang::t('problem_moved_in', ['key' => $issue['issueKey'], 'id' => $row->id]));
+            $row->parent_type = Pm::name('project_table');
+            $row->parent_id = intval($this->conn->exment_project_id);
+            DB::table('pmbl_links')->where('id', $link->id)->update(['connection_id' => $this->conn->id]);
+            $this->counts['moved_in'] = ($this->counts['moved_in'] ?? 0) + 1;
+        }
+        if ($link && $link->gone_at) {
+            // Back in Backlog (restored, or moved back).
+            DB::table('pmbl_links')->where('id', $link->id)->update(['gone_at' => null, 'gone_reason' => null]);
+        }
         if ($row) {
             $action = 'update';
         } else {
@@ -234,7 +322,16 @@ class Syncer
         }
         $this->counts[$action]++;
 
-        $lastComment = $this->comments($issue, $row, $link);
+        // Files first, so the images the text points at have somewhere to point.
+        $this->attachments($issue, $row);
+        $images = new ImageLinks($this->issueTable, intval($row->id));
+        $desc = strval($value['description'] ?? '');
+        $fixed = $images->replace($desc);
+        if ($fixed !== $desc) {
+            $this->saveQuietly($row, ['description' => $fixed]);
+        }
+
+        $lastComment = $this->comments($issue, $row, $link, $images);
         Links::touch(intval($link->id), strval($issue['updated']), $lastComment);
 
         // Backlog's times and people, after every save of this run.
@@ -311,13 +408,14 @@ class Syncer
      * @param array<string, mixed> $issue
      * @return int|null the last Backlog comment id taken
      */
-    protected function comments(array $issue, $row, object $link): ?int
+    protected function comments(array $issue, $row, object $link, ImageLinks $images): ?int
     {
         $last = $link->last_comment_id ? intval($link->last_comment_id) : null;
         $table = CustomTable::getEloquent(SystemTableName::COMMENT);
         foreach ($this->bl->comments(intval($issue['id']), $last) as $c) {
             $text = static::commentText($c);
             if ($text !== null) {
+                $text = $images->replace($text);
                 $model = $table->getValueModel();
                 $model->saved_notify(false);
                 $model->disable_saved_event(true);
@@ -333,6 +431,58 @@ class Syncer
         }
 
         return $last;
+    }
+
+    /** A note from the connector on an issue, quietly. */
+    protected function addComment($row, string $text): void
+    {
+        $model = CustomTable::getEloquent(SystemTableName::COMMENT)->getValueModel();
+        $model->saved_notify(false);
+        $model->disable_saved_event(true);
+        $model->parent_id = $row->id;
+        $model->parent_type = $this->issueTable->table_name;
+        $model->setValue(['comment_detail' => $text]);
+        $model->save();
+    }
+
+    /** Files bigger than this stay in Backlog (the run log says so). */
+    const MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+    /**
+     * The issue's Backlog attachments not taken yet, as Exment documents of
+     * the issue. Saved quietly: Exment's own saveDocumentModel() rings the
+     * issue's notifications.
+     *
+     * @param array<string, mixed> $issue
+     */
+    protected function attachments(array $issue, $row): void
+    {
+        $host = $this->bl->host();
+        $docTable = CustomTable::getEloquent(SystemTableName::DOCUMENT);
+        foreach ((array) ($issue['attachments'] ?? []) as $a) {
+            $aid = intval($a['id'] ?? 0);
+            if (!$aid || Links::find($host, 'attachment', $aid)) {
+                continue;
+            }
+            $name = strval($a['name'] ?? ('attachment-' . $aid));
+            if (intval($a['size'] ?? 0) > static::MAX_FILE_BYTES) {
+                $this->problem(Lang::t('problem_file_too_big', ['key' => $issue['issueKey'], 'name' => $name]));
+                continue;
+            }
+            $bytes = $this->bl->download('issues/' . intval($issue['id']) . '/attachments/' . $aid);
+            $file = \Exceedone\Exment\Model\File::storeAs(
+                \Exceedone\Exment\Enums\FileType::CUSTOM_VALUE_DOCUMENT, $bytes, $this->issueTable->table_name, $name
+            )->saveCustomValue($row->id, null, $this->issueTable);
+            $doc = $docTable->getValueModel();
+            $doc->saved_notify(false);
+            $doc->parent_id = $row->id;
+            $doc->parent_type = $this->issueTable->table_name;
+            $doc->setValue(['file_uuid' => $file->uuid, 'document_name' => $name]);
+            $doc->save();
+            $this->stamp($docTable, intval($doc->id), $a['created'] ?? null, $a['created'] ?? null, $a['createdUser'] ?? null, $a['createdUser'] ?? null);
+            Links::put(intval($this->conn->id), $host, 'attachment', $aid, intval($doc->id), $name, intval($issue['id']));
+            $this->counts['file'] = ($this->counts['file'] ?? 0) + 1;
+        }
     }
 
     /**

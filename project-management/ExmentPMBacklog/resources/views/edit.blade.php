@@ -132,6 +132,17 @@
     </div>
 
     <hr>
+    {{-- take over from the internal tool --}}
+    <h4>{{ $L['import'] }}</h4>
+    <p style="color:#666;">{{ $L['import_help'] }}</p>
+    <form method="post" action="{{ $url($conn->id, 'import') }}" enctype="multipart/form-data" class="form-inline">
+        {{ csrf_field() }}
+        <label style="font-weight:normal;margin-right:12px;">{{ $L['import_state'] }} <input type="file" name="state" accept=".json,application/json" style="display:inline-block;"></label>
+        <label style="font-weight:normal;margin-right:12px;">{{ $L['import_mapping'] }} <input type="file" name="mapping" accept=".json,application/json" style="display:inline-block;"></label>
+        <button class="btn btn-default btn-sm" @if (empty($mapping)) disabled @endif>{{ $L['import_run'] }}</button>
+    </form>
+
+    <hr>
     <form method="post" action="{{ $url($conn->id, 'delete') }}" onsubmit="return confirm(@json($L['delete_confirm']));">
         {{ csrf_field() }}
         <button class="btn btn-danger btn-sm"><i class="fa fa-trash"></i> {{ $L['delete'] }}</button>

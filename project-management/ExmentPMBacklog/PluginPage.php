@@ -149,6 +149,40 @@ class PluginPage extends PluginPageBase
         return redirect($this->url($id))->with('pmbl_ok', Lang::t('run_done', $c));
     }
 
+    /** Take over what backlog_sync imported (state.json, mapping.json). */
+    public function postImport($id)
+    {
+        if ($deny = $this->deny()) {
+            return $deny;
+        }
+        $conn = Connections::find($id);
+        if (!$conn) {
+            return redirect($this->url());
+        }
+        $read = function (string $field) {
+            $f = request()->file($field);
+            if (!$f || !$f->isValid() || $f->getSize() > 50 * 1024 * 1024) {
+                return null;
+            }
+            $data = json_decode(strval(file_get_contents($f->getRealPath())), true);
+
+            return is_array($data) ? $data : null;
+        };
+        $state = $read('state');
+        if (!$state || !isset($state['issues']) || !is_array($state['issues'])) {
+            return redirect($this->url($id))->with('pmbl_error', Lang::t('import_bad'));
+        }
+        try {
+            $n = Importer::run($conn, $state, $read('mapping'));
+
+            return redirect($this->url($id))->with('pmbl_ok', Lang::t('import_done', $n));
+        } catch (\Throwable $e) {
+            \Log::warning('pm_backlog import ' . $id . ': ' . $e->getMessage());
+
+            return redirect($this->url($id))->with('pmbl_error', mb_substr($e->getMessage(), 0, 500));
+        }
+    }
+
     public function postDelete($id)
     {
         if ($deny = $this->deny()) {
@@ -202,11 +236,16 @@ class PluginPage extends PluginPageBase
      */
     public static function ensureTables(): void
     {
-        if (Schema::hasTable('pmbl_runs')) {
+        if (Schema::hasTable('pmbl_runs') && Schema::hasColumn('pmbl_links', 'parent_backlog_id')) {
             return;
         }
-        $migration = require __DIR__ . '/database/migrations/2026_11_22_000000_create_pm_backlog_tables.php';
-        $migration->up();
+        // Each migration looks before it creates, so running them all again is safe.
+        $files = glob(__DIR__ . '/database/migrations/*.php') ?: [];
+        sort($files);
+        foreach ($files as $file) {
+            $migration = require $file;
+            $migration->up();
+        }
     }
 
     /**
