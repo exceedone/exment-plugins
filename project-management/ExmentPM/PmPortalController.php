@@ -2661,17 +2661,8 @@ class PmPortalController extends AdminControllerBase
 
     protected function projectStampValue($project)
     {
-        $row = $this->issue_table->getValueModel()->query()
-            ->where('parent_id', $project->id)
-            ->where('parent_type', $this->project_table->table_name)
-            ->selectRaw('count(*) as pm_n, max(updated_at) as pm_at')
-            ->first();
-
-        return implode('/', [
-            intval(array_get($row, 'pm_n', 0)),
-            substr(strval(array_get($row, 'pm_at', '')), 0, 19),
-            substr(strval($project->updated_at), 0, 19),
-        ]);
+        // count/newest change of its issues (read once per request), then the project's own
+        return $this->issueStamp(intval($project->id)) . '/' . substr(strval($project->updated_at), 0, 19);
     }
 
     /* ================================================================== */
@@ -2864,7 +2855,13 @@ class PmPortalController extends AdminControllerBase
             ],
             'details' => (object) $details,
             'feed' => $feed,
-            'burndown' => $features['gantt'] ? $this->buildBurndown($project, $this->withArchivedOf($project, $issues, $archive, $milestones), $milestones) : [],
+            // Issues plus their revision history: kept until an issue of the
+            // project changes, or the day does (0.16s on ex1task).
+            'burndown' => $features['gantt'] ? $this->pmCached('burndown', [
+                intval($project->id), $this->issueStamp(intval($project->id)), \Carbon\Carbon::today()->format('Y-m-d'), $milestones, $archive,
+            ], function () use ($project, $issues, $archive, $milestones) {
+                return $this->buildBurndown($project, $this->withArchivedOf($project, $issues, $archive, $milestones), $milestones);
+            }) : [],
             'archive' => $this->archiveSummary($project, $archive),
             'wiki' => $wiki,
             'files' => $files,
@@ -3145,11 +3142,19 @@ class PmPortalController extends AdminControllerBase
         $is = $this->def['issue'];
         $ms = $this->issueColumnSql(array_get($is, 'milestone')) ?? 'NULL';
         $pa = $this->issueColumnSql(array_get($is, 'parent')) ?? 'NULL';
-        $groups = $this->projectIssueQuery($project)->toBase()
-            ->whereRaw($archive['archived_sql'], $archive['bindings'])
-            ->selectRaw($archive['st'] . ' as st, ' . $ms . ' as ms, ' . $pa . ' as pa, count(*) as n')
-            ->groupByRaw($archive['st'] . ', ' . $ms . ', ' . $pa)
-            ->get();
+        // Grouping ~2,000 finished issues on columns computed from their JSON
+        // took 0.25s on ex1task; it changes only when an issue does.
+        $groups = $this->pmCached('archive', [
+            intval($project->id), $this->issueStamp(intval($project->id)), $archive['archived_sql'], $archive['bindings'], $ms, $pa,
+        ], function () use ($project, $archive, $ms, $pa) {
+            return $this->projectIssueQuery($project)->toBase()
+                ->whereRaw($archive['archived_sql'], $archive['bindings'])
+                ->selectRaw($archive['st'] . ' as st, ' . $ms . ' as ms, ' . $pa . ' as pa, count(*) as n')
+                ->groupByRaw($archive['st'] . ', ' . $ms . ', ' . $pa)
+                ->get()->map(function ($g) {
+                    return (object) (array) $g;
+                })->all();
+        });
         $out = ['days' => $archive['days'], 'count' => 0, 'by_status' => [], 'by_ms' => [], 'kids' => []];
         foreach ($groups as $g) {
             $n = intval($g->n);
