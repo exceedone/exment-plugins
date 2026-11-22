@@ -67,6 +67,7 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
         'locale' => $locale,
         'view' => $view,
         'file' => $file ?? null,
+        'blankUrl' => $blank_url ?? null,
     ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!};
     const token = document.querySelector('meta[name="csrf-token"]').content;
     const $ = (k) => document.querySelector('[data-gw="' + k + '"]');
@@ -107,12 +108,27 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
         navigator.sendBeacon(info.urls.checkin, fd);
     }
 
+    // Close: check the file in, then leave the editor itself - never load Exment
+    // inside a frame. A tab "Office で開く" opened is closed; otherwise the top
+    // window goes back to the file page.
     async function closeEditor() {
+        if (cfg.view) { return; }   // the preview inside the file page closes nothing
         if (checkedOutHere) {
             checkedOutHere = false;
             await call(info.urls.checkin, 'POST', new FormData());
         }
-        location.href = info.urls.page;
+        dirty = false;
+        if (window.opener && !window.opener.closed && window.top === window.self) {
+            window.close();
+            // a browser may refuse to close a tab it did not open by script: go back instead
+            setTimeout(() => { location.href = info.urls.page; }, 300);
+            return;
+        }
+        try {
+            window.top.location.href = info.urls.page;
+        } catch (e) {
+            location.href = info.urls.page;
+        }
     }
 
     async function start() {
@@ -181,7 +197,8 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
             options: {
                 locale: cfg.locale,
                 user: { name: cfg.userName || 'Exment' },
-                ui: { closeButton: !cfg.file, downloadButton: false, startWindow: false },
+                // no Close in the read-only preview of the file page (it would navigate the frame)
+                ui: { closeButton: !cfg.file && !cfg.view, downloadButton: false, startWindow: false },
                 features: { localFiles: false },
             },
             host: {
@@ -212,8 +229,9 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
                     window.gwDirty = dirty; // the screen around an attachment asks before it closes this
                     if (dirty) { state('保存していない変更があります', 'warn'); }
                 } else if (event.type === 'closeRequested') {
-                    // an attachment shown inside another screen: that screen closes it
-                    if (!cfg.file) { closeEditor(); }
+                    // an attachment shown inside another screen: that screen closes it;
+                    // the preview of the file page has nothing to close
+                    if (!cfg.file && !cfg.view) { closeEditor(); }
                 } else if (event.type === 'error') {
                     state(event.message || 'エラー', 'error');
                 }
@@ -234,14 +252,30 @@ html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Se
             stop('<p>ファイルを読み込めませんでした。</p>');
             return;
         }
+        let bytes = await d.arrayBuffer();
+        // An empty file (0 bytes, as Windows makes with New > Word document) has nothing
+        // the editor could tell the kind from: open a blank document of the kind its
+        // name says; the first save makes the file a real one.
+        let blank = false;
+        const ext = String(info.name).split('.').pop().toLowerCase();
+        if (bytes.byteLength === 0 && cfg.blankUrl && ['docx', 'xlsx', 'pptx'].includes(ext)) {
+            const b = await fetch(cfg.blankUrl.replace('__EXT__', ext), { credentials: 'same-origin' });
+            if (b.ok) {
+                bytes = await b.arrayBuffer();
+                blank = true;
+            }
+        }
         await handle.load({
             name: info.name,
-            bytes: await d.arrayBuffer(),
+            bytes: bytes,
             version: version,
             readOnly: readOnly,
             readOnlyMessage: readOnlyMessage || undefined,
         });
         state(readOnly ? '読み取り専用' : (cfg.file ? '編集中（保存すると添付の中身が新しくなります）' : ('v' + info.version_no + '・編集中（ほかの人は変更できません）')), readOnly ? 'warn' : '');
+        if (blank && !readOnly) {
+            handle.notify({ level: 'info', message: '空のファイルだったので、新しい文書として開きました。保存すると、この名前のファイルになります。', id: 'gw-blank' });
+        }
 
         window.addEventListener('beforeunload', (e) => {
             if (dirty) { e.preventDefault(); e.returnValue = ''; }

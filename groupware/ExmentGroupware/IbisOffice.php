@@ -124,6 +124,125 @@ class IbisOffice
         return in_array(strtolower(pathinfo($name, PATHINFO_EXTENSION)), static::EXTENSIONS, true);
     }
 
+    /** The files a .gz copy is written for: what the browser fetches and compresses well. */
+    public const GZIP_EXTENSIONS = ['wasm', 'js', 'mjs', 'css', 'json', 'html', 'svg', 'txt', 'map'];
+
+    /** Smaller files are not worth a copy. */
+    public const GZIP_MIN_BYTES = 1024;
+
+    /**
+     * Write file.gz beside each file worth compressing, streamed so the ~90MB
+     * .wasm does not have to fit in PHP's memory. A copy that cannot be
+     * written is left out: the server then compresses on the fly, or not.
+     */
+    public static function writeGzipCopies(string $dir): int
+    {
+        $count = 0;
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            /** @var \SplFileInfo $file */
+            $path = $file->getPathname();
+            if (!$file->isFile() || !in_array(strtolower($file->getExtension()), static::GZIP_EXTENSIONS, true) || $file->getSize() < static::GZIP_MIN_BYTES) {
+                continue;
+            }
+            $in = @fopen($path, 'rb');
+            $gz = @gzopen($path . '.gz', 'wb9');
+            if ($in === false || $gz === false) {
+                if ($in !== false) {
+                    fclose($in);
+                }
+                continue;
+            }
+            $ok = true;
+            while (!feof($in)) {
+                $chunk = fread($in, 1048576);
+                if ($chunk === false || ($chunk !== '' && gzwrite($gz, $chunk) === false)) {
+                    $ok = false;
+                    break;
+                }
+            }
+            fclose($in);
+            gzclose($gz);
+            if ($ok) {
+                @touch($path . '.gz', intval(filemtime($path)));
+                $count++;
+            } else {
+                @unlink($path . '.gz');
+            }
+        }
+        return $count;
+    }
+
+    /**
+     * An .htaccess for Apache (rental servers such as XServer): the .wasm type,
+     * a year's cache (each version has its own folder), and the .gz copies
+     * sent to browsers that take gzip - or mod_deflate when they are missing.
+     * Every rule sits in an IfModule, so a server without that module simply
+     * skips it. nginx does not read it; see the README for nginx.
+     */
+    public static function writeHtaccess(string $dir): void
+    {
+        $rules = <<<'HTACCESS'
+# Written by Exment Plugin Groupware when it installed ibisOffice.
+# The editor is large (the .wasm is ~90MB): send it compressed and let the browser keep it.
+# Each version has its own folder, so a year's cache is safe.
+
+<IfModule mod_mime.c>
+    AddType application/wasm .wasm
+    AddType text/javascript .js .mjs
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=31536000, immutable"
+</IfModule>
+
+# The .gz copies written at install, to browsers that accept gzip.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP:Accept-Encoding} gzip
+    RewriteCond %{REQUEST_FILENAME}.gz -f
+    RewriteRule ^(.+\.(wasm|js|mjs|css|json|html|svg|txt|map))$ $1.gz [L]
+    # never compress a .gz again
+    RewriteRule \.gz$ - [E=no-gzip:1,E=dont-vary:1]
+</IfModule>
+<FilesMatch "\.gz$">
+    <IfModule mod_headers.c>
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </IfModule>
+</FilesMatch>
+<IfModule mod_mime.c>
+    <FilesMatch "\.wasm\.gz$">
+        ForceType application/wasm
+    </FilesMatch>
+    <FilesMatch "\.m?js\.gz$">
+        ForceType text/javascript
+    </FilesMatch>
+    <FilesMatch "\.css\.gz$">
+        ForceType text/css
+    </FilesMatch>
+    <FilesMatch "\.(json|map)\.gz$">
+        ForceType application/json
+    </FilesMatch>
+    <FilesMatch "\.html\.gz$">
+        ForceType "text/html; charset=utf-8"
+    </FilesMatch>
+    <FilesMatch "\.svg\.gz$">
+        ForceType image/svg+xml
+    </FilesMatch>
+    <FilesMatch "\.txt\.gz$">
+        ForceType "text/plain; charset=utf-8"
+    </FilesMatch>
+</IfModule>
+
+# Without the copies (or without mod_rewrite): compress on the fly.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE application/wasm text/javascript application/javascript text/css application/json text/html image/svg+xml text/plain
+</IfModule>
+HTACCESS;
+        @file_put_contents($dir . '/.htaccess', $rules);
+    }
+
     /**
      * Download the pinned version, check its SHA-256 and put it into the public folder.
      *
@@ -174,11 +293,15 @@ class IbisOffice
             if (!@mkdir(dirname($dest), 0777, true) && !is_dir(dirname($dest))) {
                 throw new \RuntimeException('Cannot make ' . dirname($dest));
             }
+            // compressed copies, for a web server that serves them as they are
+            // (nginx gzip_static, the .htaccess below): the .wasm is ~90MB, ~24MB gzipped
+            static::writeGzipCopies($out);
             if (!@rename($out, $dest)) {
                 if (!File::copyDirectory($out, $dest)) {
                     throw new \RuntimeException('Cannot write ' . $dest);
                 }
             }
+            static::writeHtaccess(dirname($dest));
         } finally {
             File::deleteDirectory($work);
         }

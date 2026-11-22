@@ -6,6 +6,12 @@
 
 <a id="english"></a>
 
+**Changed in 0.4.4**
+
+- An empty Office file (0 bytes, as Windows makes with New > Word document) opened in ibisOffice as a spreadsheet. It now opens as a blank document of the kind its name says (docx, xlsx, pptx), and the first save makes it a real document.
+- Close (× at the top right) checks the file in and leaves the editor: a tab "Office で開く" opened is closed, otherwise the whole window goes back to the file page (Exment no longer opens inside the editor's frame). The read-only preview on the file page has no Close.
+- The installer writes `.gz` copies of ibisOffice's large files and an `.htaccess` for Apache; see [The web server](#the-web-server) (and the nginx settings there).
+
 ## What it does
 
 The groupware of Exment (ex1task ISS00233). Two parts so far:
@@ -46,10 +52,31 @@ On a site with several web servers, or where `public/` cannot be written, serve 
 
 ### The web server
 
-- Send `.wasm` as `application/wasm` (nginx and Apache do by default in recent versions).
-- **Compress** `.wasm` and `.js` (gzip or Brotli). The wasm is 92 MB; compressed it is about a quarter of that. For nginx: `gzip_types application/wasm application/javascript text/javascript;`.
-- The folder carries the version, so the files can be cached for a long time: `Cache-Control: public, max-age=31536000, immutable` under `/vendor/exment_groupware/ibisoffice/`.
+The editor is large (the `.wasm` is 92 MB, about 24 MB gzipped). Sent compressed and kept by the browser, it is downloaded once; otherwise every opening waits for it.
+
+- **Apache** (rental servers such as XServer included): nothing to do. From 0.4.4 the installer writes `.gz` copies of the large files and an `.htaccess` in `public/vendor/exment_groupware/ibisoffice/`: the `.wasm` type, a year's cache, and the `.gz` copies to browsers that accept gzip (`mod_rewrite`, `mod_headers`, `mod_mime`; `mod_deflate` when the copies are missing). Each rule sits in an `IfModule`, so a missing module is skipped. The server must allow `.htaccess` there (`AllowOverride All`, as Exment's own `.htaccess` needs).
+- **nginx** does not read `.htaccess`. Add this to the site:
+
+```nginx
+# inside the server { } of the site, before "location /"
+location ^~ /vendor/exment_groupware/ibisoffice/ {
+    gzip_static on;            # serve the .gz copies the installer wrote
+    gzip on;                   # and compress anything without one
+    gzip_types application/wasm text/javascript application/javascript text/css application/json image/svg+xml;
+    types { application/wasm wasm; }
+    expires 1y;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    # add_header here drops the ones of the server { }: repeat them
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    try_files $uri =404;
+}
+```
+
+- **X-Frame-Options must be `SAMEORIGIN`, not `DENY`**: the editor is an `iframe` of the same site, and `DENY` makes the browser refuse it (the screen stays empty). The same goes for a Content-Security-Policy `frame-ancestors`: `'self'`.
 - No COOP / COEP headers are needed. If the site sets a Content-Security-Policy, it needs `script-src 'self' 'wasm-unsafe-eval'`.
+- It works without Docker, on a rental server: ibisOffice runs in the browser, and the server only hands out its files. No LibreOffice is needed.
 
 ## ibisOffice and its licence
 
@@ -93,6 +120,12 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 
 <a id="japanese"></a>
 
+**0.4.4 で変わったこと**
+
+- 空の Office のファイル（0 バイト。Windows の「新規作成 → Word 文書」で作ったもの）が、ibisOffice で表計算として開いていました。名前の拡張子（docx・xlsx・pptx）の種類の新しい文書として開き、最初の保存で本物の文書になるようにしました。
+- 右上の閉じる（×）で、ファイルをチェックインしてエディターを離れます。「Office で開く」で開いたタブは閉じ、そうでなければ画面全体がファイルの画面に戻ります（エディターの枠の中に Exment が開くことはなくなりました）。ファイルの画面のプレビュー（読み取り専用）には閉じるを出しません。
+- インストールのときに、ibisOffice の大きいファイルの `.gz` の複製と Apache 用の `.htaccess` を書きます。[Web サーバーの設定](#web-サーバーの設定)（nginx の設定も）を見てください。
+
 ## できること
 
 Exment のグループウェア（ex1task ISS00233）です。今あるのは次の 2 つです。
@@ -129,10 +162,31 @@ Web サーバーが複数台のときや、`public/` に書き込めないとき
 
 ### Web サーバーの設定
 
-- `.wasm` は `application/wasm` で送ります（最近の nginx・Apache は標準でそうなっています）。
-- `.wasm` と `.js` は**圧縮**して送ります（gzip か Brotli）。wasm は 92 MB で、圧縮すると約 4 分の 1 になります。nginx なら `gzip_types application/wasm application/javascript text/javascript;`。
-- フォルダーに版が入っているので、長くキャッシュできます（`/vendor/exment_groupware/ibisoffice/` に `Cache-Control: public, max-age=31536000, immutable`）。
+エディターは大きいので（`.wasm` が 92 MB、gzip で約 24 MB）、圧縮して送り、ブラウザーに残してもらうと、ダウンロードは最初の 1 回だけになります。そうしないと、開くたびに待ちます。
+
+- **Apache**（XServer などのレンタルサーバーも）: 何もしなくてかまいません。0.4.4 から、インストールのときに大きいファイルの `.gz` の複製と、`public/vendor/exment_groupware/ibisoffice/` の `.htaccess` を書きます。`.wasm` の種類・1 年のキャッシュ・gzip を受け取れるブラウザーへの `.gz` の複製（`mod_rewrite`・`mod_headers`・`mod_mime`。複製がないときは `mod_deflate`）。どれも `IfModule` の中なので、ないモジュールは飛ばされます。そこで `.htaccess` が使える設定（`AllowOverride All`。Exment 自身の `.htaccess` にも要ります）が必要です。
+- **nginx** は `.htaccess` を読みません。サイトの設定に次を足します。
+
+```nginx
+# inside the server { } of the site, before "location /"
+location ^~ /vendor/exment_groupware/ibisoffice/ {
+    gzip_static on;            # serve the .gz copies the installer wrote
+    gzip on;                   # and compress anything without one
+    gzip_types application/wasm text/javascript application/javascript text/css application/json image/svg+xml;
+    types { application/wasm wasm; }
+    expires 1y;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    # add_header here drops the ones of the server { }: repeat them
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    try_files $uri =404;
+}
+```
+
+- **X-Frame-Options は `DENY` ではなく `SAMEORIGIN` にします。** エディターは同じサイトの `iframe` なので、`DENY` だとブラウザーが表示を断ります（画面が空のまま）。Content-Security-Policy の `frame-ancestors` も `'self'` にします。
 - COOP・COEP のヘッダーは要りません。Content-Security-Policy を付けているサイトは `script-src 'self' 'wasm-unsafe-eval'` が要ります。
+- Docker なしのレンタルサーバーでも使えます。ibisOffice はブラウザーの中で動き、サーバーはファイルを渡すだけです。LibreOffice は要りません。
 
 ## ibisOffice のライセンス
 
