@@ -21,6 +21,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   開いている課題が多いプロジェクトを、速く開くようにしました。ページに入れる課題の一覧を小さくしました（行ごとのアドレス・プロジェクトキー・表示用の日時は入れず、画面で番号から組み立てる。空の値は入れない。日本語を `\uXXXX` にしない）。開いている課題が 2,400 件で、ページが 2.0MB・1.6 秒から 0.9MB・1.2 秒になりました（手元）。行を作る時間も半分以下です。
 - A 「プロジェクト一覧へ」 button at the left of the project's header, on every tab, back to the portal's list of projects. It looks like the issue detail's 「課題一覧へ」 and sits in the same place.
   プロジェクトの見出しの左に「プロジェクト一覧へ」を付けました（どのタブでも）。課題の詳細の「課題一覧へ」と同じ形・同じ場所です。
+- Settings → Statuses names the status the list's 「完了以外」 hides: the last one in the order that counts as done (ISS00255). The other done statuses (処理済み and so on) stay visible, and the note says which. A done status added after 完了 now shows up here at once, instead of as a 完了以外 that hides nothing. The note follows every change of order, name or 完了扱い.
+  設定の「状態」に、課題一覧の「完了以外」で隠れる状態（並びで最後の完了扱いの状態）を出すようにしました（ISS00255）。ほかの完了扱いの状態（処理済みなど）は「完了以外」でも表示されることも書きます。完了の後ろに完了扱いの状態を足してしまったとき、「完了以外」で何も隠れなくなるのを、ここですぐに気づけます。並び順・名前・完了扱いを変えると、その場で書き直します。
 
 **Changed in 1.7.4 / 1.7.4 で変わったこと**
 
