@@ -86,7 +86,7 @@ class Syncer
         try {
             // A command has no middleware to bind parent_type to a class.
             \Exceedone\Exment\Middleware\Morph::defineMorphMap();
-            $self = new static($conn);
+            $self = new self($conn);
             $self->run($limit);
             $status = $self->counts['error'] > 0 ? 'partial' : 'ok';
         } catch (\Throwable $e) {
@@ -122,7 +122,7 @@ class Syncer
             }
         }
 
-        return ['status' => $status, 'counts' => $self ? $counts : [], 'problems' => $problems ?? [], 'message' => $message];
+        return ['status' => $status, 'counts' => $self ? $counts : [], 'problems' => $problems, 'message' => $message];
     }
 
     public function run(int $limit): void
