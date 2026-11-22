@@ -24,7 +24,7 @@
 <div class="box card">
     <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-file-word-o" aria-hidden="true"></i> Office（ブラウザーで Word・Excel・PowerPoint を開く）</h3></div>
     <div class="box-body">
-        <p>ファイルサーバーの {{ implode('・', array_map(function ($e) { return '.' . $e; }, $extensions)) }} のファイルに「Office で開く」ボタンが出ます。開くと、ブラウザーの中で編集でき、保存すると新しい版になります。開いている間はチェックアウト（編集中）になるので、ほかの人は変更できません。</p>
+        <p>ファイル共有の {{ implode('・', array_map(function ($e) { return '.' . $e; }, $extensions)) }} のファイルに「Office で開く」ボタンが出ます。開くと、ブラウザーの中で編集でき、保存すると新しい版になります。開いている間はチェックアウト（編集中）になるので、ほかの人は変更できません。</p>
 
         <table class="table table-condensed" style="max-width:720px">
             <tr><th style="width:200px">ibisOffice</th><td>{{ $version }}（株式会社アイビス、AGPL-3.0）</td></tr>
@@ -37,11 +37,11 @@
                     <span class="text-warning"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> まだインストールしていません</span>
                 @endif
             </td></tr>
-            <tr><th>ファイルサーバー</th><td>
+            <tr><th>ファイル共有</th><td>
                 @if ($file_server_url)
-                    <a href="{{ $file_server_url }}">ファイルサーバーを開く</a>
+                    <a href="{{ $file_server_url }}">ファイル共有を開く</a>
                 @else
-                    この Exment にはファイルサーバーがありません（Exment 本体の更新が必要です）。
+                    この Exment にはファイル共有がありません（Exment 本体の更新が必要です）。
                 @endif
             </td></tr>
             <tr><th>使えるブラウザー</th><td>WebGPU のあるブラウザー: Chrome・Edge、Safari 26 以降（HTTPS のサイト）</td></tr>

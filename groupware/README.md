@@ -6,9 +6,13 @@
 
 <a id="english"></a>
 
+**Changed in 0.4.7**
+
+- Exment calls the file server **File sharing** (ファイル共有) from 7.2.1, so this plugin does too: the description in Feature management and the page of the plugin. Nothing else changes.
+
 **Changed in 0.4.6**
 
-- A blank Word document took no typing: the blank of 0.4.4 and 0.4.5 (and of Exment's file server "New") had no paragraph, so the editor had nowhere to put the cursor (文字数 0). The blank now has one empty paragraph, as Word's own new document. A file that is still exactly the old blank opens as the fixed one and is repaired when it is saved.
+- A blank Word document took no typing: the blank of 0.4.4 and 0.4.5 (and of Exment's File sharing "New") had no paragraph, so the editor had nowhere to put the cursor (文字数 0). The blank now has one empty paragraph, as Word's own new document. A file that is still exactly the old blank opens as the fixed one and is repaired when it is saved.
 
 **Changed in 0.4.5**
 
@@ -27,19 +31,19 @@
 The groupware of Exment (ex1task ISS00233). Two parts so far:
 
 - **Web mail** (0.2.0, P2): a mail program in the browser, like Outlook or Gmail. See [Web mail](#web-mail).
-- **Office** (0.1.0, P3): opens the Word (.docx), Excel (.xlsx) and PowerPoint (.pptx) files of the **file server** of Exment in a browser Office, [ibisOffice](https://github.com/ibisjp/ibis-office) by ibis inc.:
+- **Office** (0.1.0, P3): opens the Word (.docx), Excel (.xlsx) and PowerPoint (.pptx) files of the **File sharing** of Exment in a browser Office, [ibisOffice](https://github.com/ibisjp/ibis-office) by ibis inc.:
 
 - The page of such a file gets an **Office で開く** (Open in Office) button. It opens the editor in a new tab.
 - When the server has no LibreOffice (no PDF preview), the editor is shown **read-only** in the preview of the file page (0.2.2). It does not check the file out.
-- **Save** in the editor adds a new version of the file (the version history of the file server keeps the older ones).
+- **Save** in the editor adds a new version of the file (the version history of File sharing keeps the older ones).
 - While the file is open for editing it is **checked out**: nobody else can change it (ibisOffice has no editing together yet). It is checked in when the editor is closed. A user who may only view the file, or a file someone else has checked out, opens read-only.
 - A save from an old version (someone saved in between) is refused, so nothing is overwritten.
-- **Attachments of records** (0.3.0, ISS00416): other plugins can show a Word, Excel or PowerPoint file attached to a record read only, at `view/{uuid}` (Exment Plugin PM does, for the files of issues, wiki pages and projects). The file is read from its usual download address, so only those who may download it can see it. This part does not need the file server.
+- **Attachments of records** (0.3.0, ISS00416): other plugins can show a Word, Excel or PowerPoint file attached to a record read only, at `view/{uuid}` (Exment Plugin PM does, for the files of issues, wiki pages and projects). The file is read from its usual download address, so only those who may download it can see it. This part does not need File sharing.
 - **Editing attachments** (0.4.0, ISS00416): a user who may edit that record gets **編集する** (Edit) on that page (`edit/{uuid}`). **Save** replaces the content of the attachment and keeps its address, so links to it go on working. The content it had is kept as a file of its own on the same record (not listed as an attachment), and a comment on the record says who edited it, with a link to that earlier file. A save from content someone else replaced in between is refused.
   Only attachments (not the values of file columns) can be edited, by those who may edit the record (and, when `exment.file_delete_useronly` is on, only by the one who uploaded the file). A save takes up to 50 MB (or Exment's upload limit, if smaller).
   Two things to know: **an archived project of Exment Plugin PM does not stop editing** here, and on an Exment without older versions of attachments, **deleting the attachment does not delete the earlier contents** kept by edits: they stay readable from the links in the comments, for those who may read the record. On an Exment that has them (the 「差し替え」 of the attachment list, exceedone/exment PR #1866), each earlier content is also an older version of the attachment (「版 n」, up to `exment.document_version_limit`) and is deleted with it.
 - **The menu "Mail"** (0.4.2): installing the plugin (or updating it to 0.4.2) makes one menu, "Mail", to the web mail (`plugins/exment_groupware/mail`). When the mail is not used (Feature management), the menu is hidden as its pages are. A site that has a menu to the mail already gets no second one, and a menu an administrator removed does not come back.
-- **Feature management** (0.4.1): on an Exment with Feature management (Admin setting → Feature management), the web mail is a feature of its own (`exment_groupware.mail`): an administrator turns it on or off and chooses the role groups that may use it. A site that had the plugin before keeps it on; on a new site it starts off. The Office part follows the file server's feature. On an Exment without Feature management nothing changes.
+- **Feature management** (0.4.1): on an Exment with Feature management (Admin setting → Feature management), the web mail is a feature of its own (`exment_groupware.mail`): an administrator turns it on or off and chooses the role groups that may use it. A site that had the plugin before keeps it on; on a new site it starts off. The Office part follows the feature of File sharing. On an Exment without Feature management nothing changes.
 
 | Folder | Plugin |
 |---|---|
@@ -48,8 +52,8 @@ The groupware of Exment (ex1task ISS00233). Two parts so far:
 ## Requirements
 
 - Exment 7.1 or later (checked on 7.1 and 7.2) and PHP 8.2. The web mail and the attachments of records work on any of them.
-- To open the files of the **file server** in Office: an Exment with the file server (7.2.0 or later). Without it, that part does nothing; the rest works.
-- On Exment 7.2.0 or later: the web mail is a feature of Feature management (see above), and the older contents of an edited attachment become its older versions (exceedone/exment PR #1866).
+- To open the files of the **File sharing** in Office: an Exment with File sharing (7.2.1 or later). Without it, that part does nothing; the rest works.
+- On Exment 7.2.1 or later: the web mail is a feature of Feature management (see above), and the older contents of an edited attachment become its older versions (exceedone/exment PR #1866).
 - The `zip` extension of PHP (to install ibisOffice).
 - A browser with WebGPU: Chrome, Edge, or Safari 26 or later. The site must be on HTTPS (`http://localhost` works while developing).
 
@@ -130,9 +134,13 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 
 <a id="japanese"></a>
 
+**0.4.7 で変わったこと**
+
+- Exment 7.2.1 から、ファイルサーバーの名前が「**ファイル共有**」になったので、このプラグインの機能の管理の説明とプラグインの画面もそろえました。ほかは変わりません。
+
 **0.4.6 で変わったこと**
 
-- 空の Word の文書に文字を打てませんでした。0.4.4・0.4.5（と Exment のファイルサーバーの「新規作成」）の空の文書に段落が 1 つもなく、エディターがカーソルを置けなかったためです（文字数 0）。Word の新しい文書と同じく、空の段落を 1 つ入れました。前の空の文書のままのファイルは、直した空の文書として開き、保存すると直ります。
+- 空の Word の文書に文字を打てませんでした。0.4.4・0.4.5（と Exment のファイル共有の「新規作成」）の空の文書に段落が 1 つもなく、エディターがカーソルを置けなかったためです（文字数 0）。Word の新しい文書と同じく、空の段落を 1 つ入れました。前の空の文書のままのファイルは、直した空の文書として開き、保存すると直ります。
 
 **0.4.5 で変わったこと**
 
@@ -151,25 +159,25 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 Exment のグループウェア（ex1task ISS00233）です。今あるのは次の 2 つです。
 
 - **Web メール**（0.2.0、P2）: Outlook・Gmail のような、ブラウザーのメールソフト。[Web メール](#web-mail-ja)を参照。
-- **Office**（0.1.0、P3）: Exment の**ファイルサーバー**にある Word（.docx）・Excel（.xlsx）・PowerPoint（.pptx）のファイルを、株式会社アイビスのブラウザーで動く Office、[ibisOffice](https://github.com/ibisjp/ibis-office) で開きます。
+- **Office**（0.1.0、P3）: Exment の**ファイル共有**にある Word（.docx）・Excel（.xlsx）・PowerPoint（.pptx）のファイルを、株式会社アイビスのブラウザーで動く Office、[ibisOffice](https://github.com/ibisjp/ibis-office) で開きます。
 
 - そのファイルの画面に **Office で開く** ボタンが出ます。押すと、新しいタブでエディターが開きます。
 - サーバーに LibreOffice がない（PDF のプレビューを作れない）ときは、ファイルの画面のプレビューの欄に、エディターを**読み取り専用**で埋め込みます（0.2.2）。チェックアウトはしません。
-- エディターで**保存**すると、ファイルの新しい版になります（前の版はファイルサーバーの版の履歴に残ります）。
+- エディターで**保存**すると、ファイルの新しい版になります（前の版はファイル共有の版の履歴に残ります）。
 - 編集のために開いている間は**チェックアウト**（編集中）になり、ほかの人は変更できません（ibisOffice にはまだ同時編集がないため）。エディターを閉じるとチェックインします。見るだけの権限の人や、ほかの人がチェックアウトしているファイルは、読み取り専用で開きます。
 - 古い版から保存しようとしたとき（間にほかの人が保存したとき）は断るので、上書きで消えることはありません。
-- **データの添付**（0.3.0、ISS00416）: データに添付した Word・Excel・PowerPoint を、ほかのプラグインの画面から読み取り専用で表示できます（`view/{uuid}`。Exment Plugin PM の課題・Wiki・プロジェクトのファイルで使います）。ファイルはいつものダウンロードの URL から読むので、ダウンロードできる人だけが見られます。ここはファイルサーバーがなくても動きます。
+- **データの添付**（0.3.0、ISS00416）: データに添付した Word・Excel・PowerPoint を、ほかのプラグインの画面から読み取り専用で表示できます（`view/{uuid}`。Exment Plugin PM の課題・Wiki・プロジェクトのファイルで使います）。ファイルはいつものダウンロードの URL から読むので、ダウンロードできる人だけが見られます。ここはファイル共有がなくても動きます。
 - **データの添付の編集**（0.4.0、ISS00416）: そのデータを編集できる人には、その画面に **編集する** が出ます（`edit/{uuid}`）。**保存**すると添付の中身が新しくなり、アドレスは変わらないので、そこへのリンクもそのまま使えます。前の中身は同じデータの別のファイルとして残し（添付の一覧には出ません）、データに「誰が編集したか」と前のファイルへのリンクをコメントで残します。開いたあとにほかの人が保存していたときは、保存を断ります。
   編集できるのは添付だけです（ファイルの列の値は対象外）。そのデータを編集できる人だけが編集でき、`exment.file_delete_useronly` が on のときは、ファイルを上げた人だけです。保存できる大きさは 50MB まで（Exment のアップロードの上限のほうが小さければ、そちら）です。
   気をつけること: **Exment Plugin PM のアーカイブ中のプロジェクトでも、ここからの編集は止まりません**。また、添付の古い版の仕組みがない Exment では、**添付を消しても、編集で残した前の中身は消えません**。データを見られる人は、コメントのリンクから読めたままです。仕組みがある Exment（添付の一覧の「差し替え」、exceedone/exment PR #1866）では、前の中身は添付の古い版（「版 n」、`exment.document_version_limit` まで）にもなり、添付を消すと一緒に消えます。
 - **メニュー「メール」**（0.4.2）: プラグインを入れたとき（0.4.2 に上げたときも）、Web メール（`plugins/exment_groupware/mail`）へのメニュー「メール」を 1 つ作ります。機能の管理でメールを「使わない」にしたときは、ページと同じくメニューも隠れます。メールへのメニューがもうあるサイトには作らず、管理者が消したメニューは戻りません。
-- **機能の管理**（0.4.1）: 「機能の管理」（管理者設定）のある Exment では、Web メールが 1 つの機能（`exment_groupware.mail`）になり、管理者が使う・使わないと、使える役割グループを決めます。前からこのプラグインを入れているサイトでは「使う」のまま、新しいサイトでははじめ「使わない」です。Office はファイルサーバーの機能に従います。機能の管理のない Exment では、今までと同じです。
+- **機能の管理**（0.4.1）: 「機能の管理」（管理者設定）のある Exment では、Web メールが 1 つの機能（`exment_groupware.mail`）になり、管理者が使う・使わないと、使える役割グループを決めます。前からこのプラグインを入れているサイトでは「使う」のまま、新しいサイトでははじめ「使わない」です。Office はファイル共有の機能に従います。機能の管理のない Exment では、今までと同じです。
 
 ## 必要なもの
 
 - Exment 7.1 以上（7.1・7.2 で確かめています）と PHP 8.2。Web メールとデータの添付は、どれでも動きます。
-- **ファイルサーバー**のファイルを Office で開くには、ファイルサーバーのある Exment（7.2.0 以降）。ないときは、その部分だけが何もせず、ほかは動きます。
-- Exment 7.2.0 以降では、Web メールは「機能の管理」の 1 つの機能になり（上の「機能の管理」）、添付を編集したときの前の中身は、その添付の前の版になります（exceedone/exment PR #1866）。
+- **ファイル共有**のファイルを Office で開くには、ファイル共有のある Exment（7.2.1 以降）。ないときは、その部分だけが何もせず、ほかは動きます。
+- Exment 7.2.1 以降では、Web メールは「機能の管理」の 1 つの機能になり（上の「機能の管理」）、添付を編集したときの前の中身は、その添付の前の版になります（exceedone/exment PR #1866）。
 - PHP の `zip` の拡張（ibisOffice のインストールに使います）。
 - WebGPU のあるブラウザー: Chrome・Edge、または Safari 26 以降。サイトは HTTPS（開発中は `http://localhost` でも動きます）。
 
