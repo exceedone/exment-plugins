@@ -8082,7 +8082,7 @@ window.PmPortalBoot = function () {
     // keepDraft is set when this render IS the draft restore, so the bar does
     // not turn round and offer to restore what it just restored, and so the
     // pristine server payload stays available for a second restore.
-    // 「その他の項目」 (1.8.0): the issue fields Backlog does not show, folded.
+    // 「その他の項目」 (1.7.14): the issue fields Backlog does not show, folded.
     // Open when one of them holds something (an issue with a reviewer shows
     // its reviewer) or when its owner left it open last time.
     var NED_MORE_KEY = 'pp_ne_more_open';
