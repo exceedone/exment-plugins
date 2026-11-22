@@ -2697,7 +2697,8 @@ class PmPortalController extends AdminControllerBase
         $my_watches = Star::mine(Star::TYPE_WATCH, $issue_name, $issue_ids, $me);
         $unread = $this->unreadIssues($issues, $me);
 
-        $rows = $this->issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread);
+        // Lean rows: what the page's script rebuilds is not built at all.
+        $rows = $this->issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread, true);
 
         // A switched-off feature costs nothing: the tab is not rendered and
         // the data behind it is not read. Nothing is deleted either - turning
@@ -2812,7 +2813,16 @@ class PmPortalController extends AdminControllerBase
             'quick_add' => $this->quickAddTables(),
             'relations' => $relations,
             'relation_types' => $relation_types,
-            'issues' => $rows,
+            // Packed: what the screen can rebuild (addresses, the key, the
+            // shown time, empty values) is left out and filled back in by
+            // the script before anything reads the rows. A project of 2,400
+            // open issues sent 1.6MB of rows; this is under half of that.
+            'issues' => $this->packRows($rows),
+            'row_pack' => [
+                'defaults' => (object) self::ROW_DEFAULTS,
+                'url' => admin_url('data', [$issue_name]),
+                'key' => strtoupper(strval(array_get($project->value, array_get($pj, 'key'), ''))) ?: '#',
+            ],
             'details' => (object) $details,
             'feed' => $feed,
             'burndown' => $features['gantt'] ? $this->buildBurndown($project, $this->withArchivedOf($project, $issues, $archive, $milestones), $milestones) : [],
@@ -2841,6 +2851,8 @@ class PmPortalController extends AdminControllerBase
             ],
             'urls' => [
                 'base' => PortalDefinition::url($project->id),
+                // The portal's list of projects, for the button on every tab.
+                'projects' => PortalDefinition::url(),
                 // The page's own address, by code (ISS00440): what links and
                 // "copy URL" are made of. base stays the id for the requests.
                 'page' => PortalDefinition::projectUrl($project),
@@ -3144,18 +3156,21 @@ class PmPortalController extends AdminControllerBase
      *
      * @return array<int, array<string, mixed>>
      */
-    protected function issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread): array
+    protected function issueRowsWith($project, $issues, $star_counts, $my_stars, $my_watches, $unread, bool $lean = false): array
     {
         // Read here rather than handed in: every list of rows wants it, and
         // it is the reader's own, like the marks beside it.
         $review = $this->reviewPendingIssues($issues->pluck('id')->all(), \Exment::getUserId());
         $rows = [];
+        // Keyed once: in_array over every row was quadratic on a big project.
+        $my_stars = array_flip(array_map('strval', (array) $my_stars));
+        $my_watches = array_flip(array_map('strval', (array) $my_watches));
         foreach ($issues as $issue) {
-            $row = $this->buildIssueRow($project, $issue);
+            $row = $this->buildIssueRow($project, $issue, $lean);
             $row['my_rv'] = isset($review[intval($issue->id)]);
             $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
-            $row['my_star'] = in_array(strval($issue->id), $my_stars);
-            $row['my_watch'] = in_array(strval($issue->id), $my_watches);
+            $row['my_star'] = isset($my_stars[strval($issue->id)]);
+            $row['my_watch'] = isset($my_watches[strval($issue->id)]);
             $row['unread'] = isset($unread[intval($issue->id)]);
             $rows[] = $row;
         }
@@ -3223,23 +3238,23 @@ class PmPortalController extends AdminControllerBase
      * @param \Exceedone\Exment\Model\CustomValue $issue
      * @return array<string, mixed>
      */
-    protected function buildIssueRow($project, $issue)
+    protected function buildIssueRow($project, $issue, bool $lean = false)
     {
         $is = $this->def['issue'];
         $v = $issue->value;
 
-        return [
+        $row = [
             'id' => $issue->id,
-            'key' => $this->issueKey($project, $issue->id),
+            'key' => $lean ? null : $this->issueKey($project, $issue->id),
             // The issue key (ISS00239) the address uses (ISS00440).
-            'ik' => PortalDefinition::issueKeyOf($issue),
-            'url' => admin_url('data', [$this->issue_table->table_name, $issue->id]),
-            'edit_url' => admin_url('data', [$this->issue_table->table_name, $issue->id, 'edit']),
+            'ik' => $this->issueKeyFrom($v),
+            'url' => $lean ? null : admin_url('data', [$this->issue_table->table_name, $issue->id]),
+            'edit_url' => $lean ? null : admin_url('data', [$this->issue_table->table_name, $issue->id, 'edit']),
             'subject' => strval(array_get($v, array_get($is, 'subject'), '')),
             // Schema 19: the second subject line (empty before the upgrade).
             'sub' => strval(array_get($v, 'subject_sub', '')),
             // Schema 20: daily / weekdays / weekly / monthly / yearly, or ''.
-            'rc' => strval(array_get($v, PortalRecurrence::columnName(), '')),
+            'rc' => strval(array_get($v, strval(array_get($this->def, 'issue_extra.recurrence', PortalSchema::ISSUE_COLUMNS['recurrence'])), '')),
             'ty' => strval(array_get($v, array_get($is, 'type'), '')),
             'st' => strval(array_get($v, array_get($is, 'status'), '')),
             'pr' => strval(array_get($v, array_get($is, 'priority'), '')),
@@ -3257,7 +3272,7 @@ class PmPortalController extends AdminControllerBase
             'eh' => is_numeric(array_get($v, array_get($is, 'estimate'))) ? floatval(array_get($v, array_get($is, 'estimate'))) : null,
             'ah' => is_numeric(array_get($v, array_get($is, 'actual'))) ? floatval(array_get($v, array_get($is, 'actual'))) : null,
             'parent' => intval(array_get($v, array_get($is, 'parent'))) ?: null,
-            'up' => $this->fmtAt($issue->updated_at ?? $issue->created_at),
+            'up' => ($lean && $issue->updated_at) ? null : $this->fmtAt($issue->updated_at ?? $issue->created_at),
             // The version as the server compares it, sent back with an edit
             // so a change made in between is refused rather than overwritten.
             'ua' => $issue->updated_at ? (string) $issue->updated_at : null,
@@ -3272,6 +3287,69 @@ class PmPortalController extends AdminControllerBase
             'rv' => $this->userIds($v, 'reviewers'),
             'df' => strval(array_get($v, array_get($this->def, 'issue_extra.difficulty', 'difficulty'), '')),
         ];
+        if ($lean) {
+            // Rebuilt by the page's script (unpackRows) from the id, the
+            // project's key and ua.
+            unset($row['url'], $row['edit_url'], $row['key']);
+            if ($issue->updated_at) {
+                unset($row['up']);
+            }
+        }
+
+        return $row;
+    }
+
+    /**
+     * The issue key (ISS00239) out of an issue's values: the same rule as
+     * PortalDefinition::issueKeyOf, off the definition this controller
+     * already holds. That one rebuilds the whole config on every call, and
+     * a list calls it once per row - on 2,400 rows a good part of the time.
+     *
+     * @param mixed $value the issue's value array
+     */
+    protected function issueKeyFrom($value): string
+    {
+        $key = array_get((array) $value, strval(array_get($this->def, 'issue.key', 'issue_key')));
+        $key = is_scalar($key) ? trim(strval($key)) : '';
+
+        return preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $key) ? $key : '';
+    }
+
+    /**
+     * A list row's values that are left out of the page when they are the
+     * empty ones; the script puts them back (see unpackRows in script).
+     */
+    const ROW_DEFAULTS = [
+        'sub' => '', 'rc' => '', 'ms' => '', 'dt' => '', 'df' => '',
+        'sd' => null, 'dd' => null, 'pg' => null, 'eh' => null, 'ah' => null, 'parent' => null, 'by' => null,
+        'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [],
+        'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'unread' => false,
+    ];
+
+    /**
+     * The page's list rows without the values that are the empty ones (the
+     * lean rows already leave out the addresses, the key and the shown time).
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    protected function packRows(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            foreach (self::ROW_DEFAULTS as $k => $empty) {
+                if (!array_key_exists($k, $row)) {
+                    continue;
+                }
+                $value = $row[$k] instanceof \Illuminate\Support\Collection ? $row[$k]->all() : $row[$k];
+                if ($value === $empty) {
+                    unset($row[$k]);
+                }
+            }
+            $out[] = $row;
+        }
+
+        return $out;
     }
 
     /**
@@ -3322,7 +3400,7 @@ class PmPortalController extends AdminControllerBase
                 'ts' => strval($rev->created_at),
                 'kind' => 'issue',
                 'id' => $row['id'],
-                'key' => $row['key'],
+                'key' => $this->issueKey($project, $row['id']),
                 'label' => $row['subject'],
                 'extra' => collect($changes)->take(2)->map(function ($c) {
                     return $c[0] . ': ' . $c[1] . ' → ' . $c[2];
@@ -3345,7 +3423,7 @@ class PmPortalController extends AdminControllerBase
                 'ts' => strval($comment->created_at),
                 'kind' => 'issue',
                 'id' => $row['id'],
-                'key' => $row['key'],
+                'key' => $this->issueKey($project, $row['id']),
                 'label' => $row['subject'],
                 'extra' => mb_strimwidth(strval(array_get($comment->value, 'comment_detail', '')), 0, 60, '…'),
             ];
