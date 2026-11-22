@@ -569,9 +569,19 @@ class Schema
         $desk = \DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'its_desk')->first();
         $now = now();
 
+        // the group "ITサポート" of the feature map, when the core has the groups (7.2.0)
+        $group = method_exists(\Exceedone\Exment\Model\Menu::class, 'groupParentId')
+            ? \Exceedone\Exment\Model\Menu::groupParentId('it_support') : null;
+
         $values = ['menu_target' => $plugin->id];
         if (isset($root)) {
             $values += ['parent_id' => $root->parent_id, 'order' => $root->order, 'title' => 'ITサポート', 'icon' => 'fa-life-ring'];
+        }
+        // still at the top (an administrator did not move it): into the group
+        $parentNow = array_key_exists('parent_id', $values) ? intval($values['parent_id']) : (isset($desk) ? intval($desk->parent_id) : 0);
+        if (isset($group) && $parentNow === 0) {
+            $values['parent_id'] = $group;
+            $values['order'] = 1;
         }
         if (isset($desk)) {
             $changed = array_filter($values, function ($v, $k) use ($desk) {
@@ -582,8 +592,8 @@ class Schema
             }
         } else {
             \DB::table('admin_menu')->insert($values + [
-                'parent_id' => 0,
-                'order' => 40,
+                'parent_id' => $group ?? 0,
+                'order' => isset($group) ? 1 : 40,
                 'title' => 'ITサポート',
                 'icon' => 'fa-life-ring',
                 'uri' => '',

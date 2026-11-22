@@ -1252,6 +1252,15 @@ class PortalUpgrade
             return;
         }
 
+        // the group "プロジェクト" of the feature map (Exment 7.2.0): only an
+        // entry still at the top level moves; one an administrator moved stays
+        $group = PortalSchema::menuGroupId();
+        if (isset($group) && intval($menu->parent_id) === 0) {
+            $menu->parent_id = $group;
+            $menu->order = 1;
+            $menu->save();
+        }
+
         $plugin = PortalDefinition::plugin();
         if (!isset($plugin) || strval($menu->menu_target) === strval($plugin->id)) {
             return;

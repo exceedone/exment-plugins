@@ -982,6 +982,18 @@ class PortalSchema
     }
 
     /**
+     * The id of the group "プロジェクト" of the left menu (made when missing), or
+     * null on a core without the groups (before Exment 7.2.0).
+     */
+    public static function menuGroupId(): ?int
+    {
+        if (!method_exists(\Exceedone\Exment\Model\Menu::class, 'groupParentId')) {
+            return null;
+        }
+        return \Exceedone\Exment\Model\Menu::groupParentId('project');
+    }
+
+    /**
      * The plugin's sidebar menu: one top-level entry that opens the portal.
      *
      * @param array<string, string> $n
@@ -996,8 +1008,11 @@ class PortalSchema
         // only). The old root / settings / master branch is no longer created,
         // so a schema upgrade does not bring it back, and an install that
         // still has it loses it in schema 25 (PortalUpgrade::tidyLegacyMenus).
+        // under the group "プロジェクト" of the feature map when the core has the
+        // groups (Exment 7.2.0); at the top level on an older core
+        $group = static::menuGroupId() !== null ? 'project' : null;
         return [
-            static::menu($prefix . self::MENU_PAGE, 'menu.single', 'plugin', null, 'fa-tasks', '34', [
+            static::menu($prefix . self::MENU_PAGE, 'menu.single', 'plugin', $group, 'fa-tasks', isset($group) ? '1' : '34', [
                 // Menu::importReplaceJson resolves this through Plugin::getEloquent,
                 // which looks the plugin up by name - a uuid finds nothing and
                 // leaves the menu pointing at no target, so it never renders.
