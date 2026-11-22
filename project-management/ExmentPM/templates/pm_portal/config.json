@@ -892,7 +892,7 @@
                 "kanban_bulk": "1",
                 "kanban_drawer": "1",
                 "kanban_col_age": "1",
-                "kanban_col_count": "30",
+                "kanban_col_count": "10",
                 "kanban_max_count": "300",
                 "use_view_infobox": "1",
                 "view_infobox_title": "課題カンバン",
