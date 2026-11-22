@@ -552,12 +552,16 @@ trait PortalDashboardTrait
         if (!isset($this->dash_columns[$table])) {
             $this->dash_columns[$table] = \Illuminate\Support\Facades\Schema::connection($connection->getName())->getColumnListing($table);
         }
-        $columns = array_values(array_filter($this->dash_columns[$table], function ($c) {
-            return $c !== 'value';
-        }));
-        if (count($columns) === count($this->dash_columns[$table])) {
+        if (!in_array('value', $this->dash_columns[$table], true)) {
             return $query; // no value column: nothing to trim
         }
+        // Nor the index columns (column_<hash>): generated from value, each
+        // up to 768 characters, and never read - the model reads value. A
+        // list of 363 issues out of 2,400 took 1.6s with the 20 of them in
+        // the select and 0.11s without (MariaDB, ex1task).
+        $columns = array_values(array_filter($this->dash_columns[$table], function ($c) {
+            return $c !== 'value' && strpos($c, 'column_') !== 0;
+        }));
         $grammar = $query->getQuery()->getGrammar();
 
         return $query->select(array_map(function ($c) use ($table) {

@@ -46,5 +46,6 @@ php artisan exment:batch --name=ExmentPMBacklog --param1=<id> --param2=<件数> 
 
 ## 変更 / Changes
 
+- 0.2.1: Backlog で詳細を変えたコメントは「詳細: 変更しました」とだけ書く（前と後の全文を写さない。1 件で数 MB になっていた）
 - 0.2.0: 失敗の通知、添付、消えた・移した課題、backlog_sync からの引き継ぎ
 - 0.1.0: 最初の版（P1）。設定・割り付け・今すぐ同期・決まった間隔の同期・課題とコメント

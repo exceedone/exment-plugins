@@ -15,6 +15,13 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.8 / 1.7.8 で変わったこと**
+
+- Faster lists on MariaDB: the issue lists no longer select the index columns (`column_*`), which the model never reads. On ex1task a project list query went from 1.6s to 0.11s; the dashboard runs the same kind of query three times.
+  課題の一覧の読み込みを速くしました（MariaDB）。使っていない索引の列（`column_*`）を読まないようにしました。ex1task でプロジェクトの一覧の読み込みが 1.6 秒から 0.11 秒になりました。ダッシュボードも同じ読み込みを 3 回しています。
+- The issue screens sent with the project page stay under 400KB (`exment.pmportal.embed_details_bytes`); the biggest are left out and fetched when opened. One issue with a long imported thread had made a 6MB page.
+  プロジェクトの画面と一緒に送る課題の詳細を、合わせて 400KB までにしました。大きいものから外し、開いたときに読みます。取り込んだ長いやりとりの課題 1 件で、画面が 6MB になっていました。
+
 **Changed in 1.7.7 / 1.7.7 で変わったこと**
 
 - Schema 29: issues get 移行元の担当者 (`source_assignees`), the source's assignees by name. An import can only set the assignees to people who are users here; the names of the others are kept here, indexed, so the API and MCP can find the issues of one name and set the assignee later. The issue detail shows the name, greyed, while the assignee is empty. Run データ構造の更新 after updating.

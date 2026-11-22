@@ -38,6 +38,9 @@ class Syncer
         'estimatedHours' => '予定時間', 'actualHours' => '実績時間', 'parentIssue' => '親課題',
     ];
 
+    /** Fields whose change is noted, not copied. */
+    const LONG_FIELDS = ['description'];
+
     /** @var object */
     protected $conn;
 
@@ -659,6 +662,12 @@ class Syncer
         foreach ((array) ($c['changeLog'] ?? []) as $ch) {
             $f = strval($ch['field'] ?? '');
             if ($f === 'attachment' || $f === 'notification') {
+                continue;
+            }
+            // The whole text before and after is on Backlog and in the issue
+            // itself; repeating it made one thread of 132 comments 4MB.
+            if (in_array($f, static::LONG_FIELDS, true)) {
+                $changes[] = '- ' . (static::FIELD_LABELS[$f] ?? $f) . ': 変更しました';
                 continue;
             }
             $changes[] = '- ' . (static::FIELD_LABELS[$f] ?? $f) . ': '

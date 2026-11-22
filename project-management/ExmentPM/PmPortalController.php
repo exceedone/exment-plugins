@@ -745,6 +745,44 @@ class PmPortalController extends AdminControllerBase
      * @param mixed $me
      * @return array<string, array<string, mixed>> issue id => detail
      */
+    /**
+     * Keep the issue screens that come with the page under a size budget.
+     *
+     * Thirty screens are usually ~80KB, but one issue with a long thread
+     * can be megabytes on its own (an imported Backlog issue of 132
+     * comments made a 6MB page). The biggest go first; the screen fetches
+     * whatever is missing when it is opened, as it does for any issue past
+     * the embed limit.
+     *
+     * @param array<string, mixed> $details
+     * @return array<string, mixed>
+     */
+    protected function trimEmbedded(array $details): array
+    {
+        $budget = intval(config('exment.pmportal.embed_details_bytes', 400000));
+        if ($budget <= 0 || empty($details)) {
+            return $details;
+        }
+        $sizes = [];
+        foreach ($details as $key => $one) {
+            $sizes[$key] = strlen(strval(json_encode($one, JSON_UNESCAPED_UNICODE)));
+        }
+        $total = array_sum($sizes);
+        if ($total <= $budget) {
+            return $details;
+        }
+        arsort($sizes);
+        foreach ($sizes as $key => $size) {
+            if ($total <= $budget) {
+                break;
+            }
+            unset($details[$key]);
+            $total -= $size;
+        }
+
+        return $details;
+    }
+
     protected function detailsFor($project, $issues, $me): array
     {
         if ($issues->isEmpty()) {
@@ -2732,7 +2770,7 @@ class PmPortalController extends AdminControllerBase
                 return $full->get($issue->id) ?? $issue;
             })->values();
         }
-        $details = $this->detailsFor($project, $embedded, $me);
+        $details = $this->trimEmbedded($this->detailsFor($project, $embedded, $me));
 
         // Members and viewers as the screen uses them - to offer assignees
         // and to name people: those the columns name first, in their order,
