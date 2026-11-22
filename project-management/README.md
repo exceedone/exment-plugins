@@ -15,6 +15,13 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.14 / 1.7.14 で変わったこと**
+
+- The issue form shows the eight fields Backlog shows (status, assignee, priority, milestone, category, version, start and due date); the others fold under 「その他の項目」, which opens by itself when one of them has a value or an error, and stays open for those who left it open. A field's help is behind the (?) next to its name.
+  課題の編集で、いつも出すのは Backlog と同じ 8 つ（状態・担当者・優先度・マイルストーン・カテゴリー・発生バージョン・開始日・期限日）にし、残りは「その他の項目」にたたみました。値か入力エラーがあれば自動で開き、開いた人には次も開いて出します。項目の説明は名前の横の (?) に入れました。
+- `JapaneseHolidays` and `BusinessCalendar` (the holidays of Japan and the business-day calendar) for the reminders and recurring schedules to come. Not used yet; `php project-management/tools/test-business-calendar.php` tests them.
+  これから作るリマインドと繰り返しの予定のための、日本の祝日と営業日のカレンダー（まだ使っていません）。
+
 **Changed in 1.7.13 / 1.7.13 で変わったこと**
 
 - With Exment 7.2.1 the menu entry goes under the group "プロジェクト" of the left menu (the feature map of exment.net), made when missing (`Menu::groupParentId()` of the core). A new install puts it there; an update moves it only while it is still at the top level (a migration that runs when the plugin is updated), so an entry an administrator moved stays. An older Exment keeps it at the top level.

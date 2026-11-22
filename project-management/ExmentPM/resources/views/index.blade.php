@@ -52,7 +52,7 @@
         'tab_settings', 'm_add_issue', 'm_edit_issue', 'm_edit_wiki', 'm_new_wiki', 'm_history',
         'm_saved', 'm_discard', 'm_discard_yes', 'm_discard_no', 'm_loading', 'm_close',
         'ned_title', 'ned_save', 'ned_saving', 'ned_saved', 'ned_error', 'ned_close',
-        'ned_cancel', 'ned_readonly', 'ned_required', 'ned_no_edit',
+        'ned_cancel', 'ned_readonly', 'ned_required', 'ned_no_edit', 'ned_more', 'ned_more_filled',
         'ned_pick_user', 'ned_pick_rel', 'ned_none', 'ned_new',
         'ned_shortcut_save', 'ned_shortcut_close', 'ned_key_mod', 'ned_key_mod_mac',
         'ned_change_count', 'ned_hero_ph', 'ned_side',
