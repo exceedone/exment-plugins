@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.10 / 1.7.10 で変わったこと**
+
+- The archive cutoff counts from the start of the day instead of this second, so the archive summary and the burndown that 1.7.9 caches are actually read from the cache: their key held the cutoff, which changed on every load.
+  アーカイブの区切りを「今の時刻」ではなく「その日の始まり」から数えるようにしました。1.7.9 のキャッシュの鍵に区切りの時刻が入っていて、毎回ちがう鍵になり、アーカイブの件数とバーンダウンがキャッシュから読まれていませんでした。
+
 **Changed in 1.7.9 / 1.7.9 で変わったこと**
 
 - The counts that group or filter on index columns MariaDB computes from each issue's JSON are kept in Laravel's cache until an issue changes: the project page's archive summary and burndown, and the dashboard's per-project counts and its 自分の課題 / 登録した課題 lists. The key is a cheap stamp (count and newest `updated_at` of the issues), the day and the reader, so a change shows at once and one user's counts are never another's. On ex1task these were ~0.35s, ~0.16s and ~0.5s.
