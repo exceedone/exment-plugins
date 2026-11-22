@@ -6,6 +6,10 @@
 
 <a id="english"></a>
 
+**Changed in 0.4.6**
+
+- A blank Word document took no typing: the blank of 0.4.4 and 0.4.5 (and of Exment's file server "New") had no paragraph, so the editor had nowhere to put the cursor (文字数 0). The blank now has one empty paragraph, as Word's own new document. A file that is still exactly the old blank opens as the fixed one and is repaired when it is saved.
+
 **Changed in 0.4.5**
 
 - Office is a row of its own in Feature management (`exment_groupware.office`; on for the sites that had the plugin, off on a new site). While ibisOffice is not installed, the row says what it needs (the PHP zip extension, about 125 MB in `public/`, no LibreOffice) and, on an Exment whose Feature management has row buttons, gives **ibisOffice を入れる**.
@@ -125,6 +129,10 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 ---
 
 <a id="japanese"></a>
+
+**0.4.6 で変わったこと**
+
+- 空の Word の文書に文字を打てませんでした。0.4.4・0.4.5（と Exment のファイルサーバーの「新規作成」）の空の文書に段落が 1 つもなく、エディターがカーソルを置けなかったためです（文字数 0）。Word の新しい文書と同じく、空の段落を 1 つ入れました。前の空の文書のままのファイルは、直した空の文書として開き、保存すると直ります。
 
 **0.4.5 で変わったこと**
 
