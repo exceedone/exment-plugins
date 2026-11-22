@@ -17,6 +17,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 **Unreleased / 未リリース**
 
+- The Kanban view 「カンバン（状態別）」 of a new install shows 10 cards per status column (was 30); "load more" brings the rest. A board with many statuses (one set per project) built about 30 × the columns cards and took seconds. An install already set up keeps its own setting.
+  新しく入れたときのカンバン「カンバン（状態別）」は、1 列に 10 枚（前は 30 枚）。残りは「もっと見る」で出ます。状態が多い（プロジェクトごとにある）と、30 × 列の数のカードを作って数秒かかっていました。セットアップ済みのサイトの設定はそのままです。
 - The avatar of a user without an image (initials and colour) comes from Exment's `InitialsAvatar` when the core has it (Exment 7.2.1), so a person looks the same in Exment and in the portal; an older core uses the plugin's own copy, the same rules.
   画像のないユーザーのアバター（頭文字と色）は、本体に `InitialsAvatar` があればそれを使います（Exment 7.2.1）。本体とポータルで同じ人は同じ見た目です。古い本体では、プラグインの中の同じ決まりで描きます。
 
