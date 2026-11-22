@@ -19,6 +19,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 - A project with many open issues opens faster. The page carries its issue list packed: no addresses, project key or shown time per row (the screen rebuilds them from the id), no empty values, and Japanese as itself instead of `\uXXXX`. With 2,400 open issues the page went from 2.0MB and 1.6s to 0.9MB and 1.2s (local). Building the rows takes less than half the time.
   開いている課題が多いプロジェクトを、速く開くようにしました。ページに入れる課題の一覧を小さくしました（行ごとのアドレス・プロジェクトキー・表示用の日時は入れず、画面で番号から組み立てる。空の値は入れない。日本語を `\uXXXX` にしない）。開いている課題が 2,400 件で、ページが 2.0MB・1.6 秒から 0.9MB・1.2 秒になりました（手元）。行を作る時間も半分以下です。
+- A 「プロジェクト一覧へ」 button at the left of the project's header, on every tab, back to the portal's list of projects. It looks like the issue detail's 「課題一覧へ」 and sits in the same place.
+  プロジェクトの見出しの左に「プロジェクト一覧へ」を付けました（どのタブでも）。課題の詳細の「課題一覧へ」と同じ形・同じ場所です。
 
 **Changed in 1.7.4 / 1.7.4 で変わったこと**
 

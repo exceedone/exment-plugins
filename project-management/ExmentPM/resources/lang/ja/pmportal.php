@@ -355,6 +355,8 @@ return [
     'overdue_d' => '%s日超過',
     'left_d' => 'あと%s日',
     'back' => '課題一覧へ',
+    // On every tab of a project, back to the portal's list of projects.
+    'back_projects' => 'プロジェクト一覧へ',
     'box_props' => '基本情報',
     'box_children' => '子課題',
     'box_related' => '関連課題',

@@ -577,6 +577,10 @@ window.PmPortalBoot = function () {
             return v && a.indexOf(v) === i;
         });
         document.getElementById('pp-projhead').innerHTML =
+            // Back to the list of projects, shaped and placed like the issue
+            // detail's 課題一覧へ, so the two read as one kind of button.
+            (D.urls.projects ? '<a class="bl-dback bl-dback-s bl-dback-proj" href="' + esc(D.urls.projects) + '">' +
+                '<i class="fa fa-angle-left"></i> ' + esc(L.back_projects || 'プロジェクト一覧へ') + '</a>' : '') +
             '<div class="bl-projicon"><i class="fa fa-folder-open"></i></div>' +
             // One line: name, then dates / manager / note beside it. The note
             // is cut to what fits and opens in place on a click (snoro 2026-11-18:

@@ -2848,6 +2848,8 @@ class PmPortalController extends AdminControllerBase
             ],
             'urls' => [
                 'base' => PortalDefinition::url($project->id),
+                // The portal's list of projects, for the button on every tab.
+                'projects' => PortalDefinition::url(),
                 // The page's own address, by code (ISS00440): what links and
                 // "copy URL" are made of. base stays the id for the requests.
                 'page' => PortalDefinition::projectUrl($project),
