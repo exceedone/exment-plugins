@@ -24,11 +24,13 @@ window.PmPortalBoot = function () {
     var D = JSON.parse(document.getElementById('pmportal-data').textContent);
     // The page sends its list rows packed (PmPortalController::packRows):
     // put back what was left out before anything reads them, so every row
-    // looks exactly like one from the API.
-    (function unpackRows(pk) {
+    // looks exactly like one from the API. The payload a refresh fetches is
+    // packed the same way (adoptPayload), so it goes through here as well.
+    function unpackRows(data) {
+        var pk = data && data.row_pack;
         if (!pk) { return; }
         var defs = pk.defaults || {};
-        (D.issues || []).forEach(function (r) {
+        (data.issues || []).forEach(function (r) {
             Object.keys(defs).forEach(function (k) {
                 if (!(k in r)) { r[k] = Array.isArray(defs[k]) ? [] : defs[k]; }
             });
@@ -37,7 +39,8 @@ window.PmPortalBoot = function () {
             if (!('key' in r)) { r.key = pk.key + '-' + r.id; }
             if (!('up' in r)) { r.up = r.ua ? String(r.ua).slice(0, 16).replace(/-/g, '/') : ''; }
         });
-    })(D.row_pack);
+    }
+    unpackRows(D);
     var L =JSON.parse(document.getElementById('pmportal-lang').textContent);
     var CSRF = $('meta[name="csrf-token"]').attr('content');
 
@@ -1946,7 +1949,18 @@ window.PmPortalBoot = function () {
                 if (!alive()) { return; }
                 if (!res || !res.ok || !res.payload) { toast(errText(null, res, L.rf_fail), true); return; }
                 if (!safeToRefresh()) { markStale(true); return; }
-                adoptPayload(res.payload, seq);
+                // A redraw that stops half way leaves the screens drawn from
+                // two different payloads, and - thrown out of here - this
+                // refresh marked busy for good, so nothing is ever fetched
+                // again. It is reported as not done instead: the caller falls
+                // back to loading the page, and the next change is still seen.
+                try {
+                    adoptPayload(res.payload, seq);
+                } catch (e) {
+                    if (window.console && console.error) { console.error(e); }
+                    markStale(true);
+                    return;
+                }
                 ok = true;
                 if (!quiet) { toast(L.rf_done); }
             })
@@ -1972,6 +1986,10 @@ window.PmPortalBoot = function () {
     // outside the payload, which is the point of doing it this way rather
     // than reloading the page.
     function adoptPayload(next, seq) {
+        // Packed like the rows the page came with: a row left as it was sent
+        // has no assignees, no key and no links, and the first screen that
+        // reads one stops the whole redraw.
+        unpackRows(next);
         D = next;
         // The new payload has no archived rows again; bring them back if they
         // were on show.
@@ -4618,6 +4636,33 @@ window.PmPortalBoot = function () {
         });
 
         return ua;
+    }
+    // The same for a save made in the form, which can move any column: the
+    // row the list holds takes the saved values straight from the answer, so
+    // the list is right the moment the form is left - without waiting for the
+    // project to be read again, and also when it never is (the form was left
+    // before its save came back). No request: the answer already has the row.
+    var FORM_COLS = { subject: 'subject', ty: 'type', st: 'status' };
+    function formAdopt(issueId, answer) {
+        var row = (answer && answer.row && typeof answer.row === 'object') ? answer.row : null;
+        var issue = issueById(issueId);
+        if (!row || !issue) { return; }
+        qeAdopt(issueId, {}, answer);
+        Object.keys(FORM_COLS).forEach(function (key) {
+            var col = qeCol(FORM_COLS[key]);
+            if (col && Object.prototype.hasOwnProperty.call(row, col)) { issue[key] = qeRowValue(key, row[col]); }
+        });
+        if (Object.prototype.hasOwnProperty.call(row, 'subject_sub')) { issue.sub = qeRowValue('sub', row.subject_sub); }
+        var parentCol = qeCol('parent');
+        if (parentCol && Object.prototype.hasOwnProperty.call(row, parentCol)) {
+            issue.parent = parseInt(row[parentCol], 10) || null;
+        }
+        if (issue.ua) { issue.up = String(issue.ua).slice(0, 16).replace(/-/g, '/'); }
+        // The list is already on screen (the form was left while the save was
+        // on its way): draw it again, unless a cell of it is being edited.
+        if (currentScreen === 'issues' && safeToRefresh() && !document.querySelector('#pp-issue-rows .pp-ed-in')) {
+            renderIssues();
+        }
     }
     // A stored value in the shape the list rows carry it (buildIssueRow).
     function qeRowValue(key, v) {
@@ -9177,6 +9222,7 @@ window.PmPortalBoot = function () {
                     delete DET[rowId];
                     delete NED.editFormCache[table + '::' + rowId];
                 }
+                if (!isCreate && rowId && table === D.issue_table) { formAdopt(rowId, res.body); }
                 nedAiFeedback(isCreate ? newId : rowId, aiState, submittedValues, feedbackUrl);
                 if (!nedCurrent(epoch)) {
                     nedDraftClear(draftKey, draftOwner, submitted);

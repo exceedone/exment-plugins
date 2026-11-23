@@ -1231,7 +1231,18 @@
                 if (!alive()) { return; }
                 if (!res || !res.ok || !res.payload) { toast(errText(null, res, L.rf_fail), true); return; }
                 if (!safeToRefresh()) { markStale(true); return; }
-                adoptPayload(res.payload, seq);
+                // A redraw that stops half way leaves the screens drawn from
+                // two different payloads, and - thrown out of here - this
+                // refresh marked busy for good, so nothing is ever fetched
+                // again. It is reported as not done instead: the caller falls
+                // back to loading the page, and the next change is still seen.
+                try {
+                    adoptPayload(res.payload, seq);
+                } catch (e) {
+                    if (window.console && console.error) { console.error(e); }
+                    markStale(true);
+                    return;
+                }
                 ok = true;
                 if (!quiet) { toast(L.rf_done); }
             })
@@ -1257,6 +1268,10 @@
     // outside the payload, which is the point of doing it this way rather
     // than reloading the page.
     function adoptPayload(next, seq) {
+        // Packed like the rows the page came with: a row left as it was sent
+        // has no assignees, no key and no links, and the first screen that
+        // reads one stops the whole redraw.
+        unpackRows(next);
         D = next;
         // The new payload has no archived rows again; bring them back if they
         // were on show.

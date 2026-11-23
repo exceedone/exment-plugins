@@ -15,11 +15,13 @@
     var D = JSON.parse(document.getElementById('pmportal-data').textContent);
     // The page sends its list rows packed (PmPortalController::packRows):
     // put back what was left out before anything reads them, so every row
-    // looks exactly like one from the API.
-    (function unpackRows(pk) {
+    // looks exactly like one from the API. The payload a refresh fetches is
+    // packed the same way (adoptPayload), so it goes through here as well.
+    function unpackRows(data) {
+        var pk = data && data.row_pack;
         if (!pk) { return; }
         var defs = pk.defaults || {};
-        (D.issues || []).forEach(function (r) {
+        (data.issues || []).forEach(function (r) {
             Object.keys(defs).forEach(function (k) {
                 if (!(k in r)) { r[k] = Array.isArray(defs[k]) ? [] : defs[k]; }
             });
@@ -28,7 +30,8 @@
             if (!('key' in r)) { r.key = pk.key + '-' + r.id; }
             if (!('up' in r)) { r.up = r.ua ? String(r.ua).slice(0, 16).replace(/-/g, '/') : ''; }
         });
-    })(D.row_pack);
+    }
+    unpackRows(D);
     var L =JSON.parse(document.getElementById('pmportal-lang').textContent);
     var CSRF = $('meta[name="csrf-token"]').attr('content');
 
