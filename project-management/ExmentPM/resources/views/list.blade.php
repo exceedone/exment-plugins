@@ -740,7 +740,7 @@
     // back out of localStorage, not out of the server's escaping.
     (function () {
         var entries = [];
-        // Kept per person by the issue screen (recentPush in script.blade.php).
+        // Kept per person by the issue screen (recentPush in resources/js/src/routing.js).
         var recentKey = @json('pp_recent.u' . intval(\Exment::getUserId()));
         try { entries = JSON.parse(localStorage.getItem(recentKey) || '[]'); } catch (e) { entries = []; }
         if (!Array.isArray(entries) || !entries.length) { return; }

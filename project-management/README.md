@@ -17,6 +17,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 **Unreleased / 未リリース**
 
+- The portal's script is split by feature into `ExmentPM/resources/js/src/` (list, issue detail, wiki, files, forms, routing, embedded board and Gantt …) and built into one file, `resources/js/script.js`, with `node project-management/tools/build-pm-script.js`. The built code is the same as before, so nothing changes on screen; it is still copied to `public/exment-pm/` and versioned by content (1.7.12). CI fails when `script.js` is not the build of the sources, or when `node --check` finds a syntax error in any of them.
+  ポータルのスクリプトを、機能ごとのファイル（`ExmentPM/resources/js/src/`：一覧・課題の詳細・Wiki・ファイル・フォーム・画面の切り替え・ボードとガントの埋め込みなど）に分け、`node project-management/tools/build-pm-script.js` で 1 つのファイル `resources/js/script.js` にまとめるようにしました。まとめた中身は前と同じなので、画面は変わりません。これまでどおり `public/exment-pm/` に置いて読みます（1.7.12）。まとめたファイルが元のファイルと合わないときと、どれかのファイルに文法のまちがいがあるとき（`node --check`）は、CI が失敗します。
 - The Kanban view 「カンバン（状態別）」 of a new install shows 10 cards per status column (was 30); "load more" brings the rest. A board with many statuses (one set per project) built about 30 × the columns cards and took seconds. An install already set up keeps its own setting.
   新しく入れたときのカンバン「カンバン（状態別）」は、1 列に 10 枚（前は 30 枚）。残りは「もっと見る」で出ます。状態が多い（プロジェクトごとにある）と、30 × 列の数のカードを作って数秒かかっていました。セットアップ済みのサイトの設定はそのままです。
 - The avatar of a user without an image (initials and colour) comes from Exment's `InitialsAvatar` when the core has it (Exment 7.2.1), so a person looks the same in Exment and in the portal; an older core uses the plugin's own copy, the same rules.
