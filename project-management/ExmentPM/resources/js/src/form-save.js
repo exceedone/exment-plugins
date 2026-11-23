@@ -551,6 +551,7 @@
                     delete DET[rowId];
                     delete NED.editFormCache[table + '::' + rowId];
                 }
+                if (!isCreate && rowId && table === D.issue_table) { formAdopt(rowId, res.body); }
                 nedAiFeedback(isCreate ? newId : rowId, aiState, submittedValues, feedbackUrl);
                 if (!nedCurrent(epoch)) {
                     nedDraftClear(draftKey, draftOwner, submitted);

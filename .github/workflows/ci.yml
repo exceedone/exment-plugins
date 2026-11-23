@@ -116,3 +116,7 @@ jobs:
       # every source and on the result. Fix: node project-management/tools/build-pm-script.js
       - name: Build check (ExmentPM script.js)
         run: node project-management/tools/build-pm-script.js --check
+
+      # The list after a refresh and after a save in the form (packed rows).
+      - name: Refresh check (ExmentPM list rows)
+        run: node project-management/tools/test-pm-refresh.js
