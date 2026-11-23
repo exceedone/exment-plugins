@@ -10,14 +10,20 @@ use Exceedone\Exment\Services\Plugin\PluginBatchBase;
  */
 class PluginBatch extends PluginBatchBase
 {
+    /**
+     * 0 (success) also when there is nothing to do: exment:batch turns true into the exit
+     * code 1. An error is thrown, and fails the batch.
+     *
+     * @return int
+     */
     public function execute()
     {
         if (!Its::isInstalled() || !Feature::on(Feature::DESK)) {
-            return true;
+            return 0;
         }
         Schema::ensureCurrent();
         Automation::run();
 
-        return true;
+        return 0;
     }
 }

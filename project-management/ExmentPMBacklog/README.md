@@ -46,6 +46,7 @@ php artisan exment:batch --name=ExmentPMBacklog --param1=<id> --param2=<件数> 
 
 ## 変更 / Changes
 
+- Unreleased / 未リリース: 動かすつながりがないときも、バッチは成功（終了コード 0）で終わる（前は 1 で、5 分ごとにエラーのログが出ていた）。つながりが失敗したときは 1 のまま。The batch ends with 0 when no connection is due (it was 1, logged as an error every five minutes); 1 when a connection failed.
 - 0.2.1: Backlog で詳細を変えたコメントは「詳細: 変更しました」とだけ書く（前と後の全文を写さない。1 件で数 MB になっていた）
 - 0.2.0: 失敗の通知、添付、消えた・移した課題、backlog_sync からの引き継ぎ
 - 0.1.0: 最初の版（P1）。設定・割り付け・今すぐ同期・決まった間隔の同期・課題とコメント

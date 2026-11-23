@@ -18,7 +18,10 @@ use Exceedone\Exment\Services\Plugin\PluginBatchBase;
 class PluginBatch extends PluginBatchBase
 {
     /**
-     * @return int|bool
+     * 0 (success), also when no connection is due; 1 when a connection failed. Not true:
+     * exment:batch turns true into the exit code 1.
+     *
+     * @return int
      */
     public function execute()
     {
@@ -28,6 +31,7 @@ class PluginBatch extends PluginBatchBase
 
         PluginPage::ensureTables();
         $ran = 0;
+        $failed = 0;
         foreach (Connections::all() as $conn) {
             if ($only ? intval($conn->id) !== $only : !Connections::due($conn)) {
                 continue;
@@ -40,12 +44,15 @@ class PluginBatch extends PluginBatchBase
                 'add' => $c['add'], 'update' => $c['update'], 'comment' => $c['comment'], 'error' => $c['error'],
             ]));
             $ran++;
+            if ($r['status'] === 'failed') {
+                $failed++;
+            }
         }
         if ($ran === 0) {
             $this->line(Lang::t('batch_none'));
         }
 
-        return true;
+        return $failed > 0 ? 1 : 0;
     }
 
     protected function line(string $text): void
