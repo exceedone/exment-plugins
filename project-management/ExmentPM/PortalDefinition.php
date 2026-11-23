@@ -543,7 +543,7 @@ class PortalDefinition
         if ($current === null) {
             try {
                 $current = strval(app()->getLocale());
-            } catch (Throwable $e) {
+            } catch (\Throwable $e) {
                 $current = '';
             }
         }
@@ -570,7 +570,7 @@ class PortalDefinition
                     return $locale;
                 }
             }
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             // No translator yet: trans() below fails the same way it always did.
         }
 
