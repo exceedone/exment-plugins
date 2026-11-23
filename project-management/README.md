@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.16 / 1.7.16 で変わったこと**
 
 - Fixed: after the project's data was read again in place (a save in the issue form, the refresh button, a change made by somebody else or through the API), the issue list kept its old rows - a subject changed in the form still showed the old text after 「課題一覧へ」 - and the screen stopped following later changes until the page was reloaded. The refreshed data is packed like the rows the page comes with (1.7.5), and only the page's own rows were unpacked. Now both are. A save in the form also puts the saved values (subject, status, type, assignees, dates …) into the list row at once, from the answer of the save, so the list is right even when the form is left before the data is read again. No extra request, and the list opens as fast as before (2,400 issues: first rows in about 2.3 s, back to the list in about 0.1 s, before and after).
   直し：プロジェクトのデータをその場で読み直したあと（課題のフォームで保存・更新ボタン・ほかの人や API による変更）、課題一覧が古い行のままになっていました。フォームで件名を変えて「課題一覧へ」を押しても、古い件名が出ていました。そのあとの変更も、ページを読み込み直すまで画面に出ませんでした。読み直したデータは、ページに入っている行と同じように詰めて送られます（1.7.5）が、元に戻していたのはページの行だけでした。両方とも戻すようにしました。フォームで保存したときは、保存の返事にある値（件名・状態・種別・担当者・日付など）を、その場で一覧の行に入れます。データを読み直す前にフォームを閉じても、一覧は正しく出ます。リクエストは増えず、一覧を開く速さは前と同じです（課題 2,400 件：最初の行が出るまで約 2.3 秒、一覧に戻るのは約 0.1 秒。直す前も後も同じ）。
