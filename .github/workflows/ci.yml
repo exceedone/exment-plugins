@@ -120,3 +120,7 @@ jobs:
       # The list after a refresh and after a save in the form (packed rows).
       - name: Refresh check (ExmentPM list rows)
         run: node project-management/tools/test-pm-refresh.js
+
+      # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
+      - name: User time zone check (scripts)
+        run: node project-management/tools/test-user-timezone.js

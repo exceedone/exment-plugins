@@ -570,6 +570,7 @@
                 if (NED._payload && NED._payload.row) {
                     NED._payload.row.value = NED.values;
                     NED._payload.row.updated_at = NED.rowUpdatedAt;
+                    if (res.body.updated_at_shown) { NED._payload.row.updated_at_shown = res.body.updated_at_shown; }
                 }
                 Object.keys(res.body.image_urls || {}).forEach(function (name) {
                     submittedValues[name] = nedResolveImageUrls(submittedValues[name], res.body.image_urls[name]);

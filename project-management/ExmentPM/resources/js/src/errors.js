@@ -146,10 +146,18 @@
     }
     // The due date with its time (schema 22), e.g. 11/20 15:00.
     function dueText(iss) { return d2(iss.dd) + (iss.dt ? ' ' + iss.dt : ''); }
-    // The clock now, HH:MM, on this computer.
+    // The clock now, HH:MM. On this computer - unless the user reads the
+    // portal in a time zone that is not the site's: then it is the user's
+    // clock, counted on from the time the server stamped into the data
+    // (D.now), since the computer may be set to yet another zone. It stops
+    // at the end of the day D.today names.
     function nowHM() {
         var n = new Date();
-        return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2);
+        var m = D.tz_differs ? /^(\d{1,2}):(\d{2})$/.exec(String(D.now || '')) : null;
+        if (!m) { return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2); }
+        var mins = Number(m[1]) * 60 + Number(m[2]) + Math.floor((Date.now() - (D._at || Date.now())) / 60000);
+        mins = Math.min(Math.max(mins, 0), 1439);
+        return ('0' + Math.floor(mins / 60)).slice(-2) + ':' + ('0' + (mins % 60)).slice(-2);
     }
     // Past due: a day before today, or today with a time that has gone by.
     // An issue without a time is due at the end of its day, as before.

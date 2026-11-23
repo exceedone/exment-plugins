@@ -44,7 +44,7 @@ trait PortalDashboardTrait
     {
         $me = intval(\Exment::getUserId());
         $is = $this->def['issue'];
-        $today = \Carbon\Carbon::today()->format('Y-m-d');
+        $today = PortalTime::today();
 
         // Status and priority are rows owned by a project, so the same label
         // exists once per project and a cross-project screen has to read the
@@ -327,7 +327,9 @@ trait PortalDashboardTrait
                     ->where('parent_type', $parent_type)
                     ->whereIn($status_key, $done_ids)
                     ->whereInArrayString($assignee_key, $me)
-                    ->where('updated_at', '>=', \Carbon\Carbon::today()->startOfWeek())
+                    ->where('updated_at', '>=', PortalTime::dayStartForQuery(
+                        \Carbon\Carbon::parse(PortalTime::today())->startOfWeek()->format('Y-m-d')
+                    ))
                     ->orderBy('updated_at', 'desc')
                     ->take(static::$dash_list_limit)->get()
             );
@@ -481,7 +483,8 @@ trait PortalDashboardTrait
             // The view prints a header whenever this changes between two
             // neighbouring entries, which is all a date group is.
             try {
-                $ts = \Carbon\Carbon::parse($entry['ts']);
+                // The day the entry falls on for the user, like its time above.
+                $ts = \Carbon\Carbon::parse(PortalTime::format($entry['ts'], 'Y-m-d H:i:s'));
                 $feed[$i]['day'] = $ts->format(strval(PortalDefinition::trans('dash.day_fmt')))
                     . '(' . strval(array_get($weekdays, $ts->dayOfWeek, '')) . ')';
             } catch (\Exception $e) {
@@ -578,7 +581,12 @@ trait PortalDashboardTrait
      */
     protected function pmCached(string $name, array $key, callable $read)
     {
-        $id = 'pmportal:' . $name . ':' . md5(json_encode(array_merge([\Exment::getUserId()], $key)));
+        // The time zone the reader's times are shown in is part of what was
+        // read ("today", formatted times): a user who changes it is not handed
+        // the lists kept for the old one. Nothing is added for the time zone
+        // of the site, so those keys are the ones they always were.
+        $zone = PortalTime::zone();
+        $id = 'pmportal:' . $name . ':' . md5(json_encode(array_merge([\Exment::getUserId()], $zone === '' ? [] : [$zone], $key)));
         try {
             return \Illuminate\Support\Facades\Cache::remember($id, 86400, $read);
         } catch (\Throwable $e) {

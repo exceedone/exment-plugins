@@ -6,6 +6,10 @@
 
 <a id="english"></a>
 
+**Unreleased**
+
+- Web mail: the dates of the mails are shown in the time zone the user chose in Exment (Exment 7.2.4; a user who chose none gets the time zone of the site). On an older Exment they are shown in the time zone of the browser, as before.
+
 **Changed in 0.4.7**
 
 - Exment calls the file server **File sharing** (ファイル共有) from 7.2.1, so this plugin does too: the description in Feature management and the page of the plugin. Nothing else changes.
@@ -133,6 +137,10 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 ---
 
 <a id="japanese"></a>
+
+**未リリース**
+
+- Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
 
 **0.4.7 で変わったこと**
 

@@ -27,6 +27,8 @@ window.PmPortalBoot = function () {
     // looks exactly like one from the API. The payload a refresh fetches is
     // packed the same way (adoptPayload), so it goes through here as well.
     function unpackRows(data) {
+        // When this data arrived: the clock of nowHM counts on from here.
+        if (data) { data._at = Date.now(); }
         var pk = data && data.row_pack;
         if (!pk) { return; }
         var defs = pk.defaults || {};
@@ -382,10 +384,18 @@ window.PmPortalBoot = function () {
     }
     // The due date with its time (schema 22), e.g. 11/20 15:00.
     function dueText(iss) { return d2(iss.dd) + (iss.dt ? ' ' + iss.dt : ''); }
-    // The clock now, HH:MM, on this computer.
+    // The clock now, HH:MM. On this computer - unless the user reads the
+    // portal in a time zone that is not the site's: then it is the user's
+    // clock, counted on from the time the server stamped into the data
+    // (D.now), since the computer may be set to yet another zone. It stops
+    // at the end of the day D.today names.
     function nowHM() {
         var n = new Date();
-        return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2);
+        var m = D.tz_differs ? /^(\d{1,2}):(\d{2})$/.exec(String(D.now || '')) : null;
+        if (!m) { return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2); }
+        var mins = Number(m[1]) * 60 + Number(m[2]) + Math.floor((Date.now() - (D._at || Date.now())) / 60000);
+        mins = Math.min(Math.max(mins, 0), 1439);
+        return ('0' + Math.floor(mins / 60)).slice(-2) + ':' + ('0' + (mins % 60)).slice(-2);
     }
     // Past due: a day before today, or today with a time that has gone by.
     // An issue without a time is due at the end of its day, as before.
@@ -4657,7 +4667,11 @@ window.PmPortalBoot = function () {
         if (parentCol && Object.prototype.hasOwnProperty.call(row, parentCol)) {
             issue.parent = parseInt(row[parentCol], 10) || null;
         }
-        if (issue.ua) { issue.up = String(issue.ua).slice(0, 16).replace(/-/g, '/'); }
+        // The shown time: what the server formatted for this user, or - on
+        // a server that does not say - the stored time cut short, which is
+        // right only while the user reads the time zone of the site.
+        var shown = (answer && answer.updated_at_shown) || (D.tz_differs ? '' : issue.ua);
+        if (shown) { issue.up = String(shown).slice(0, 16).replace(/-/g, '/'); }
         // The list is already on screen (the form was left while the save was
         // on its way): draw it again, unless a cell of it is being edited.
         if (currentScreen === 'issues' && safeToRefresh() && !document.querySelector('#pp-issue-rows .pp-ed-in')) {
@@ -5907,7 +5921,7 @@ window.PmPortalBoot = function () {
         a.hidden = false;
         a.innerHTML = '';
         var who = info && info.updated_by ? String(info.updated_by) : '';
-        var when = info && info.updated_at ? nedFormatMetaDate(info.updated_at) : '';
+        var when = info && info.updated_at ? nedFormatMetaDate(info.updated_at_shown || info.updated_at) : '';
         var msg = document.createElement('span');
         msg.textContent = String(nedGetLangKey(who ? 'ned_stale_by' : 'ned_stale'))
             .replace(':name', who).replace(':at', when);
@@ -7135,8 +7149,10 @@ window.PmPortalBoot = function () {
         // English "by" between them.
         var cLabel = nedGetLangKey('ned_meta_created');
         var uLabel = nedGetLangKey('ned_meta_updated');
-        var cDate = nedFormatMetaDate(row.created_at);
-        var uDate = nedFormatMetaDate(row.updated_at);
+        // The times as the server formatted them for this user (their time
+        // zone); created_at / updated_at themselves are the stored values.
+        var cDate = nedFormatMetaDate(row.created_at_shown || row.created_at);
+        var uDate = nedFormatMetaDate(row.updated_at_shown || row.updated_at);
         var cBy = row.created_by || '';
         var uBy = row.updated_by || '';
         var showC = !!cDate;
@@ -9241,6 +9257,7 @@ window.PmPortalBoot = function () {
                 if (NED._payload && NED._payload.row) {
                     NED._payload.row.value = NED.values;
                     NED._payload.row.updated_at = NED.rowUpdatedAt;
+                    if (res.body.updated_at_shown) { NED._payload.row.updated_at_shown = res.body.updated_at_shown; }
                 }
                 Object.keys(res.body.image_urls || {}).forEach(function (name) {
                     submittedValues[name] = nedResolveImageUrls(submittedValues[name], res.body.image_urls[name]);
