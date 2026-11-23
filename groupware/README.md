@@ -6,6 +6,10 @@
 
 <a id="english"></a>
 
+**Unreleased**
+
+- The names and descriptions in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5). Another language reads English.
+
 **Changed in 0.4.7**
 
 - Exment calls the file server **File sharing** (ファイル共有) from 7.2.1, so this plugin does too: the description in Feature management and the page of the plugin. Nothing else changes.
@@ -133,6 +137,10 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 ---
 
 <a id="japanese"></a>
+
+**未リリース**
+
+- 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
 
 **0.4.7 で変わったこと**
 

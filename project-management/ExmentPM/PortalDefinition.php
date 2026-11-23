@@ -371,15 +371,28 @@ class PortalDefinition
     const LANG_FILE = 'pmportal';
 
     /**
-     * The only locale the portal ships.
+     * The locale the portal was written in, and the one every string that
+     * becomes stored data is resolved in.
      *
-     * The plugin is Japanese-only by decision, so every string is resolved
-     * against ja regardless of the locale the admin is running in. Asking for
-     * the current locale instead would mean an admin set to English gets the
-     * raw key back, which is the defect that put keys like
-     * "exment_pm_portal::pmportal.schema.values.status.todo" into pm_status.
+     * The screens follow the user's language (resources/lang/<locale>), but
+     * the "schema." lines become master row names, notification names, column
+     * help and menu titles. PortalUpgrade finds its rows again by those names,
+     * so they must read the same whoever runs the setup or the upgrade - a
+     * second language there would seed a duplicate set of statuses. They stay
+     * Japanese, as every install has had them so far.
      */
     const LANG_LOCALE = 'ja';
+
+    /**
+     * Where a line missing in the user's language is looked up next, before
+     * LANG_LOCALE. A locale the plugin does not ship reads English.
+     */
+    const LANG_FALLBACK = 'en';
+
+    /**
+     * Keys under this prefix are resolved in LANG_LOCALE only (see there).
+     */
+    const LANG_DATA_PREFIX = 'schema.';
 
     /**
      * Whether ensureNamespace() has already done its work this request.
@@ -487,8 +500,9 @@ class PortalDefinition
      * arguments are fed to vsprintf. Kept here so the blades and the
      * controller share one entry point.
      *
-     * The locale is pinned to LANG_LOCALE rather than following the admin's,
-     * because the portal only ships Japanese.
+     * The line is read in the user's locale, then LANG_FALLBACK, then
+     * LANG_LOCALE - the first that has it. Lines that become stored data
+     * ("schema.") are read in LANG_LOCALE only.
      *
      * @param string $key
      * @param mixed ...$args
@@ -499,12 +513,13 @@ class PortalDefinition
         static::ensureNamespace();
 
         $line = static::viewNamespace() . '::' . static::LANG_FILE . '.' . $key;
+        $locale = static::localeFor($line, $key);
 
         if (count($args) > 0 && is_array($args[0])) {
-            return trans($line, $args[0], static::LANG_LOCALE);
+            return trans($line, $args[0], $locale);
         }
 
-        $text = trans($line, [], static::LANG_LOCALE);
+        $text = trans($line, [], $locale);
         if (count($args) > 0) {
             $text = vsprintf($text, $args);
         }
@@ -513,14 +528,64 @@ class PortalDefinition
     }
 
     /**
-     * The Japanese sentence for an error code a JSON endpoint answers with.
+     * The locales a key is looked up in, in order.
+     *
+     * @param string $key a key inside the lang file, such as "api_error.fallback"
+     * @param string|null $current the user's locale; null asks the app
+     * @return array<int, string>
+     */
+    public static function localesFor(string $key, ?string $current = null): array
+    {
+        if (strpos($key, static::LANG_DATA_PREFIX) === 0) {
+            return [static::LANG_LOCALE];
+        }
+
+        if ($current === null) {
+            try {
+                $current = strval(app()->getLocale());
+            } catch (Throwable $e) {
+                $current = '';
+            }
+        }
+
+        return array_values(array_unique(array_filter([$current, static::LANG_FALLBACK, static::LANG_LOCALE], 'strlen')));
+    }
+
+    /**
+     * The first locale that has the line, LANG_LOCALE when none does - trans()
+     * then hands back the key, which isUnresolved() recognises.
+     *
+     * @param string $line the full line, namespace and file included
+     * @param string $key the same line inside the lang file
+     * @return string
+     */
+    protected static function localeFor(string $line, string $key): string
+    {
+        $locales = static::localesFor($key);
+
+        try {
+            $translator = app('translator');
+            foreach ($locales as $locale) {
+                if ($translator->has($line, $locale, false)) {
+                    return $locale;
+                }
+            }
+        } catch (Throwable $e) {
+            // No translator yet: trans() below fails the same way it always did.
+        }
+
+        return static::LANG_LOCALE;
+    }
+
+    /**
+     * The sentence for an error code a JSON endpoint answers with.
      *
      * Endpoints keep a machine code in `error` - the client branches on it
      * ('stale', 'in_use') - and put what a person reads in `message`. The
      * codes are English, and they used to reach the screen as they stood:
      * the client printed `detail || error`, so a failed save read
      * "save_failed" or the raw exception text. A code with no entry under
-     * api_error still reads as Japanese through the fallback.
+     * api_error still reads as a sentence through the fallback.
      *
      * @param string $code a key under api_error
      * @param array<string, mixed> $replace

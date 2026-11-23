@@ -67,6 +67,9 @@ ITreview の「ヘルプデスクツール」カテゴリー（2026 年 11 月�
 
 **Unreleased / 未リリース**: 5 分ごとのバッチは、することがないとき（セットアップの前・受付箱を使わないとき）も成功（終了コード 0）で終わります。前は 1 で、そのたびにエラーのログが出ていました。エラーのときは今までどおり失敗です。
 
+**Unreleased / 未リリース**: The two entries in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5); another language reads English.
+機能の管理に出る 2 つの入口の名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
+
 自動処理（メールの受信・SLA・返事待ち・完了・資産の期限）は 5 分ごとに動きます。Exment のスケジューラー（`php artisan schedule:run` を cron で毎分）が動いている必要があります。
 
 ### 機能の管理（機能の管理の入った Exment で）
