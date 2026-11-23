@@ -4,6 +4,7 @@ name: ci
 # - check:        PHP syntax (php -l) on PHP 8.2 / 8.3, and config.json of each plugin
 # - php-cs-fixer: same coding style as exceedone/exment
 # - phpstan:      static analysis against Exment 7 (only NEW errors fail; see .github/ci/phpstan.neon)
+# - exmentpm-script: ExmentPM's script.js is the build of resources/js/src/, and node --check reads all of it
 on:
   pull_request:
   push:
@@ -100,3 +101,18 @@ jobs:
             exit 0
           fi
           php -d memory_limit=2G vendor/bin/phpstan analyse -c phpstan.neon --no-progress
+
+  exmentpm-script:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Builds in memory and compares with the committed file; node --check on
+      # every source and on the result. Fix: node project-management/tools/build-pm-script.js
+      - name: Build check (ExmentPM script.js)
+        run: node project-management/tools/build-pm-script.js --check
