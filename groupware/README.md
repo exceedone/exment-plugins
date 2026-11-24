@@ -8,6 +8,7 @@
 
 **Unreleased**
 
+- On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
 - Web mail: the dates of the mails are shown in the time zone the user chose in Exment (Exment 7.2.4; a user who chose none gets the time zone of the site). On an older Exment they are shown in the time zone of the browser, as before.
 
 **Changed in 0.4.7**
@@ -140,6 +141,7 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 
 **未リリース**
 
+- メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
 
 **0.4.7 で変わったこと**
