@@ -3925,12 +3925,11 @@ class PmPortalController extends AdminControllerBase
 
             return $project;
         }
+        // a project the user may not see answers as one that is not there (404, not 403), so
+        // its number does not tell that it exists - the same as by code
         $project = $this->project_table->getValueModel()->find($ref);
-        if (!isset($project)) {
+        if (!isset($project) || $project->enableAccess() !== true) {
             abort(404);
-        }
-        if ($project->enableAccess() !== true) {
-            abort(403);
         }
 
         return $project;
@@ -3948,8 +3947,9 @@ class PmPortalController extends AdminControllerBase
             || $issue->parent_type != $this->project_table->table_name) {
             abort(404);
         }
+        // the same for an issue the user may not see
         if ($issue->enableAccess() !== true) {
-            abort(403);
+            abort(404);
         }
 
         return $issue;

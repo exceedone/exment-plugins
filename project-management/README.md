@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- A project the user may not see now answers 404 by its number, the same as a project that is not there (by its code it already did). Until now its number answered 403, which told that the project exists. The same for an issue of the project the user may not see. The page is the same error page.
+  見る権限のないプロジェクトは、番号で開いても、ないプロジェクトと同じ 404 を返すようにしました（コードで開いたときは前から同じでした）。これまでは 403 を返していて、そのプロジェクトがあることがわかりました。見る権限のない課題も同じです。出る画面は同じエラーの画面です。
+
 **Changed in 1.7.17 / 1.7.17 で変わったこと**
 
 - Whoever holds a writing role on a project - the manager, a member, or a member through an organization (`member_orgs`) - can now edit every issue of that project in the portal: subject, description, status, progress, attachments, bulk edits. Until now only the person who opened an issue and its assignees could; every other member could read it and nothing more, because Exment hands the right to write an issue to the people its share columns name, one issue at a time (wiki pages already follow their project the same way). **This widens who can edit.** A viewer still only reads, somebody who is not on the project still cannot open the issue, an archived project stays read-only, and a workflow lock still refuses. The role group must allow editing issues at all (`pm_member_group` does). Exment's own data screen (`/admin/data/pm_issue/…`) and the Web API keep Exment's own rule: the opener and the assignees.
