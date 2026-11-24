@@ -691,7 +691,7 @@ class PmPortalController extends AdminControllerBase
         if (!in_array($choice, PortalTeams::CHOICES, true) || (!PortalTeams::teamsAvailable() && in_array($choice, ['teams', 'both'], true))) {
             return $this->messageError(400, 'invalid_params');
         }
-        \Admin::user()->setSettingValue(PortalTeams::USER_SETTING, $choice);
+        \Exment::user()->setSettingValue(PortalTeams::USER_SETTING, $choice);
 
         return response()->json(['ok' => true, 'notify_by' => $choice]);
     }

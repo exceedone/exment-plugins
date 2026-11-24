@@ -206,7 +206,8 @@ class PortalTeams
             }
             if ($byTeams) {
                 try {
-                    \Exceedone\Exment\Services\NotifyService::notifyTeamsPersonal([
+                    // by its name: an Exment before 7.2.6 does not have it (teamsAvailable())
+                    call_user_func(['Exceedone\Exment\Services\NotifyService', 'notifyTeamsPersonal'], [
                         'user' => $user,
                         'custom_value' => $issue,
                         'subject' => $title,
