@@ -1244,7 +1244,7 @@ class LightApiController
         foreach ($ids as $rowId) {
             $row = $rows->get($rowId);
             if (!$row) { return $this->err(404, 'not_found', strval($rowId)); }
-            $canEdit = $row->enableEdit(true);
+            $canEdit = PortalDefinition::enableEdit($row, true);
             if ($canEdit !== true) { return $this->err(403, 'forbidden', $canEdit); }
         }
 

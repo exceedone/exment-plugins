@@ -759,7 +759,7 @@ class PortalDefinition
 
     /**
      * Whether the signed-in user may edit a row: Exment's own answer, except
-     * that a wiki page follows its project.
+     * that a wiki page and an issue follow their project.
      *
      * inherit_parent_permission lets everyone on a project read its pages, but
      * Exment has no counterpart for writing - editable_with_parent only adds
@@ -768,6 +768,16 @@ class PortalDefinition
      * edit the project, and holds a role that edits wiki pages at all, may
      * edit its pages. A disabled form action, a workflow lock or a deleted
      * page still refuses, in the order Exment itself checks them.
+     *
+     * The same holds for an issue. Exment gives the right to write an issue
+     * to whoever opened it and to its assignees (the share columns), one row
+     * at a time; everybody else on the project could read it and nothing
+     * more. A project is worked on by its members, though: whoever holds a
+     * writing role on the project (manager, member, or a member through an
+     * organization) and a role that edits issues at all may edit any issue of
+     * it. A viewer reads; somebody who is not on the project does not get as
+     * far as the issue. For an issue the project must be editable by the
+     * caller whatever editable_with_parent says.
      *
      * Every row that lives in a project also needs the project's consent,
      * found whoever is asking and refused while the project is archived -
@@ -789,7 +799,8 @@ class PortalDefinition
         }
 
         $table = $row->custom_table;
-        if (!$table || $table->table_name !== array_get($def, 'wiki_table')
+        $isIssue = $table && $table->table_name === array_get($def, 'issue_table');
+        if (!$table || (!$isIssue && $table->table_name !== array_get($def, 'wiki_table'))
             || $row->parent_type !== array_get($def, 'project_table')
             || !$table->hasPermission(Permission::AVAILABLE_EDIT_CUSTOM_VALUE)) {
             return $result;
@@ -797,7 +808,7 @@ class PortalDefinition
         if ($row->lockedWorkflow()) {
             return ErrorCode::WORKFLOW_LOCK();
         }
-        if (!static::projectAllows($row, $def, $checkFormAction)) {
+        if (!static::projectAllows($row, $def, $checkFormAction, 'edit', $isIssue)) {
             return $result;
         }
         if ($row->trashed()) {
@@ -845,7 +856,7 @@ class PortalDefinition
      * Remembered for a few seconds per user and project: a screen asks for
      * every issue of the same project in a row.
      */
-    protected static function projectAllows(CustomValue $row, array $def, bool $checkFormAction, string $action = 'edit'): bool
+    protected static function projectAllows(CustomValue $row, array $def, bool $checkFormAction, string $action = 'edit', bool $strict = false): bool
     {
         $projectTable = strval(array_get($def, 'project_table'));
         if ($projectTable === '' || $row->parent_type !== $projectTable || is_nullorempty($row->parent_id)) {
@@ -853,7 +864,10 @@ class PortalDefinition
         }
 
         $table = $row->custom_table;
-        $mode = (!$table || boolval($table->getOption('editable_with_parent') ?? 1)) ? $action : 'access';
+        // $strict: the caller is about to grant on the project's word alone,
+        // so the project has to allow the action itself - reaching it is not
+        // enough, whatever the table's option says.
+        $mode = ($strict || !$table || boolval($table->getOption('editable_with_parent') ?? 1)) ? $action : 'access';
         $key = implode(':', [intval(\Exment::getUserId()), intval($row->parent_id), $mode, $checkFormAction ? 1 : 0]);
         $now = microtime(true);
         if (isset(static::$projectAnswers[$key]) && $now - static::$projectAnswers[$key][0] < 10) {
