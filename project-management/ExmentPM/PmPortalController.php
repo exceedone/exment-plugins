@@ -965,7 +965,7 @@ class PmPortalController extends AdminControllerBase
                 'description' => \Exceedone\Exment\ColumnItems\CustomColumns\Editor::replaceImgUrl(
                     strval(array_get($issue->value, array_get($this->def['issue'], 'description'), ''))
                 ),
-                'editable' => !$archived && $issue->enableEdit(true) === true,
+                'editable' => !$archived && PortalDefinition::enableEdit($issue, true) === true,
                 // Moving needs edit rights on the issue; the server lists the
                 // projects it may go to when the button is pressed.
                 'movable' => !$archived && PortalDefinition::enableEdit($issue, true) === true,
@@ -1069,7 +1069,7 @@ class PmPortalController extends AdminControllerBase
         }
         $status_meta = [];
         if ($changed) {
-            if ($issue->enableEdit(true) !== true) {
+            if (PortalDefinition::enableEdit($issue, true) !== true) {
                 return $this->messageError(403, 'no_permission');
             }
             list($status_meta) = $this->selectMeta($this->issue_table, $status_column, $issue->parent_id);
@@ -1884,7 +1884,7 @@ class PmPortalController extends AdminControllerBase
         if ($this->projectIsArchived($project)) {
             return $this->messageError(403, 'archived');
         }
-        if ($issue->enableEdit() !== true) {
+        if (PortalDefinition::enableEdit($issue) !== true) {
             return $this->messageError(403, 'no_permission');
         }
         if (!boolval($this->issue_table->getOption('attachment_flg') ?? true)) {
@@ -2439,7 +2439,7 @@ class PmPortalController extends AdminControllerBase
         $denied = 0;
         $failed = [];
         foreach ($issues as $issue) {
-            if ($issue->enableEdit(true) !== true) {
+            if (PortalDefinition::enableEdit($issue, true) !== true) {
                 $denied++;
                 continue;
             }
