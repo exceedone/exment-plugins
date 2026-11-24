@@ -307,15 +307,37 @@ function avatar(name, email, big) {
     var ch = s.replace(/^["'\s]+/, '').charAt(0).toUpperCase();
     return '<span class="gwm-av' + (big ? ' l' : '') + '" style="background:' + COLORS[Math.abs(h) % COLORS.length] + '" aria-hidden="true">' + esc(ch) + '</span>';
 }
+// The parts of a moment (year, month, day, hour, minute, day of the week) in the time zone of the user
+// (GWM_CFG.timezone, from Exment). Without one, or in a browser that cannot do it: the browser's time zone.
+var TZ_FMT = null;
+try {
+    if (GWM_CFG.timezone) {
+        TZ_FMT = new Intl.DateTimeFormat('en-US', { timeZone: GWM_CFG.timezone, hourCycle: 'h23', weekday: 'short',
+            year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+    }
+} catch (e) { TZ_FMT = null; }
+function parts(d) {
+    if (TZ_FMT) {
+        try {
+            var o = {};
+            TZ_FMT.formatToParts(d).forEach(function (x) { o[x.type] = x.value; });
+            return { y: Number(o.year), m: Number(o.month), d: Number(o.day), h: Number(o.hour) % 24, i: Number(o.minute),
+                w: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(o.weekday) };
+        } catch (e) { /* the browser's time zone below */ }
+    }
+    return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), h: d.getHours(), i: d.getMinutes(), w: d.getDay() };
+}
 function when(iso, full) {
     if (!iso) { return ''; }
-    var d = new Date(iso), n = new Date(), p = function (x) { return (x < 10 ? '0' : '') + x; };
-    var hm = p(d.getHours()) + ':' + p(d.getMinutes());
-    var wd = '日月火水木金土'.charAt(d.getDay());
-    if (full) { return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + '（' + wd + '） ' + hm; }
-    if (d.toDateString() === n.toDateString()) { return hm; }
-    if (d.getFullYear() === n.getFullYear()) { return (d.getMonth() + 1) + '/' + d.getDate() + '（' + wd + '）'; }
-    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+    var at = new Date(iso);
+    if (isNaN(at.getTime())) { return ''; }
+    var d = parts(at), n = parts(new Date()), p = function (x) { return (x < 10 ? '0' : '') + x; };
+    var hm = p(d.h) + ':' + p(d.i);
+    var wd = '日月火水木金土'.charAt(d.w);
+    if (full) { return d.y + '/' + d.m + '/' + d.d + '（' + wd + '） ' + hm; }
+    if (d.y === n.y && d.m === n.m && d.d === n.d) { return hm; }
+    if (d.y === n.y) { return d.m + '/' + d.d + '（' + wd + '）'; }
+    return d.y + '/' + d.m + '/' + d.d;
 }
 function size(n) { return n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB'; }
 function who(list) { return (list || []).map(function (a) { return a.name ? a.name + ' <' + a.email + '>' : a.email; }).join(', '); }

@@ -260,7 +260,7 @@ trait PortalProjectTrait
             'repo_name' => isset($repo) ? strval($repo->repo_name) : GitRepo::suggestName($key, $project->id),
             'remote_url' => isset($repo) && !is_nullorempty($repo->remote_url) ? strval($repo->remote_url) : null,
             'error' => isset($repo) && !is_nullorempty($repo->last_error) ? $this->gitErrorText(strval($repo->last_error)) : null,
-            'requested_at' => isset($repo) && isset($repo->created_at) ? $repo->created_at->format('Y-m-d H:i') : null,
+            'requested_at' => isset($repo) && isset($repo->created_at) ? PortalTime::format($repo->created_at, 'Y-m-d H:i') : null,
             'http_url' => $this->gitHttpUrl($repo),
             'browse_url' => $this->gitBrowseUrl($repo),
             'provider' => GitProvisioner::provider(),

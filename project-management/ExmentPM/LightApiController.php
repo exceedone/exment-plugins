@@ -406,6 +406,11 @@ class LightApiController
             if ($column->column_type === ColumnType::EDITOR && isset($value[$name])) {
                 $value[$name] = Editor::replaceImgUrl($value[$name]);
             }
+            // A date and time opens in the form as the user reads it;
+            // persistRow turns what is typed back into the time of the site.
+            if ($column->column_type === ColumnType::DATETIME && isset($value[$name])) {
+                $value[$name] = PortalTime::toUser($value[$name]);
+            }
         }
 
         // Resolve creator/updater names for the header meta strip.
@@ -443,8 +448,12 @@ class LightApiController
                 'id' => $row->id,
                 'value' => $value,
                 'labels' => $labels,
+                // As stored: updated_at is the version a save quotes back.
                 'created_at' => $row->created_at ? (string) $row->created_at : null,
                 'updated_at' => $row->updated_at ? (string) $row->updated_at : null,
+                // As shown, in the time zone of the user.
+                'created_at_shown' => PortalTime::format($row->created_at, 'Y-m-d H:i:s') ?: null,
+                'updated_at_shown' => PortalTime::format($row->updated_at, 'Y-m-d H:i:s') ?: null,
                 'created_by' => $creator,
                 'updated_by' => $updater,
                 'label' => (string) $row->getLabel(),
@@ -978,6 +987,7 @@ class LightApiController
             && strval($row->updated_at) !== strval($since)) {
             return PortalDefinition::jsonError(409, 'stale', [
                 'updated_at' => (string) $row->updated_at,
+                'updated_at_shown' => PortalTime::format($row->updated_at, 'Y-m-d H:i:s'),
                 'updated_by' => $this->rowUpdaterLabel($row),
             ]);
         }
@@ -1026,6 +1036,8 @@ class LightApiController
             'ok' => true,
             'row' => $out,
             'updated_at' => $row->updated_at ? (string) $row->updated_at : null,
+            // The same moment as the user reads it (updated_at is the version).
+            'updated_at_shown' => PortalTime::format($row->updated_at, 'Y-m-d H:i:s') ?: null,
             'image_urls' => $images,
         ]);
     }
@@ -1034,6 +1046,16 @@ class LightApiController
     {
         $editors = [];
         $before = [];
+        // A date and time the user typed is in the user's time zone; the
+        // database keeps the time of the site. (A date alone, and a time
+        // alone, are kept as typed.)
+        if (PortalTime::differs()) {
+            foreach ($table->custom_columns_cache as $column) {
+                if ($column->column_type === ColumnType::DATETIME && isset($value[$column->column_name])) {
+                    $value[$column->column_name] = PortalTime::fromUser($value[$column->column_name]);
+                }
+            }
+        }
         foreach ($table->custom_columns_cache as $column) {
             if ($column->column_type !== ColumnType::EDITOR
                 || !isset($value[$column->column_name]) || !is_string($value[$column->column_name])
@@ -1284,7 +1306,7 @@ class LightApiController
                         'id' => intval($org->id),
                         'name' => (string) $org->getLabel(),
                         'role' => $orgRoles[intval($org->id)],
-                        'since' => optional($org->created_at)->format('Y/m/d'),
+                        'since' => $org->created_at ? PortalTime::format($org->created_at, 'Y/m/d') : null,
                         'named' => true,
                     ];
                 }
@@ -1324,7 +1346,7 @@ class LightApiController
                                 'id' => intval($link->parent_id),
                                 'name' => (string) $org->getLabel(),
                                 'role' => $role,
-                                'since' => optional($org->created_at)->format('Y/m/d'),
+                                'since' => $org->created_at ? PortalTime::format($org->created_at, 'Y/m/d') : null,
                             ];
                         }
                     }
@@ -2505,6 +2527,10 @@ class LightApiController
         foreach ($columns as $name => $c) {
             $v = $value[$name] ?? null;
             $out[$name] = $c && $c->column_type === ColumnType::EDITOR && isset($v) ? Editor::replaceImgUrl($v) : $v;
+            // A date and time, as the user reads it (see persistRow).
+            if ($c && $c->column_type === ColumnType::DATETIME && isset($v)) {
+                $out[$name] = PortalTime::toUser($v);
+            }
         }
         return $out;
     }

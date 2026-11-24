@@ -245,7 +245,11 @@
         if (parentCol && Object.prototype.hasOwnProperty.call(row, parentCol)) {
             issue.parent = parseInt(row[parentCol], 10) || null;
         }
-        if (issue.ua) { issue.up = String(issue.ua).slice(0, 16).replace(/-/g, '/'); }
+        // The shown time: what the server formatted for this user, or - on
+        // a server that does not say - the stored time cut short, which is
+        // right only while the user reads the time zone of the site.
+        var shown = (answer && answer.updated_at_shown) || (D.tz_differs ? '' : issue.ua);
+        if (shown) { issue.up = String(shown).slice(0, 16).replace(/-/g, '/'); }
         // The list is already on screen (the form was left while the save was
         // on its way): draw it again, unless a cell of it is being edited.
         if (currentScreen === 'issues' && safeToRefresh() && !document.querySelector('#pp-issue-rows .pp-ed-in')) {

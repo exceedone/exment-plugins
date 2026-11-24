@@ -381,7 +381,7 @@
         a.hidden = false;
         a.innerHTML = '';
         var who = info && info.updated_by ? String(info.updated_by) : '';
-        var when = info && info.updated_at ? nedFormatMetaDate(info.updated_at) : '';
+        var when = info && info.updated_at ? nedFormatMetaDate(info.updated_at_shown || info.updated_at) : '';
         var msg = document.createElement('span');
         msg.textContent = String(nedGetLangKey(who ? 'ned_stale_by' : 'ned_stale'))
             .replace(':name', who).replace(':at', when);

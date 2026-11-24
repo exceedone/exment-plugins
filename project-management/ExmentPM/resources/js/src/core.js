@@ -18,6 +18,8 @@
     // looks exactly like one from the API. The payload a refresh fetches is
     // packed the same way (adoptPayload), so it goes through here as well.
     function unpackRows(data) {
+        // When this data arrived: the clock of nowHM counts on from here.
+        if (data) { data._at = Date.now(); }
         var pk = data && data.row_pack;
         if (!pk) { return; }
         var defs = pk.defaults || {};

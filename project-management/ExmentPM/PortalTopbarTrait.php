@@ -280,7 +280,7 @@ trait PortalTopbarTrait
         }
 
         if (!empty($cards)) {
-            $this->dashboardProjectCounts($cards, $this->dashboardDoneIds($issue_status), \Carbon\Carbon::today()->format('Y-m-d'));
+            $this->dashboardProjectCounts($cards, $this->dashboardDoneIds($issue_status), PortalTime::today());
             $this->dashboardStars($cards);
         }
 

@@ -2824,11 +2824,17 @@ class PmPortalController extends AdminControllerBase
             'ai' => $this->aiPayload($project),
             'settings_map' => $can['manage'] ? $this->projectSettingsMap() : null,
             'me' => intval($me),
-            'today' => \Carbon\Carbon::today()->format('Y-m-d'),
+            // The user's today and clock: what a due date is late against,
+            // and what "as of" says, are the days and hours the user lives in.
+            'today' => PortalTime::today(),
             // When this payload was built, which is what "as of" means. Taken
             // here rather than from the browser so it matches every other time
             // on the screen.
-            'now' => \Carbon\Carbon::now()->format('H:i'),
+            'now' => PortalTime::now()->format('H:i'),
+            // The shown times differ from the stored ones (the user's time
+            // zone is not the site's): the script then shows what the server
+            // formatted, and never rebuilds a shown time from a stored one.
+            'tz_differs' => PortalTime::differs(),
             // What the screen can compare against later to find out whether
             // anything moved while it was sitting open.
             'stamp' => $this->projectStampValue($project),
@@ -3319,7 +3325,7 @@ class PmPortalController extends AdminControllerBase
             'eh' => is_numeric(array_get($v, array_get($is, 'estimate'))) ? floatval(array_get($v, array_get($is, 'estimate'))) : null,
             'ah' => is_numeric(array_get($v, array_get($is, 'actual'))) ? floatval(array_get($v, array_get($is, 'actual'))) : null,
             'parent' => intval(array_get($v, array_get($is, 'parent'))) ?: null,
-            'up' => ($lean && $issue->updated_at) ? null : $this->fmtAt($issue->updated_at ?? $issue->created_at),
+            'up' => ($lean && $issue->updated_at && !PortalTime::differs()) ? null : $this->fmtAt($issue->updated_at ?? $issue->created_at),
             // The version as the server compares it, sent back with an edit
             // so a change made in between is refused rather than overwritten.
             'ua' => $issue->updated_at ? (string) $issue->updated_at : null,
@@ -3338,7 +3344,9 @@ class PmPortalController extends AdminControllerBase
             // Rebuilt by the page's script (unpackRows) from the id, the
             // project's key and ua.
             unset($row['url'], $row['edit_url'], $row['key']);
-            if ($issue->updated_at) {
+            // The shown time is ua cut short - in the time zone of the site.
+            // For a user in another time zone it is sent as formatted.
+            if ($issue->updated_at && !PortalTime::differs()) {
                 unset($row['up']);
             }
         }
@@ -4802,13 +4810,8 @@ class PmPortalController extends AdminControllerBase
      */
     protected function fmtAt($at)
     {
-        if (is_nullorempty($at)) {
-            return '';
-        }
-        try {
-            return \Carbon\Carbon::parse($at)->format('Y/m/d H:i');
-        } catch (\Exception $e) {
-            return strval($at);
-        }
+        // In the time zone of the user (PortalTime): the same text as before
+        // for a user in the time zone of the site.
+        return PortalTime::format($at, 'Y/m/d H:i');
     }
 }

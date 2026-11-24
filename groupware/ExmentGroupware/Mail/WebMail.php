@@ -87,7 +87,32 @@ class WebMail
             return redirect($this->url('accounts'));
         }
 
-        return $this->screen('メール', view('exment_exment_groupware::mail', [
+        return $this->screen('メール', view('exment_exment_groupware::mail', $this->mailViewData($accounts)));
+    }
+
+    /**
+     * The time zone of the user for the dates of the mails ('' when the core has no user time zone).
+     */
+    public static function userTimezone(): string
+    {
+        $service = '\Exceedone\Exment\Services\UserTimezone';
+        if (!class_exists($service)) {
+            return '';
+        }
+        try {
+            return strval($service::user());
+        } catch (\Throwable $e) {
+            return '';
+        }
+    }
+
+    /**
+     * @param array<int, mixed> $accounts
+     * @return array<string, mixed>
+     */
+    protected function mailViewData(array $accounts): array
+    {
+        return [
             'accounts_url' => $this->url('accounts'),
             // For the script of the page (one @json: Blade cannot take an array literal over lines there).
             'cfg' => [
@@ -96,8 +121,11 @@ class WebMail
                 'accounts' => $accounts,
                 'accountsUrl' => $this->url('accounts'),
                 'maxAttach' => static::MAX_ATTACH_BYTES,
+                // The time zone the dates of the mails are shown in: the one the user chose in
+                // Exment (7.2.4), else the site's. '' on an older core: the browser's, as before.
+                'timezone' => static::userTimezone(),
             ],
-        ]));
+        ];
     }
 
     /** Adding and changing accounts. */
