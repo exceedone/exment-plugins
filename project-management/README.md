@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- An issue opened from the list no longer comes back bold (unread) when going back to the list: a refresh of the list that was fetched before the "read" mark reached the server put the old mark back until the page was reloaded. What the reader just marked (opened, or marked read / unread by hand) stays for a minute over a refresh; after that the server's answer counts again.
+  一覧から課題を開いたあと、一覧に戻ると太字（未読）のままになることがありました。「読んだ」の印がサーバーに届く前に取った一覧の更新が、古い印に戻していたためです（ページを読み直すと直っていました）。自分が付けた印（開いた・手で既読／未読にした）は、1 分のあいだ、一覧の更新があってもそのまま残します。そのあとは、サーバーの答えに従います。
+
 **Changed in 1.7.17 / 1.7.17 で変わったこと**
 
 - Whoever holds a writing role on a project - the manager, a member, or a member through an organization (`member_orgs`) - can now edit every issue of that project in the portal: subject, description, status, progress, attachments, bulk edits. Until now only the person who opened an issue and its assignees could; every other member could read it and nothing more, because Exment hands the right to write an issue to the people its share columns name, one issue at a time (wiki pages already follow their project the same way). **This widens who can edit.** A viewer still only reads, somebody who is not on the project still cannot open the issue, an archived project stays read-only, and a workflow lock still refuses. The role group must allow editing issues at all (`pm_member_group` does). Exment's own data screen (`/admin/data/pm_issue/…`) and the Web API keep Exment's own rule: the opener and the assignees.

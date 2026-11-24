@@ -112,6 +112,27 @@ test('a save in the form brings the list row up to the saved values', () => {
     assert.ok(left >= 0 && at < left, 'before the early return of a form that was left');
 });
 
+test('an issue just opened stays read when a refresh fetched before the mark arrives', () => {
+    const reads = read('read-receipts.js');
+    const decl = reads.slice(reads.indexOf('var READ_LOCAL = {};'), reads.indexOf('function applyLocalReads('));
+    const make = new Function(decl + functionSource(reads, 'readLocal') + functionSource(reads, 'applyLocalReads') +
+        '; return { readLocal, applyLocalReads };');
+    const r = make();
+    r.readLocal(11, true);
+    r.readLocal(12, false);
+    const payload = { issues: [{ id: 11, unread: true }, { id: 12, unread: false }, { id: 13, unread: true }] };
+    r.applyLocalReads(payload);
+    assert.deepStrictEqual(payload.issues.map((i) => i.unread), [false, true, true]);
+    // a minute later the server's answer is the truth again (somebody may have written since)
+    const later = { issues: [{ id: 11, unread: true }] };
+    r.applyLocalReads(later, Date.now() + 61000);
+    assert.strictEqual(later.issues[0].unread, true);
+    // the refresh applies them before the payload becomes D, and opening an issue records one
+    const adopt = functionSource(list, 'adoptPayload');
+    assert.ok(adopt.indexOf('applyLocalReads(next)') >= 0 && adopt.indexOf('applyLocalReads(next)') < adopt.indexOf('D = next'));
+    assert.ok(/readLocal\(key, read\)/.test(functionSource(reads, 'markRead')));
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

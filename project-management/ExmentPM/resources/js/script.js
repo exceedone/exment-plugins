@@ -2000,6 +2000,8 @@ window.PmPortalBoot = function () {
         // has no assignees, no key and no links, and the first screen that
         // reads one stops the whole redraw.
         unpackRows(next);
+        // an issue just opened (or marked by hand) stays as the reader left it
+        applyLocalReads(next);
         D = next;
         // The new payload has no archived rows again; bring them back if they
         // were on show.
@@ -4252,6 +4254,25 @@ window.PmPortalBoot = function () {
     // the request queue, and only once per page view: the screen never waits
     // on it and a busy reader's real requests go first.
     var READ_SENT = {};
+    // What this reader just marked, for a while: the mark goes to the server
+    // in the slow lane, so a refresh of the list fetched before it got there
+    // still says "unread" and would put the bold row back until the next
+    // reload. id => { read, at }.
+    var READ_LOCAL = {};
+    var READ_LOCAL_MS = 60000;
+    function readLocal(id, read) {
+        READ_LOCAL[String(id)] = { read: !!read, at: Date.now() };
+    }
+    // A payload about to be shown: the reader's own marks of the last minute win.
+    function applyLocalReads(data, now) {
+        now = now || Date.now();
+        (data && data.issues || []).forEach(function (i) {
+            var mark = Object.prototype.hasOwnProperty.call(READ_LOCAL, String(i.id)) ? READ_LOCAL[String(i.id)] : null;
+            if (!mark) { return; }
+            if (now - mark.at > READ_LOCAL_MS) { delete READ_LOCAL[String(i.id)]; return; }
+            i.unread = !mark.read;
+        });
+    }
     function readAv(r) {
         var u = user(r.by);
         var title = u.n + '  ' + (r.at || '') + (r.old ? '  (' + L.reads_old + ')' : '');
@@ -4284,6 +4305,7 @@ window.PmPortalBoot = function () {
             (D.issues || []).forEach(function (i) {
                 if (i.unread) { i.unread = false; paintUnread(i.id); }
                 READ_SENT[String(i.id)] = true;
+                readLocal(i.id, true);
             });
             toast(String(L.read_all_done).replace(':count', res.count));
         }, function (xhr) { toast(xhrErr(xhr, L.read_all_fail), true); });
@@ -4294,6 +4316,7 @@ window.PmPortalBoot = function () {
         var key = String(id);
         if (read && READ_SENT[key] === true && !(row && row.unread)) { return; }
         READ_SENT[key] = read;
+        readLocal(key, read);
         if (row) { row.unread = !read; }
         paintUnread(id);
         ppQueue(function () {

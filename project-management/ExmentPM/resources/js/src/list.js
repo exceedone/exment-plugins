@@ -1272,6 +1272,8 @@
         // has no assignees, no key and no links, and the first screen that
         // reads one stops the whole redraw.
         unpackRows(next);
+        // an issue just opened (or marked by hand) stays as the reader left it
+        applyLocalReads(next);
         D = next;
         // The new payload has no archived rows again; bring them back if they
         // were on show.
