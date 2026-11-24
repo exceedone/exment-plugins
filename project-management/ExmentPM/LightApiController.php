@@ -873,9 +873,9 @@ class LightApiController
         // "Also by e-mail" on a new issue: the bells the save rings are the
         // rows past this mark, and their people get the mail.
         $mail = $this->wantsIssueMail($request, $table);
-        // Teams (the plugin setting, ISS02863): the same people as the bells
-        $teams = PortalTeams::available() && $table->table_name === strval(array_get(PortalDefinition::config(), 'issue_table'));
-        $bellMark = $mail || $teams ? intval(NotifyNavbar::withoutGlobalScopes()->max('id')) : 0;
+        // The mail and Teams of a new issue (ISS02863): the people of the bells, as each chose
+        $notices = $table->table_name === strval(array_get(PortalDefinition::config(), 'issue_table'));
+        $bellMark = $notices ? intval(NotifyNavbar::withoutGlobalScopes()->max('id')) : 0;
         try {
             $images = $this->persistRow($table, $row, $filtered);
         } catch (ValidationException $e) {
@@ -886,8 +886,8 @@ class LightApiController
 
         $row->refresh();
         $this->markWriterRead($table, $row);
-        if ($mail || $teams) {
-            $this->mailNewIssue($table, $row, $bellMark, $mail, $teams);
+        if ($notices) {
+            $this->mailNewIssue($table, $row, $bellMark, $mail);
         }
         $columns = $this->pickColumns($table, null);
         $out = $this->transformRowsWithLabels(collect([$row]), $columns)[0] ?? [];
@@ -932,7 +932,7 @@ class LightApiController
      *
      * @param mixed $row
      */
-    protected function mailNewIssue(CustomTable $table, $row, int $bellMark, bool $mail = true, bool $teams = false): void
+    protected function mailNewIssue(CustomTable $table, $row, int $bellMark, bool $mail = true): void
     {
         try {
             $def = PortalDefinition::config();
@@ -945,12 +945,7 @@ class LightApiController
             // The project by its code and the issue by its key, like the
             // other mails (PmPortalController::issueUrl(), ISS00440).
             $url = PortalDefinition::projectUrlById($row->parent_id) . '#issue-' . rawurlencode(PortalDefinition::issueAnchor($row));
-            if ($mail) {
-                PortalMail::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), '[' . $key . '] ' . $subject, $body, $url);
-            }
-            if ($teams) {
-                PortalTeams::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), 'new', $key, $subject, $description !== '' ? [mb_substr($description, 0, 500)] : [], $url);
-            }
+            PortalTeams::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), 'new', $key, $subject, $description !== '' ? [mb_substr($description, 0, 500)] : [], $url, $mail);
         } catch (\Throwable $e) {
             Log::error('pm_portal mail for new issue ' . $row->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
         }

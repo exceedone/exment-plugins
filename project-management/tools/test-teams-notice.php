@@ -1,6 +1,6 @@
 <?php
-// ExmentPM: the issue notices in Teams (ISS02863). The text of the card, and nothing sent while
-// the plugin setting is off.
+// ExmentPM: the notices of an issue by mail and Teams (ISS02863). The mail and the Teams card have
+// the same layout; a user without a choice gets the default of the site.
 //
 // Run inside a test Exment that has ExmentPM set up (docker-exment):
 //   cd /path/to/exment && php /path/to/project-management/tools/test-teams-notice.php
@@ -18,24 +18,27 @@ function ok($cond, $label, $detail = '')
         $fail++;
     }
 }
+$j = function ($v) {
+    return json_encode($v, JSON_UNESCAPED_UNICODE);
+};
 
-$body = PortalTeams::body('ログインできない', ['状態を「対応中」に変えました', "コメント：\n確認しました"]);
-ok($body === "**ログインできない**\n\n1. 状態を「対応中」に変えました\n2. コメント： 確認しました", 'the subject in bold, the lines as a numbered list', json_encode($body, JSON_UNESCAPED_UNICODE));
-$one = PortalTeams::body('件名', ['ひとこと']);
-ok($one === "**件名**\n\nひとこと", 'one line is a paragraph', json_encode($one, JSON_UNESCAPED_UNICODE));
+$lines = ['状態を「対応中」に変えました', "コメント：\n確認しました"];
+$body = PortalTeams::body('ログインできない', $lines);
+ok($body === "**ログインできない**\n\n1. 状態を「対応中」に変えました\n2. コメント： 確認しました", 'Teams: the subject in bold, the lines as a numbered list', $j($body));
+ok(PortalTeams::body('件名', ['ひとこと']) === "**件名**\n\nひとこと", 'Teams: one line is a paragraph');
+
+$html = PortalTeams::mailHtml('課題が更新されました（PJ-12）', 'ログインできない <b>', $lines, 'https://x.example.com/p#issue-PJ-12');
+ok(strpos($html, '<p><strong>課題が更新されました（PJ-12）</strong></p>') === 0, 'mail: the title in bold first', $html);
+ok(strpos($html, '<a href="https://x.example.com/p#issue-PJ-12">') !== false, 'mail: the link');
+ok(strpos($html, '<ol><li>状態を「対応中」に変えました</li><li>コメント： 確認しました</li></ol>') !== false, 'mail: the numbered list', $html);
+ok(strpos($html, '&lt;b&gt;') !== false && strpos($html, '<b>') === false, 'mail: the text is escaped');
+$text = PortalTeams::mailText('課題が更新されました（PJ-12）', 'ログインできない', $lines, 'https://x.example.com/p');
+ok($text === "課題が更新されました（PJ-12）\nhttps://x.example.com/p\n\nログインできない\n\n1. 状態を「対応中」に変えました\n2. コメント： 確認しました", 'mail: the text form', $j($text));
 ok(strpos(PortalTeams::body('${value:x}', []), '${') === false, 'a ${...} in a subject is not read by Exment');
 
-// the plugin setting off (the default): nothing is sent
-$plugin = \App\Plugins\ExmentPM\PortalDefinition::plugin();
-$was = isset($plugin) ? $plugin->getCustomOption('notify_teams') : null;
-if (isset($plugin)) {
-    $plugin->setCustomOption('notify_teams', '0');
-}
-ok(PortalTeams::available() === false, 'off: not available');
-if (isset($plugin) && method_exists('Exceedone\Exment\Services\NotifyService', 'notifyTeamsPersonal')) {
-    $plugin->setCustomOption('notify_teams', '1');
-    ok(PortalTeams::available() === true, 'on, with an Exment that has it: available');
-    $plugin->setCustomOption('notify_teams', $was);
-}
+ok(in_array(PortalTeams::siteDefault(), PortalTeams::CHOICES, true), 'the default of the site is one of the choices');
+$user = getModelName('user')::withoutGlobalScopes()->first();
+ok(isset($user) && PortalTeams::choiceOf($user) === PortalTeams::siteDefault(), 'a user without a choice: the default of the site');
+
 echo $fail === 0 ? "all ok\n" : "$fail failed\n";
 exit($fail === 0 ? 0 : 1);

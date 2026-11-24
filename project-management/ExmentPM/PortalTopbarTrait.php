@@ -166,6 +166,12 @@ trait PortalTopbarTrait
             // A new version waits for its データ構造の更新: said on every page
             // to whoever can press it, so it is not left undone.
             'upgrade_needed' => static::topbarIsAdmin() && PortalUpgrade::needed(),
+            // ISS02863: how the user gets the notices of the issues (mail, Teams)
+            'notify_by' => PortalTeams::choiceOf(\Admin::user()),
+            'notify_by_url' => PortalDefinition::url('notify-by'),
+            'notify_choices' => array_values(array_filter(PortalTeams::CHOICES, function ($choice) {
+                return PortalTeams::teamsAvailable() || !in_array($choice, ['teams', 'both'], true);
+            })),
         ];
     }
 

@@ -681,6 +681,22 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * How the user gets the notices of the issues (ISS02863): bell only, by mail too, by Teams
+     * too, or both. Saved in the user's own settings.
+     */
+    public function postNotifyBy(Request $request)
+    {
+        $choice = $request->get('notify_by');
+        $choice = is_scalar($choice) ? strval($choice) : '';
+        if (!in_array($choice, PortalTeams::CHOICES, true) || (!PortalTeams::teamsAvailable() && in_array($choice, ['teams', 'both'], true))) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        \Admin::user()->setSettingValue(PortalTeams::USER_SETTING, $choice);
+
+        return response()->json(['ok' => true, 'notify_by' => $choice]);
+    }
+
+    /**
      * The user's saved form style. With nothing saved yet the first bundled
      * style applies.
      */
@@ -1193,34 +1209,21 @@ class PmPortalController extends AdminControllerBase
         // The writer has seen what they wrote: their read receipt moves on.
         Star::markRead($issue_name, $issue->id, \Exment::getUserId());
 
-        // Teams (the plugin setting, ISS02863): everyone who got a bell for this write
-        if (PortalTeams::available()) {
-            PortalTeams::afterResponse(
-                $issue_name,
-                $issue,
-                $bell_mark,
-                \Exment::getUserId(),
-                'updated',
-                $this->issueKey($project, $issue->id),
-                strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
-                $lines,
-                $this->issueUrl($project, $issue)
-            );
-        }
-
-        // "Also by e-mail": everyone who got a bell for this write, after the
+        // The mail and Teams (ISS02863): everyone who got a bell for this write, as each of them
+        // chose (or the default of the site); "also by e-mail" mails all of them. After the
         // answer has gone out.
-        if ($this->wantsMail($request)) {
-            PortalMail::afterResponse(
-                $issue_name,
-                $issue,
-                $bell_mark,
-                \Exment::getUserId(),
-                '[' . $this->issueKey($project, $issue->id) . '] ' . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
-                implode("\n", $lines),
-                $this->issueUrl($project, $issue)
-            );
-        }
+        PortalTeams::afterResponse(
+            $issue_name,
+            $issue,
+            $bell_mark,
+            \Exment::getUserId(),
+            'updated',
+            $this->issueKey($project, $issue->id),
+            strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
+            $lines,
+            $this->issueUrl($project, $issue),
+            $this->wantsMail($request)
+        );
 
         // Answer with the refreshed detail so the screen patches itself -
         // a reload would cost another framework boot for data we already have.

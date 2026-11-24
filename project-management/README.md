@@ -17,8 +17,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 **Unreleased / 未リリース**
 
-- Teams (ISS02863): a new plugin setting **課題の通知を Teams にも送る**. When it is on, the notices of an issue (a new issue, a change, a comment) also go to the Teams chat of each person the bells go to: the title in bold (課題が更新されました（KEY）), the subject of the issue in bold, what changed as a numbered list, and a button to the issue. It needs Exment 7.2.6 or later with **Teams notifications (personal chat)** turned on in Feature management and the address of the Teams workflow in the system setting; on an older Exment the setting says so and nothing is sent. Off by default.
-  プラグインの設定に「課題の通知を Teams にも送る」を足しました。オンにすると、課題の登録・変更・コメントの通知（ベル）を受け取る人に、Teams の個人のチャットにも送ります（Exment 7.2.6 以降の「Teams の通知（個人のチャット）」が要ります）。初めはオフです。
+- The notices of an issue by mail and by Teams (ISS02863). A new issue, a change and a comment already ring the bells; each person can now also get them **by mail, by Teams, or both** - their own choice in the new **通知** menu of the portal's top bar, or the default of the plugin setting **受け取り方の初めの値** (bell only at first, as before). The mail and the Teams card look the same: the title with the issue key in bold (課題が更新されました（KEY）), the link to the issue, the subject in bold, what changed as a numbered list. The mail is HTML (with a text part) or text, as Exment's mail setting says. A writer's "メールでも知らせる" still mails every person of the bells, in the same layout. Teams needs Exment 7.2.6 or later with **Teams notifications (personal chat)** on in Feature management and the address of the Teams workflow in the system setting; on an older Exment only mail is offered.
+  課題の通知を、ひとりひとりがメール・Teams・両方で受け取れるようにしました（ポータルの上の「通知」、初めの値はプラグインの設定）。メールと Teams は同じ形です（見出しに課題のキー・リンク・件名・変わったことの番号つきのリスト）。Teams には Exment 7.2.6 以降の「Teams の通知（個人のチャット）」が要ります。
 
 **Changed in 1.7.17 / 1.7.17 で変わったこと**
 
