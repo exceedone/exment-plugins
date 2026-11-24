@@ -64,6 +64,8 @@
         { "method": "get", "uri": "{id}/git_keys", "function": "gitKeys" },
         { "method": "post", "uri": "{id}/git_key_remove", "function": "postGitKeyRemove" },
         { "method": "post", "uri": "{id}/git_token", "function": "postGitToken" },
+        { "method": "get", "uri": "{id}/file_workspace", "function": "fileWorkspace" },
+        { "method": "post", "uri": "{id}/file_workspace", "function": "postFileWorkspace" },
         { "method": "post", "uri": "{id}/ai/suggest", "function": "aiSuggest" },
         { "method": "post", "uri": "{id}/ai/feedback", "function": "aiFeedback" },
         { "method": "get", "uri": "{id}/ai/state", "function": "aiState" },

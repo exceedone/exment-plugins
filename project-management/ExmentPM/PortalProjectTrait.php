@@ -386,6 +386,68 @@ trait PortalProjectTrait
     }
 
     /**
+     * GET {id}/file_workspace - the workspace of the Files tab (ISS02825).
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function fileWorkspace(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+
+        return response()->json(['ok' => true, 'fileserver' => PortalFiles::state($project, PortalMembership::canManage($project))]);
+    }
+
+    /**
+     * POST {id}/file_workspace - make a workspace for the project, pick one the manager
+     * manages, or unlink it (the workspace stays). The project's manager only.
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function postFileWorkspace(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+        if (!PortalMembership::canManage($project)) {
+            return PortalDefinition::jsonError(403, 'forbidden');
+        }
+        if (!PortalFiles::enabled()) {
+            return PortalDefinition::jsonError(422, 'fileserver_off', ['message' => strval(PortalDefinition::trans('fileserver.off'))]);
+        }
+        $action = strval($request->input('action', ''));
+        try {
+            switch ($action) {
+                case 'create':
+                    if (PortalFiles::workspaceOf($project)) {
+                        return PortalDefinition::jsonError(422, 'already', ['message' => strval(PortalDefinition::trans('fileserver.already'))]);
+                    }
+                    PortalFiles::create($project);
+                    break;
+                case 'pick':
+                    PortalFiles::pick($project, intval($request->input('workspace_id')));
+                    break;
+                case 'unlink':
+                    PortalFiles::unlink($project);
+                    break;
+                case 'sync':
+                    PortalFiles::syncPermissions($project);
+                    break;
+                default:
+                    return PortalDefinition::jsonError(422, 'invalid');
+            }
+        } catch (\RuntimeException $e) {
+            return PortalDefinition::jsonError(422, 'refused', ['message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('pm_portal file server: ' . $action . ' for project ' . $project->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+            return PortalDefinition::jsonError(500, 'server_error');
+        }
+
+        return response()->json(['ok' => true, 'fileserver' => PortalFiles::state($project, true)]);
+    }
+
+    /**
      * POST {id}/git_repo - ask for a repository.
      *
      * Records the request and lets GitProvisioner take it as far as this
