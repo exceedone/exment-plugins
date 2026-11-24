@@ -80,6 +80,14 @@ class PluginSetting
             return PortalDefinition::trans('ai.opt_' . $key);
         };
 
+        // ---- Teams (ISS02863) ----------------------------------------------
+        // The issue notices in the Teams chat of each person the bells go to. Needs Exment's
+        // "Teams notifications" (Feature management) and the address of its Teams workflow.
+        $form->exmheader(PortalDefinition::trans('teams.setting_header'))->hr();
+        $form->switchbool('notify_teams', PortalDefinition::trans('teams.setting'))
+            ->help(PortalDefinition::trans(method_exists('Exceedone\Exment\Services\NotifyService', 'notifyTeamsPersonal') ? 'teams.setting_help' : 'teams.setting_unavailable'))
+            ->default("0");
+
         $form->exmheader($a('header'))->hr();
         $form->description($a('description'));
 

@@ -1432,6 +1432,15 @@ return [
 
     // Labels of the plugin's custom options on Exment's plugin screen -
     // the Git server connection a SaaS operator or self-hosted admin grants.
+    // Teams (ISS02863)
+    'teams' => [
+        'title_new' => '課題が登録されました（:key）',
+        'title_updated' => '課題が更新されました（:key）',
+        'setting_header' => 'Teams',
+        'setting' => '課題の通知を Teams にも送る',
+        'setting_help' => '課題の登録・変更・コメントの通知（ベル）を受け取る人に、同じ内容を Teams の個人のチャットにも送ります。Exment の機能の管理で「Teams の通知（個人のチャット）」を使うにして、システム設定で Teams のワークフローのアドレスを入れておいてください。',
+        'setting_unavailable' => 'この Exment では使えません（Exment 7.2.6 以降の「Teams の通知（個人のチャット）」が要ります）。',
+    ],
     'saas' => [
         'header' => 'Git サーバー連携',
         'description' => 'プロジェクト設定からリクエストされた Git リポジトリを、デプロイで指定された Git サーバー上に作成します。',

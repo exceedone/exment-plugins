@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- Teams (ISS02863): a new plugin setting **課題の通知を Teams にも送る**. When it is on, the notices of an issue (a new issue, a change, a comment) also go to the Teams chat of each person the bells go to: the title in bold (課題が更新されました（KEY）), the subject of the issue in bold, what changed as a numbered list, and a button to the issue. It needs Exment 7.2.6 or later with **Teams notifications (personal chat)** turned on in Feature management and the address of the Teams workflow in the system setting; on an older Exment the setting says so and nothing is sent. Off by default.
+  プラグインの設定に「課題の通知を Teams にも送る」を足しました。オンにすると、課題の登録・変更・コメントの通知（ベル）を受け取る人に、Teams の個人のチャットにも送ります（Exment 7.2.6 以降の「Teams の通知（個人のチャット）」が要ります）。初めはオフです。
+
 **Changed in 1.7.17 / 1.7.17 で変わったこと**
 
 - Whoever holds a writing role on a project - the manager, a member, or a member through an organization (`member_orgs`) - can now edit every issue of that project in the portal: subject, description, status, progress, attachments, bulk edits. Until now only the person who opened an issue and its assignees could; every other member could read it and nothing more, because Exment hands the right to write an issue to the people its share columns name, one issue at a time (wiki pages already follow their project the same way). **This widens who can edit.** A viewer still only reads, somebody who is not on the project still cannot open the issue, an archived project stays read-only, and a workflow lock still refuses. The role group must allow editing issues at all (`pm_member_group` does). Exment's own data screen (`/admin/data/pm_issue/…`) and the Web API keep Exment's own rule: the opener and the assignees.

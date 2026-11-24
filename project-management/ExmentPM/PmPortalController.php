@@ -1193,6 +1193,21 @@ class PmPortalController extends AdminControllerBase
         // The writer has seen what they wrote: their read receipt moves on.
         Star::markRead($issue_name, $issue->id, \Exment::getUserId());
 
+        // Teams (the plugin setting, ISS02863): everyone who got a bell for this write
+        if (PortalTeams::available()) {
+            PortalTeams::afterResponse(
+                $issue_name,
+                $issue,
+                $bell_mark,
+                \Exment::getUserId(),
+                'updated',
+                $this->issueKey($project, $issue->id),
+                strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
+                $lines,
+                $this->issueUrl($project, $issue)
+            );
+        }
+
         // "Also by e-mail": everyone who got a bell for this write, after the
         // answer has gone out.
         if ($this->wantsMail($request)) {
