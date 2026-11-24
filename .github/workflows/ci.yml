@@ -124,3 +124,10 @@ jobs:
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
         run: node project-management/tools/test-user-timezone.js
+
+      # Issues nested up to five levels: the tree, the progress under an issue,
+      # and which issues may be a parent (PortalRules, plain PHP).
+      - name: Issue levels check (ExmentPM)
+        run: |
+          node project-management/tools/test-issue-levels.js
+          php project-management/tools/test-issue-levels.php

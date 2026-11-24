@@ -253,6 +253,21 @@ class LightApiController
             $this->whereColumnEmpty($model, $emptyColumn);
         }
 
+        // Issues nest a few levels (PortalRules::issueLevels): the ones that
+        // leave no room for the row and what hangs from it, and the ones under
+        // it, are not offered. The save checks the same.
+        $levelsName = $request->query('levels');
+        $levelsColumn = is_scalar($levelsName) && PortalRules::nestsOneLevel($table)
+            ? CustomColumn::getEloquent(strval($levelsName), $table) : null;
+        if (isset($levelsColumn)) {
+            $selfId = array_values($exclude)[0] ?? null;
+            $refused = PortalRules::refusedParents($table, $levelsColumn->column_name, $selfId === null ? null : intval($selfId),
+                is_scalar($parentId) && ctype_digit(strval($parentId)) ? intval($parentId) : null);
+            if ($refused) {
+                $model->whereNotIn('id', $refused);
+            }
+        }
+
         $rows = $model->limit($limit)->get();
 
         $results = $rows->map(function ($r) {
@@ -2349,7 +2364,8 @@ class LightApiController
                 $params['exclude'] = $exclude;
             }
             if (PortalRules::nestsOneLevel($table)) {
-                $params['empty'] = $columnName;
+                // the issues with room for this one under them (levels, no loop)
+                $params['levels'] = $columnName;
             }
         }
 

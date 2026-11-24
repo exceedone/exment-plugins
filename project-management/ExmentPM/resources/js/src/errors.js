@@ -188,6 +188,65 @@
         return '<span class="bl-pbar" style="display:inline-block;width:70px;vertical-align:middle;"><i style="width:' + Math.max(0, Math.min(100, n)) + '%"></i></span>' +
             ' <small style="color:var(--bl-sub);">' + n + '%</small>';
     }
+    // The progress of what hangs under each issue (issues nest up to five
+    // levels): the average of its descendant leaves, a leaf of a done status
+    // counting 100 and one without a progress 0. Shown beside the issue's own
+    // progress, never written back. id => {pg, n} for the issues with children.
+    function rollupMap() {
+        var has = Object.prototype.hasOwnProperty;
+        var list = D.issues || [], byId = {}, kids = {}, out = {};
+        list.forEach(function (i) { byId['i' + i.id] = i; });
+        list.forEach(function (i) {
+            var p = (i.parent === null || i.parent === undefined) ? '' : String(i.parent);
+            if (p !== '' && p !== String(i.id) && has.call(byId, 'i' + p)) { (kids['i' + p] = kids['i' + p] || []).push(i); }
+        });
+        var leafPg = function (i) {
+            if (isDone(i.st)) { return 100; }
+            var n = Number(i.pg);
+            return isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+        };
+        // sum and count of the leaves under each issue, walked once; a loop in old data stops
+        var memo = {}, busy = {};
+        var leaves = function (i) {
+            var k = 'i' + i.id;
+            if (has.call(memo, k)) { return memo[k]; }
+            if (has.call(busy, k)) { return { s: 0, n: 0 }; }
+            busy[k] = true;
+            var r = { s: 0, n: 0 };
+            if (!has.call(kids, k)) { r = { s: leafPg(i), n: 1 }; }
+            else { kids[k].forEach(function (c) { var x = leaves(c); r.s += x.s; r.n += x.n; }); }
+            delete busy[k];
+            memo[k] = r;
+            return r;
+        };
+        Object.keys(kids).forEach(function (k) {
+            var r = leaves(byId[k]);
+            if (r.n > 0) { out[k] = { pg: Math.round(r.s / r.n), n: r.n }; }
+        });
+        return out;
+    }
+    // The level of an issue: 1 without a parent. A loop of old data stops.
+    function issueLevel(i) {
+        var level = 1, seen = {}, at = i;
+        while (at && at.parent && !seen['i' + at.id]) {
+            seen['i' + at.id] = true;
+            at = issueById(at.parent);
+            if (!at) { break; }
+            level++;
+        }
+        return level;
+    }
+    // Whether a child may be added under an issue (the server checks again).
+    function childRoom(i) {
+        var max = Number(D.issue_levels) || 5;
+        return issueLevel(i) < max;
+    }
+    function rollupBadge(ru, id) {
+        var r = ru && ru['i' + id];
+        if (!r) { return ''; }
+        return '<div class="pp-rollup" title="' + esc(fmt(L.rollup_tip || '', r.n)) + '"><small style="color:var(--bl-sub);">' +
+            esc(L.rollup || '') + ' ' + r.pg + '%</small></div>';
+    }
     function starBtn(type, targetType, targetId, count, on, extraCls) {
         return '<span class="bl-star pp-star' + (on ? ' on' : '') + (extraCls ? ' ' + extraCls : '') +
             '" title="' + esc(on ? L.star_off_tip : L.star_on_tip) + '"' +
