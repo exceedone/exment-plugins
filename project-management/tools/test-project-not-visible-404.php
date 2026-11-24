@@ -1,7 +1,8 @@
 <?php
 // ExmentPM: a project the user may not see answers as one that is not there (404), by its
 // number and by its code, so that a number does not tell that a project exists. The same for
-// an issue of it.
+// an issue of it. (Exment's row filter already leaves such a project out of find(), so the
+// 403 of findProject() / findIssue() is not reached for a project: this keeps it that way.)
 //
 // Run inside a test Exment that has ExmentPM set up and Exment's test users (docker-exment):
 //   cd /path/to/exment && php /path/to/project-management/tools/test-project-not-visible-404.php
