@@ -54,7 +54,17 @@ class PortalMail
      */
     protected static function send(string $issue_table, int $issue_id, int $bell_mark, $me, string $subject, string $body, string $url): void
     {
-        $targets = NotifyNavbar::withoutGlobalScopes()
+        static::sendTo(static::bellTargets($issue_table, $issue_id, $bell_mark, $me), $issue_id, $subject, $body, $url);
+    }
+
+    /**
+     * The people of the bells this writer rang on the issue since $bell_mark (not the writer).
+     *
+     * @return array<int, int>
+     */
+    public static function bellTargets(string $issue_table, int $issue_id, int $bell_mark, $me): array
+    {
+        return NotifyNavbar::withoutGlobalScopes()
             ->where('id', '>', $bell_mark)
             ->where('parent_type', $issue_table)
             ->where('parent_id', $issue_id)
@@ -70,7 +80,6 @@ class PortalMail
             ->take(self::LIMIT)
             ->values()
             ->all();
-        static::sendTo($targets, $issue_id, $subject, $body, $url);
     }
 
     /**
