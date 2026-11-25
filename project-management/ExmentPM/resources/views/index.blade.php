@@ -460,8 +460,17 @@
 
         {{-- ============ files ============ --}}
         <section class="bl-screen" id="pp-files">
+            {{-- The workspace of the file server, when the project has one and the feature is
+                 on (ISS02825): its own pages, framed, the admin chrome hidden. Filled by the script. --}}
+            <div class="bl-card-box pp-fs" id="pp-fs" hidden>
+                <div class="bl-boxhead" style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa fa-folder-open"></i><span id="pp-fs-name"></span>
+                    <a id="pp-fs-open" class="bl-btn-sub" style="margin-left:auto;" target="_blank" rel="noopener"></a>
+                </div>
+                <div class="bl-boxbody" id="pp-fs-body" style="padding:0;"></div>
+            </div>
             <div class="bl-card-box bl-files">
-                <div class="bl-boxhead"><i class="fa fa-paperclip"></i>{{ $lang['tab_files'] }}</div>
+                <div class="bl-boxhead"><i class="fa fa-paperclip"></i><span id="pp-files-title">{{ $lang['tab_files'] }}</span></div>
                 <div class="bl-boxbody">
                     <div class="bl-drop" id="pp-drop">
                         <i class="fa fa-cloud-upload"></i> {{ $lang['files_drop'] }}

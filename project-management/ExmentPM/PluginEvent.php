@@ -239,6 +239,8 @@ class PluginEvent extends PluginEventBase
 
         if (!$model->wasRecentlyCreated) {
             PortalMembership::projectSaved($model);
+            // the workspace of the Files tab follows the project's people (ISS02825)
+            PortalFiles::syncPermissions($model);
 
             return;
         }

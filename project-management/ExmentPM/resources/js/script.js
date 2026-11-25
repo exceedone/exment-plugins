@@ -4266,7 +4266,61 @@ window.PmPortalBoot = function () {
         officeViewOpen(a.getAttribute('href'), a.getAttribute('data-name') || '');
     });
 
+    // ---- the workspace of the file server (ISS02825) ------------------------
+    // The Files tab shows the project's workspace of Exment's file server, its
+    // own pages in a frame with the admin chrome hidden (chromeCss, as the
+    // form modal does): folders, upload, share, versions, search, Office. The
+    // attachments of the issues, the wiki and the project stay listed below.
+    var FS_FRAME = null;
+    function renderFileServer() {
+        var fs = D.fileserver || {};
+        var box = document.getElementById('pp-fs');
+        var title = document.getElementById('pp-files-title');
+        if (!box) { return; }
+        var ws = fs.on ? fs.workspace : null;
+        if (!fs.on) { box.hidden = true; if (title) { title.textContent = L.tab_files; } return; }
+        box.hidden = false;
+        if (title) { title.textContent = L.fs_attachments || L.tab_files; }
+        var body = document.getElementById('pp-fs-body');
+        var name = document.getElementById('pp-fs-name');
+        var open = document.getElementById('pp-fs-open');
+        if (!ws || !ws.can_open) {
+            FS_FRAME = null;
+            name.textContent = L.fs_title || '';
+            open.hidden = true;
+            body.innerHTML = '<div style="padding:14px;color:var(--bl-sub);">' +
+                esc(ws ? (L.fs_no_access || '') : ((D.can && D.can.manage) ? (L.fs_none_manager || '') : (L.fs_none || ''))) + '</div>';
+            return;
+        }
+        name.textContent = ws.name;
+        open.hidden = false;
+        open.href = ws.url;
+        open.textContent = L.fs_open || '';
+        if (FS_FRAME && FS_FRAME.getAttribute('data-ws') === String(ws.id)) { return; }
+        body.innerHTML = '';
+        var frame = document.createElement('iframe');
+        frame.className = 'pp-fs-frame';
+        frame.setAttribute('data-ws', String(ws.id));
+        frame.setAttribute('title', ws.name);
+        frame.style.cssText = 'display:block;width:100%;height:calc(100vh - 260px);min-height:480px;border:0;';
+        frame.addEventListener('load', function () {
+            // the same address as the page (same origin): the chrome goes
+            try {
+                var doc = frame.contentDocument;
+                if (doc && doc.head && !doc.getElementById('pp-fs-chrome')) {
+                    var st = doc.createElement('style');
+                    st.id = 'pp-fs-chrome';
+                    st.textContent = chromeCss();
+                    doc.head.appendChild(st);
+                }
+            } catch (e) { /* another address: shown as it is */ }
+        });
+        frame.src = ws.url;
+        body.appendChild(frame);
+        FS_FRAME = frame;
+    }
     function renderFiles() {
+        renderFileServer();
         var files = D.files || {};
         var rows = (files.rows || []).map(function (f) {
             return '<tr><td><a class="bl-file" style="margin-top:0;" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + '</td>' +
