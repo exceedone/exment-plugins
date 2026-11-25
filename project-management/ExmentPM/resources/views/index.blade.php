@@ -49,6 +49,7 @@
         'bd_days_left', 'bd_forecast_warn', 'bd_forecast_ok', 'bd_no_ms', 'bd_partial', 'files_partial',
         'files_name', 'files_by', 'files_at', 'files_src', 'files_drop', 'files_pick',
         'files_up_ok', 'files_up_fail', 'files_empty',
+        'fs_title', 'fs_open', 'fs_attachments', 'fs_none', 'fs_none_manager', 'fs_no_access', 'back_projects',
         'tab_settings', 'm_add_issue', 'm_edit_issue', 'm_edit_wiki', 'm_new_wiki', 'm_history',
         'm_saved', 'm_discard', 'm_discard_yes', 'm_discard_no', 'm_loading', 'm_close',
         'ned_title', 'ned_save', 'ned_saving', 'ned_saved', 'ned_error', 'ned_close',
