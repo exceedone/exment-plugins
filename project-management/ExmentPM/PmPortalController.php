@@ -681,6 +681,22 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * How the user gets the notices of the issues (ISS02863): bell only, by mail too, by Teams
+     * too, or both. Saved in the user's own settings.
+     */
+    public function postNotifyBy(Request $request)
+    {
+        $choice = $request->get('notify_by');
+        $choice = is_scalar($choice) ? strval($choice) : '';
+        if (!in_array($choice, PortalTeams::CHOICES, true) || (!PortalTeams::teamsAvailable() && in_array($choice, ['teams', 'both'], true))) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        \Exment::user()->setSettingValue(PortalTeams::USER_SETTING, $choice);
+
+        return response()->json(['ok' => true, 'notify_by' => $choice]);
+    }
+
+    /**
      * The user's saved form style. With nothing saved yet the first bundled
      * style applies.
      */
@@ -1193,19 +1209,21 @@ class PmPortalController extends AdminControllerBase
         // The writer has seen what they wrote: their read receipt moves on.
         Star::markRead($issue_name, $issue->id, \Exment::getUserId());
 
-        // "Also by e-mail": everyone who got a bell for this write, after the
+        // The mail and Teams (ISS02863): everyone who got a bell for this write, as each of them
+        // chose (or the default of the site); "also by e-mail" mails all of them. After the
         // answer has gone out.
-        if ($this->wantsMail($request)) {
-            PortalMail::afterResponse(
-                $issue_name,
-                $issue,
-                $bell_mark,
-                \Exment::getUserId(),
-                '[' . $this->issueKey($project, $issue->id) . '] ' . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
-                implode("\n", $lines),
-                $this->issueUrl($project, $issue)
-            );
-        }
+        PortalTeams::afterResponse(
+            $issue_name,
+            $issue,
+            $bell_mark,
+            \Exment::getUserId(),
+            'updated',
+            $this->issueKey($project, $issue->id),
+            strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
+            $lines,
+            $this->issueUrl($project, $issue),
+            $this->wantsMail($request)
+        );
 
         // Answer with the refreshed detail so the screen patches itself -
         // a reload would cost another framework boot for data we already have.
@@ -2835,6 +2853,9 @@ class PmPortalController extends AdminControllerBase
             // zone is not the site's): the script then shows what the server
             // formatted, and never rebuilds a shown time from a stored one.
             'tz_differs' => PortalTime::differs(),
+            // How many levels issues nest (PortalRules::issueLevels): an issue
+            // on the last level is offered no "add a child".
+            'issue_levels' => PortalRules::issueLevels(),
             // What the screen can compare against later to find out whether
             // anything moved while it was sitting open.
             'stamp' => $this->projectStampValue($project),
