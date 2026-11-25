@@ -34,7 +34,10 @@ ok(strpos(Plugin::readme(3, 2097152, 'files', 3, 1048576), '3') !== false, 'the 
 // a zip for a table of the test data
 $table = CustomTable::getEloquent($argv[1] ?? 'information');
 if (isset($table)) {
-    \Auth::guard('admin')->login(\Exceedone\Exment\Model\LoginUser::first());
+    $login = \Exceedone\Exment\Model\LoginUser::query()->first();
+    if (isset($login)) {
+        \Auth::guard('admin')->login($login);
+    }
     $records = $table->getValueModel()->newQuery()->limit(20)->get();
     $plugin = new Plugin(null, $table);
     $plugin->defaultProvider(new class ($records) {
