@@ -7,7 +7,8 @@
 // a manager, a member, a member organization and a viewer, makes the workspace from the plugin,
 // and checks the permissions, the project settings answer, the payload of the tab, picking,
 // unlinking, and that a change of the project's people sets the permissions again. Everything
-// is made inside a transaction and rolled back.
+// is made inside a transaction and rolled back. The users are put in ExmentPM's role groups
+// (pm_member_group, pm_viewer_group) for the test, as a site does for its project members.
 require getcwd() . '/vendor/autoload.php';
 $app = require getcwd() . '/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
@@ -55,6 +56,22 @@ ok(\Schema::hasTable(PortalFiles::TABLE), 'the plugin table ' . PortalFiles::TAB
 $MANAGER = 2; $MEMBER = 3; $VIEWER = 4; $ORG = 2; $OTHER = 5;
 \DB::beginTransaction();
 try {
+    // the role groups of ExmentPM: who opens its pages at all (the plugin's own permission,
+    // checked by Exment before any page of the plugin). The members edit, the viewers read.
+    $memberGroup = \Exceedone\Exment\Model\RoleGroup::where('role_group_name', 'like', '%pm_member_group')->first();
+    $viewerGroup = \Exceedone\Exment\Model\RoleGroup::where('role_group_name', 'like', '%pm_viewer_group')->first();
+    ok($memberGroup !== null && $viewerGroup !== null, 'the role groups of ExmentPM are there (its setup ran)');
+    $join = function ($group, int $userId) {
+        if ($group && !\DB::table('role_group_user_organizations')->where('role_group_id', $group->id)->where('role_group_user_org_type', 'user')->where('role_group_target_id', $userId)->exists()) {
+            \DB::table('role_group_user_organizations')->insert(['role_group_id' => $group->id, 'role_group_user_org_type' => 'user', 'role_group_target_id' => $userId, 'created_at' => now(), 'updated_at' => now()]);
+        }
+    };
+    foreach ([$MANAGER, $MEMBER] as $u) {
+        $join($memberGroup, $u);
+    }
+    foreach ([$VIEWER, $OTHER] as $u) {
+        $join($viewerGroup, $u);
+    }
     $features = '\Exceedone\Exment\Services\Features';
     actAs(1);
     if (class_exists($features)) {
