@@ -19,6 +19,7 @@
         { "method": "post", "uri": "settings/migrate/export", "function": "postMigrateExport" },
         { "method": "post", "uri": "settings/migrate/import", "function": "postMigrateImport" },
         { "method": "post", "uri": "form-style", "function": "postFormStyle" },
+        { "method": "post", "uri": "notify-by", "function": "postNotifyBy" },
 
         { "method": "get", "uri": "asset/{name}", "function": "asset", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
         { "method": "get", "uri": "lightapi/table/{tableKey}/schema", "function": "apiSchema", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },

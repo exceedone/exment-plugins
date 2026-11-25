@@ -253,6 +253,21 @@ class LightApiController
             $this->whereColumnEmpty($model, $emptyColumn);
         }
 
+        // Issues nest a few levels (PortalRules::issueLevels): the ones that
+        // leave no room for the row and what hangs from it, and the ones under
+        // it, are not offered. The save checks the same.
+        $levelsName = $request->query('levels');
+        $levelsColumn = is_scalar($levelsName) && PortalRules::nestsOneLevel($table)
+            ? CustomColumn::getEloquent(strval($levelsName), $table) : null;
+        if (isset($levelsColumn)) {
+            $selfId = array_values($exclude)[0] ?? null;
+            $refused = PortalRules::refusedParents($table, $levelsColumn->column_name, $selfId === null ? null : intval($selfId),
+                is_scalar($parentId) && ctype_digit(strval($parentId)) ? intval($parentId) : null);
+            if ($refused) {
+                $model->whereNotIn('id', $refused);
+            }
+        }
+
         $rows = $model->limit($limit)->get();
 
         $results = $rows->map(function ($r) {
@@ -873,7 +888,9 @@ class LightApiController
         // "Also by e-mail" on a new issue: the bells the save rings are the
         // rows past this mark, and their people get the mail.
         $mail = $this->wantsIssueMail($request, $table);
-        $bellMark = $mail ? intval(NotifyNavbar::withoutGlobalScopes()->max('id')) : 0;
+        // The mail and Teams of a new issue (ISS02863): the people of the bells, as each chose
+        $notices = $table->table_name === strval(array_get(PortalDefinition::config(), 'issue_table'));
+        $bellMark = $notices ? intval(NotifyNavbar::withoutGlobalScopes()->max('id')) : 0;
         try {
             $images = $this->persistRow($table, $row, $filtered);
         } catch (ValidationException $e) {
@@ -884,8 +901,8 @@ class LightApiController
 
         $row->refresh();
         $this->markWriterRead($table, $row);
-        if ($mail) {
-            $this->mailNewIssue($table, $row, $bellMark);
+        if ($notices) {
+            $this->mailNewIssue($table, $row, $bellMark, $mail);
         }
         $columns = $this->pickColumns($table, null);
         $out = $this->transformRowsWithLabels(collect([$row]), $columns)[0] ?? [];
@@ -930,7 +947,7 @@ class LightApiController
      *
      * @param mixed $row
      */
-    protected function mailNewIssue(CustomTable $table, $row, int $bellMark): void
+    protected function mailNewIssue(CustomTable $table, $row, int $bellMark, bool $mail = true): void
     {
         try {
             $def = PortalDefinition::config();
@@ -943,7 +960,7 @@ class LightApiController
             // The project by its code and the issue by its key, like the
             // other mails (PmPortalController::issueUrl(), ISS00440).
             $url = PortalDefinition::projectUrlById($row->parent_id) . '#issue-' . rawurlencode(PortalDefinition::issueAnchor($row));
-            PortalMail::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), '[' . $key . '] ' . $subject, $body, $url);
+            PortalTeams::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), 'new', $key, $subject, $description !== '' ? [mb_substr($description, 0, 500)] : [], $url, $mail);
         } catch (\Throwable $e) {
             Log::error('pm_portal mail for new issue ' . $row->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
         }
@@ -2349,7 +2366,8 @@ class LightApiController
                 $params['exclude'] = $exclude;
             }
             if (PortalRules::nestsOneLevel($table)) {
-                $params['empty'] = $columnName;
+                // the issues with room for this one under them (levels, no loop)
+                $params['levels'] = $columnName;
             }
         }
 
