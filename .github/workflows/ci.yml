@@ -131,3 +131,7 @@ jobs:
         run: |
           node project-management/tools/test-issue-levels.js
           php project-management/tools/test-issue-levels.php
+
+      # The links to the manuals of ExmentPM, ExmentITSupport and ExmentGroupware.
+      - name: Manual links check
+        run: php project-management/tools/test-manual-links.php

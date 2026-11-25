@@ -37,6 +37,8 @@ class PluginPage extends PluginPageBase
         PluginEvent::registerGuards();
         // the Files tab with the file server: a feature of Feature management (ISS02825)
         PortalFiles::registerFeature();
+        // Exment's "?" of the header opens the manual of the plugin (ISS02882)
+        ManualLink::register($plugin);
         // before 初期セットアップ: the entry in the left menu that leads to it (7.2.1)
         try {
             PortalSetup::ensurePreSetupMenu();
