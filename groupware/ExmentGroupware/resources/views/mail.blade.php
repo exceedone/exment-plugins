@@ -166,6 +166,8 @@
         <div class="gwm-sidefoot">
             <button type="button" data-act="new-folder"><i class="fa fa-folder-o" aria-hidden="true"></i> フォルダーを作る</button>
             <a href="{{ $accounts_url }}"><i class="fa fa-cog" aria-hidden="true"></i> アカウントの設定</a>
+            {{-- the manual of the plugin, in the language of the user (ISS02882) --}}
+            <a href="{{ \App\Plugins\ExmentGroupware\ManualLink::url() }}" target="_blank" rel="noopener"><i class="fa fa-question-circle" aria-hidden="true"></i> {{ \App\Plugins\ExmentGroupware\ManualLink::label() }}</a>
         </div>
     </aside>
 

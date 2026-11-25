@@ -55,6 +55,7 @@
 .pp-top .pp-top-home.on{box-shadow:inset 0 -3px 0 var(--bl-accent,#4cae93);font-weight:700;}
 .pp-top .pp-top-dd{position:relative;display:flex;}
 .pp-top .pp-top-settings{color:var(--bl-sub,#8a97a3);}
+.pp-top .pp-top-manual{color:var(--bl-sub,#8a97a3);}
 .pp-top .pp-top-upgrade{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:14px;
     background:var(--bl-amber,#eda62a);color:#fff;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;}
 .pp-top .pp-top-upgrade:hover{color:#fff;text-decoration:none;filter:brightness(.95);}
@@ -311,6 +312,10 @@
     </a>
     @endif
     @endif
+    {{-- the manual of the plugin, in the language of the user (ISS02882) --}}
+    <a class="pp-top-home pp-top-manual" href="{{ \App\Plugins\ExmentPM\ManualLink::url() }}" target="_blank" rel="noopener" title="{{ \App\Plugins\ExmentPM\ManualLink::label() }}">
+        <i class="fa fa-question-circle"></i><span>{{ \App\Plugins\ExmentPM\ManualLink::label() }}</span>
+    </a>
 </nav>
 
 <script>

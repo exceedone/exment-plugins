@@ -38,6 +38,8 @@ class Plugin extends PluginPageBase
         parent::__construct($plugin);
         OfficeOpener::register($plugin);
         FeatureGate::registerMail($plugin);
+        // Exment's "?" of the header opens the manual of the plugin (ISS02882)
+        ManualLink::register($plugin);
         FeatureGate::registerOffice($plugin);
     }
 

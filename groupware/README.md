@@ -8,6 +8,7 @@
 
 **Unreleased**
 
+- The manual: a link 「マニュアル」 on the top page and in the side of the mail screen opens the manual of the plugin on exment.net in the language of the user (Japanese, Vietnamese, else English), and Exment's "?" in the header opens it on the plugin's pages (Exment 7.2.4 and later).
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
 - Web mail: the dates of the mails are shown in the time zone the user chose in Exment (Exment 7.2.4; a user who chose none gets the time zone of the site). On an older Exment they are shown in the time zone of the browser, as before.
 

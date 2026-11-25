@@ -24,6 +24,8 @@ class PluginPage extends PluginPageBase
     {
         parent::__construct($plugin);
 
+        // Exment's "?" of the header opens the manual of the plugin (ISS02882)
+        ManualLink::register($plugin);
         try {
             Feature::register($plugin);
         } catch (\Throwable $e) {

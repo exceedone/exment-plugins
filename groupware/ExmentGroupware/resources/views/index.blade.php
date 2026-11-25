@@ -1,4 +1,6 @@
 {{-- Exment Plugin Groupware: the top page. Web mail, and the state of the browser Office (ibisOffice) and its installation. --}}
+{{-- the manual of the plugin, in the language of the user (ISS02882) --}}
+<p style="text-align:right;margin:0 0 8px"><a href="{{ \App\Plugins\ExmentGroupware\ManualLink::url() }}" target="_blank" rel="noopener"><i class="fa fa-question-circle" aria-hidden="true"></i> {{ \App\Plugins\ExmentGroupware\ManualLink::label() }}</a></p>
 @if ($mail_used)
 <div class="box card">
     <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-envelope-o" aria-hidden="true"></i> Web メール</h3></div>

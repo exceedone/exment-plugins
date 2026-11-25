@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- The manual: a link 「マニュアル」 at the right of the top bar opens the manual of the plugin on exment.net in the language of the user (Japanese, Vietnamese, else English) in a new tab, and Exment's "?" in the header opens it on the portal's pages (Exment 7.2.4 and later).
+  上のバーの右に「マニュアル」を足しました。ユーザーの言語（日本語・ベトナム語、ほかは英語）で、exment.net のこのプラグインのマニュアルを新しいタブで開きます。Exment 7.2.4 以降では、画面の右上の「？」も、ポータルの画面ではこのマニュアルを開きます。
+
 **Changed in 1.7.17 / 1.7.17 で変わったこと**
 
 - Whoever holds a writing role on a project - the manager, a member, or a member through an organization (`member_orgs`) - can now edit every issue of that project in the portal: subject, description, status, progress, attachments, bulk edits. Until now only the person who opened an issue and its assignees could; every other member could read it and nothing more, because Exment hands the right to write an issue to the people its share columns name, one issue at a time (wiki pages already follow their project the same way). **This widens who can edit.** A viewer still only reads, somebody who is not on the project still cannot open the issue, an archived project stays read-only, and a workflow lock still refuses. The role group must allow editing issues at all (`pm_member_group` does). Exment's own data screen (`/admin/data/pm_issue/…`) and the Web API keep Exment's own rule: the opener and the assignees.

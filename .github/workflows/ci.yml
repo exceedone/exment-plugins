@@ -124,3 +124,7 @@ jobs:
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
         run: node project-management/tools/test-user-timezone.js
+
+      # The links to the manuals of ExmentPM, ExmentITSupport and ExmentGroupware.
+      - name: Manual links check
+        run: php project-management/tools/test-manual-links.php
