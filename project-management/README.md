@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- The notices of an issue by mail and by Teams (ISS02863). A new issue, a change and a comment already ring the bells; each person can now also get them **by mail, by Teams, or both** - their own choice in the new **通知** menu of the portal's top bar, or the default of the plugin setting **受け取り方の初めの値** (bell only at first, as before). The mail and the Teams card look the same: the title with the issue key in bold (課題が更新されました（KEY）), the link to the issue, the subject in bold, what changed as a numbered list. The mail is HTML (with a text part) or text, as Exment's mail setting says. A writer's "メールでも知らせる" still mails every person of the bells, in the same layout. Teams needs Exment 7.2.6 or later with **Teams notifications (personal chat)** on in Feature management and the address of the Teams workflow in the system setting; on an older Exment only mail is offered.
+  課題の通知を、ひとりひとりがメール・Teams・両方で受け取れるようにしました（ポータルの上の「通知」、初めの値はプラグインの設定）。メールと Teams は同じ形です（見出しに課題のキー・リンク・件名・変わったことの番号つきのリスト）。Teams には Exment 7.2.6 以降の「Teams の通知（個人のチャット）」が要ります。
+
 **Changed in 1.7.17 / 1.7.17 で変わったこと**
 
 - Whoever holds a writing role on a project - the manager, a member, or a member through an organization (`member_orgs`) - can now edit every issue of that project in the portal: subject, description, status, progress, attachments, bulk edits. Until now only the person who opened an issue and its assignees could; every other member could read it and nothing more, because Exment hands the right to write an issue to the people its share columns name, one issue at a time (wiki pages already follow their project the same way). **This widens who can edit.** A viewer still only reads, somebody who is not on the project still cannot open the issue, an archived project stays read-only, and a workflow lock still refuses. The role group must allow editing issues at all (`pm_member_group` does). Exment's own data screen (`/admin/data/pm_issue/…`) and the Web API keep Exment's own rule: the opener and the assignees.

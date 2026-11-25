@@ -80,6 +80,22 @@ class PluginSetting
             return PortalDefinition::trans('ai.opt_' . $key);
         };
 
+        // ---- Teams (ISS02863) ----------------------------------------------
+        // The issue notices in the Teams chat of each person the bells go to. Needs Exment's
+        // "Teams notifications" (Feature management) and the address of its Teams workflow.
+        $form->exmheader(PortalDefinition::trans('teams.setting_header'))->hr();
+        $choices = [];
+        foreach (PortalTeams::CHOICES as $choice) {
+            if (PortalTeams::teamsAvailable() || !in_array($choice, ['teams', 'both'], true)) {
+                $choices[$choice] = PortalDefinition::trans('teams.choice_' . $choice);
+            }
+        }
+        $form->select('notify_by_default', PortalDefinition::trans('teams.setting'))
+            ->options($choices)
+            ->disableClear()
+            ->help(PortalDefinition::trans(PortalTeams::teamsAvailable() ? 'teams.setting_help' : 'teams.setting_unavailable'))
+            ->default('bell');
+
         $form->exmheader($a('header'))->hr();
         $form->description($a('description'));
 
