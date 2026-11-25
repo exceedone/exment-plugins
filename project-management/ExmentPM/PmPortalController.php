@@ -2853,6 +2853,9 @@ class PmPortalController extends AdminControllerBase
             // zone is not the site's): the script then shows what the server
             // formatted, and never rebuilds a shown time from a stored one.
             'tz_differs' => PortalTime::differs(),
+            // How many levels issues nest (PortalRules::issueLevels): an issue
+            // on the last level is offered no "add a child".
+            'issue_levels' => PortalRules::issueLevels(),
             // What the screen can compare against later to find out whether
             // anything moved while it was sitting open.
             'stamp' => $this->projectStampValue($project),

@@ -42,6 +42,13 @@ class PortalRules
      */
     const MAX_DEPTH = 64;
 
+    /** How many levels of issues nest by default: an issue, its child, ... five in all (snoro 2026-11-25). */
+    const ISSUE_LEVELS_DEFAULT = 5;
+
+    /** The levels the setting may ask for: 2 is Backlog's one level of sub-tasks. */
+    const ISSUE_LEVELS_MIN = 2;
+    const ISSUE_LEVELS_MAX = 10;
+
     /** Backlog shaped project key: starts with a letter, then letters, digits or underscore. */
     const CODE_PATTERN = '/^[A-Z][A-Z0-9_]*$/';
 
@@ -178,11 +185,12 @@ class PortalRules
     }
 
     /**
-     * Whether rows of this table nest exactly one level.
+     * Whether rows of this table nest a limited number of levels.
      *
-     * An issue does: a sub-task's parent may not itself be a sub-task, which
-     * is Backlog's rule and parentIssue()'s. A project does not - it nests as
-     * deep as anyone cares to go and only a loop is refused.
+     * An issue does: issueLevels() levels at most (5 by default, the plugin
+     * setting "issue_levels"; before, one level of sub-tasks, Backlog's rule).
+     * A project does not - it nests as deep as anyone cares to go and only a
+     * loop is refused.
      *
      * Public because the rule decides what a parent picker should offer, and
      * a picker that offers what the save is about to reject is worse than one
@@ -196,6 +204,193 @@ class PortalRules
         $def = PortalDefinition::config();
 
         return strval($table->table_name) === strval(array_get($def, 'issue_table'));
+    }
+
+    /**
+     * How many levels issues may nest: an issue without a parent is level 1.
+     * The plugin setting "issue_levels", 5 when unset, kept between 2 and 10.
+     */
+    public static function issueLevels(): int
+    {
+        $raw = IssueAutofill::option('issue_levels', null);
+        $levels = is_numeric($raw) ? intval($raw) : static::ISSUE_LEVELS_DEFAULT;
+
+        return max(static::ISSUE_LEVELS_MIN, min(static::ISSUE_LEVELS_MAX, $levels));
+    }
+
+    /**
+     * The level of an issue: 1 without a parent, 2 under one, ... A chain
+     * that loops (written before these rules) or runs past MAX_DEPTH answers
+     * MAX_DEPTH, which is too deep for anything.
+     *
+     * @param CustomTable $table
+     * @param string $column the parent column
+     * @param int $id
+     * @return int
+     */
+    public static function issueLevel(CustomTable $table, string $column, int $id): int
+    {
+        $seen = [];
+        $level = 1;
+        $row = static::findRow($table, $id, true);
+        while ($row) {
+            $seen[intval($row->id)] = true;
+            $next = static::idOf(array_get((array) $row->value, $column));
+            if ($next === null) {
+                return $level;
+            }
+            if (isset($seen[$next]) || $level >= self::MAX_DEPTH) {
+                return self::MAX_DEPTH;
+            }
+            $level++;
+            $row = static::findRow($table, $next, true);
+        }
+
+        return $level;
+    }
+
+    /**
+     * How many levels hang from an issue, counting itself: 1 for an issue
+     * without children. Walked a level at a time, at most MAX_DEPTH.
+     *
+     * @param CustomTable $table
+     * @param string $column the parent column
+     * @param int $id
+     * @return int
+     */
+    public static function subtreeLevels(CustomTable $table, string $column, int $id): int
+    {
+        $levels = 1;
+        $seen = [$id => true];
+        $current = [$id];
+        while ($levels < self::MAX_DEPTH) {
+            $children = array_values(array_diff(static::childIds($table, $column, $current), array_keys($seen)));
+            if (empty($children)) {
+                break;
+            }
+            foreach ($children as $child) {
+                $seen[$child] = true;
+            }
+            $current = $children;
+            $levels++;
+        }
+
+        return $levels;
+    }
+
+    /**
+     * The issues that may not be the parent of $self (null: a new issue) in a
+     * project: $self and the issues under it (a loop), and the ones whose level
+     * leaves no room for $self and what hangs from it. Read for the parent
+     * picker, a whole project at a time (id and parent only).
+     *
+     * @param CustomTable $table
+     * @param string $column the parent column
+     * @param int|null $self
+     * @param mixed $projectId
+     * @return array<int, int>
+     */
+    public static function refusedParents(CustomTable $table, string $column, ?int $self, $projectId): array
+    {
+        $def = PortalDefinition::config();
+        $parentOf = [];
+        try {
+            $query = $table->getValueModel()->newQuery()
+                ->withoutGlobalScope(CustomValueModelScope::class)
+                ->selectRaw('id, JSON_UNQUOTE(JSON_EXTRACT(value, ?)) as pm_parent', ['$."' . $column . '"']);
+            if (!is_nullorempty($projectId)) {
+                $query->where('parent_type', strval(array_get($def, 'project_table')))->where('parent_id', $projectId);
+            }
+            foreach ($query->get() as $row) {
+                $parentOf[intval($row->id)] = static::idOf($row->pm_parent);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('PmPortal parent levels failed: ' . $e->getMessage());
+
+            return [];
+        }
+
+        return static::refusedAmong($parentOf, $self, static::issueLevels());
+    }
+
+    /**
+     * refusedParents() on a map id => parent id (null: none).
+     *
+     * @param array<int, int|null> $parentOf
+     * @param int|null $self
+     * @param int $max levels
+     * @return array<int, int>
+     */
+    public static function refusedAmong(array $parentOf, ?int $self, int $max): array
+    {
+        // the level of each issue through its chain; a loop is too deep
+        $levels = [];
+        $levelOf = function (int $id) use (&$levels, $parentOf) {
+            $chain = [];
+            $at = $id;
+            while (!isset($levels[$at])) {
+                if (isset($chain[$at]) || count($chain) >= self::MAX_DEPTH) {
+                    foreach (array_keys($chain) as $c) {
+                        $levels[$c] = self::MAX_DEPTH;
+                    }
+                    break;
+                }
+                $chain[$at] = true;
+                $up = $parentOf[$at] ?? null;
+                if ($up === null || !array_key_exists($up, $parentOf)) {
+                    $levels[$at] = 1;
+                    break;
+                }
+                $at = $up;
+            }
+            // down the chain again, each one level under the one above
+            foreach (array_reverse(array_keys($chain)) as $c) {
+                if (!isset($levels[$c])) {
+                    $levels[$c] = min(self::MAX_DEPTH, $levels[$parentOf[$c]] + 1);
+                }
+            }
+
+            return $levels[$id];
+        };
+
+        // what hangs from $self: itself and every issue under it
+        $height = 1;
+        $under = [];
+        if ($self !== null) {
+            $children = [];
+            foreach ($parentOf as $id => $up) {
+                if ($up !== null) {
+                    $children[$up][] = $id;
+                }
+            }
+            $current = [$self];
+            $under[$self] = true;
+            while ($height < self::MAX_DEPTH) {
+                $next = [];
+                foreach ($current as $c) {
+                    foreach ($children[$c] ?? [] as $child) {
+                        if (!isset($under[$child])) {
+                            $under[$child] = true;
+                            $next[] = $child;
+                        }
+                    }
+                }
+                if (empty($next)) {
+                    break;
+                }
+                $current = $next;
+                $height++;
+            }
+        }
+
+        $refused = [];
+        foreach (array_keys($parentOf) as $id) {
+            if (isset($under[$id]) || $levelOf($id) + $height > $max) {
+                $refused[] = $id;
+            }
+        }
+
+        return $refused;
     }
 
     /**
@@ -535,11 +730,13 @@ class PortalRules
     }
 
     /**
-     * Backlog's sub-task rules, which are stricter than a bare id reference.
+     * The rules of a parent issue, which are stricter than a bare id reference.
      *
-     * A sub-task belongs to the same project as its parent, the hierarchy is
-     * exactly one level deep, and the project has to have sub-tasking turned
-     * on in the first place.
+     * A sub-task belongs to the same project as its parent, never sits under
+     * itself (a loop), the issues nest issueLevels() levels at most (the
+     * deepest issue under the one being saved counts too), and the project has
+     * to have sub-tasking turned on in the first place. An issue with children
+     * may be moved under another one: its children go with it.
      *
      * @param CustomTable $table
      * @param mixed $raw the parent issue value being written
@@ -575,12 +772,14 @@ class PortalRules
         }
 
         $parentColumn = static::column($def, 'issue.parent', 'parent_issue');
-        if (static::idOf(array_get((array) $parent->value, $parentColumn)) !== null) {
-            return PortalDefinition::trans('rules.parent_is_child');
+        if ($self !== null && static::wouldLoop($table, $parentColumn, $parentId, $self)) {
+            return PortalDefinition::trans('rules.parent_loop');
         }
 
-        if ($self !== null && static::countPointingAt($table, $parentColumn, $self) > 0) {
-            return PortalDefinition::trans('rules.parent_has_children');
+        $max = static::issueLevels();
+        $height = $self !== null ? static::subtreeLevels($table, $parentColumn, $self) : 1;
+        if (static::issueLevel($table, $parentColumn, $parentId) + $height > $max) {
+            return PortalDefinition::trans('rules.parent_too_deep', ['max' => $max]);
         }
 
         if (!is_nullorempty($project) && !static::subtaskingEnabled($def, $project)) {
@@ -1169,6 +1368,36 @@ class PortalRules
      * @param mixed $id
      * @return int
      */
+    /**
+     * The live rows of this table pointing at one of $ids through $column.
+     *
+     * @param CustomTable $table
+     * @param string $column
+     * @param array<int, int> $ids
+     * @return array<int, int>
+     */
+    protected static function childIds(CustomTable $table, string $column, array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        try {
+            return $table->getValueModel()->newQuery()
+                ->withoutGlobalScope(CustomValueModelScope::class)
+                ->where(function ($query) use ($column, $ids) {
+                    foreach ($ids as $id) {
+                        $query->orWhere('value->' . $column, strval($id));
+                    }
+                })
+                ->pluck('id')->map('intval')->all();
+        } catch (\Throwable $e) {
+            \Log::warning('PmPortal child lookup failed: ' . $e->getMessage());
+
+            return [];
+        }
+    }
+
     protected static function countPointingAt(CustomTable $table, string $column, $id): int
     {
         if (is_nullorempty($id)) {

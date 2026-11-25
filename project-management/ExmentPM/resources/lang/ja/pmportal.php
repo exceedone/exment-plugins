@@ -414,6 +414,9 @@ return [
     'added' => '課題を追加しました。',
     'lbl_eh' => '予定 / 実績',
     'lbl_pg' => '進捗率',
+    // the progress of the issues under one (issues nest up to five levels): shown, never saved
+    'rollup' => '子の進捗',
+    'rollup_tip' => 'この課題の下にある、子のない課題 %s 件の進捗率の平均です（完了の状態は 100%）。保存はしません。',
     'lbl_parent' => '親課題',
     'lbl_watch' => 'ウォッチ',
     'lbl_source' => '移行元',
@@ -1091,6 +1094,12 @@ return [
             'viewer_description' => 'マスタ一覧を参照できます。',
         ],
     ],
+    'issue_opt' => [
+        'header' => '課題',
+        'levels' => '課題の階層の数',
+        'levels_help' => '親課題・子課題・孫課題…を、上から何段まで作れるか（:min〜:max、初期値 5）。親のない課題が 1 段目です。減らしても、今ある課題はそのまま残ります（新しく親を付けるときだけ確かめます）。',
+    ],
+
     'rules' => [
         'code_required' => 'プロジェクトキーを入力してください。',
         'code_format' => 'プロジェクトキーは英大文字で始まり、英大文字・数字・アンダースコアのみ使用できます。',
@@ -1102,6 +1111,7 @@ return [
         'parent_other_project' => '親課題は同じプロジェクトの課題から選択してください。',
         'parent_is_child' => '子課題をさらに親にすることはできません。階層は 1 段までです。',
         'parent_has_children' => 'この課題には既に子課題があるため、他の課題の子にはできません。',
+        'parent_too_deep' => '課題の階層は :max 段までです。この親の下には置けません（下にある子課題も数えます）。',
         'subtasking_off' => 'このプロジェクトでは子課題が無効になっています。',
         'date_order' => '終了日は開始日以降の日付を指定してください。',
         'progress_range' => '進捗率は 0 から 100 の間で入力してください。',

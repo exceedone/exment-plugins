@@ -165,7 +165,7 @@
             // delete button is not a neighbour of the edit button.
             // With no children yet the 子課題 box stays away; its one button
             // waits up here instead of costing a box of its own.
-            (res.editable && CAN_ADD_ISSUE && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
+            (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
@@ -221,7 +221,7 @@
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
             [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
             [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
-            [L.lbl_pg, pbar(i.pg)],
+            [L.lbl_pg, pbar(i.pg) + rollupBadge(rollupMap(), i.id)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_source, sourceHtml(res.source)],
             [L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : ''],
@@ -236,7 +236,7 @@
             if (shown.indexOf(p[0]) >= 0) { return false; }
             var v = String(p[1] === null || p[1] === undefined ? '' : p[1]);
             if (p[0] === L.lbl_eh) { return i.eh !== null && i.eh !== undefined && i.eh !== '' || i.ah !== null && i.ah !== undefined && i.ah !== ''; }
-            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0; }
+            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0 || p[1].indexOf('pp-rollup') >= 0; }
             return v !== '' && v !== '—' && v !== esc('—');
         });
         document.getElementById('pp-d-props').innerHTML = setProps.map(function (p) {
@@ -251,7 +251,7 @@
 
         var kids = (D.issues || []).filter(function (x) { return String(x.parent) === String(i.id); });
         // A child is a new issue: editing this one is not enough on its own.
-        var canAddChild = res.editable && CAN_ADD_ISSUE;
+        var canAddChild = res.editable && CAN_ADD_ISSUE && childRoom(i);
         // No children, no box: the add button moved up to the issue's head.
         document.getElementById('pp-d-childbox').style.display = kids.length ? '' : 'none';
         document.getElementById('pp-d-children').innerHTML = kids.map(function (k) {

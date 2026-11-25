@@ -54,6 +54,16 @@ class PluginSetting
             return PortalDefinition::trans('saas.' . $key);
         };
 
+        // ---- issues --------------------------------------------------------
+        // How many levels issues nest (PortalRules::issueLevels): read through
+        // IssueAutofill::option() with the default the form shows.
+        $form->exmheader(PortalDefinition::trans('issue_opt.header'))->hr();
+        $form->text('issue_levels', PortalDefinition::trans('issue_opt.levels'))
+            ->default(strval(PortalRules::ISSUE_LEVELS_DEFAULT))
+            ->help(PortalDefinition::trans('issue_opt.levels_help', [
+                'min' => PortalRules::ISSUE_LEVELS_MIN, 'max' => PortalRules::ISSUE_LEVELS_MAX,
+            ]));
+
         $form->exmheader($t('header'))->hr();
         $form->description($t('description'));
         $form->description($t('locked'));

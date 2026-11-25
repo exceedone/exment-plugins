@@ -426,6 +426,65 @@ window.PmPortalBoot = function () {
         return '<span class="bl-pbar" style="display:inline-block;width:70px;vertical-align:middle;"><i style="width:' + Math.max(0, Math.min(100, n)) + '%"></i></span>' +
             ' <small style="color:var(--bl-sub);">' + n + '%</small>';
     }
+    // The progress of what hangs under each issue (issues nest up to five
+    // levels): the average of its descendant leaves, a leaf of a done status
+    // counting 100 and one without a progress 0. Shown beside the issue's own
+    // progress, never written back. id => {pg, n} for the issues with children.
+    function rollupMap() {
+        var has = Object.prototype.hasOwnProperty;
+        var list = D.issues || [], byId = {}, kids = {}, out = {};
+        list.forEach(function (i) { byId['i' + i.id] = i; });
+        list.forEach(function (i) {
+            var p = (i.parent === null || i.parent === undefined) ? '' : String(i.parent);
+            if (p !== '' && p !== String(i.id) && has.call(byId, 'i' + p)) { (kids['i' + p] = kids['i' + p] || []).push(i); }
+        });
+        var leafPg = function (i) {
+            if (isDone(i.st)) { return 100; }
+            var n = Number(i.pg);
+            return isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+        };
+        // sum and count of the leaves under each issue, walked once; a loop in old data stops
+        var memo = {}, busy = {};
+        var leaves = function (i) {
+            var k = 'i' + i.id;
+            if (has.call(memo, k)) { return memo[k]; }
+            if (has.call(busy, k)) { return { s: 0, n: 0 }; }
+            busy[k] = true;
+            var r = { s: 0, n: 0 };
+            if (!has.call(kids, k)) { r = { s: leafPg(i), n: 1 }; }
+            else { kids[k].forEach(function (c) { var x = leaves(c); r.s += x.s; r.n += x.n; }); }
+            delete busy[k];
+            memo[k] = r;
+            return r;
+        };
+        Object.keys(kids).forEach(function (k) {
+            var r = leaves(byId[k]);
+            if (r.n > 0) { out[k] = { pg: Math.round(r.s / r.n), n: r.n }; }
+        });
+        return out;
+    }
+    // The level of an issue: 1 without a parent. A loop of old data stops.
+    function issueLevel(i) {
+        var level = 1, seen = {}, at = i;
+        while (at && at.parent && !seen['i' + at.id]) {
+            seen['i' + at.id] = true;
+            at = issueById(at.parent);
+            if (!at) { break; }
+            level++;
+        }
+        return level;
+    }
+    // Whether a child may be added under an issue (the server checks again).
+    function childRoom(i) {
+        var max = Number(D.issue_levels) || 5;
+        return issueLevel(i) < max;
+    }
+    function rollupBadge(ru, id) {
+        var r = ru && ru['i' + id];
+        if (!r) { return ''; }
+        return '<div class="pp-rollup" title="' + esc(fmt(L.rollup_tip || '', r.n)) + '"><small style="color:var(--bl-sub);">' +
+            esc(L.rollup || '') + ' ' + r.pg + '%</small></div>';
+    }
     function starBtn(type, targetType, targetId, count, on, extraCls) {
         return '<span class="bl-star pp-star' + (on ? ' on' : '') + (extraCls ? ' ' + extraCls : '') +
             '" title="' + esc(on ? L.star_off_tip : L.star_on_tip) + '"' +
@@ -1421,6 +1480,7 @@ window.PmPortalBoot = function () {
         if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
 
         var rows = '', shown = 0;
+        var ru = rollupMap();
         page.forEach(function (item) {
             shown++;
             var i = TREE_ON ? item.i : item;
@@ -1440,11 +1500,11 @@ window.PmPortalBoot = function () {
                     : '';
                 // one slot at the indent (snoro 2026-11-18): a parent shows its
                 // ▼/▶ (with the child count) there, a leaf child shows "└"
-                ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;">' +
+                ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;" data-depth="' + item.depth + '">' +
                     (tgl || (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '')) + '</span>';
             }
             var trCls = (own(SEL, i.id) ? 'sel' : '') + (i.unread ? ' pp-unread' : '') +
-                (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
+                (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 4) : '') +
                 (TREE_ON && item.n > 0 ? ' pp-tpar' : '');
             var ms = own(D.milestones, i.ms);
             rows += '<tr data-issue="' + esc(i.id) + '"' + (trCls.trim() ? ' class="' + trCls.trim() + '"' : '') + '>' +
@@ -1465,7 +1525,7 @@ window.PmPortalBoot = function () {
                 '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + '</td>' +
                 '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + '</td>' +
                 '<td' + edAttr('dd') + '>' + dueCell(i) + '</td>' +
-                '<td>' + pbar(i.pg) + '</td>' +
+                '<td>' + pbar(i.pg) + rollupBadge(ru, i.id) + '</td>' +
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });
         document.getElementById('pp-issue-rows').innerHTML = rows;
@@ -2360,7 +2420,7 @@ window.PmPortalBoot = function () {
             // delete button is not a neighbour of the edit button.
             // With no children yet the 子課題 box stays away; its one button
             // waits up here instead of costing a box of its own.
-            (res.editable && CAN_ADD_ISSUE && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
+            (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
@@ -2416,7 +2476,7 @@ window.PmPortalBoot = function () {
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
             [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
             [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
-            [L.lbl_pg, pbar(i.pg)],
+            [L.lbl_pg, pbar(i.pg) + rollupBadge(rollupMap(), i.id)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_source, sourceHtml(res.source)],
             [L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : ''],
@@ -2431,7 +2491,7 @@ window.PmPortalBoot = function () {
             if (shown.indexOf(p[0]) >= 0) { return false; }
             var v = String(p[1] === null || p[1] === undefined ? '' : p[1]);
             if (p[0] === L.lbl_eh) { return i.eh !== null && i.eh !== undefined && i.eh !== '' || i.ah !== null && i.ah !== undefined && i.ah !== ''; }
-            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0; }
+            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0 || p[1].indexOf('pp-rollup') >= 0; }
             return v !== '' && v !== '—' && v !== esc('—');
         });
         document.getElementById('pp-d-props').innerHTML = setProps.map(function (p) {
@@ -2446,7 +2506,7 @@ window.PmPortalBoot = function () {
 
         var kids = (D.issues || []).filter(function (x) { return String(x.parent) === String(i.id); });
         // A child is a new issue: editing this one is not enough on its own.
-        var canAddChild = res.editable && CAN_ADD_ISSUE;
+        var canAddChild = res.editable && CAN_ADD_ISSUE && childRoom(i);
         // No children, no box: the add button moved up to the issue's head.
         document.getElementById('pp-d-childbox').style.display = kids.length ? '' : 'none';
         document.getElementById('pp-d-children').innerHTML = kids.map(function (k) {
