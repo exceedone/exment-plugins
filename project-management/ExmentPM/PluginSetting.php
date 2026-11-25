@@ -54,6 +54,16 @@ class PluginSetting
             return PortalDefinition::trans('saas.' . $key);
         };
 
+        // ---- issues --------------------------------------------------------
+        // How many levels issues nest (PortalRules::issueLevels): read through
+        // IssueAutofill::option() with the default the form shows.
+        $form->exmheader(PortalDefinition::trans('issue_opt.header'))->hr();
+        $form->text('issue_levels', PortalDefinition::trans('issue_opt.levels'))
+            ->default(strval(PortalRules::ISSUE_LEVELS_DEFAULT))
+            ->help(PortalDefinition::trans('issue_opt.levels_help', [
+                'min' => PortalRules::ISSUE_LEVELS_MIN, 'max' => PortalRules::ISSUE_LEVELS_MAX,
+            ]));
+
         $form->exmheader($t('header'))->hr();
         $form->description($t('description'));
         $form->description($t('locked'));
@@ -79,6 +89,22 @@ class PluginSetting
         $a = function ($key) {
             return PortalDefinition::trans('ai.opt_' . $key);
         };
+
+        // ---- Teams (ISS02863) ----------------------------------------------
+        // The issue notices in the Teams chat of each person the bells go to. Needs Exment's
+        // "Teams notifications" (Feature management) and the address of its Teams workflow.
+        $form->exmheader(PortalDefinition::trans('teams.setting_header'))->hr();
+        $choices = [];
+        foreach (PortalTeams::CHOICES as $choice) {
+            if (PortalTeams::teamsAvailable() || !in_array($choice, ['teams', 'both'], true)) {
+                $choices[$choice] = PortalDefinition::trans('teams.choice_' . $choice);
+            }
+        }
+        $form->select('notify_by_default', PortalDefinition::trans('teams.setting'))
+            ->options($choices)
+            ->disableClear()
+            ->help(PortalDefinition::trans(PortalTeams::teamsAvailable() ? 'teams.setting_help' : 'teams.setting_unavailable'))
+            ->default('bell');
 
         $form->exmheader($a('header'))->hr();
         $form->description($a('description'));

@@ -693,6 +693,7 @@
         if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
 
         var rows = '', shown = 0;
+        var ru = rollupMap();
         page.forEach(function (item) {
             shown++;
             var i = TREE_ON ? item.i : item;
@@ -712,11 +713,11 @@
                     : '';
                 // one slot at the indent (snoro 2026-11-18): a parent shows its
                 // ▼/▶ (with the child count) there, a leaf child shows "└"
-                ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;">' +
+                ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;" data-depth="' + item.depth + '">' +
                     (tgl || (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '')) + '</span>';
             }
             var trCls = (own(SEL, i.id) ? 'sel' : '') + (i.unread ? ' pp-unread' : '') +
-                (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
+                (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 4) : '') +
                 (TREE_ON && item.n > 0 ? ' pp-tpar' : '');
             var ms = own(D.milestones, i.ms);
             rows += '<tr data-issue="' + esc(i.id) + '"' + (trCls.trim() ? ' class="' + trCls.trim() + '"' : '') + '>' +
@@ -737,7 +738,7 @@
                 '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + '</td>' +
                 '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + '</td>' +
                 '<td' + edAttr('dd') + '>' + dueCell(i) + '</td>' +
-                '<td>' + pbar(i.pg) + '</td>' +
+                '<td>' + pbar(i.pg) + rollupBadge(ru, i.id) + '</td>' +
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });
         document.getElementById('pp-issue-rows').innerHTML = rows;
@@ -1272,6 +1273,8 @@
         // has no assignees, no key and no links, and the first screen that
         // reads one stops the whole redraw.
         unpackRows(next);
+        // an issue just opened (or marked by hand) stays as the reader left it
+        applyLocalReads(next);
         D = next;
         // The new payload has no archived rows again; bring them back if they
         // were on show.

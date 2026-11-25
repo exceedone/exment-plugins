@@ -299,6 +299,23 @@
         </div>
     </div>
     @endif
+    {{-- ISS02863: how this user gets the notices of the issues: bell only, mail, Teams, both --}}
+    @if(!empty($topbar['notify_by_url']))
+    <div class="pp-top-dd pp-top-notifywrap">
+        <button type="button" aria-haspopup="true" aria-expanded="false" title="{{ PortalDefinition::trans('teams.menu_title') }}">
+            <i class="fa fa-bell-o"></i><span>{{ PortalDefinition::trans('teams.menu') }}</span><i class="fa fa-caret-down"></i>
+        </button>
+        <div class="pp-top-menu pp-top-menu-r" hidden data-notify-by="{{ $topbar['notify_by_url'] }}">
+            <div class="pp-top-none">{{ PortalDefinition::trans('teams.menu_title') }}</div>
+            @foreach($topbar['notify_choices'] as $choice)
+            <a class="pp-top-mi pp-notify-by" href="#" data-choice="{{ $choice }}" aria-checked="{{ $topbar['notify_by'] === $choice ? 'true' : 'false' }}" role="menuitemradio">
+                <i class="fa {{ $topbar['notify_by'] === $choice ? 'fa-check' : 'fa-fw' }}"></i>
+                <span class="nm">{{ PortalDefinition::trans('teams.choice_' . $choice) }}</span>
+            </a>
+            @endforeach
+        </div>
+    </div>
+    @endif
     {{-- ISS00256: the sidebar shows only "プロジェクト管理", so the portal's
          settings (and the master lists under it) open from here - for
          administrators only. --}}
@@ -348,6 +365,36 @@
         s.textContent = String(text == null ? '' : text);
         return s;
     }
+
+    // ---- the notices: mail / Teams (ISS02863) ---------------------------
+    bar.querySelectorAll('.pp-notify-by').forEach(function (item) {
+        item.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            var menu = item.closest('[data-notify-by]');
+            var token = document.querySelector('meta[name="csrf-token"]');
+            fetch(menu.getAttribute('data-notify-by'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token ? token.getAttribute('content') : '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ notify_by: item.getAttribute('data-choice') })
+            }).then(function (r) {
+                if (!r.ok) { throw new Error(r.status); }
+                menu.querySelectorAll('.pp-notify-by').forEach(function (other) {
+                    var on = other === item;
+                    other.setAttribute('aria-checked', on ? 'true' : 'false');
+                    var icon = other.querySelector('i');
+                    if (icon) { icon.className = 'fa ' + (on ? 'fa-check' : 'fa-fw'); }
+                });
+                if (window.toastr) { window.toastr.success({!! json_encode(strval(PortalDefinition::trans('teams.saved'))) !!}); }
+            }).catch(function () {
+                if (window.toastr) { window.toastr.error('Error'); }
+            });
+        });
+    });
 
     // ---- dropdowns ----------------------------------------------------
     function closeMenus() {

@@ -48,9 +48,55 @@ class IbisOffice
         return public_path(static::PUBLIC_DIR . '/' . static::VERSION);
     }
 
+    /** Whether the version this plugin asks for (VERSION) is installed on this site. */
     public function isInstalled(): bool
     {
-        return is_file($this->installDir() . '/ibisoffice-host.js') && is_file($this->installDir() . '/index.html');
+        return static::isEditorDir($this->installDir());
+    }
+
+    protected static function isEditorDir(string $dir): bool
+    {
+        return is_file($dir . '/ibisoffice-host.js') && is_file($dir . '/index.html');
+    }
+
+    /**
+     * The versions installed on this site (the folders of public/vendor/exment_groupware/
+     * ibisoffice), oldest first.
+     *
+     * @return string[]
+     */
+    public function installedVersions(): array
+    {
+        $versions = [];
+        foreach (glob(public_path(static::PUBLIC_DIR) . '/*', GLOB_ONLYDIR) ?: [] as $dir) {
+            $version = basename($dir);
+            if (preg_match('/^\d+(\.\d+)*$/', $version) === 1 && static::isEditorDir($dir)) {
+                $versions[] = $version;
+            }
+        }
+        usort($versions, 'version_compare');
+        return $versions;
+    }
+
+    /**
+     * The version this site serves (ISS02827): the one this plugin asks for, or, until it is
+     * installed, the newest one already installed (a new version of the plugin asks for a newer
+     * ibisOffice: Office keeps working with the old one until a system administrator updates).
+     */
+    public function activeVersion(): ?string
+    {
+        if ($this->isInstalled()) {
+            return static::VERSION;
+        }
+        $versions = $this->installedVersions();
+        return empty($versions) ? null : end($versions);
+    }
+
+    /** An older ibisOffice is installed and this plugin asks for a newer one. */
+    public function updateAvailable(): bool
+    {
+        $active = $this->activeVersion();
+        return $active !== null && version_compare($active, static::VERSION, '<');
     }
 
     /**
@@ -76,8 +122,9 @@ class IbisOffice
      */
     public function hostModuleUrl(): ?string
     {
-        if ($this->isInstalled()) {
-            return rtrim(asset(static::PUBLIC_DIR . '/' . static::VERSION), '/') . '/ibisoffice-host.js';
+        $active = $this->activeVersion();
+        if ($active !== null) {
+            return rtrim(asset(static::PUBLIC_DIR . '/' . $active), '/') . '/ibisoffice-host.js';
         }
         $custom = $this->customUrl();
         if ($custom === null || stripos($custom, 'https://') !== 0) {
@@ -89,7 +136,7 @@ class IbisOffice
 
     public function isAvailable(): bool
     {
-        return $this->customUrl() !== null || $this->isInstalled();
+        return $this->customUrl() !== null || $this->activeVersion() !== null;
     }
 
     /**
@@ -97,7 +144,7 @@ class IbisOffice
      */
     public function baseUrl(): string
     {
-        return $this->customUrl() ?? rtrim(asset(static::PUBLIC_DIR . '/' . static::VERSION), '/') . '/';
+        return $this->customUrl() ?? rtrim(asset(static::PUBLIC_DIR . '/' . ($this->activeVersion() ?? static::VERSION)), '/') . '/';
     }
 
     /**
@@ -342,6 +389,12 @@ HTACCESS;
                 }
             }
             static::writeHtaccess(dirname($dest));
+            // the older versions are not served any more: their space is freed (~125MB each)
+            foreach ($this->installedVersions() as $version) {
+                if ($version !== static::VERSION) {
+                    File::deleteDirectory(public_path(static::PUBLIC_DIR . '/' . $version));
+                }
+            }
         } finally {
             File::deleteDirectory($work);
         }
