@@ -216,7 +216,11 @@
     function nedPrewarmCreateForm(tbl) {
         // Fire-and-forget so the first click on 課題の追加 renders instantly.
         if (!NED.el) { return; }
-        nedFetchCreateForm(tbl || D.issue_table, true).catch(function () { });
+        tbl = tbl || D.issue_table;
+        // A user who may not add an issue (a viewer, an archived project)
+        // would only be refused (403): nothing to warm.
+        if (tbl === D.issue_table && D.can && D.can.issue_create === false) { return; }
+        nedFetchCreateForm(tbl, true).catch(function () { });
     }
 
     // The create form has an address, so a click goes through it rather than
