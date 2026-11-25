@@ -4,19 +4,8 @@
 //
 //   php project-management/tools/test-manual-links.php
 //
-// Plain PHP: app() is given here, and without Exment's CoreExtensions register() does nothing.
-
-if (!function_exists('app')) {
-    function app()
-    {
-        return new class () {
-            public function getLocale()
-            {
-                return $GLOBALS['test_locale'];
-            }
-        };
-    }
-}
+// Plain PHP: the language is given to url() and label(), and without Exment's CoreExtensions
+// register() does nothing.
 
 $base = __DIR__ . '/../..';
 require $base . '/project-management/ExmentPM/ManualLink.php';
@@ -31,10 +20,9 @@ $want = [
 $failed = 0;
 foreach ($want as $class => $page) {
     foreach (['ja' => 'ja/', 'vi' => 'vi/', 'en' => '', 'de' => '', 'zh_CN' => ''] as $locale => $dir) {
-        $GLOBALS['test_locale'] = $locale;
-        $url = $class::url();
+        $url = $class::url($locale);
         $expected = 'https://exment.net/docs/' . $dir . $page . '.html';
-        $ok = $url === $expected && $class::label() !== '';
+        $ok = $url === $expected && $class::label($locale) !== '';
         echo ($ok ? 'ok   ' : 'FAIL ') . "$page $locale -> $url\n";
         $failed += $ok ? 0 : 1;
     }
