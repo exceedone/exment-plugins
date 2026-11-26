@@ -31,6 +31,12 @@ class PluginPage extends PluginPageBase
         } catch (\Throwable $e) {
             \Log::error('ExmentITSupport could not register its features: ' . $e->getMessage());
         }
+        // the data sync of Exment 7.3: the hosts of monitoring tools into the IT assets
+        try {
+            AssetSync::register();
+        } catch (\Throwable $e) {
+            \Log::error('ExmentITSupport could not register its sync connectors: ' . $e->getMessage());
+        }
         try {
             PublicRoutes::register();
         } catch (\Throwable $e) {

@@ -39,8 +39,10 @@ class Schema
      * 5: the step of the SLA escalation told (sla_escalation).
      * 6: problems (its_problem, the ticket's column problem).
      * 7: the request catalog (its_catalog; the ticket's catalog, approval_state, approver).
+     * 8: the assets synced from monitoring tools (source, external_id, external_url, hostname,
+     *    ip_addresses, sync_state).
      */
-    const VERSION = 7;
+    const VERSION = 8;
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -130,6 +132,13 @@ class Schema
                     ['serial', 'シリアル番号', 'text', ['freeword_search' => '1']],
                     ['os', 'OS・バージョン', 'text', []],
                     ['location', '場所・IP アドレス', 'text', []],
+                    // written by the data sync from monitoring tools (Sync\AssetConnector), empty else
+                    ['hostname', 'ホスト名（FQDN）', 'text', ['index_enabled' => '1', 'freeword_search' => '1']],
+                    ['ip_addresses', 'IP アドレス（監視の道具から）', 'text', ['freeword_search' => '1']],
+                    ['source', '同期の元', 'text', ['index_enabled' => '1', 'help' => '監視の道具から同期した資産（zabbix:接続の番号 など）。手で変えないでください。']],
+                    ['external_id', '監視の道具の ID', 'text', ['index_enabled' => '1']],
+                    ['external_url', '監視の道具の画面', 'url', []],
+                    ['sync_state', '同期の状態', 'select_valtext', ['valtext' => ['active' => '使っている', 'retired' => '引退'], 'index_enabled' => '1']],
                     ['purchase_date', '購入日', 'date', []],
                     ['warranty_end', '保守・保証の期限', 'date', ['index_enabled' => '1']],
                     ['expires_on', 'ライセンス・ドメイン・証明書の期限', 'date', ['index_enabled' => '1']],
