@@ -79,7 +79,7 @@
         ['kh_move', [['h', 'tab_home'], ['b', 'tab_board'], ['f', 'tab_issues'], ['g', 'tab_gantt'], ['u', 'tab_burndown'], ['w', 'tab_wiki']]],
         ['kh_list', [['a', 'add_issue'], ['/', 'kh_search'], ['j k', 'kh_updown'], ['o', 'kh_open']]],
         ['kh_issue', [['e', 'edit'], ['c', 'kh_comment'], ['s', 'kh_status'], ['[ ]', 'kh_prevnext']]],
-        ['kh_other', [['Ctrl+Enter', 'kh_send'], ['Esc', 'kh_close'], ['?', 'kh_help']]]
+        ['kh_other', [['Ctrl+K', 'kh_palette'], ['Ctrl+Enter', 'kh_send'], ['Esc', 'kh_close'], ['?', 'kh_help']]]
     ];
     function keyHelp(show) {
         var box = document.getElementById('pp-keyhelp');

@@ -1951,4 +1951,19 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .bl-detail.pp-simple .bl-dsum .pp-reads{display:none !important;}
 .pmportal .bl-detail.pp-simple:not(.pp-two) #pp-d-propbox{display:none !important;}
 @media (max-width:1199px){.pmportal .bl-detail.pp-simple #pp-d-propbox{display:none !important;}}
+/* L2: the command palette (Ctrl+K / ⌘K) */
+.pmportal .pp-pal{position:fixed;inset:0;z-index:1095;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px;background:rgba(15,23,32,.32);}
+.pmportal .pp-pal .in{width:min(600px,100%);max-height:70vh;display:flex;flex-direction:column;background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius,6px);box-shadow:0 12px 32px rgba(0,0,0,.18);overflow:hidden;}
+.pmportal .pp-pal .hd{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bl-line2);color:var(--bl-sub);}
+.pmportal .pp-pal .hd input{flex:1;min-width:0;border:0;outline:0;background:none;font-size:15px;color:var(--bl-ink);padding:4px 0;}
+.pmportal .pp-pal .hd .x{border:0;background:none;font-size:20px;line-height:1;color:var(--bl-sub);cursor:pointer;min-width:32px;min-height:32px;}
+.pmportal .pp-pal .ls{list-style:none;margin:0;padding:6px 0;overflow-y:auto;}
+.pmportal .pp-pal .gt{padding:6px 14px 2px;font-size:11.5px;font-weight:700;color:var(--bl-sub);}
+.pmportal .pp-pal .it{display:flex;align-items:center;gap:8px;padding:7px 14px;min-height:36px;font-size:13.5px;cursor:pointer;color:var(--bl-ink);}
+.pmportal .pp-pal .it.on,.pmportal .pp-pal .it:hover{background:var(--bl-hover);}
+.pmportal .pp-pal .it .lb{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pmportal .pp-pal .it .ky{font-family:var(--bl-mono,monospace);font-size:12px;color:var(--bl-sub);flex-shrink:0;}
+.pmportal .pp-pal kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid var(--bl-line);border-bottom-width:2px;border-radius:4px;font-size:11.5px;text-align:center;color:var(--bl-sub);background:var(--bl-bg);}
+.pmportal .pp-pal .none{padding:12px 14px;color:var(--bl-faint);font-size:13px;}
+@media (max-width:560px){.pmportal .pp-pal{padding-top:8px;}.pmportal .pp-pal .in{max-height:calc(100vh - 16px);}}
 </style>

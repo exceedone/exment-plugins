@@ -85,7 +85,7 @@
         // UX-E
         'ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu',
         // UX-F
-        'feed_more', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
+        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
         'kh_comment', 'kh_status', 'kh_prevnext', 'kh_send', 'kh_close', 'kh_help', 'empty_issues', 'empty_filtered', 'empty_wiki',
         'first_steps', 'fs_add_issue', 'fs_invite', 'fs_statuses', 'f_clear_all',
         // UX-H
