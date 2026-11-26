@@ -98,6 +98,11 @@ class PluginPage extends PluginPageBase
         return $this->desk()->postSettings(request());
     }
 
+    public function postChatTest()
+    {
+        return $this->desk()->postChatTest(request());
+    }
+
     public function postMailTest()
     {
         return $this->desk()->postMailTest(request());

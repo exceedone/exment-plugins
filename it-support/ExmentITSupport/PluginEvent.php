@@ -24,6 +24,9 @@ class PluginEvent extends PluginEventBase
     /** @var array<int, string> status before the save, by model object */
     protected static $before = [];
 
+    /** @var array<int, array{new: bool, stage: string}> for the chat notices (ISS02941) */
+    protected static $chat = [];
+
     public function execute()
     {
         if (!Feature::on(Feature::DESK)) {
@@ -42,6 +45,7 @@ class PluginEvent extends PluginEventBase
                 $original = $model->getOriginal('value');
                 $original = is_string($original) ? (array) json_decode($original, true) : (array) $original;
                 static::$before[spl_object_id($model)] = $model->exists ? strval($original['status'] ?? '') : '';
+                static::$chat[spl_object_id($model)] = ['new' => !$model->exists, 'stage' => strval($original['stage'] ?? '')];
                 Tickets::applyRules($model);
             } elseif ($event === PluginEventTrigger::SAVED) {
                 $this->afterSave($model);
@@ -62,6 +66,16 @@ class PluginEvent extends PluginEventBase
         }
         $before = static::$before[$key];
         unset(static::$before[$key]);
+        $chat = static::$chat[$key] ?? null;
+        unset(static::$chat[$key]);
+        if (isset($chat) && ChatNotices::enabled()) {
+            $stage = strval(array_get($model->value, 'stage'));
+            if ($chat['new']) {
+                ChatNotices::note($model, 'new', ['from' => strval(array_get($model->value, 'requester_name') ?: array_get($model->value, 'requester_email'))]);
+            } elseif ($stage !== '' && $stage !== $chat['stage'] && !ChatNotices::customerWriting()) {
+                ChatNotices::note($model, 'stage', ['from' => $chat['stage'], 'to' => $stage, 'progress' => intval(array_get($model->value, 'progress'))]);
+            }
+        }
         $status = strval(array_get($model->value, 'status'));
         if ($status === $before) {
             return;
