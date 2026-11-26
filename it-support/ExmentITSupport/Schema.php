@@ -740,7 +740,7 @@ class Schema
             ? \Exceedone\Exment\Model\Menu::groupParentId('it_support') : null;
         // the group made with the core's old name: the new one (an administrator's name stays)
         if (isset($group)) {
-            \DB::table('admin_menu')->where('id', $group)->whereIn('title', ['ITサポート', 'IT support'])
+            \DB::table('admin_menu')->where('id', $group)->whereIn('title', ['ITサポート', 'IT support', 'IT-Support', 'Soporte de TI', 'IT 지원', 'Hỗ trợ IT', 'IT 支持'])
                 ->update(['title' => static::MENU_TITLE, 'updated_at' => now()]);
         }
 
