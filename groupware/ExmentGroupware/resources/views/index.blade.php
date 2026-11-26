@@ -1,4 +1,6 @@
 {{-- Exment Plugin Groupware: the top page. Web mail, and the state of the browser Office (ibisOffice) and its installation. --}}
+{{-- the manual of the plugin, in the language of the user (ISS02882) --}}
+<p style="text-align:right;margin:0 0 8px"><a href="{{ \App\Plugins\ExmentGroupware\ManualLink::url() }}" target="_blank" rel="noopener"><i class="fa fa-question-circle" aria-hidden="true"></i> {{ \App\Plugins\ExmentGroupware\ManualLink::label() }}</a></p>
 @if ($mail_used)
 <div class="box card">
     <div class="box-header with-border"><h3 class="box-title"><i class="fa fa-envelope-o" aria-hidden="true"></i> Web メール</h3></div>
@@ -33,6 +35,8 @@
                     ほかの場所の ibisOffice を使います: <code>{{ $custom_url }}</code>
                 @elseif ($installed)
                     <span class="text-success"><i class="fa fa-check" aria-hidden="true"></i> このサイトにインストール済み</span>
+                @elseif ($update_available)
+                    <span class="text-warning"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i> {{ $active_version }} がインストール済み。新しい版 {{ $version }} があります（更新するまでは {{ $active_version }} で開きます）</span>
                 @else
                     <span class="text-warning"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> まだインストールしていません</span>
                 @endif
@@ -57,7 +61,7 @@
         @if ($can_install && !$custom_url)
             <form method="post" action="{{ $install_url }}" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'インストール中…（数分かかります）';">
                 <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-primary">{{ $installed ? 'ibisOffice ' . $version . ' を入れ直す' : 'ibisOffice ' . $version . ' をインストールする' }}</button>
+                <button type="submit" class="btn btn-primary">{{ $installed ? 'ibisOffice ' . $version . ' を入れ直す' : ($update_available ? 'ibisOffice を ' . $version . ' に更新する' : 'ibisOffice ' . $version . ' をインストールする') }}</button>
                 <span class="help-block" style="display:inline-block;margin-left:8px">GitHub のリリース（約 40 MB）をダウンロードし、SHA-256 を確かめてから、サイトの public フォルダーに置きます。</span>
             </form>
         @endif

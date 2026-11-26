@@ -1,0 +1,14 @@
+{
+    "plugin_name": "ExmentAttachmentExport",
+    "uuid": "70aad9c5-a144-44a9-ad35-0746193db10a",
+    "plugin_view_name": "Exment Plugin Attachment Export（添付ファイルの一括ダウンロード）",
+    "description": "データの一覧から、表示しているデータの添付ファイル（データの添付・ファイル列・画像列）を、データごとのフォルダーにまとめて 1 つの zip でダウンロードします。",
+    "author": "Exceedone",
+    "version": "0.1.0",
+    "plugin_type": "export",
+    "uri": "exment_attachment_export",
+    "target_tables": "",
+    "label": "添付ファイルを zip でダウンロード",
+    "icon": "fa-file-archive-o",
+    "export_description": "一覧で絞りこんだデータの添付ファイルを、データごとのフォルダーに入れて 1 つの zip にします。"
+}

@@ -24,6 +24,8 @@ class PluginPage extends PluginPageBase
     {
         parent::__construct($plugin);
 
+        // Exment's "?" of the header opens the manual of the plugin (ISS02882)
+        ManualLink::register($plugin);
         try {
             Feature::register($plugin);
         } catch (\Throwable $e) {
@@ -103,6 +105,21 @@ class PluginPage extends PluginPageBase
     public function postIntakeKey()
     {
         return $this->desk()->postIntakeKey(request());
+    }
+
+    public function postIntakeSource()
+    {
+        return $this->desk()->postIntakeSource(request());
+    }
+
+    public function postIntakeSourceUpdate($id)
+    {
+        return $this->desk()->postIntakeSourceUpdate(request(), $id);
+    }
+
+    public function postAlertSharedKey()
+    {
+        return $this->desk()->postAlertSharedKey(request());
     }
 
     public function dashboard()

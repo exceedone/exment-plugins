@@ -260,7 +260,7 @@ trait PortalProjectTrait
             'repo_name' => isset($repo) ? strval($repo->repo_name) : GitRepo::suggestName($key, $project->id),
             'remote_url' => isset($repo) && !is_nullorempty($repo->remote_url) ? strval($repo->remote_url) : null,
             'error' => isset($repo) && !is_nullorempty($repo->last_error) ? $this->gitErrorText(strval($repo->last_error)) : null,
-            'requested_at' => isset($repo) && isset($repo->created_at) ? $repo->created_at->format('Y-m-d H:i') : null,
+            'requested_at' => isset($repo) && isset($repo->created_at) ? PortalTime::format($repo->created_at, 'Y-m-d H:i') : null,
             'http_url' => $this->gitHttpUrl($repo),
             'browse_url' => $this->gitBrowseUrl($repo),
             'provider' => GitProvisioner::provider(),
@@ -383,6 +383,68 @@ trait PortalProjectTrait
         return PortalDefinition::jsonError(422, $e instanceof GitError ? strval($e->reason) : 'remote_unavailable', [
             'message' => GitProvisioner::publicError($e, $context),
         ]);
+    }
+
+    /**
+     * GET {id}/file_workspace - the workspace of the Files tab (ISS02825).
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function fileWorkspace(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+
+        return response()->json(['ok' => true, 'fileserver' => PortalFiles::state($project, PortalMembership::canManage($project))]);
+    }
+
+    /**
+     * POST {id}/file_workspace - make a workspace for the project, pick one the manager
+     * manages, or unlink it (the workspace stays). The project's manager only.
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function postFileWorkspace(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+        if (!PortalMembership::canManage($project)) {
+            return PortalDefinition::jsonError(403, 'forbidden');
+        }
+        if (!PortalFiles::enabled()) {
+            return PortalDefinition::jsonError(422, 'fileserver_off', ['message' => strval(PortalDefinition::trans('fileserver.off'))]);
+        }
+        $action = strval($request->input('action', ''));
+        try {
+            switch ($action) {
+                case 'create':
+                    if (PortalFiles::workspaceOf($project)) {
+                        return PortalDefinition::jsonError(422, 'already', ['message' => strval(PortalDefinition::trans('fileserver.already'))]);
+                    }
+                    PortalFiles::create($project);
+                    break;
+                case 'pick':
+                    PortalFiles::pick($project, intval($request->input('workspace_id')));
+                    break;
+                case 'unlink':
+                    PortalFiles::unlink($project);
+                    break;
+                case 'sync':
+                    PortalFiles::syncPermissions($project);
+                    break;
+                default:
+                    return PortalDefinition::jsonError(422, 'invalid');
+            }
+        } catch (\RuntimeException $e) {
+            return PortalDefinition::jsonError(422, 'refused', ['message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('pm_portal file server: ' . $action . ' for project ' . $project->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+            return PortalDefinition::jsonError(500, 'server_error');
+        }
+
+        return response()->json(['ok' => true, 'fileserver' => PortalFiles::state($project, true)]);
     }
 
     /**

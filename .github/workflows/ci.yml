@@ -116,3 +116,27 @@ jobs:
       # every source and on the result. Fix: node project-management/tools/build-pm-script.js
       - name: Build check (ExmentPM script.js)
         run: node project-management/tools/build-pm-script.js --check
+
+      # The list after a refresh and after a save in the form (packed rows).
+      - name: Refresh check (ExmentPM list rows)
+        run: node project-management/tools/test-pm-refresh.js
+
+      # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
+      - name: User time zone check (scripts)
+        run: node project-management/tools/test-user-timezone.js
+
+      # Issues nested up to five levels: the tree, the progress under an issue,
+      # and which issues may be a parent (PortalRules, plain PHP).
+      - name: Issue levels check (ExmentPM)
+        run: |
+          node project-management/tools/test-issue-levels.js
+          php project-management/tools/test-issue-levels.php
+
+      # The links to the manuals of ExmentPM, ExmentITSupport and ExmentGroupware.
+      - name: Manual links check
+        run: php project-management/tools/test-manual-links.php
+
+      # The alerts of Zabbix, Mackerel, Alertmanager and Azure Monitor, and
+      # what they do to the tickets (ExmentITSupport, plain PHP).
+      - name: Alert intake check (ExmentITSupport)
+        run: php it-support/tools/test-alert-intake.php

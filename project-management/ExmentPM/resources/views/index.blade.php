@@ -25,7 +25,7 @@
         'back', 'box_props', 'box_children', 'box_timeline', 'added',
         'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments', 'issue_more',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
-        'lbl_eh', 'lbl_pg', 'lbl_parent', 'lbl_watch', 'lbl_source', 'lbl_sub_assignees', 'lbl_managers', 'lbl_reviewers', 'lbl_difficulty', 'lbl_author', 'df_easy', 'df_normal', 'df_hard', 'lbl_custom_fields', 'src_created', 'src_updated', 'src_assignees', 'src_assignees_hint', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
+        'lbl_eh', 'lbl_pg', 'rollup', 'rollup_tip', 'lbl_parent', 'lbl_watch', 'lbl_source', 'lbl_sub_assignees', 'lbl_managers', 'lbl_reviewers', 'lbl_difficulty', 'lbl_author', 'df_easy', 'df_normal', 'df_hard', 'lbl_custom_fields', 'src_created', 'src_updated', 'src_assignees', 'src_assignees_hint', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
         'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
         'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail',
         'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',
@@ -49,6 +49,7 @@
         'bd_days_left', 'bd_forecast_warn', 'bd_forecast_ok', 'bd_no_ms', 'bd_partial', 'files_partial',
         'files_name', 'files_by', 'files_at', 'files_src', 'files_drop', 'files_pick',
         'files_up_ok', 'files_up_fail', 'files_empty',
+        'fs_title', 'fs_open', 'fs_attachments', 'fs_none', 'fs_none_manager', 'fs_no_access', 'back_projects',
         'tab_settings', 'm_add_issue', 'm_edit_issue', 'm_edit_wiki', 'm_new_wiki', 'm_history',
         'm_saved', 'm_discard', 'm_discard_yes', 'm_discard_no', 'm_loading', 'm_close',
         'ned_title', 'ned_save', 'ned_saving', 'ned_saved', 'ned_error', 'ned_close',
@@ -460,8 +461,17 @@
 
         {{-- ============ files ============ --}}
         <section class="bl-screen" id="pp-files">
+            {{-- The workspace of the file server, when the project has one and the feature is
+                 on (ISS02825): its own pages, framed, the admin chrome hidden. Filled by the script. --}}
+            <div class="bl-card-box pp-fs" id="pp-fs" hidden>
+                <div class="bl-boxhead" style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa fa-folder-open"></i><span id="pp-fs-name"></span>
+                    <a id="pp-fs-open" class="bl-btn-sub" style="margin-left:auto;" target="_blank" rel="noopener"></a>
+                </div>
+                <div class="bl-boxbody" id="pp-fs-body" style="padding:0;"></div>
+            </div>
             <div class="bl-card-box bl-files">
-                <div class="bl-boxhead"><i class="fa fa-paperclip"></i>{{ $lang['tab_files'] }}</div>
+                <div class="bl-boxhead"><i class="fa fa-paperclip"></i><span id="pp-files-title">{{ $lang['tab_files'] }}</span></div>
                 <div class="bl-boxbody">
                     <div class="bl-drop" id="pp-drop">
                         <i class="fa fa-cloud-upload"></i> {{ $lang['files_drop'] }}

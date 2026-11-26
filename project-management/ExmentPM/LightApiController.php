@@ -253,6 +253,21 @@ class LightApiController
             $this->whereColumnEmpty($model, $emptyColumn);
         }
 
+        // Issues nest a few levels (PortalRules::issueLevels): the ones that
+        // leave no room for the row and what hangs from it, and the ones under
+        // it, are not offered. The save checks the same.
+        $levelsName = $request->query('levels');
+        $levelsColumn = is_scalar($levelsName) && PortalRules::nestsOneLevel($table)
+            ? CustomColumn::getEloquent(strval($levelsName), $table) : null;
+        if (isset($levelsColumn)) {
+            $selfId = array_values($exclude)[0] ?? null;
+            $refused = PortalRules::refusedParents($table, $levelsColumn->column_name, $selfId === null ? null : intval($selfId),
+                is_scalar($parentId) && ctype_digit(strval($parentId)) ? intval($parentId) : null);
+            if ($refused) {
+                $model->whereNotIn('id', $refused);
+            }
+        }
+
         $rows = $model->limit($limit)->get();
 
         $results = $rows->map(function ($r) {
@@ -406,6 +421,11 @@ class LightApiController
             if ($column->column_type === ColumnType::EDITOR && isset($value[$name])) {
                 $value[$name] = Editor::replaceImgUrl($value[$name]);
             }
+            // A date and time opens in the form as the user reads it;
+            // persistRow turns what is typed back into the time of the site.
+            if ($column->column_type === ColumnType::DATETIME && isset($value[$name])) {
+                $value[$name] = PortalTime::toUser($value[$name]);
+            }
         }
 
         // Resolve creator/updater names for the header meta strip.
@@ -443,8 +463,12 @@ class LightApiController
                 'id' => $row->id,
                 'value' => $value,
                 'labels' => $labels,
+                // As stored: updated_at is the version a save quotes back.
                 'created_at' => $row->created_at ? (string) $row->created_at : null,
                 'updated_at' => $row->updated_at ? (string) $row->updated_at : null,
+                // As shown, in the time zone of the user.
+                'created_at_shown' => PortalTime::format($row->created_at, 'Y-m-d H:i:s') ?: null,
+                'updated_at_shown' => PortalTime::format($row->updated_at, 'Y-m-d H:i:s') ?: null,
                 'created_by' => $creator,
                 'updated_by' => $updater,
                 'label' => (string) $row->getLabel(),
@@ -864,7 +888,9 @@ class LightApiController
         // "Also by e-mail" on a new issue: the bells the save rings are the
         // rows past this mark, and their people get the mail.
         $mail = $this->wantsIssueMail($request, $table);
-        $bellMark = $mail ? intval(NotifyNavbar::withoutGlobalScopes()->max('id')) : 0;
+        // The mail and Teams of a new issue (ISS02863): the people of the bells, as each chose
+        $notices = $table->table_name === strval(array_get(PortalDefinition::config(), 'issue_table'));
+        $bellMark = $notices ? intval(NotifyNavbar::withoutGlobalScopes()->max('id')) : 0;
         try {
             $images = $this->persistRow($table, $row, $filtered);
         } catch (ValidationException $e) {
@@ -875,8 +901,8 @@ class LightApiController
 
         $row->refresh();
         $this->markWriterRead($table, $row);
-        if ($mail) {
-            $this->mailNewIssue($table, $row, $bellMark);
+        if ($notices) {
+            $this->mailNewIssue($table, $row, $bellMark, $mail);
         }
         $columns = $this->pickColumns($table, null);
         $out = $this->transformRowsWithLabels(collect([$row]), $columns)[0] ?? [];
@@ -921,7 +947,7 @@ class LightApiController
      *
      * @param mixed $row
      */
-    protected function mailNewIssue(CustomTable $table, $row, int $bellMark): void
+    protected function mailNewIssue(CustomTable $table, $row, int $bellMark, bool $mail = true): void
     {
         try {
             $def = PortalDefinition::config();
@@ -934,7 +960,7 @@ class LightApiController
             // The project by its code and the issue by its key, like the
             // other mails (PmPortalController::issueUrl(), ISS00440).
             $url = PortalDefinition::projectUrlById($row->parent_id) . '#issue-' . rawurlencode(PortalDefinition::issueAnchor($row));
-            PortalMail::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), '[' . $key . '] ' . $subject, $body, $url);
+            PortalTeams::afterResponse($table->table_name, $row, $bellMark, \Exment::getUserId(), 'new', $key, $subject, $description !== '' ? [mb_substr($description, 0, 500)] : [], $url, $mail);
         } catch (\Throwable $e) {
             Log::error('pm_portal mail for new issue ' . $row->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
         }
@@ -978,6 +1004,7 @@ class LightApiController
             && strval($row->updated_at) !== strval($since)) {
             return PortalDefinition::jsonError(409, 'stale', [
                 'updated_at' => (string) $row->updated_at,
+                'updated_at_shown' => PortalTime::format($row->updated_at, 'Y-m-d H:i:s'),
                 'updated_by' => $this->rowUpdaterLabel($row),
             ]);
         }
@@ -1026,6 +1053,8 @@ class LightApiController
             'ok' => true,
             'row' => $out,
             'updated_at' => $row->updated_at ? (string) $row->updated_at : null,
+            // The same moment as the user reads it (updated_at is the version).
+            'updated_at_shown' => PortalTime::format($row->updated_at, 'Y-m-d H:i:s') ?: null,
             'image_urls' => $images,
         ]);
     }
@@ -1034,6 +1063,16 @@ class LightApiController
     {
         $editors = [];
         $before = [];
+        // A date and time the user typed is in the user's time zone; the
+        // database keeps the time of the site. (A date alone, and a time
+        // alone, are kept as typed.)
+        if (PortalTime::differs()) {
+            foreach ($table->custom_columns_cache as $column) {
+                if ($column->column_type === ColumnType::DATETIME && isset($value[$column->column_name])) {
+                    $value[$column->column_name] = PortalTime::fromUser($value[$column->column_name]);
+                }
+            }
+        }
         foreach ($table->custom_columns_cache as $column) {
             if ($column->column_type !== ColumnType::EDITOR
                 || !isset($value[$column->column_name]) || !is_string($value[$column->column_name])
@@ -1222,7 +1261,7 @@ class LightApiController
         foreach ($ids as $rowId) {
             $row = $rows->get($rowId);
             if (!$row) { return $this->err(404, 'not_found', strval($rowId)); }
-            $canEdit = $row->enableEdit(true);
+            $canEdit = PortalDefinition::enableEdit($row, true);
             if ($canEdit !== true) { return $this->err(403, 'forbidden', $canEdit); }
         }
 
@@ -1284,7 +1323,7 @@ class LightApiController
                         'id' => intval($org->id),
                         'name' => (string) $org->getLabel(),
                         'role' => $orgRoles[intval($org->id)],
-                        'since' => optional($org->created_at)->format('Y/m/d'),
+                        'since' => $org->created_at ? PortalTime::format($org->created_at, 'Y/m/d') : null,
                         'named' => true,
                     ];
                 }
@@ -1324,7 +1363,7 @@ class LightApiController
                                 'id' => intval($link->parent_id),
                                 'name' => (string) $org->getLabel(),
                                 'role' => $role,
-                                'since' => optional($org->created_at)->format('Y/m/d'),
+                                'since' => $org->created_at ? PortalTime::format($org->created_at, 'Y/m/d') : null,
                             ];
                         }
                     }
@@ -2327,7 +2366,8 @@ class LightApiController
                 $params['exclude'] = $exclude;
             }
             if (PortalRules::nestsOneLevel($table)) {
-                $params['empty'] = $columnName;
+                // the issues with room for this one under them (levels, no loop)
+                $params['levels'] = $columnName;
             }
         }
 
@@ -2505,6 +2545,10 @@ class LightApiController
         foreach ($columns as $name => $c) {
             $v = $value[$name] ?? null;
             $out[$name] = $c && $c->column_type === ColumnType::EDITOR && isset($v) ? Editor::replaceImgUrl($v) : $v;
+            // A date and time, as the user reads it (see persistRow).
+            if ($c && $c->column_type === ColumnType::DATETIME && isset($v)) {
+                $out[$name] = PortalTime::toUser($v);
+            }
         }
         return $out;
     }

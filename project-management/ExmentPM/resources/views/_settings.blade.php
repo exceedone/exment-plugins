@@ -12,6 +12,7 @@
     $setLang = [
         'set' => PortalDefinition::trans('set'),
         'git' => PortalDefinition::trans('git_repo'),
+        'fs' => PortalDefinition::trans('fileserver'),
         'ai' => PortalDefinition::trans('ai'),
         'required' => PortalDefinition::trans('ned_required'),
         'none' => PortalDefinition::trans('ned_none'),
@@ -90,6 +91,8 @@
         'git_keys_url' => $payload['urls']['git_keys'],
         'git_key_remove_url' => $payload['urls']['git_key_remove'],
         'git_token_url' => $payload['urls']['git_token'],
+        'file_workspace_url' => $payload['urls']['file_workspace'] ?? null,
+        'fileserver' => $payload['fileserver'] ?? ['on' => false],
         'delete_url' => $payload['urls']['delete_project'],
         'dashboard_url' => $payload['urls']['dashboard'],
         'map' => $payload['settings_map'] ?? [],
@@ -149,6 +152,10 @@
     }
     if (in_array('use_git', (array) array_get($setData, 'map.features', []), true)) {
         $setSections[] = ['git', $st('tab_git'), 'fa-code-fork'];
+    }
+    // The workspace of the Files tab, while the feature is on (ISS02825).
+    if (boolval(array_get($setData, 'fileserver.on'))) {
+        $setSections[] = ['fileserver', $st('tab_fileserver'), 'fa-folder-open'];
     }
     if ($setData['can_delete']) {
         $setSections[] = ['danger', $st('tab_danger'), 'fa-trash-o'];
@@ -1733,9 +1740,106 @@
                 .catch(function () { say(L.list_order_fail, 'err'); });
         }
 
+        // ---- the workspace of the Files tab (ISS02825) ------------------
+        // One workspace of Exment's file server per project. Made here (when
+        // the site lets this user make workspaces) or picked among the ones
+        // they manage. Its top permissions follow the project's people.
+        var FS = S.fileserver || {};
+        function paneFiles() {
+            var frag = document.createDocumentFragment();
+            var F = LANG.fs || {};
+            var err = el('div', 'err');
+            err.hidden = true;
+            var post = function (body, btn) {
+                err.hidden = true;
+                if (btn) { btn.disabled = true; }
+                fetch(S.file_workspace_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(body)
+                }).then(readJson).then(function (res) {
+                    var j = res.body || {};
+                    if (res.status === 200 && j.ok) {
+                        FS = j.fileserver || FS;
+                        renderPane('fileserver');
+                        say(F.saved || '', 'ok');
+                        return;
+                    }
+                    err.textContent = errText(res.status, res.body, L.save_fail);
+                    err.hidden = false;
+                    if (btn) { btn.disabled = false; }
+                }).catch(function () {
+                    err.textContent = errText(0, null, L.save_fail);
+                    err.hidden = false;
+                    if (btn) { btn.disabled = false; }
+                });
+            };
+            frag.appendChild(el('div', 'pp-set-note', F.note || ''));
+            var ws = FS.workspace;
+            if (ws) {
+                var row = el('div', 'pp-set-f');
+                row.appendChild(el('label', 'pp-set-lab', F.linked || ''));
+                var a = el('a', null, ws.name);
+                a.href = ws.url;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                row.appendChild(a);
+                frag.appendChild(row);
+                frag.appendChild(el('div', 'help', F.perm_note || ''));
+                var sync = el('button', 'pp-set-btn', F.sync || '');
+                sync.type = 'button';
+                sync.addEventListener('click', function () { post({ action: 'sync' }, sync); });
+                var unlink = el('button', 'pp-set-btn', F.unlink || '');
+                unlink.type = 'button';
+                unlink.style.marginLeft = '8px';
+                unlink.addEventListener('click', function () {
+                    if (window.confirm(F.unlink_confirm || '')) { post({ action: 'unlink' }, unlink); }
+                });
+                frag.appendChild(sync);
+                frag.appendChild(unlink);
+                frag.appendChild(err);
+                return frag;
+            }
+            if (FS.can_create) {
+                var make = el('button', 'pp-set-btn main', F.create || '');
+                make.type = 'button';
+                make.addEventListener('click', function () { post({ action: 'create' }, make); });
+                var mk = el('div', 'pp-set-f');
+                mk.appendChild(make);
+                mk.appendChild(el('div', 'help', F.create_help || ''));
+                frag.appendChild(mk);
+            } else {
+                frag.appendChild(el('div', 'pp-set-warn', F.cannot_create || ''));
+            }
+            var list = FS.pickable || [];
+            var pk = el('div', 'pp-set-f');
+            pk.appendChild(el('label', 'pp-set-lab', F.pick_label || ''));
+            if (!list.length) {
+                pk.appendChild(el('div', 'help', F.pick_none || ''));
+            } else {
+                var sel = el('select', 'pp-set-in');
+                list.forEach(function (w) {
+                    var o = document.createElement('option');
+                    o.value = String(w.id);
+                    o.textContent = w.name;
+                    sel.appendChild(o);
+                });
+                pk.appendChild(sel);
+                var use = el('button', 'pp-set-btn', F.pick || '');
+                use.type = 'button';
+                use.style.marginTop = '6px';
+                use.addEventListener('click', function () { post({ action: 'pick', workspace_id: sel.value }, use); });
+                pk.appendChild(use);
+            }
+            frag.appendChild(pk);
+            frag.appendChild(err);
+            return frag;
+        }
+
         var PANES = {
             basic: paneBasic, people: panePeople, features: paneFeatures,
-            other: paneOther, git: paneGit, ai: paneAi, danger: paneDanger,
+            other: paneOther, git: paneGit, ai: paneAi, danger: paneDanger, fileserver: paneFiles,
             statuses: function () { return paneList('statuses'); },
             types: function () { return paneList('types'); },
             categories: function () { return paneList('categories'); },
@@ -1757,7 +1861,7 @@
             // The save bar belongs to the panes that edit project columns.
             // Git and delete carry their own buttons, and a master list
             // saves each row the moment it is changed.
-            foot.hidden = ['git', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
+            foot.hidden = ['git', 'fileserver', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
             nav.querySelectorAll('a').forEach(function (a) {
                 a.classList.toggle('on', a.getAttribute('data-sec') === name);
             });

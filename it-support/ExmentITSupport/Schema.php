@@ -35,8 +35,9 @@ class Schema
      * the menu gets the desk itself (受付箱) as its first entry.
      * 3: the menu is one entry, ITサポート, that opens the desk; the tables are
      * reached from the desk (see arrangeMenu()).
+     * 4: the senders of alerts (its_intake_sources, ISS02928).
      */
-    const VERSION = 3;
+    const VERSION = 4;
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -295,7 +296,7 @@ class Schema
 
             // The plugin's own tables. Exment runs database/migrations when
             // the zip is uploaded; this covers a copy put in place by hand.
-            if (!hasTable('its_tokens') && ($plugin = Its::plugin()) !== null) {
+            if ((!hasTable('its_tokens') || !hasTable('its_intake_sources')) && ($plugin = Its::plugin()) !== null) {
                 \Exceedone\Exment\Services\Plugin\PluginInstaller::migrationInstall($plugin);
                 $steps[] = 'プラグインのテーブルを作りました。';
             }
@@ -329,6 +330,11 @@ class Schema
             $settings = [];
             if (Its::setting('intake_key') === '') {
                 $settings['intake_key'] = bin2hex(random_bytes(24));
+            }
+            if ($fresh) {
+                // A new site takes alerts only with a sender's own key (ISS02928);
+                // the shared key stays for /support/intake/mail.
+                $settings['alert_shared_key'] = '0';
             }
             if (Its::setting('holidays') === '') {
                 $settings['holidays'] = implode("\n", static::japaneseHolidays());

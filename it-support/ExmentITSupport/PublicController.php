@@ -2,6 +2,8 @@
 
 namespace App\Plugins\ExmentITSupport;
 
+use App\Plugins\ExmentITSupport\Alerts\Adapters;
+use App\Plugins\ExmentITSupport\Alerts\Rules;
 use Exceedone\Exment\Model\CustomValue;
 use Exceedone\Exment\Model\File as ExmentFile;
 use Illuminate\Http\Request;
@@ -566,6 +568,11 @@ class PublicController extends Controller
 
     /**
      * POST /support/intake/alert  (JSON)
+     *
+     * With a sender's key (ISS02928): the body is read as that sender's tool
+     * sends it (Zabbix, Mackerel, Alertmanager, Azure Monitor or the generic
+     * fields), the sender may require a signature and its addresses, and a
+     * recovery may resolve the ticket. With the old shared key, as before:
      * {"title": "...", "source": "web01.example.co.jp", "severity": "error",
      *  "detail": "...", "fingerprint": "optional", "customer": "code"}
      */
@@ -577,20 +584,73 @@ class PublicController extends Controller
         if (!Its::isInstalled()) {
             return response()->json(['error' => 'not_installed'], 503);
         }
-        if (!$this->keyOk($request)) {
+        // Guessing keys is slowed before any key is looked at.
+        if (Tokens::blocked('intake_ng', 30)) {
+            return response()->json(['error' => 'too_many_requests'], 429);
+        }
+
+        $source = IntakeSources::byKey(IntakeSources::keyOf($request));
+        if (isset($source)) {
+            if (!boolval($source->enabled)) {
+                return response()->json(['error' => 'source_disabled'], 403);
+            }
+            if (!Rules::ipAllowed(strval($source->allowed_ips ?? ''), strval($request->ip()))) {
+                Tokens::allow('intake_ng', 30);
+
+                return response()->json(['error' => 'address_not_allowed'], 403);
+            }
+            if (boolval($source->require_signature) && !Rules::verify(
+                IntakeSources::secretOf($source),
+                strval($request->header('X-ITS-Timestamp', '')),
+                $request->getContent(),
+                strval($request->header('X-ITS-Signature', '')),
+                time()
+            )) {
+                Tokens::allow('intake_ng', 30);
+
+                return response()->json(['error' => 'bad_signature'], 401);
+            }
+            $options = IntakeSources::options($source);
+            $limitKey = 'intake_s' . intval($source->id);
+        } elseif (Its::setting('alert_shared_key', '1') === '1' && $this->keyOk($request)) {
+            $options = IntakeSources::legacy();
+            $limitKey = 'intake';
+        } else {
             Tokens::allow('intake_ng', 30);
 
             return response()->json(['error' => 'unauthorized'], 401);
         }
-        if (!Tokens::allow('intake', 120)) {
+
+        if (!Tokens::allow($limitKey, 120)) {
             return response()->json(['error' => 'too_many_requests'], 429);
         }
+        if (strlen($request->getContent()) > 1024 * 1024) {
+            return response()->json(['error' => 'too_large'], 413);
+        }
         $data = $request->json()->all() ?: $request->all();
-        if (empty($data['title']) && empty($data['message'])) {
-            return response()->json(['error' => 'title is required'], 422);
+        if (!is_array($data)) {
+            $data = [];
         }
 
-        return response()->json(Inbox::receiveAlert($data));
+        if ($options['legacy']) {
+            if (empty($data['title']) && empty($data['message'])) {
+                return response()->json(['error' => 'title is required'], 422);
+            }
+
+            return response()->json(Inbox::receiveAlert($data));
+        }
+
+        $events = Adapters::read($options['kind'], $data);
+        IntakeSources::touch($source);
+        if (empty($events)) {
+            // a tool's test message, or a body that is not an alert: taken, nothing made
+            return response()->json(['results' => [], 'message' => 'no alert in the body']);
+        }
+        $results = array_map(function ($event) use ($options) {
+            return Inbox::receiveAlertEvent($event, $options);
+        }, $events);
+
+        return response()->json(count($results) === 1 ? $results[0] : ['results' => $results]);
     }
 
     /**

@@ -20,6 +20,8 @@
         @endif
     </nav>
     <div class="its-right">
+        {{-- the manual of the plugin, in the language of the user (ISS02882) --}}
+        <a class="its-btn" href="{{ \App\Plugins\ExmentITSupport\ManualLink::url() }}" target="_blank" rel="noopener" title="{{ \App\Plugins\ExmentITSupport\ManualLink::label() }}" aria-label="{{ \App\Plugins\ExmentITSupport\ManualLink::label() }}"><i class="fa fa-question-circle" aria-hidden="true"></i><span class="tx">{{ \App\Plugins\ExmentITSupport\ManualLink::label() }}</span></a>
         <span class="its-status" title="最後の確認: {{ $st['imap_checked_at'] ?? '—' }}">
             <span class="its-dot {{ !empty($st['imap_error']) ? 'err' : ($imapOn ? 'on' : '') }}" aria-hidden="true"></span>メール受信 {{ !empty($st['imap_error']) ? 'エラー' : ($imapOn ? 'オン' : 'オフ') }}
         </span>

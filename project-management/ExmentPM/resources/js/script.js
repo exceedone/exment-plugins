@@ -24,11 +24,15 @@ window.PmPortalBoot = function () {
     var D = JSON.parse(document.getElementById('pmportal-data').textContent);
     // The page sends its list rows packed (PmPortalController::packRows):
     // put back what was left out before anything reads them, so every row
-    // looks exactly like one from the API.
-    (function unpackRows(pk) {
+    // looks exactly like one from the API. The payload a refresh fetches is
+    // packed the same way (adoptPayload), so it goes through here as well.
+    function unpackRows(data) {
+        // When this data arrived: the clock of nowHM counts on from here.
+        if (data) { data._at = Date.now(); }
+        var pk = data && data.row_pack;
         if (!pk) { return; }
         var defs = pk.defaults || {};
-        (D.issues || []).forEach(function (r) {
+        (data.issues || []).forEach(function (r) {
             Object.keys(defs).forEach(function (k) {
                 if (!(k in r)) { r[k] = Array.isArray(defs[k]) ? [] : defs[k]; }
             });
@@ -37,7 +41,8 @@ window.PmPortalBoot = function () {
             if (!('key' in r)) { r.key = pk.key + '-' + r.id; }
             if (!('up' in r)) { r.up = r.ua ? String(r.ua).slice(0, 16).replace(/-/g, '/') : ''; }
         });
-    })(D.row_pack);
+    }
+    unpackRows(D);
     var L =JSON.parse(document.getElementById('pmportal-lang').textContent);
     var CSRF = $('meta[name="csrf-token"]').attr('content');
 
@@ -379,10 +384,18 @@ window.PmPortalBoot = function () {
     }
     // The due date with its time (schema 22), e.g. 11/20 15:00.
     function dueText(iss) { return d2(iss.dd) + (iss.dt ? ' ' + iss.dt : ''); }
-    // The clock now, HH:MM, on this computer.
+    // The clock now, HH:MM. On this computer - unless the user reads the
+    // portal in a time zone that is not the site's: then it is the user's
+    // clock, counted on from the time the server stamped into the data
+    // (D.now), since the computer may be set to yet another zone. It stops
+    // at the end of the day D.today names.
     function nowHM() {
         var n = new Date();
-        return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2);
+        var m = D.tz_differs ? /^(\d{1,2}):(\d{2})$/.exec(String(D.now || '')) : null;
+        if (!m) { return ('0' + n.getHours()).slice(-2) + ':' + ('0' + n.getMinutes()).slice(-2); }
+        var mins = Number(m[1]) * 60 + Number(m[2]) + Math.floor((Date.now() - (D._at || Date.now())) / 60000);
+        mins = Math.min(Math.max(mins, 0), 1439);
+        return ('0' + Math.floor(mins / 60)).slice(-2) + ':' + ('0' + (mins % 60)).slice(-2);
     }
     // Past due: a day before today, or today with a time that has gone by.
     // An issue without a time is due at the end of its day, as before.
@@ -412,6 +425,65 @@ window.PmPortalBoot = function () {
         if (!isFinite(n)) { return '—'; }
         return '<span class="bl-pbar" style="display:inline-block;width:70px;vertical-align:middle;"><i style="width:' + Math.max(0, Math.min(100, n)) + '%"></i></span>' +
             ' <small style="color:var(--bl-sub);">' + n + '%</small>';
+    }
+    // The progress of what hangs under each issue (issues nest up to five
+    // levels): the average of its descendant leaves, a leaf of a done status
+    // counting 100 and one without a progress 0. Shown beside the issue's own
+    // progress, never written back. id => {pg, n} for the issues with children.
+    function rollupMap() {
+        var has = Object.prototype.hasOwnProperty;
+        var list = D.issues || [], byId = {}, kids = {}, out = {};
+        list.forEach(function (i) { byId['i' + i.id] = i; });
+        list.forEach(function (i) {
+            var p = (i.parent === null || i.parent === undefined) ? '' : String(i.parent);
+            if (p !== '' && p !== String(i.id) && has.call(byId, 'i' + p)) { (kids['i' + p] = kids['i' + p] || []).push(i); }
+        });
+        var leafPg = function (i) {
+            if (isDone(i.st)) { return 100; }
+            var n = Number(i.pg);
+            return isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+        };
+        // sum and count of the leaves under each issue, walked once; a loop in old data stops
+        var memo = {}, busy = {};
+        var leaves = function (i) {
+            var k = 'i' + i.id;
+            if (has.call(memo, k)) { return memo[k]; }
+            if (has.call(busy, k)) { return { s: 0, n: 0 }; }
+            busy[k] = true;
+            var r = { s: 0, n: 0 };
+            if (!has.call(kids, k)) { r = { s: leafPg(i), n: 1 }; }
+            else { kids[k].forEach(function (c) { var x = leaves(c); r.s += x.s; r.n += x.n; }); }
+            delete busy[k];
+            memo[k] = r;
+            return r;
+        };
+        Object.keys(kids).forEach(function (k) {
+            var r = leaves(byId[k]);
+            if (r.n > 0) { out[k] = { pg: Math.round(r.s / r.n), n: r.n }; }
+        });
+        return out;
+    }
+    // The level of an issue: 1 without a parent. A loop of old data stops.
+    function issueLevel(i) {
+        var level = 1, seen = {}, at = i;
+        while (at && at.parent && !seen['i' + at.id]) {
+            seen['i' + at.id] = true;
+            at = issueById(at.parent);
+            if (!at) { break; }
+            level++;
+        }
+        return level;
+    }
+    // Whether a child may be added under an issue (the server checks again).
+    function childRoom(i) {
+        var max = Number(D.issue_levels) || 5;
+        return issueLevel(i) < max;
+    }
+    function rollupBadge(ru, id) {
+        var r = ru && ru['i' + id];
+        if (!r) { return ''; }
+        return '<div class="pp-rollup" title="' + esc(fmt(L.rollup_tip || '', r.n)) + '"><small style="color:var(--bl-sub);">' +
+            esc(L.rollup || '') + ' ' + r.pg + '%</small></div>';
     }
     function starBtn(type, targetType, targetId, count, on, extraCls) {
         return '<span class="bl-star pp-star' + (on ? ' on' : '') + (extraCls ? ' ' + extraCls : '') +
@@ -1408,6 +1480,7 @@ window.PmPortalBoot = function () {
         if (TREE_ON) { page.forEach(function (e) { onPage['i' + e.i.id] = true; }); }
 
         var rows = '', shown = 0;
+        var ru = rollupMap();
         page.forEach(function (item) {
             shown++;
             var i = TREE_ON ? item.i : item;
@@ -1427,11 +1500,11 @@ window.PmPortalBoot = function () {
                     : '';
                 // one slot at the indent (snoro 2026-11-18): a parent shows its
                 // ▼/▶ (with the child count) there, a leaf child shows "└"
-                ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;">' +
+                ind = '<span class="pp-tind" style="padding-left:' + (Math.min(item.depth, 10) * 16) + 'px;" data-depth="' + item.depth + '">' +
                     (tgl || (item.depth > 0 ? '<span class="pp-tbr">└</span>' : '')) + '</span>';
             }
             var trCls = (own(SEL, i.id) ? 'sel' : '') + (i.unread ? ' pp-unread' : '') +
-                (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 3) : '') +
+                (TREE_ON && item.depth > 0 ? ' pp-tkid pp-td' + Math.min(item.depth, 4) : '') +
                 (TREE_ON && item.n > 0 ? ' pp-tpar' : '');
             var ms = own(D.milestones, i.ms);
             rows += '<tr data-issue="' + esc(i.id) + '"' + (trCls.trim() ? ' class="' + trCls.trim() + '"' : '') + '>' +
@@ -1452,7 +1525,7 @@ window.PmPortalBoot = function () {
                 '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + '</td>' +
                 '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + '</td>' +
                 '<td' + edAttr('dd') + '>' + dueCell(i) + '</td>' +
-                '<td>' + pbar(i.pg) + '</td>' +
+                '<td>' + pbar(i.pg) + rollupBadge(ru, i.id) + '</td>' +
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });
         document.getElementById('pp-issue-rows').innerHTML = rows;
@@ -1946,7 +2019,18 @@ window.PmPortalBoot = function () {
                 if (!alive()) { return; }
                 if (!res || !res.ok || !res.payload) { toast(errText(null, res, L.rf_fail), true); return; }
                 if (!safeToRefresh()) { markStale(true); return; }
-                adoptPayload(res.payload, seq);
+                // A redraw that stops half way leaves the screens drawn from
+                // two different payloads, and - thrown out of here - this
+                // refresh marked busy for good, so nothing is ever fetched
+                // again. It is reported as not done instead: the caller falls
+                // back to loading the page, and the next change is still seen.
+                try {
+                    adoptPayload(res.payload, seq);
+                } catch (e) {
+                    if (window.console && console.error) { console.error(e); }
+                    markStale(true);
+                    return;
+                }
                 ok = true;
                 if (!quiet) { toast(L.rf_done); }
             })
@@ -1972,6 +2056,12 @@ window.PmPortalBoot = function () {
     // outside the payload, which is the point of doing it this way rather
     // than reloading the page.
     function adoptPayload(next, seq) {
+        // Packed like the rows the page came with: a row left as it was sent
+        // has no assignees, no key and no links, and the first screen that
+        // reads one stops the whole redraw.
+        unpackRows(next);
+        // an issue just opened (or marked by hand) stays as the reader left it
+        applyLocalReads(next);
         D = next;
         // The new payload has no archived rows again; bring them back if they
         // were on show.
@@ -2332,7 +2422,7 @@ window.PmPortalBoot = function () {
             // delete button is not a neighbour of the edit button.
             // With no children yet the 子課題 box stays away; its one button
             // waits up here instead of costing a box of its own.
-            (res.editable && CAN_ADD_ISSUE && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
+            (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
@@ -2388,7 +2478,7 @@ window.PmPortalBoot = function () {
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
             [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
             [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
-            [L.lbl_pg, pbar(i.pg)],
+            [L.lbl_pg, pbar(i.pg) + rollupBadge(rollupMap(), i.id)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_source, sourceHtml(res.source)],
             [L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : ''],
@@ -2403,7 +2493,7 @@ window.PmPortalBoot = function () {
             if (shown.indexOf(p[0]) >= 0) { return false; }
             var v = String(p[1] === null || p[1] === undefined ? '' : p[1]);
             if (p[0] === L.lbl_eh) { return i.eh !== null && i.eh !== undefined && i.eh !== '' || i.ah !== null && i.ah !== undefined && i.ah !== ''; }
-            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0; }
+            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0 || p[1].indexOf('pp-rollup') >= 0; }
             return v !== '' && v !== '—' && v !== esc('—');
         });
         document.getElementById('pp-d-props').innerHTML = setProps.map(function (p) {
@@ -2418,7 +2508,7 @@ window.PmPortalBoot = function () {
 
         var kids = (D.issues || []).filter(function (x) { return String(x.parent) === String(i.id); });
         // A child is a new issue: editing this one is not enough on its own.
-        var canAddChild = res.editable && CAN_ADD_ISSUE;
+        var canAddChild = res.editable && CAN_ADD_ISSUE && childRoom(i);
         // No children, no box: the add button moved up to the issue's head.
         document.getElementById('pp-d-childbox').style.display = kids.length ? '' : 'none';
         document.getElementById('pp-d-children').innerHTML = kids.map(function (k) {
@@ -4176,7 +4266,61 @@ window.PmPortalBoot = function () {
         officeViewOpen(a.getAttribute('href'), a.getAttribute('data-name') || '');
     });
 
+    // ---- the workspace of the file server (ISS02825) ------------------------
+    // The Files tab shows the project's workspace of Exment's file server, its
+    // own pages in a frame with the admin chrome hidden (chromeCss, as the
+    // form modal does): folders, upload, share, versions, search, Office. The
+    // attachments of the issues, the wiki and the project stay listed below.
+    var FS_FRAME = null;
+    function renderFileServer() {
+        var fs = D.fileserver || {};
+        var box = document.getElementById('pp-fs');
+        var title = document.getElementById('pp-files-title');
+        if (!box) { return; }
+        var ws = fs.on ? fs.workspace : null;
+        if (!fs.on) { box.hidden = true; if (title) { title.textContent = L.tab_files; } return; }
+        box.hidden = false;
+        if (title) { title.textContent = L.fs_attachments || L.tab_files; }
+        var body = document.getElementById('pp-fs-body');
+        var name = document.getElementById('pp-fs-name');
+        var open = document.getElementById('pp-fs-open');
+        if (!ws || !ws.can_open) {
+            FS_FRAME = null;
+            name.textContent = L.fs_title || '';
+            open.hidden = true;
+            body.innerHTML = '<div style="padding:14px;color:var(--bl-sub);">' +
+                esc(ws ? (L.fs_no_access || '') : ((D.can && D.can.manage) ? (L.fs_none_manager || '') : (L.fs_none || ''))) + '</div>';
+            return;
+        }
+        name.textContent = ws.name;
+        open.hidden = false;
+        open.href = ws.url;
+        open.textContent = L.fs_open || '';
+        if (FS_FRAME && FS_FRAME.getAttribute('data-ws') === String(ws.id)) { return; }
+        body.innerHTML = '';
+        var frame = document.createElement('iframe');
+        frame.className = 'pp-fs-frame';
+        frame.setAttribute('data-ws', String(ws.id));
+        frame.setAttribute('title', ws.name);
+        frame.style.cssText = 'display:block;width:100%;height:calc(100vh - 260px);min-height:480px;border:0;';
+        frame.addEventListener('load', function () {
+            // the same address as the page (same origin): the chrome goes
+            try {
+                var doc = frame.contentDocument;
+                if (doc && doc.head && !doc.getElementById('pp-fs-chrome')) {
+                    var st = doc.createElement('style');
+                    st.id = 'pp-fs-chrome';
+                    st.textContent = chromeCss();
+                    doc.head.appendChild(st);
+                }
+            } catch (e) { /* another address: shown as it is */ }
+        });
+        frame.src = ws.url;
+        body.appendChild(frame);
+        FS_FRAME = frame;
+    }
     function renderFiles() {
+        renderFileServer();
         var files = D.files || {};
         var rows = (files.rows || []).map(function (f) {
             return '<tr><td><a class="bl-file" style="margin-top:0;" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + '</td>' +
@@ -4224,6 +4368,25 @@ window.PmPortalBoot = function () {
     // the request queue, and only once per page view: the screen never waits
     // on it and a busy reader's real requests go first.
     var READ_SENT = {};
+    // What this reader just marked, for a while: the mark goes to the server
+    // in the slow lane, so a refresh of the list fetched before it got there
+    // still says "unread" and would put the bold row back until the next
+    // reload. id => { read, at }.
+    var READ_LOCAL = {};
+    var READ_LOCAL_MS = 60000;
+    function readLocal(id, read) {
+        READ_LOCAL[String(id)] = { read: !!read, at: Date.now() };
+    }
+    // A payload about to be shown: the reader's own marks of the last minute win.
+    function applyLocalReads(data, now) {
+        now = now || Date.now();
+        (data && data.issues || []).forEach(function (i) {
+            var mark = Object.prototype.hasOwnProperty.call(READ_LOCAL, String(i.id)) ? READ_LOCAL[String(i.id)] : null;
+            if (!mark) { return; }
+            if (now - mark.at > READ_LOCAL_MS) { delete READ_LOCAL[String(i.id)]; return; }
+            i.unread = !mark.read;
+        });
+    }
     function readAv(r) {
         var u = user(r.by);
         var title = u.n + '  ' + (r.at || '') + (r.old ? '  (' + L.reads_old + ')' : '');
@@ -4256,6 +4419,7 @@ window.PmPortalBoot = function () {
             (D.issues || []).forEach(function (i) {
                 if (i.unread) { i.unread = false; paintUnread(i.id); }
                 READ_SENT[String(i.id)] = true;
+                readLocal(i.id, true);
             });
             toast(String(L.read_all_done).replace(':count', res.count));
         }, function (xhr) { toast(xhrErr(xhr, L.read_all_fail), true); });
@@ -4266,6 +4430,7 @@ window.PmPortalBoot = function () {
         var key = String(id);
         if (read && READ_SENT[key] === true && !(row && row.unread)) { return; }
         READ_SENT[key] = read;
+        readLocal(key, read);
         if (row) { row.unread = !read; }
         paintUnread(id);
         ppQueue(function () {
@@ -4618,6 +4783,37 @@ window.PmPortalBoot = function () {
         });
 
         return ua;
+    }
+    // The same for a save made in the form, which can move any column: the
+    // row the list holds takes the saved values straight from the answer, so
+    // the list is right the moment the form is left - without waiting for the
+    // project to be read again, and also when it never is (the form was left
+    // before its save came back). No request: the answer already has the row.
+    var FORM_COLS = { subject: 'subject', ty: 'type', st: 'status' };
+    function formAdopt(issueId, answer) {
+        var row = (answer && answer.row && typeof answer.row === 'object') ? answer.row : null;
+        var issue = issueById(issueId);
+        if (!row || !issue) { return; }
+        qeAdopt(issueId, {}, answer);
+        Object.keys(FORM_COLS).forEach(function (key) {
+            var col = qeCol(FORM_COLS[key]);
+            if (col && Object.prototype.hasOwnProperty.call(row, col)) { issue[key] = qeRowValue(key, row[col]); }
+        });
+        if (Object.prototype.hasOwnProperty.call(row, 'subject_sub')) { issue.sub = qeRowValue('sub', row.subject_sub); }
+        var parentCol = qeCol('parent');
+        if (parentCol && Object.prototype.hasOwnProperty.call(row, parentCol)) {
+            issue.parent = parseInt(row[parentCol], 10) || null;
+        }
+        // The shown time: what the server formatted for this user, or - on
+        // a server that does not say - the stored time cut short, which is
+        // right only while the user reads the time zone of the site.
+        var shown = (answer && answer.updated_at_shown) || (D.tz_differs ? '' : issue.ua);
+        if (shown) { issue.up = String(shown).slice(0, 16).replace(/-/g, '/'); }
+        // The list is already on screen (the form was left while the save was
+        // on its way): draw it again, unless a cell of it is being edited.
+        if (currentScreen === 'issues' && safeToRefresh() && !document.querySelector('#pp-issue-rows .pp-ed-in')) {
+            renderIssues();
+        }
     }
     // A stored value in the shape the list rows carry it (buildIssueRow).
     function qeRowValue(key, v) {
@@ -5862,7 +6058,7 @@ window.PmPortalBoot = function () {
         a.hidden = false;
         a.innerHTML = '';
         var who = info && info.updated_by ? String(info.updated_by) : '';
-        var when = info && info.updated_at ? nedFormatMetaDate(info.updated_at) : '';
+        var when = info && info.updated_at ? nedFormatMetaDate(info.updated_at_shown || info.updated_at) : '';
         var msg = document.createElement('span');
         msg.textContent = String(nedGetLangKey(who ? 'ned_stale_by' : 'ned_stale'))
             .replace(':name', who).replace(':at', when);
@@ -7090,8 +7286,10 @@ window.PmPortalBoot = function () {
         // English "by" between them.
         var cLabel = nedGetLangKey('ned_meta_created');
         var uLabel = nedGetLangKey('ned_meta_updated');
-        var cDate = nedFormatMetaDate(row.created_at);
-        var uDate = nedFormatMetaDate(row.updated_at);
+        // The times as the server formatted them for this user (their time
+        // zone); created_at / updated_at themselves are the stored values.
+        var cDate = nedFormatMetaDate(row.created_at_shown || row.created_at);
+        var uDate = nedFormatMetaDate(row.updated_at_shown || row.updated_at);
         var cBy = row.created_by || '';
         var uBy = row.updated_by || '';
         var showC = !!cDate;
@@ -8842,7 +9040,11 @@ window.PmPortalBoot = function () {
     function nedPrewarmCreateForm(tbl) {
         // Fire-and-forget so the first click on 課題の追加 renders instantly.
         if (!NED.el) { return; }
-        nedFetchCreateForm(tbl || D.issue_table, true).catch(function () { });
+        tbl = tbl || D.issue_table;
+        // A user who may not add an issue (a viewer, an archived project)
+        // would only be refused (403): nothing to warm.
+        if (tbl === D.issue_table && D.can && D.can.issue_create === false) { return; }
+        nedFetchCreateForm(tbl, true).catch(function () { });
     }
 
     // The create form has an address, so a click goes through it rather than
@@ -9177,6 +9379,7 @@ window.PmPortalBoot = function () {
                     delete DET[rowId];
                     delete NED.editFormCache[table + '::' + rowId];
                 }
+                if (!isCreate && rowId && table === D.issue_table) { formAdopt(rowId, res.body); }
                 nedAiFeedback(isCreate ? newId : rowId, aiState, submittedValues, feedbackUrl);
                 if (!nedCurrent(epoch)) {
                     nedDraftClear(draftKey, draftOwner, submitted);
@@ -9195,6 +9398,7 @@ window.PmPortalBoot = function () {
                 if (NED._payload && NED._payload.row) {
                     NED._payload.row.value = NED.values;
                     NED._payload.row.updated_at = NED.rowUpdatedAt;
+                    if (res.body.updated_at_shown) { NED._payload.row.updated_at_shown = res.body.updated_at_shown; }
                 }
                 Object.keys(res.body.image_urls || {}).forEach(function (name) {
                     submittedValues[name] = nedResolveImageUrls(submittedValues[name], res.body.image_urls[name]);

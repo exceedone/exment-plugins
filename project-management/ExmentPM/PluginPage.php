@@ -35,6 +35,10 @@ class PluginPage extends PluginPageBase
         parent::__construct($plugin);
 
         PluginEvent::registerGuards();
+        // the Files tab with the file server: a feature of Feature management (ISS02825)
+        PortalFiles::registerFeature();
+        // Exment's "?" of the header opens the manual of the plugin (ISS02882)
+        ManualLink::register($plugin);
         // before 初期セットアップ: the entry in the left menu that leads to it (7.2.1)
         try {
             PortalSetup::ensurePreSetupMenu();
@@ -309,6 +313,16 @@ class PluginPage extends PluginPageBase
     public function postGitToken($id)
     {
         return $this->portal()->postGitToken(request(), $id);
+    }
+
+    public function fileWorkspace($id)
+    {
+        return $this->portal()->fileWorkspace(request(), $id);
+    }
+
+    public function postFileWorkspace($id)
+    {
+        return $this->portal()->postFileWorkspace(request(), $id);
     }
 
     public function aiSuggest($id)

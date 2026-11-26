@@ -209,6 +209,8 @@
 .pmportal .bl-list tr.pp-tkid td{background:color-mix(in srgb, var(--bl-accent) 5%, var(--bl-box));}
 .pmportal .bl-list tr.pp-tkid.pp-td2 td{background:color-mix(in srgb, var(--bl-accent) 9%, var(--bl-box));}
 .pmportal .bl-list tr.pp-tkid.pp-td3 td{background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));}
+.pmportal .bl-list tr.pp-tkid.pp-td4 td{background:color-mix(in srgb, var(--bl-accent) 17%, var(--bl-box));}
+.pmportal .pp-rollup{line-height:1.2;margin-top:2px;white-space:nowrap;}
 .pmportal .bl-list tr.pp-tkid td:first-child{box-shadow:inset 3px 0 0 color-mix(in srgb, var(--bl-accent) 55%, transparent);}
 .pmportal .bl-list tr.pp-tkid:hover td{background:var(--bl-hover,#f2f8f5);}
 .pmportal .bl-list tr.pp-tpar td.sub{font-weight:700;}

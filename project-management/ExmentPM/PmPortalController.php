@@ -681,6 +681,22 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * How the user gets the notices of the issues (ISS02863): bell only, by mail too, by Teams
+     * too, or both. Saved in the user's own settings.
+     */
+    public function postNotifyBy(Request $request)
+    {
+        $choice = $request->get('notify_by');
+        $choice = is_scalar($choice) ? strval($choice) : '';
+        if (!in_array($choice, PortalTeams::CHOICES, true) || (!PortalTeams::teamsAvailable() && in_array($choice, ['teams', 'both'], true))) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        \Exment::user()->setSettingValue(PortalTeams::USER_SETTING, $choice);
+
+        return response()->json(['ok' => true, 'notify_by' => $choice]);
+    }
+
+    /**
      * The user's saved form style. With nothing saved yet the first bundled
      * style applies.
      */
@@ -965,7 +981,7 @@ class PmPortalController extends AdminControllerBase
                 'description' => \Exceedone\Exment\ColumnItems\CustomColumns\Editor::replaceImgUrl(
                     strval(array_get($issue->value, array_get($this->def['issue'], 'description'), ''))
                 ),
-                'editable' => !$archived && $issue->enableEdit(true) === true,
+                'editable' => !$archived && PortalDefinition::enableEdit($issue, true) === true,
                 // Moving needs edit rights on the issue; the server lists the
                 // projects it may go to when the button is pressed.
                 'movable' => !$archived && PortalDefinition::enableEdit($issue, true) === true,
@@ -1069,7 +1085,7 @@ class PmPortalController extends AdminControllerBase
         }
         $status_meta = [];
         if ($changed) {
-            if ($issue->enableEdit(true) !== true) {
+            if (PortalDefinition::enableEdit($issue, true) !== true) {
                 return $this->messageError(403, 'no_permission');
             }
             list($status_meta) = $this->selectMeta($this->issue_table, $status_column, $issue->parent_id);
@@ -1193,19 +1209,21 @@ class PmPortalController extends AdminControllerBase
         // The writer has seen what they wrote: their read receipt moves on.
         Star::markRead($issue_name, $issue->id, \Exment::getUserId());
 
-        // "Also by e-mail": everyone who got a bell for this write, after the
+        // The mail and Teams (ISS02863): everyone who got a bell for this write, as each of them
+        // chose (or the default of the site); "also by e-mail" mails all of them. After the
         // answer has gone out.
-        if ($this->wantsMail($request)) {
-            PortalMail::afterResponse(
-                $issue_name,
-                $issue,
-                $bell_mark,
-                \Exment::getUserId(),
-                '[' . $this->issueKey($project, $issue->id) . '] ' . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
-                implode("\n", $lines),
-                $this->issueUrl($project, $issue)
-            );
-        }
+        PortalTeams::afterResponse(
+            $issue_name,
+            $issue,
+            $bell_mark,
+            \Exment::getUserId(),
+            'updated',
+            $this->issueKey($project, $issue->id),
+            strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
+            $lines,
+            $this->issueUrl($project, $issue),
+            $this->wantsMail($request)
+        );
 
         // Answer with the refreshed detail so the screen patches itself -
         // a reload would cost another framework boot for data we already have.
@@ -1884,7 +1902,7 @@ class PmPortalController extends AdminControllerBase
         if ($this->projectIsArchived($project)) {
             return $this->messageError(403, 'archived');
         }
-        if ($issue->enableEdit() !== true) {
+        if (PortalDefinition::enableEdit($issue) !== true) {
             return $this->messageError(403, 'no_permission');
         }
         if (!boolval($this->issue_table->getOption('attachment_flg') ?? true)) {
@@ -2439,7 +2457,7 @@ class PmPortalController extends AdminControllerBase
         $denied = 0;
         $failed = [];
         foreach ($issues as $issue) {
-            if ($issue->enableEdit(true) !== true) {
+            if (PortalDefinition::enableEdit($issue, true) !== true) {
                 $denied++;
                 continue;
             }
@@ -2819,16 +2837,27 @@ class PmPortalController extends AdminControllerBase
             // The settings tab's server-known bits; withheld from people the
             // tab is hidden from anyway.
             'git' => $can['manage'] ? $this->gitState($project) : null,
+            // the Files tab with the file server (ISS02825): off unless the feature is on
+            'fileserver' => $features['file'] ? PortalFiles::state($project, $can['manage']) : ['on' => false],
             // Whether the issue form shows the AI button, and the numbers it
             // labels the answers with. Never the key.
             'ai' => $this->aiPayload($project),
             'settings_map' => $can['manage'] ? $this->projectSettingsMap() : null,
             'me' => intval($me),
-            'today' => \Carbon\Carbon::today()->format('Y-m-d'),
+            // The user's today and clock: what a due date is late against,
+            // and what "as of" says, are the days and hours the user lives in.
+            'today' => PortalTime::today(),
             // When this payload was built, which is what "as of" means. Taken
             // here rather than from the browser so it matches every other time
             // on the screen.
-            'now' => \Carbon\Carbon::now()->format('H:i'),
+            'now' => PortalTime::now()->format('H:i'),
+            // The shown times differ from the stored ones (the user's time
+            // zone is not the site's): the script then shows what the server
+            // formatted, and never rebuilds a shown time from a stored one.
+            'tz_differs' => PortalTime::differs(),
+            // How many levels issues nest (PortalRules::issueLevels): an issue
+            // on the last level is offered no "add a child".
+            'issue_levels' => PortalRules::issueLevels(),
             // What the screen can compare against later to find out whether
             // anything moved while it was sitting open.
             'stamp' => $this->projectStampValue($project),
@@ -2919,6 +2948,7 @@ class PmPortalController extends AdminControllerBase
                 'git_keys' => PortalDefinition::url($project->id, 'git_keys'),
                 'git_key_remove' => PortalDefinition::url($project->id, 'git_key_remove'),
                 'git_token' => PortalDefinition::url($project->id, 'git_token'),
+                'file_workspace' => PortalDefinition::url($project->id, 'file_workspace'),
                 'ai_suggest' => PortalDefinition::url($project->id, 'ai', 'suggest'),
                 'ai_feedback' => PortalDefinition::url($project->id, 'ai', 'feedback'),
                 'ai_state' => PortalDefinition::url($project->id, 'ai', 'state'),
@@ -3319,7 +3349,7 @@ class PmPortalController extends AdminControllerBase
             'eh' => is_numeric(array_get($v, array_get($is, 'estimate'))) ? floatval(array_get($v, array_get($is, 'estimate'))) : null,
             'ah' => is_numeric(array_get($v, array_get($is, 'actual'))) ? floatval(array_get($v, array_get($is, 'actual'))) : null,
             'parent' => intval(array_get($v, array_get($is, 'parent'))) ?: null,
-            'up' => ($lean && $issue->updated_at) ? null : $this->fmtAt($issue->updated_at ?? $issue->created_at),
+            'up' => ($lean && $issue->updated_at && !PortalTime::differs()) ? null : $this->fmtAt($issue->updated_at ?? $issue->created_at),
             // The version as the server compares it, sent back with an edit
             // so a change made in between is refused rather than overwritten.
             'ua' => $issue->updated_at ? (string) $issue->updated_at : null,
@@ -3338,7 +3368,9 @@ class PmPortalController extends AdminControllerBase
             // Rebuilt by the page's script (unpackRows) from the id, the
             // project's key and ua.
             unset($row['url'], $row['edit_url'], $row['key']);
-            if ($issue->updated_at) {
+            // The shown time is ua cut short - in the time zone of the site.
+            // For a user in another time zone it is sent as formatted.
+            if ($issue->updated_at && !PortalTime::differs()) {
                 unset($row['up']);
             }
         }
@@ -4802,13 +4834,8 @@ class PmPortalController extends AdminControllerBase
      */
     protected function fmtAt($at)
     {
-        if (is_nullorempty($at)) {
-            return '';
-        }
-        try {
-            return \Carbon\Carbon::parse($at)->format('Y/m/d H:i');
-        } catch (\Exception $e) {
-            return strval($at);
-        }
+        // In the time zone of the user (PortalTime): the same text as before
+        // for a user in the time zone of the site.
+        return PortalTime::format($at, 'Y/m/d H:i');
     }
 }

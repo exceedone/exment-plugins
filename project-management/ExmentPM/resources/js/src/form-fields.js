@@ -314,8 +314,10 @@
         // English "by" between them.
         var cLabel = nedGetLangKey('ned_meta_created');
         var uLabel = nedGetLangKey('ned_meta_updated');
-        var cDate = nedFormatMetaDate(row.created_at);
-        var uDate = nedFormatMetaDate(row.updated_at);
+        // The times as the server formatted them for this user (their time
+        // zone); created_at / updated_at themselves are the stored values.
+        var cDate = nedFormatMetaDate(row.created_at_shown || row.created_at);
+        var uDate = nedFormatMetaDate(row.updated_at_shown || row.updated_at);
         var cBy = row.created_by || '';
         var uBy = row.updated_by || '';
         var showC = !!cDate;

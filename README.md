@@ -17,6 +17,7 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 | [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification, data migration) | In use on Exment SaaS |
 | [`it-support/`](it-support/) | Exment Plugin IT Support | IT support / help desk (mail intake, no-login progress links, customer portal, SLA, knowledge base, IT assets, alert intake, reports) | Released 1.0.5 — [ExmentITSupport-1.0.5.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentITSupport-v1.0.5/ExmentITSupport-1.0.5.zip) |
 | [`groupware/`](groupware/) | Exment Plugin Groupware | Web mail (Xserver, KAGOYA, Microsoft 365, Gmail over IMAP and SMTP), and opening the Word, Excel and PowerPoint files of the file server in a browser Office (ibisOffice); attachments of records shown and edited | 0.4.6 in development (Office needs the file server of Exment) |
+| [`attachment-export/`](attachment-export/) | Exment Plugin Attachment Export | The attachments of the records of a list (attachments and file/image columns) in one zip, a folder a record | In development |
 
 Exment Plugin Project Management is one Exment plugin:
 

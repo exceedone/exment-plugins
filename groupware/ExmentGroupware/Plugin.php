@@ -38,6 +38,8 @@ class Plugin extends PluginPageBase
         parent::__construct($plugin);
         OfficeOpener::register($plugin);
         FeatureGate::registerMail($plugin);
+        // Exment's "?" of the header opens the manual of the plugin (ISS02882)
+        ManualLink::register($plugin);
         FeatureGate::registerOffice($plugin);
     }
 
@@ -88,6 +90,9 @@ class Plugin extends PluginPageBase
             'mail_accounts' => Accounts::ready() && Accounts::currentUserId() !== null ? count(Accounts::forUser(intval(Accounts::currentUserId()))) : 0,
             'version' => IbisOffice::VERSION,
             'installed' => $office->isInstalled(),
+            // an older version installed: Office opens with it until it is updated (ISS02827)
+            'active_version' => $office->activeVersion(),
+            'update_available' => $office->updateAvailable(),
             'custom_url' => $office->customUrl(),
             'available' => $office->isAvailable(),
             'can_install' => isset($user) && $user->hasPermission(Permission::SYSTEM),
