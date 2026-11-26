@@ -35,6 +35,9 @@ php artisan exment:batch --name=ExmentPMBacklog --param1=<id> --param2=<件数> 
 - 同じつながりは同時に動きません（ロックは 60 分で外れます）。失敗が続くと間隔を広げます（最大 1 日）
 - 動いた記録は 200 回分を残し、設定画面に出します
 
+- **Unreleased**：Backlog のカスタム属性を、ExmentPM のカスタム属性（ExmentPM のスキーマ 31 から）に入れます。Backlog のプロジェクトのカスタム属性が、同じ名前の項目になり（文字列・文章 → 文字、数値 → 数、日付 → 日付、単一リスト・ラジオ → 1 つ選ぶ、複数リスト・チェックボックス → いくつか選ぶ）、プロジェクトの「カスタム属性」をオンにします。リストに項目が増えたら足します。Exment で消した項目はもどしません。Backlog のものでない項目の値は残します。必須にはしません。これまでの「カスタム属性」の文字（custom_fields）も、今までどおり書きます。
+  Backlog's custom fields go into ExmentPM's custom attributes (ExmentPM schema 31 and later): each field of the Backlog project becomes an attribute of the same name and a fitting kind, and the project's 「カスタム属性」 is turned on. New list items are added; an attribute deleted in Exment stays deleted; values of attributes that are not Backlog's are kept; none is made required. The old text (custom_fields) is still written.
+
 ## 0.2.0 で足したもの（P2・P3）
 
 - 同期が失敗しはじめたとき、システム管理者に Exment の通知（ベル）で知らせます。直ったときにももう一度知らせます（失敗のたびには知らせません）

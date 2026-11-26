@@ -484,6 +484,87 @@ class Tickets
      * Fill in what follows from the rest: assignee, due times, the moments a
      * status was reached, the SLA pause. Only sets values; never saves.
      */
+    /**
+     * The 受付箱 of a ticket by its category: kind, group, stages, SLA, fields (ISS02941). One
+     * read per box and request.
+     *
+     * @return array{id: ?int, name: string, kind: string, group: string, stages: array, sla: mixed, fields: array}
+     */
+    public static function boxOf($categoryId): array
+    {
+        static $cache = [];
+        $key = strval($categoryId ?? '');
+        if (isset($cache[$key])) {
+            return $cache[$key];
+        }
+        $row = null;
+        if ($key !== '' && ctype_digit($key) && ($table = Its::table(Its::T_CATEGORY)) !== null) {
+            $row = $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find(intval($key));
+        }
+
+        return $cache[$key] = static::boxFromRow($row);
+    }
+
+    /** @return array{id: ?int, name: string, kind: string, group: string, stages: array, sla: mixed, fields: array} */
+    public static function boxFromRow($row): array
+    {
+        $v = isset($row) ? (array) $row->value : [];
+        $kind = Queue::kindOf($v['kind'] ?? null);
+
+        return [
+            'id' => isset($row) ? intval($row->id) : null,
+            'name' => strval($v['name'] ?? ''),
+            'kind' => $kind,
+            'group' => Queue::groupOf($kind),
+            'stages' => Queue::stages($kind, $v['flow'] ?? ''),
+            'sla' => $v['sla'] ?? null,
+            'fields' => Queue::fields($v['fields'] ?? ''),
+        ];
+    }
+
+    /**
+     * Every box, for the desk.
+     *
+     * @return array<string, array>
+     */
+    public static function boxes(): array
+    {
+        $table = Its::table(Its::T_CATEGORY);
+        if (!isset($table)) {
+            return [];
+        }
+        $out = [];
+        foreach ($table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->orderBy('id')->limit(1000)->get() as $row) {
+            $out[strval($row->id)] = static::boxFromRow($row);
+        }
+
+        return $out;
+    }
+
+    /**
+     * The stage leads: a stage picked sets the status; a status set otherwise (a reply, the
+     * automation, the customer) moves the stage. The progress follows the stage.
+     */
+    public static function applyStage(CustomValue $ticket, array $original, bool $isNew): void
+    {
+        $v = (array) $ticket->value;
+        $stages = static::boxOf($v['category'] ?? null)['stages'];
+        if (empty($stages)) {
+            return;
+        }
+        $status = strval($v['status'] ?? 'new') ?: 'new';
+        $stage = strval($v['stage'] ?? '');
+        $boxChanged = !$isNew && strval($original['category'] ?? '') !== strval($v['category'] ?? '');
+        $picked = !$boxChanged && $stage !== '' && $stage !== ($isNew ? '' : strval($original['stage'] ?? ''))
+            ? Queue::statusOf($stages, $stage) : null;
+        if ($picked !== null) {
+            $status = $picked;
+        } else {
+            $stage = Queue::stageFor($stages, $status, $boxChanged ? '' : $stage);
+        }
+        $ticket->setValue(['status' => $status, 'stage' => $stage, 'progress' => Queue::progress($stages, $stage)]);
+    }
+
     public static function applyRules(CustomValue $ticket): void
     {
         $v = (array) $ticket->value;
@@ -493,6 +574,8 @@ class Tickets
         }
         $isNew = !$ticket->exists;
         $now = Carbon::now()->format('Y-m-d H:i:s');
+        static::applyStage($ticket, $original, $isNew);
+        $v = (array) $ticket->value;
         $status = strval($v['status'] ?? 'new') ?: 'new';
         $before = $isNew ? null : strval($original['status'] ?? '');
         $set = [];

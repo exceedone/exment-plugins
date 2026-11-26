@@ -64,5 +64,14 @@ $check('only muted projects', $c['projects'] === ['7' => 'mute']);
 $check('quiet hours padded', $c['quiet'] === ['from' => '22:00', 'to' => '07:00']);
 $check('quiet hours off', P::clean(['quiet' => ['from' => '22:00', 'to' => '07:00']])['quiet'] === null);
 
+// the morning digest (ISS02939): at the time the person chose, whatever the quiet hours; off unless asked
+$quiet = ['quiet' => ['from' => '22:00', 'to' => '09:00']];
+$check('a notice in quiet hours: no mail', $d('mail', $quiet, 'comment', 1, '08:00') === ['bell' => true, 'mail' => false, 'teams' => false]);
+$check('the digest in quiet hours: still by mail', $d('mail', $quiet, 'digest', 0, '08:00') === ['bell' => true, 'mail' => true, 'teams' => false]);
+$check('the digest by its own row', $d('mail', ['events' => ['digest' => ['mail' => false, 'teams' => true]]], 'digest', 0, '08:00') === ['bell' => true, 'mail' => false, 'teams' => true]);
+$check('digest off unless asked', P::clean([])['digest'] === null && P::clean(['digest' => ['time' => '07:30']])['digest'] === null);
+$check('digest on, its time padded', P::clean(['digest' => ['on' => '1', 'time' => '7:30']])['digest'] === ['on' => true, 'time' => '07:30']);
+$check('digest on, a bad time: 08:00', P::clean(['digest' => ['on' => '1', 'time' => '25:00']])['digest'] === ['on' => true, 'time' => '08:00']);
+
 echo "\n", $bad === 0 ? "all passed ($ok)" : "$bad failed, $ok passed", "\n";
 exit($bad === 0 ? 0 : 1);

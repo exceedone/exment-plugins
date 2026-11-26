@@ -4,6 +4,8 @@ namespace App\Plugins\ExmentPM;
 
 use ExmentAdminCore\Admin\Layout\Content;
 use Exceedone\Exment\Enums\SystemTableName;
+use Exceedone\Exment\Enums\ViewKindType;
+use Exceedone\Exment\Model\CustomView;
 use Exceedone\Exment\Model\CustomTable;
 use Illuminate\Http\Request;
 
@@ -24,6 +26,57 @@ trait PortalAllIssuesTrait
 {
     /** Rows per page. */
     protected static $all_per_page = 50;
+
+    /**
+     * The core's gantt groups by the parent record (exment#2298, Exment 7.3): the one thing the
+     * page of every project's issues needs. Without it the page and its link are not there.
+     */
+    public static function allGanttSupported(): bool
+    {
+        return defined('Exceedone\\Exment\\DataItems\\Grid\\GanttGrid::GROUP_PARENT');
+    }
+
+    /**
+     * The gantt view of the issue table that the projects' gantt tab uses, or null.
+     *
+     * @return CustomView|null
+     */
+    protected function allGanttView()
+    {
+        if (!static::allGanttSupported() || !isset($this->issue_table)) {
+            return null;
+        }
+
+        return CustomView::where('custom_table_id', $this->issue_table->id)
+            ->where('view_kind_type', ViewKindType::GANTT)
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * GET issues/gantt (ISS00244): the issues of every project the user may read in one gantt,
+     * a project per group. The projects' own gantt view, grouped by the parent record for this
+     * page only (not saved); Exment's permissions decide which issues come.
+     */
+    public function allGantt(Request $request, Content $content)
+    {
+        if (PortalSetup::needsSetup()) {
+            return redirect(PortalDefinition::url('setup'));
+        }
+        $view = $this->allGanttView();
+        if (!isset($view)) {
+            return redirect(PortalDefinition::url());
+        }
+        $title = strval(PortalDefinition::trans('ag_title'));
+        $this->setPageInfo($title, $title, '', 'fa-align-left');
+        $view->setOption('gantt_group_column_id', constant('Exceedone\\Exment\\DataItems\\Grid\\GanttGrid::GROUP_PARENT'));
+        $html = $view->grid_item->grid()->render();
+
+        return $this->AdminContent($content)->body(view(PortalDefinition::view('all-gantt'), [
+            'gantt_html' => $html,
+            'topbar' => $this->topbarData(null, $this->topbarCards()),
+        ]));
+    }
 
     public function allIssues(Request $request, Content $content)
     {

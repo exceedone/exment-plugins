@@ -41,6 +41,7 @@
         { "method": "get", "uri": "issues", "function": "allIssues" },
         { "method": "get", "uri": "issues/data", "function": "allIssuesData" },
         { "method": "get", "uri": "issues/export", "function": "allIssuesExport" },
+        { "method": "get", "uri": "issues/gantt", "function": "allGantt" },
         { "method": "get", "uri": "calendar", "function": "companyCalendar" },
         { "method": "post", "uri": "calendar", "function": "companyCalendarSave" },
         { "method": "post", "uri": "calendar/delete", "function": "companyCalendarDelete" },

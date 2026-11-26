@@ -41,8 +41,13 @@ class Schema
      * 7: the request catalog (its_catalog; the ticket's catalog, approval_state, approver).
      * 8: the assets synced from monitoring tools (source, external_id, external_url, hostname,
      *    ip_addresses, sync_state).
+     * 9: the 受付箱 of the help desk (ISS02941): its_category gets kind, flow, fields, sla;
+     *    the ticket gets stage and progress; the inquiry boxes are added.
      */
-    const VERSION = 8;
+    const VERSION = 9;
+
+    /** The menu's name (ISS02941: the IT support became the help desk). */
+    const MENU_TITLE = 'サポート窓口';
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -107,15 +112,19 @@ class Schema
                 ],
             ],
             Its::T_CATEGORY => [
-                'label' => 'チケットの種類',
-                'icon' => 'fa-tags',
-                'description' => '依頼の種類（PC・Web サイト・システムなど）。種類ごとに最初の担当者を決められます。',
+                'label' => '受付箱',
+                'icon' => 'fa-inbox',
+                'description' => '依頼・問い合わせの受付箱（IT サポート・製品の問い合わせ・見積・試用キーなど）。受付箱ごとに、最初の担当者・流れ（段階）・項目・SLA を決められます。',
                 'columns' => [
-                    ['name', '種類', 'text', ['required' => '1', 'use_label_flg' => '1']],
+                    ['name', '受付箱', 'text', ['required' => '1', 'use_label_flg' => '1']],
                     ['description', '説明（受付フォームに出ます）', 'text', []],
                     ['default_assignee', '最初の担当者', 'user', []],
                     ['public', '受付フォームに出す', 'yesno', ['default' => '1']],
                     ['display_order', '並び順', 'integer', ['default' => '0']],
+                    ['kind', '種類', 'select_valtext', ['valtext' => Queue::kindLabels(), 'default' => Queue::DEFAULT_KIND, 'required' => '1', 'index_enabled' => '1']],
+                    ['flow', '流れ（段階）', 'textarea', ['help' => '1 行に 1 つ、「段階の名前|状態」。状態は new・open・pending・on_hold・resolved・closed（resolved と closed は終わり）。空なら種類の流れ（例：受付|new、対応|open、確認|pending、完了|resolved）。']],
+                    ['fields', '入力する項目', 'textarea', ['help' => '1 行に 1 つ、「チケットの列の名前|必須」（例：requester_name|必須）。Web サイトのフォームに出す項目です。']],
+                    ['sla', 'SLA', 'select_table', ['select_target_table_name' => Its::T_SLA, 'help' => 'この受付箱の SLA。お客様（会社）に SLA があるときは、そちらが先です。空なら「標準」。']],
                 ],
             ],
             Its::T_ASSET => [
@@ -188,6 +197,8 @@ class Schema
                     ['subject', '件名', 'text', ['required' => '1', 'use_label_flg' => '1', 'freeword_search' => '1']],
                     ['description', '内容', 'textarea', ['freeword_search' => '1']],
                     ['status', '状態', 'select_valtext', ['valtext' => $status, 'default' => 'new', 'required' => '1', 'index_enabled' => '1', 'grid_style' => 'pill', 'colors' => Its::STATUS_COLORS]],
+                    ['stage', '段階', 'text', ['index_enabled' => '1', 'help' => '受付箱の流れのどこか。状態はここから決まります。']],
+                    ['progress', '進捗率（%）', 'integer', ['number_min' => '0', 'number_max' => '100', 'default' => '0']],
                     ['priority', '優先度', 'select_valtext', ['valtext' => $priority, 'default' => 'normal', 'required' => '1', 'index_enabled' => '1', 'grid_style' => 'pill', 'colors' => Its::PRIORITY_COLORS]],
                     ['category', '種類', 'select_table', ['select_target_table_name' => Its::T_CATEGORY, 'index_enabled' => '1']],
                     ['channel', '受付の方法', 'select_valtext', ['valtext' => Its::CHANNELS, 'default' => 'staff', 'index_enabled' => '1']],
@@ -288,15 +299,15 @@ class Schema
                     'first_urgent' => 15, 'first_high' => 30, 'first_normal' => 120, 'first_low' => 240,
                     'resolve_urgent' => 2, 'resolve_high' => 4, 'resolve_normal' => 12, 'resolve_low' => 48],
             ],
-            Its::T_CATEGORY => [
-                ['name' => 'PC・周辺機器', 'description' => 'パソコンのセットアップ・故障・プリンターなど', 'public' => '1', 'display_order' => 1],
+            Its::T_CATEGORY => array_merge([
+                ['name' => 'PC・周辺機器', 'description' => 'パソコンのセットアップ・故障・プリンターなど', 'public' => '1', 'display_order' => 1, 'kind' => 'it_internal'],
                 ['name' => 'アカウント・パスワード', 'description' => 'ログインできない・ユーザーの追加や削除', 'public' => '1', 'display_order' => 2],
                 ['name' => 'メール・Microsoft 365・Google', 'description' => 'メールが届かない・Teams・共有ドライブなど', 'public' => '1', 'display_order' => 3],
                 ['name' => 'ネットワーク・Wi-Fi', 'description' => 'インターネットにつながらない・VPN', 'public' => '1', 'display_order' => 4],
                 ['name' => 'Web サイト', 'description' => 'サイトの修正・表示されない・ドメイン', 'public' => '1', 'display_order' => 5],
                 ['name' => 'システム・Exment', 'description' => '業務システムの不具合・使い方', 'public' => '1', 'display_order' => 6],
                 ['name' => 'その他', 'description' => 'どれにも当てはまらないもの', 'public' => '1', 'display_order' => 9],
-            ],
+            ], static::inquiryBoxes()),
             Its::T_TEMPLATE => [
                 ['name' => '受付しました', 'body' => "{name} 様\n\nお問い合わせありがとうございます。チケット {ticket_no} で受け付けました。\n担当者が確認し、あらためてご連絡いたします。\n\n進み具合はこちらからご覧いただけます。\n{link}", 'set_status' => 'open'],
                 ['name' => '詳しく教えてください', 'body' => "{name} 様\n\n確認のため、次のことを教えていただけますか。\n\n・いつから起きていますか\n・画面に出ているメッセージ（スクリーンショットがあれば添付してください）\n・お使いの PC・ブラウザ\n\nこのメールにそのまま返信してください。", 'set_status' => 'pending'],
@@ -308,6 +319,44 @@ class Schema
                 ['title' => 'プリンターで印刷できないとき', 'body' => "1. プリンターの電源と用紙・トナーを確かめます。\n2. PC の「設定 → プリンター」で、使うプリンターが「既定」になっているか見ます。\n3. 印刷の待ちを一度すべて消して、もう一度印刷します。", 'keywords' => 'プリンター,印刷,複合機', 'public' => '1'],
             ],
         ];
+    }
+
+    /**
+     * The boxes beyond IT inside (schema 9): a fresh install gets them with the seeds, an
+     * upgrade adds the ones whose kind no row has yet.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function inquiryBoxes(): array
+    {
+        return [
+            ['name' => 'IT サポート（社外）', 'description' => 'お客様の会社の IT の困りごと', 'public' => '1', 'display_order' => 20, 'kind' => 'it_external'],
+            ['name' => '製品の問い合わせ', 'description' => '製品の機能・使い方・不具合のご質問', 'public' => '0', 'display_order' => 30, 'kind' => 'product'],
+            ['name' => '見積のご依頼', 'description' => '製品・サービスのお見積', 'public' => '0', 'display_order' => 31, 'kind' => 'quote'],
+            ['name' => '試用キーのお申し込み', 'description' => '製品をお試しいただくためのキー', 'public' => '0', 'display_order' => 32, 'kind' => 'trial'],
+            ['name' => '一般的なご質問', 'description' => 'そのほかのお問い合わせ', 'public' => '0', 'display_order' => 39, 'kind' => 'general'],
+        ];
+    }
+
+    /** Schema 9 on a site that has boxes: the inquiry boxes it has not got. */
+    protected static function addInquiryBoxes(): int
+    {
+        $table = Its::table(Its::T_CATEGORY);
+        if (!isset($table)) {
+            return 0;
+        }
+        $n = 0;
+        foreach (static::inquiryBoxes() as $row) {
+            if ($table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->kind', $row['kind'])->exists()) {
+                continue;
+            }
+            $model = $table->getValueModel();
+            $model->setValue($row);
+            $model->save();
+            $n++;
+        }
+
+        return $n;
     }
 
     /** Role groups the setup makes, with the table permissions they get. */
@@ -359,7 +408,7 @@ class Schema
 
             static::registerPluginRow();
             if (static::arrangeMenu()) {
-                $steps[] = 'メニューを「ITサポート」1 つにしました（テーブルは受付箱から開きます）。';
+                $steps[] = 'メニューを「サポート窓口」1 つにしました（テーブルは担当者の画面から開きます）。';
             }
 
             $before = intval(array_get(Its::state(), 'schema_version', 0));
@@ -368,6 +417,12 @@ class Schema
                 $steps[] = "やりとりとファイルを {$n} 件つなぎました。";
             }
 
+            if (!$fresh && $before < 9) {
+                $n = static::addInquiryBoxes();
+                if ($n > 0) {
+                    $steps[] = "問い合わせの受付箱を {$n} 件足しました（製品・見積・試用キー・一般・IT サポート（社外））。";
+                }
+            }
             $granted = static::grantRoles();
             if ($granted > 0) {
                 $steps[] = "役割グループに権限を {$granted} 件付けました。";
@@ -652,7 +707,11 @@ class Schema
 
         $values = ['menu_target' => $plugin->id];
         if (isset($root)) {
-            $values += ['parent_id' => $root->parent_id, 'order' => $root->order, 'title' => 'ITサポート', 'icon' => 'fa-life-ring'];
+            $values += ['parent_id' => $root->parent_id, 'order' => $root->order, 'title' => static::MENU_TITLE, 'icon' => 'fa-life-ring'];
+        }
+        // the old name, not one an administrator gave: the new one (ISS02941)
+        if (isset($desk) && $desk->title === 'ITサポート') {
+            $values['title'] = static::MENU_TITLE;
         }
         // still at the top (an administrator did not move it): into the group
         $parentNow = array_key_exists('parent_id', $values) ? intval($values['parent_id']) : (isset($desk) ? intval($desk->parent_id) : 0);
@@ -671,7 +730,7 @@ class Schema
             \DB::table('admin_menu')->insert($values + [
                 'parent_id' => $group ?? 0,
                 'order' => isset($group) ? 1 : 40,
-                'title' => 'ITサポート',
+                'title' => static::MENU_TITLE,
                 'icon' => 'fa-life-ring',
                 'uri' => '',
                 'menu_type' => 'plugin',
