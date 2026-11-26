@@ -280,9 +280,8 @@ trait PortalRankingTrait
                 ->whereNull('deleted_at')
                 ->where('created_at', '>=', $fromS)
                 ->where('created_at', '<', $toS)
-                ->orderBy('created_at')
-                ->take(static::$rank_revision_cap)
-                ->get(['revisionable_id', 'old_value', 'new_value']);
+                ->orderBy('created_at');
+            $revs = static::takeSorted($revs, static::$rank_revision_cap, 0, ['id', 'revisionable_id', 'old_value', 'new_value']);
             foreach ($revs as $rev) {
                 $old = json_decode(strval($rev->old_value), true) ?: [];
                 $new = json_decode(strval($rev->new_value), true) ?: [];

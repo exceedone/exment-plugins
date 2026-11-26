@@ -251,6 +251,10 @@ window.PmPortalBoot = function () {
         }
         var http = (L && L.http) || {};
         var said = http.messages || {};
+        // A 403 that is not Exment's: a firewall in front of the site (AWS WAF) refused what was
+        // sent - a body with localhost or ../ in it - and answered with its own page. Not a
+        // permission, so not said as one.
+        if (status === 403 && !body && own(said, 'blocked')) { return own(said, 'blocked'); }
         var known = typeof status === 'number' && isFinite(status);
         var key = known ? own(http.status, String(status)) : undefined;
         if (!key && known && status >= 500) { key = 'server'; }
@@ -268,6 +272,15 @@ window.PmPortalBoot = function () {
             var parsed = JSON.parse(String(xhr.responseText || ''));
             return (parsed && typeof parsed === 'object') ? parsed : null;
         } catch (e) { return null; }
+    }
+    // The longest body, comment and wiki page the portal takes (PortalDefinition::MAX_BODY).
+    function maxBody() {
+        var n = Number(((L && L.http) || {}).max_body);
+        return n > 0 ? n : 200000;
+    }
+    function tooLongText(max) {
+        var said = ((L && L.http) || {}).messages || {};
+        return String(own(said, 'too_long_text') || '').replace(':max', Number(max).toLocaleString());
     }
     function xhrErr(xhr, fallback) {
         return errText(xhr && typeof xhr.status === 'number' ? xhr.status : null, xhrBody(xhr), fallback);
@@ -1637,6 +1650,8 @@ window.PmPortalBoot = function () {
             Object.keys(D.categories || {}).sort(function (a, b) {
                 return cmpText(String(D.categories[a]), String(D.categories[b]));
             }).forEach(function (c) { document.getElementById('pp-f-cat').add(new Option(D.categories[c], c)); });
+            // the last option of each opens the picker of several (ISS00255)
+            MULTI_SELECTS.forEach(function (id) { document.getElementById(id).add(new Option(L.f_multi, '__multi')); });
         }
         syncFilterControls();
     }
@@ -1676,11 +1691,11 @@ window.PmPortalBoot = function () {
     }
     function syncFilterControls() {
         setVal('pp-f-kw', FILTER.kw);
-        setVal('pp-f-as', FILTER.as);
-        setVal('pp-f-ty', FILTER.ty);
-        setVal('pp-f-pr', FILTER.pr);
-        setVal('pp-f-ms', FILTER.ms);
-        setVal('pp-f-cat', FILTER.cat);
+        setFilterVal('pp-f-as', FILTER.as);
+        setFilterVal('pp-f-ty', FILTER.ty);
+        setFilterVal('pp-f-pr', FILTER.pr);
+        setFilterVal('pp-f-ms', FILTER.ms);
+        setFilterVal('pp-f-cat', FILTER.cat);
         setVal('pp-f-rd', FILTER.rd);
         setVal('pp-f-rl', FILTER.rl);
         setVal('pp-f-df', FILTER.df);
@@ -1704,6 +1719,12 @@ window.PmPortalBoot = function () {
     // The list exactly as the grid shows it - same sort, same filters. The
     // detail screen walks this, so "the next issue" means the next row the
     // user can see, not the next id in the table.
+    // A filter holds one value or several joined by commas (ISS00255): does a row's value, or
+    // one of its values, match one of them?
+    function fHas(filter, values) {
+        var want = String(filter).split(',');
+        return (values || []).some(function (v) { return want.indexOf(String(v)) >= 0; });
+    }
     function filteredIssues() {
         // Filtered first, sorted after. This runs on every keystroke in the
         // keyword box, and on a big project sorting three thousand rows to
@@ -1715,11 +1736,11 @@ window.PmPortalBoot = function () {
             if (i.ar && !AR.show) { return false; }
             if (quick && !quick(i)) { return false; }
             if (FILTER.st && !stMatch(i.st, FILTER.st)) { return false; }
-            if (FILTER.as && i.as.map(String).indexOf(String(FILTER.as)) < 0) { return false; }
-            if (FILTER.ty && i.ty !== FILTER.ty) { return false; }
-            if (FILTER.pr && String(i.pr) !== String(FILTER.pr)) { return false; }
-            if (FILTER.ms && i.ms !== FILTER.ms) { return false; }
-            if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
+            if (FILTER.as && !fHas(FILTER.as, i.as)) { return false; }
+            if (FILTER.ty && !fHas(FILTER.ty, [i.ty])) { return false; }
+            if (FILTER.pr && !fHas(FILTER.pr, [i.pr])) { return false; }
+            if (FILTER.ms && !fHas(FILTER.ms, [i.ms])) { return false; }
+            if (FILTER.cat && !fHas(FILTER.cat, i.cat)) { return false; }
             if (FILTER.rd === 'unread' && !i.unread) { return false; }
             if (FILTER.rd === 'read' && i.unread) { return false; }
             if (FILTER.rl && !rlMatch(i, FILTER.rl)) { return false; }
@@ -2849,9 +2870,9 @@ window.PmPortalBoot = function () {
         }
 
         var p = D.project;
-        var people = [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
+        var people = notifyOrder(i, [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
             return v && a.indexOf(v) === x && String(v) !== String(D.me);
-        });
+        }), notifyRecent());
         document.getElementById('pp-notify-chips').innerHTML = people.map(function (u) {
             var on = keepNotify && keepNotify.indexOf(String(u)) >= 0;
             return '<span class="bl-chip has-av' + (on ? '' : ' off') + ' pp-notify" role="button" tabindex="0" data-user="' + esc(u) + '">' + av(u) + esc(user(u).n) + '</span>';
@@ -2861,6 +2882,36 @@ window.PmPortalBoot = function () {
         if (dockav) { dockav.innerHTML = av(D.me); }
         cmtSetBusy(cmtBusy);
         ppDockFit();
+    }
+    // M12: who is told is picked from the people most likely meant: the
+    // assignees and the author of the issue first, then the people picked
+    // before in this project (newest first), then the rest. Nobody is
+    // switched on for the reader - telling stays a choice.
+    function notifyRecentKey() {
+        return 'pmportal.notify.u' + String(D.me || 0) + '.p' + String((D.project && D.project.id) || 0);
+    }
+    function notifyRecent() {
+        try {
+            var v = JSON.parse(localStorage.getItem(notifyRecentKey()) || '[]');
+            return Array.isArray(v) ? v.map(String) : [];
+        } catch (e) { return []; }
+    }
+    function notifyRecentSave(ids) {
+        if (!ids || !ids.length) { return; }
+        var list = ids.map(String).concat(notifyRecent()).filter(function (v, x, a) { return v && a.indexOf(v) === x; }).slice(0, 12);
+        try { localStorage.setItem(notifyRecentKey(), JSON.stringify(list)); } catch (e) { /* ignore */ }
+    }
+    function notifyOrder(issue, people, recent) {
+        var first = [].concat((issue && issue.as) || [], issue && issue.by ? [issue.by] : []).map(String);
+        var rank = function (u) {
+            var s = String(u);
+            if (first.indexOf(s) >= 0) { return first.indexOf(s); }
+            if (recent.indexOf(s) >= 0) { return 100 + recent.indexOf(s); }
+            return 1000;
+        };
+        return people.map(function (u, n) { return { u: u, r: rank(u), n: n }; })
+            .sort(function (a, b) { return a.r - b.r || a.n - b.n; })
+            .map(function (e) { return e.u; });
     }
     /* ------------------------------------------------ quick edit -------- */
     // Backlog changes an issue from the same form the comment is written in:
@@ -5565,6 +5616,10 @@ window.PmPortalBoot = function () {
         // comment, so it needs both. Said before anything is sent - the
         // server would post the comment and quietly ask nobody. The "next
         // status" button sends no comment and so asks nobody.
+        if (String(text).length > maxBody()) {
+            ppDockMsg(tooLongText(maxBody()), true);
+            return;
+        }
         var review = !statusOnly && rvAskOn();
         if (review && !document.querySelector('#pp-notify-chips .pp-notify:not(.off)')) {
             ppDockMsg(L.rv_need_people, true);
@@ -5635,7 +5690,10 @@ window.PmPortalBoot = function () {
                 url: base + '/issue/' + issueId + '/comment',
                 type: 'POST',
                 dataType: 'json',
-                data: data,
+                // as JSON: a Japanese character is 3 bytes there, 9 in a form (nginx stops at 1 MB)
+                contentType: 'application/json',
+                processData: false,
+                data: JSON.stringify(data),
                 headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
@@ -5644,6 +5702,7 @@ window.PmPortalBoot = function () {
                 }
                 settled();
                 dockDraftClear(issueId, text);
+                notifyRecentSave(notifyUsers);
                 applyDetail(res, epoch, false, seq);
                 if (!statusOnly && alive() && String(currentIssue) === String(issueId)
                     && submittedBox === document.getElementById('pp-cmt-text')
@@ -6378,13 +6437,16 @@ window.PmPortalBoot = function () {
             if (!detailCurrent(issueId) || !wrap.isConnected) { return; }
             var next = area.value.trim();
             if (!next || save.disabled) { return; }
+            if (next.length > maxBody()) { toast(tooLongText(maxBody()), true); return; }
             save.disabled = true;
             save.textContent = L.posting;
             var seq = ++DET_SEQ;
             $.ajax({
                 url: D.urls.base + '/comment/' + cid, type: 'PATCH',
                 dataType: 'json',
-                data: { comment: next }, headers: { 'X-CSRF-TOKEN': CSRF }
+                // as JSON, as the comment is posted (writes.js)
+                contentType: 'application/json', processData: false,
+                data: JSON.stringify({ comment: next }), headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
                     if (detailCurrent(issueId)) {
@@ -7686,6 +7748,23 @@ window.PmPortalBoot = function () {
             // issue was added (ISS02923)
             [null, x.due_time || null]
         ].filter(keep);
+        // M11: a new issue asks first for what one is filed with - who,
+        // by when, how urgent (and the title and text above). The rest -
+        // the status (it starts at the first one), milestone, category,
+        // start - folds under ほかの項目, which can be searched. A required
+        // field is never folded (nedRenderForm).
+        var newRows = null;
+        if (NED.mode === 'create') {
+            newRows = [
+                [c.assignees || null, c.due || null],
+                [c.priority || null, x.due_time || null]
+            ].filter(keep);
+        }
+        var newMore = NED.mode === 'create' ? [
+            [c.status || null, c.milestone || null],
+            [c.category || null, x.versions || null],
+            [c.start || null, null]
+        ].filter(keep) : [];
         var more = [
             // Schema 27: the other people, beside the assignees.
             [x.sub_assignees || null, x.managers || null],
@@ -7698,8 +7777,8 @@ window.PmPortalBoot = function () {
 
         return {
             top: [c.parent || null, c.type || null].filter(Boolean),
-            rows: rows,
-            more: more
+            rows: newRows || rows,
+            more: newMore.concat(more)
         };
     }
     // A column with nothing to say until the row exists. A resolution is how
@@ -9239,13 +9318,15 @@ window.PmPortalBoot = function () {
     }
 
     // Phase B: live char counter below the description textarea. The limit
-    // comes from col.max_length when present, or falls back to 2000 which
-    // matches the default Exment text-column length.
+    // comes from col.max_length when present, or is the portal's own
+    // (PortalDefinition::MAX_BODY, 200,000 - more than Backlog's 100,000): an
+    // editor or textarea column of Exment has no length of its own.
     function nedAttachCharCount(fg) {
         var ta = fg.querySelector('textarea.pp-ne-in');
         if (!ta) { return; }
         var col = NED.columns.filter(function (c) { return c.name === fg.dataset.fname; })[0];
-        var max = (col && col.max_length) ? col.max_length : 2000;
+        var max = (col && col.max_length) ? col.max_length : maxBody();
+        fg.dataset.max = String(max);
         var box = document.createElement('div');
         box.className = 'pp-ne-charcount';
         var n = document.createElement('span'); n.className = 'n'; n.textContent = String((ta.value || '').length);
@@ -9292,6 +9373,15 @@ window.PmPortalBoot = function () {
         var ok = true;
         NED.el.querySelectorAll('.pp-ne-fg').forEach(function (fg) {
             if (!nedValidateField(fg)) { ok = false; }
+            // too long: said here, before the server is asked
+            var ta = fg.dataset.max ? fg.querySelector('textarea.pp-ne-in') : null;
+            if (ta && (ta.value || '').length > Number(fg.dataset.max)) {
+                ok = false;
+                fg.classList.add('err');
+                nedRevealField(fg);
+                var errEl = fg.querySelector('.err');
+                if (errEl) { errEl.textContent = tooLongText(Number(fg.dataset.max)); errEl.hidden = false; }
+            }
         });
         return ok;
     }
@@ -9359,6 +9449,24 @@ window.PmPortalBoot = function () {
             nedMoreRemember(open);
         });
         grid.appendChild(btn);
+        // M11: a long fold is searched by the name of the field.
+        if (names.length > 6) {
+            var find = document.createElement('input');
+            find.type = 'search';
+            find.className = 'pp-ne-more-find';
+            find.placeholder = nedGetLangKey('ned_more_find', '項目を探す');
+            find.setAttribute('aria-label', find.placeholder);
+            find.addEventListener('input', function () {
+                var q = String(find.value || '').trim().toLowerCase();
+                Array.prototype.forEach.call(box.querySelectorAll('[data-fname]'), function (fg) {
+                    var lb = fg.querySelector('label');
+                    var text = String((lb ? lb.textContent : '') + ' ' + fg.dataset.fname).toLowerCase();
+                    fg.classList.toggle('pp-ne-nomatch', q !== '' && text.indexOf(q) < 0);
+                });
+            });
+            find.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); } });
+            box.insertBefore(find, box.firstChild);
+        }
         grid.appendChild(box);
         nedMoreSetOpen(box, btn, filled > 0 || nedMoreRemembered());
     }
@@ -9493,6 +9601,11 @@ window.PmPortalBoot = function () {
             metaOrder.filter(function (name) { return !taken[name]; }).forEach(function (name) {
                 moreBox.appendChild(built[name]);
                 taken[name] = true;
+            });
+            // A field that must be filled is never folded away (M11).
+            Array.prototype.slice.call(moreBox.children).forEach(function (fg) {
+                var col = NED.columns.filter(function (cc) { return cc && cc.name === fg.dataset.fname; })[0];
+                if (col && col.required && !col.readonly) { slots.grid.appendChild(fg); }
             });
             if (moreBox.children.length) { nedMountMore(slots.grid, moreBox); }
             metaOrder = metaOrder.filter(function (name) { return !taken[name]; });
@@ -12001,6 +12114,12 @@ window.PmPortalBoot = function () {
      ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change'],
      ['pp-f-rl', 'rl', 'change'], ['pp-f-df', 'df', 'change']].forEach(function (def) {
         document.getElementById(def[0]).addEventListener(def[2], function () {
+            // 「複数選ぶ…」: the picker sets the filter; the select shows what was there (ISS00255)
+            if (this.value === '__multi') {
+                setFilterVal(def[0], FILTER[def[1]]);
+                multiPick(this, def[1]);
+                return;
+            }
             FILTER[def[1]] = this.value;
             afterFilterChange();
         });
@@ -12123,6 +12242,76 @@ window.PmPortalBoot = function () {
         renderIssues();
         filterToUrl();
     });
+
+    /* ---- several values in one filter (ISS00255) ---- */
+    var MULTI_SELECTS = ['pp-f-as', 'pp-f-ty', 'pp-f-pr', 'pp-f-ms', 'pp-f-cat'];
+    // The select shows one value as itself, and several as one option of their own
+    // ("担当者: 3 件"), made when needed.
+    function setFilterVal(id, v) {
+        var el = document.getElementById(id);
+        if (!el) { return; }
+        var made = el.querySelector('option.pp-fmulti');
+        if (String(v).indexOf(',') >= 0) {
+            var head = (el.options[0] ? el.options[0].text.split(':')[0] : '');
+            if (!made) {
+                made = new Option('', v);
+                made.className = 'pp-fmulti';
+                el.add(made, el.options[1] || null);
+            }
+            made.value = v;
+            made.text = head + ': ' + String(L.f_multi_n).replace(':n', String(v.split(',').length));
+        } else if (made) {
+            made.remove();
+        }
+        if (el.value !== v) { el.value = v; }
+    }
+    function multiPick(sel, key) {
+        var old = document.getElementById('pp-fpick');
+        if (old) { old.remove(); }
+        var have = String(FILTER[key] || '').split(',').filter(Boolean);
+        var opts = Array.prototype.filter.call(sel.options, function (o) {
+            return o.value !== '' && o.value !== '__multi' && o.className !== 'pp-fmulti';
+        });
+        var box = document.createElement('div');
+        box.id = 'pp-fpick';
+        box.className = 'pp-fpick';
+        box.setAttribute('role', 'dialog');
+        box.innerHTML = (opts.length > 10 ? '<input type="search" class="s" placeholder="' + esc(L.f_multi_find) + '">' : '') +
+            '<div class="ls">' + opts.map(function (o) {
+                return '<label data-l="' + esc(o.text.toLowerCase()) + '"><input type="checkbox" value="' + esc(o.value) + '"' +
+                    (have.indexOf(o.value) >= 0 ? ' checked' : '') + '> ' + esc(o.text) + '</label>';
+            }).join('') + '</div>' +
+            '<div class="ft"><button type="button" class="bl-btn-sub" data-a="clear">' + esc(L.f_multi_clear) + '</button>' +
+            '<button type="button" class="bl-btn-main" data-a="ok">' + esc(L.f_multi_ok) + '</button></div>';
+        root.appendChild(box);
+        var r = sel.getBoundingClientRect();
+        box.style.left = Math.max(4, Math.min(r.left, window.innerWidth - box.offsetWidth - 4)) + 'px';
+        box.style.top = Math.min(r.bottom + 2, window.innerHeight - box.offsetHeight - 4) + 'px';
+        var s = box.querySelector('input.s');
+        if (s) {
+            s.addEventListener('input', function () {
+                var w = s.value.trim().toLowerCase();
+                box.querySelectorAll('label[data-l]').forEach(function (lb) { lb.hidden = w !== '' && lb.getAttribute('data-l').indexOf(w) < 0; });
+            });
+        }
+        (s || box.querySelector('input[type=checkbox]') || box).focus();
+        function close() {
+            box.remove();
+            document.removeEventListener('mousedown', away, true);
+            document.removeEventListener('keydown', esc1);
+        }
+        function away(ev) { if (!box.contains(ev.target)) { close(); } }
+        function esc1(ev) { if (ev.key === 'Escape') { close(); sel.focus(); } }
+        document.addEventListener('mousedown', away, true);
+        document.addEventListener('keydown', esc1);
+        box.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-a]');
+            if (!b) { return; }
+            FILTER[key] = b.getAttribute('data-a') === 'clear' ? '' : Array.prototype.map.call(box.querySelectorAll('input[type=checkbox]:checked'), function (x) { return x.value; }).join(',');
+            close();
+            afterFilterChange();
+        });
+    }
 
     /* ---- tree view ---- */
     // Folding changes which rows are listed, so the ticks go, the same as on

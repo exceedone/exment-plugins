@@ -1225,13 +1225,15 @@
     }
 
     // Phase B: live char counter below the description textarea. The limit
-    // comes from col.max_length when present, or falls back to 2000 which
-    // matches the default Exment text-column length.
+    // comes from col.max_length when present, or is the portal's own
+    // (PortalDefinition::MAX_BODY, 200,000 - more than Backlog's 100,000): an
+    // editor or textarea column of Exment has no length of its own.
     function nedAttachCharCount(fg) {
         var ta = fg.querySelector('textarea.pp-ne-in');
         if (!ta) { return; }
         var col = NED.columns.filter(function (c) { return c.name === fg.dataset.fname; })[0];
-        var max = (col && col.max_length) ? col.max_length : 2000;
+        var max = (col && col.max_length) ? col.max_length : maxBody();
+        fg.dataset.max = String(max);
         var box = document.createElement('div');
         box.className = 'pp-ne-charcount';
         var n = document.createElement('span'); n.className = 'n'; n.textContent = String((ta.value || '').length);
@@ -1278,6 +1280,15 @@
         var ok = true;
         NED.el.querySelectorAll('.pp-ne-fg').forEach(function (fg) {
             if (!nedValidateField(fg)) { ok = false; }
+            // too long: said here, before the server is asked
+            var ta = fg.dataset.max ? fg.querySelector('textarea.pp-ne-in') : null;
+            if (ta && (ta.value || '').length > Number(fg.dataset.max)) {
+                ok = false;
+                fg.classList.add('err');
+                nedRevealField(fg);
+                var errEl = fg.querySelector('.err');
+                if (errEl) { errEl.textContent = tooLongText(Number(fg.dataset.max)); errEl.hidden = false; }
+            }
         });
         return ok;
     }
@@ -1345,6 +1356,24 @@
             nedMoreRemember(open);
         });
         grid.appendChild(btn);
+        // M11: a long fold is searched by the name of the field.
+        if (names.length > 6) {
+            var find = document.createElement('input');
+            find.type = 'search';
+            find.className = 'pp-ne-more-find';
+            find.placeholder = nedGetLangKey('ned_more_find', '項目を探す');
+            find.setAttribute('aria-label', find.placeholder);
+            find.addEventListener('input', function () {
+                var q = String(find.value || '').trim().toLowerCase();
+                Array.prototype.forEach.call(box.querySelectorAll('[data-fname]'), function (fg) {
+                    var lb = fg.querySelector('label');
+                    var text = String((lb ? lb.textContent : '') + ' ' + fg.dataset.fname).toLowerCase();
+                    fg.classList.toggle('pp-ne-nomatch', q !== '' && text.indexOf(q) < 0);
+                });
+            });
+            find.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); } });
+            box.insertBefore(find, box.firstChild);
+        }
         grid.appendChild(box);
         nedMoreSetOpen(box, btn, filled > 0 || nedMoreRemembered());
     }
@@ -1479,6 +1508,11 @@
             metaOrder.filter(function (name) { return !taken[name]; }).forEach(function (name) {
                 moreBox.appendChild(built[name]);
                 taken[name] = true;
+            });
+            // A field that must be filled is never folded away (M11).
+            Array.prototype.slice.call(moreBox.children).forEach(function (fg) {
+                var col = NED.columns.filter(function (cc) { return cc && cc.name === fg.dataset.fname; })[0];
+                if (col && col.required && !col.readonly) { slots.grid.appendChild(fg); }
             });
             if (moreBox.children.length) { nedMountMore(slots.grid, moreBox); }
             metaOrder = metaOrder.filter(function (name) { return !taken[name]; });
