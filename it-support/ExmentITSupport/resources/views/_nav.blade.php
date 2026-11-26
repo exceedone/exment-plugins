@@ -3,8 +3,8 @@
 @php($imapOn = $Its::setting('imap_enabled') === '1')
 @include($Its::view('_style'))
 <header class="its-top">
-    <a class="its-brand" href="{{ $Its::url() }}"><span class="its-logo" aria-hidden="true"><i class="fa fa-life-ring"></i></span>ITサポート</a>
-    <nav class="its-tabs" aria-label="ITサポートのメニュー">
+    <a class="its-brand" href="{{ $Its::url() }}"><span class="its-logo" aria-hidden="true"><i class="fa fa-life-ring"></i></span>サポート窓口</a>
+    <nav class="its-tabs" aria-label="サポート窓口のメニュー">
         <a href="{{ $Its::url() }}" class="{{ ($tab ?? '') === 'inbox' ? 'on' : '' }}" @if(($tab ?? '') === 'inbox') aria-current="page" @endif><i class="fa fa-inbox" aria-hidden="true"></i>受付箱</a>
         <a href="{{ $Its::url('dashboard') }}" class="{{ ($tab ?? '') === 'dashboard' ? 'on' : '' }}" @if(($tab ?? '') === 'dashboard') aria-current="page" @endif><i class="fa fa-bar-chart" aria-hidden="true"></i>レポート</a>
         <span class="sep" aria-hidden="true"></span>

@@ -3,7 +3,7 @@
 @include($Its::view('_style'))
 <div class="its its-page">
     <header class="its-top">
-        <span class="its-brand"><span class="its-logo" aria-hidden="true"><i class="fa fa-life-ring"></i></span>{{ $Its::setting('portal_title', 'ITサポート窓口') }}</span>
+        <span class="its-brand"><span class="its-logo" aria-hidden="true"><i class="fa fa-life-ring"></i></span>{{ $Its::setting('portal_title', 'サポート窓口') }}</span>
         <div class="its-right">
             @if($isAgent)<a class="its-btn" href="{{ $Its::url() }}"><i class="fa fa-inbox" aria-hidden="true"></i>受付箱へ</a>@endif
             <a class="its-btn primary" href="{{ $requestUrl }}" target="_blank" rel="noopener"><i class="fa fa-plus" aria-hidden="true"></i>新しく依頼する</a>

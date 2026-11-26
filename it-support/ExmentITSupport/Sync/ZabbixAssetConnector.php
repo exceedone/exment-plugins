@@ -25,7 +25,7 @@ class ZabbixAssetConnector extends AssetConnector
 
     public function label(): string
     {
-        return 'Zabbix → IT 資産（ITサポート）';
+        return 'Zabbix → IT 資産（サポート窓口）';
     }
 
     protected function tool(): string

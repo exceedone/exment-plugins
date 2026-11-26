@@ -29,7 +29,7 @@ class Tickets
     {
         $table = Its::table(Its::T_TICKET);
         if (!isset($table)) {
-            throw new \RuntimeException('ITサポートのセットアップがまだです。');
+            throw new \RuntimeException('サポート窓口のセットアップがまだです。');
         }
 
         return $table;
