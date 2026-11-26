@@ -67,6 +67,8 @@
         { "method": "post", "uri": "{id}/schedules", "function": "schedulesSave" },
         { "method": "post", "uri": "{id}/schedules/{sid}/delete", "function": "schedulesDelete" },
         { "method": "post", "uri": "{id}/schedules/{sid}/exception", "function": "schedulesException" },
+        { "method": "get", "uri": "{id}/reminder", "function": "reminderPage" },
+        { "method": "post", "uri": "{id}/reminder", "function": "reminderSave" },
         { "method": "get", "uri": "{id}/issue/{issue_id}/move", "function": "issueMoveTargets" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/move", "function": "moveIssue" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/delete", "function": "deleteIssue" },

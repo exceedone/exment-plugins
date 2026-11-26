@@ -92,6 +92,8 @@ return [
         'you_rank' => '您在 :all 人中排名第 :rank 位（:n）',
         'you_none' => '您在本期间尚未进入排行榜。',
         'empty' => '本期间暂无数据。',
+        // the label of a month (PortalRankingTrait::rankLabel)
+        'month_label' => ':year年:month月',
     ],
     'top' => [
         'dashboard' => '仪表板',
@@ -718,6 +720,8 @@ return [
         'upload_failed' => '无法保存文件。请稍后重试。',
         'attachment_off' => '此任务已禁用文件附件。',
         'setup_required' => '项目管理的初始设置尚未完成。请联系系统管理员。',
+        // an image ![..](..) in the body whose ( ) is not a place of an image (LightApiController::failed)
+        'image_location' => '正文中图片 ![…](…) 的 ( ) 里不是图片的位置。请改为图片的 URL，或删除开头的 ! 后再保存。',
     ],
     // What a person reads when a JSON call is refused. The keys are the codes
     // the endpoints put in `error` (PortalDefinition::errorMessage()); the

@@ -92,6 +92,8 @@ return [
         'you_rank' => 'あなたは :all 人中 :rank 位（:n）',
         'you_none' => 'あなたはこの期間、まだランキングに入っていません。',
         'empty' => 'この期間のデータはまだありません。',
+        // the label of a month (PortalRankingTrait::rankLabel)
+        'month_label' => ':year年:month月',
     ],
     'top' => [
         'dashboard' => 'ダッシュボード',
@@ -718,6 +720,8 @@ return [
         'upload_failed' => 'ファイルを保存できませんでした。時間をおいて再度お試しください。',
         'attachment_off' => 'この課題にはファイルを添付できない設定になっています。',
         'setup_required' => 'プロジェクト管理の初期セットアップが完了していません。システム管理者に依頼してください。',
+        // an image ![..](..) in the body whose ( ) is not a place of an image (LightApiController::failed)
+        'image_location' => '本文の画像 ![…](…) の ( ) の中が、画像の場所になっていません。画像の URL にするか、先頭の ! を消して保存してください。',
     ],
     // What a person reads when a JSON call is refused. The keys are the codes
     // the endpoints put in `error` (PortalDefinition::errorMessage()); the
@@ -1879,5 +1883,29 @@ return [
         'line_before' => '期限まであと :n 日です（期限 :due）。',
         'line_today' => '今日が期限です（期限 :due）。',
         'line_over' => '期限を :n 日過ぎています（期限 :due）。',
+        // the page of a project (stage 1b)
+        'page_title' => 'リマインド',
+        'saved' => '保存しました。',
+        'project_on' => 'このプロジェクトでリマインドを送る',
+        'mode_site' => 'サイトの決まり（プラグインの設定）を使う',
+        'mode_own' => 'このプロジェクトの決まりを使う',
+        'site_now' => '今のサイトの決まり：:days 日前・:time',
+        'own_header' => 'このプロジェクトの決まり',
+        'channels' => 'チャンネルにも送る',
+        'channels_help' => 'Slack・Teams のチャンネル（受信 Webhook の URL）、LINE WORKS のチャンネルにも、同じリマインドを送ります。URL は暗号にして保存し、画面には出しません。サーバー自身や社内のアドレスには送れません。',
+        'ch_type' => '送り先の種類',
+        'ch_none' => '（使わない）',
+        'ch_url' => 'https://… の Webhook の URL',
+        'ch_keep' => '空のままなら、保存した URL を使います',
+        'ch_saved' => '保存した URL：:url',
+        'ch_lw' => 'LINE WORKS のチャンネル ID',
+        'ch_label' => '名前（メモ）',
+        'ch_remove' => '外す',
+        'save' => '保存',
+        'err_url' => 'Webhook の URL は https:// で始まり、外のサービスのアドレスにしてください。',
+        'err_url_empty' => 'Webhook の URL を入れてください。',
+        'err_channel_id' => 'LINE WORKS のチャンネル ID は、英数字・「_」「-」で入れてください。',
     ],
+    // UX-H: the issue form (S6, M11, M12)
+    'ned_more_find' => '項目を探す',
 ];

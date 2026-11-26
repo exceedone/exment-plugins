@@ -92,6 +92,8 @@ return [
         'you_rank' => ':all명 중 :rank위입니다 (:n)',
         'you_none' => '이 기간의 랭킹에 아직 포함되지 않았습니다.',
         'empty' => '이 기간의 데이터가 아직 없습니다.',
+        // the label of a month (PortalRankingTrait::rankLabel)
+        'month_label' => ':year년 :month월',
     ],
     'top' => [
         'dashboard' => '대시보드',
@@ -718,6 +720,8 @@ return [
         'upload_failed' => '파일을 저장할 수 없습니다. 잠시 후 다시 시도하십시오.',
         'attachment_off' => '이 이슈는 파일 첨부가 비활성화되어 있습니다.',
         'setup_required' => '프로젝트 관리의 초기 설정이 완료되지 않았습니다. 시스템 관리자에게 문의하십시오.',
+        // an image ![..](..) in the body whose ( ) is not a place of an image (LightApiController::failed)
+        'image_location' => '본문의 이미지 ![…](…)의 ( ) 안이 이미지 위치가 아닙니다. 이미지 URL로 바꾸거나, 앞의 !를 지우고 저장하십시오.',
     ],
     // What a person reads when a JSON call is refused. The keys are the codes
     // the endpoints put in `error` (PortalDefinition::errorMessage()); the

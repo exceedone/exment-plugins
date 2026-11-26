@@ -294,7 +294,7 @@
     // server checks apply (permission per row, values of this project);
     // Esc or clicking away cancels, a refused save flashes red.
     var ED_NAV_TIMER = null;
-    function edAttr(f) { return BULK_ON ? ' data-ed="' + f + '" title="ダブルクリックで編集"' : ''; }
+    function edAttr(f) { return BULK_ON ? ' data-ed="' + f + '" title="' + esc(L.ed_hint) + '"' : ''; }
     var ED_SRC = { st: 'pp-bk-st', ty: 'pp-bk-ty', pr: 'pp-bk-pr', ms: 'pp-bk-ms', cat: 'pp-f-cat' };
     function edOptions(field) {
         var src = document.getElementById(ED_SRC[field]), out = [];
@@ -373,7 +373,7 @@
         var sel = document.createElement('select');
         sel.className = 'pp-ed-in';
         var opts = edOptions(f);
-        if (f === 'ms' || f === 'cat') { opts.unshift(['', '（なし）']); }
+        if (f === 'ms' || f === 'cat') { opts.unshift(['', L.bk_none]); }
         if (cur !== '' && !opts.some(function (o) { return o[0] === cur; })) { opts.unshift([cur, cur]); }
         opts.forEach(function (o) {
             var op = document.createElement('option');

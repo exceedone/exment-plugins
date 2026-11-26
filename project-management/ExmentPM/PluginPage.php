@@ -275,6 +275,17 @@ class PluginPage extends PluginPageBase
         return $this->portal()->companyCalendarDelete(request());
     }
 
+    // ISS00432: the reminders of a project
+    public function reminderPage($id)
+    {
+        return $this->respond($this->portal()->reminderPage(request(), new Content(), $id));
+    }
+
+    public function reminderSave($id)
+    {
+        return $this->portal()->reminderSave(request(), $id);
+    }
+
     public function mailIssue($id, $issue_id)
     {
         return $this->portal()->mailIssue(request(), $id, $issue_id);

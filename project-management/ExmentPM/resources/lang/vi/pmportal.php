@@ -92,6 +92,8 @@ return [
         'you_rank' => 'Bạn xếp hạng :rank trên :all (:n)',
         'you_none' => 'Bạn chưa có mặt trong bảng xếp hạng của kỳ này.',
         'empty' => 'Chưa có dữ liệu cho kỳ này.',
+        // the label of a month (PortalRankingTrait::rankLabel)
+        'month_label' => 'Tháng :month/:year',
     ],
     'top' => [
         'dashboard' => 'Bảng điều khiển',
@@ -718,6 +720,8 @@ return [
         'upload_failed' => 'Không thể lưu tệp. Vui lòng thử lại sau.',
         'attachment_off' => 'Tính năng đính kèm tệp đã bị tắt cho vấn đề này.',
         'setup_required' => 'Thiết lập ban đầu của Quản lý dự án chưa hoàn tất. Vui lòng liên hệ quản trị viên hệ thống.',
+        // an image ![..](..) in the body whose ( ) is not a place of an image (LightApiController::failed)
+        'image_location' => 'Phần trong ( ) của hình ảnh ![…](…) trong nội dung không phải là vị trí của hình ảnh. Hãy đặt URL hình ảnh, hoặc xóa dấu ! ở đầu rồi lưu lại.',
     ],
     // What a person reads when a JSON call is refused. The keys are the codes
     // the endpoints put in `error` (PortalDefinition::errorMessage()); the

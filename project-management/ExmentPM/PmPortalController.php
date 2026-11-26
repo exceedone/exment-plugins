@@ -44,6 +44,7 @@ class PmPortalController extends AdminControllerBase
     use PortalFeedTrait;
     use PortalSchedulePageTrait;
     use PortalCalendarPageTrait;
+    use PortalReminderPageTrait;
 
     /**
      * How many issues one bulk edit may touch.
@@ -601,6 +602,9 @@ class PmPortalController extends AdminControllerBase
             // the link to the recurring schedules of the project, for its manager (ISS00432)
             'schedule_url' => (PortalSchedule::enabled() && PortalMembership::canManage($project))
                 ? PortalDefinition::url($project->id, 'schedules') : null,
+            // the link to the reminders of the project, for its manager (ISS00432)
+            'reminder_url' => (PortalReminder::enabled() && PortalReminderRules::exists() && PortalMembership::canManage($project))
+                ? PortalDefinition::url($project->id, 'reminder') : null,
             'topbar' => $this->topbarData(strval($project->id)),
             'lazy_widgets' => $lazy,
             'board_available' => $this->hasEmbeddedView(ViewKindType::KANBAN),

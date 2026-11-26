@@ -92,6 +92,8 @@ return [
         'you_rank' => 'You are ranked :rank of :all (:n)',
         'you_none' => 'You are not in the ranking for this period yet.',
         'empty' => 'No data for this period yet.',
+        // the label of a month (PortalRankingTrait::rankLabel)
+        'month_label' => ':year/:month',
     ],
     'top' => [
         'dashboard' => 'Dashboard',
@@ -718,6 +720,8 @@ return [
         'upload_failed' => 'The file could not be saved. Please try again later.',
         'attachment_off' => 'File attachments are disabled for this issue.',
         'setup_required' => 'The initial setup of Project Management is not complete. Ask your system administrator.',
+        // an image ![..](..) in the body whose ( ) is not a place of an image (LightApiController::failed)
+        'image_location' => 'The ( ) of the image ![…](…) in the description is not the place of an image. Put the URL of an image there, or remove the ! at the start, and save again.',
     ],
     // What a person reads when a JSON call is refused. The keys are the codes
     // the endpoints put in `error` (PortalDefinition::errorMessage()); the

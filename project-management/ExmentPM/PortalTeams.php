@@ -186,10 +186,12 @@ class PortalTeams
         $issue = getModelName($issue_table)::withoutGlobalScopes()->find($issue_id);
         $users = getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereIn('id', $targets)->get();
         $html = !isMatchString(System::system_mail_body_type(), MailBodyType::PLAIN);
+        // where each one gets it: the receiver's own choice (PortalNotifyPrefs)
+        $prefs = PortalNotifyPrefs::channelsFor($targets, PortalNotifyPrefs::eventOfKind($kind), isset($issue) ? intval($issue->parent_id) : 0);
         foreach ($users as $user) {
-            $choice = static::choiceOf($user);
-            $byMail = $mailAll || in_array($choice, ['mail', 'both'], true);
-            $byTeams = static::teamsAvailable() && in_array($choice, ['teams', 'both'], true);
+            $pref = $prefs[intval($user->id)] ?? ['bell' => true, 'mail' => false, 'teams' => false];
+            $byMail = $mailAll || $pref['mail'];
+            $byTeams = $pref['teams'];
             if (!$byMail && !$byTeams) {
                 continue;
             }
