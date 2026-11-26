@@ -965,14 +965,17 @@
             [c.status || null, c.assignees || null],
             [c.priority || null, c.milestone || null],
             [c.category || null, x.versions || null],
-            [c.start || null, c.due || null]
+            [c.start || null, c.due || null],
+            // the time of the due date, under it: folded away it was not found when an
+            // issue was added (ISS02923)
+            [null, x.due_time || null]
         ].filter(keep);
         var more = [
             // Schema 27: the other people, beside the assignees.
             [x.sub_assignees || null, x.managers || null],
             [x.reviewers || null, x.notified_users || null],
             [x.difficulty || null, x.recurrence || null],
-            [x.due_time || null, x.subject_sub || null],
+            [x.subject_sub || null, null],
             [c.estimate || null, c.actual || null],
             [c.progress || null, x.resolution || null]
         ].filter(keep);

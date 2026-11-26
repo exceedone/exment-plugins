@@ -580,6 +580,8 @@ return [
     'cmt_uploading' => 'アップロード中…',
     'cmt_up_ok' => '%s 件を添付しました',
     'cmt_up_fail' => 'ファイルをアップロードできませんでした',
+    // ISS00245: a file that is not a picture, on the body of an issue not saved yet, or a wiki page
+    'ned_file_after_create' => '画像でないファイルは、保存してある課題の本文に入れられます（その課題に添付して、リンクを入れます）。いまは「ファイル」から添付してください。',
     'cmt_menu' => 'その他',
     // Reactions on an issue and a comment (ISS00259)
     'rx_add' => 'リアクション',
@@ -1550,6 +1552,8 @@ return [
         'no_tables' => 'プロジェクト管理のテーブルがインストールされていません。',
         'recur' => '繰り返しの課題を :count 件作りました。',
         'recur_dry' => 'ドライラン：繰り返しの課題を :count 件作る予定です。',
+        'shares' => 'プロジェクトと課題 :rows 件を見て、共有を :count 件付けました。',
+        'shares_dry' => 'ドライラン：プロジェクトと課題 :rows 件を見ます（何も書きません）。',
         'no_key' => 'TypeSafe の API キーがありません（環境変数 TYPESAFE_KEY またはプラグインの設定）。',
         'no_projects' => '自動入力の対象になるプロジェクトがありません（AI 自動入力はオンになっていますか）。',
         'not_found' => 'プロジェクト :target が見つかりません。',

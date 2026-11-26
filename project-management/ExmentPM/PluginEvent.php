@@ -252,6 +252,13 @@ class PluginEvent extends PluginEventBase
                 'exception' => $e,
             ]);
         }
+        // a new project's people get their shares now too, also the ones not in a role group yet
+        // (ISS00385): Exment's share settings left them out
+        try {
+            PortalMembership::ensureShares($model);
+        } catch (\Throwable $e) {
+            Log::error('pm_portal could not share new project ' . $model->id . ' with its people: ' . $e->getMessage());
+        }
     }
 
     /**

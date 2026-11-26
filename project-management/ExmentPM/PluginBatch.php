@@ -80,6 +80,32 @@ class PluginBatch extends PluginBatchBase
         // --param1=recur: make the recurring issues whose turn has come
         // (PortalRecurrence). Page loads do this too; this is for a server
         // that runs the batch on a schedule.
+        // --param1=shares: give the projects and the issues there are the shares of the people
+        // they name, the ones not in a role group yet when they were saved too (ISS00385)
+        if ($target === 'shares') {
+            \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            $def = PortalDefinition::config();
+            $added = 0;
+            $rows = 0;
+            foreach ([array_get($def, 'project_table'), array_get($def, 'issue_table')] as $tableName) {
+                $table = CustomTable::getEloquent($tableName);
+                if (!isset($table)) {
+                    continue;
+                }
+                $table->getValueModel()->query()->withoutGlobalScopes()->orderBy('id')->chunk(200, function ($chunk) use (&$added, &$rows, $dry) {
+                    foreach ($chunk as $row) {
+                        $rows++;
+                        if (!$dry) {
+                            $added += PortalMembership::ensureShares($row);
+                        }
+                    }
+                });
+            }
+            $this->say($dry ? 'shares_dry' : 'shares', ['rows' => $rows, 'count' => $added]);
+
+            return 0;
+        }
+
         if ($target === 'recur') {
             \Exceedone\Exment\Middleware\Morph::defineMorphMap();
             $made = PortalRecurrence::run($dry);
