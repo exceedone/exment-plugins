@@ -252,6 +252,27 @@ class PluginPage extends PluginPageBase
         return $this->portal()->schedulesException(request(), $id, $sid);
     }
 
+    // ISS00432 2b: the calendars
+    public function schedulesCalendar($id)
+    {
+        return $this->respond($this->portal()->schedulesCalendar(request(), new Content(), $id));
+    }
+
+    public function companyCalendar()
+    {
+        return $this->respond($this->portal()->companyCalendar(request(), new Content()));
+    }
+
+    public function companyCalendarSave()
+    {
+        return $this->portal()->companyCalendarSave(request());
+    }
+
+    public function companyCalendarDelete()
+    {
+        return $this->portal()->companyCalendarDelete(request());
+    }
+
     public function mailIssue($id, $issue_id)
     {
         return $this->portal()->mailIssue(request(), $id, $issue_id);

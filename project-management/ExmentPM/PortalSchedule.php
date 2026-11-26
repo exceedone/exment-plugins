@@ -247,6 +247,36 @@ class PortalSchedule
         return [$id, []];
     }
 
+    /**
+     * Change a schedule from a date on (RFC 5545's way): the schedule ends the day before, a new
+     * one with the form's rule starts on the date. The issues already made from the date on move
+     * to the new one, so its first run does not make them again; the moved or skipped dates from
+     * the date on belonged to the old rule and go.
+     *
+     * @return array{0: ?int, 1: array<int, string>} the new schedule's id, or the errors
+     */
+    public static function split(int $projectId, int $id, string $date, array $f, int $userId, $issueTable): array
+    {
+        $old = static::find($projectId, $id);
+        $date = BusinessCalendar::normalize($date);
+        if ($old === null || $date === null || strcmp($date, strval($old->start_date)) <= 0) {
+            return [null, [strval(PortalDefinition::trans('sched.err_split'))]];
+        }
+        $f['start_date'] = $date;
+        [$newId, $errors] = static::save($projectId, null, $f, $userId, $issueTable);
+        if ($newId === null) {
+            return [null, $errors];
+        }
+        $before = (new \DateTimeImmutable($date))->modify('-1 day')->format('Y-m-d');
+        DB::transaction(function () use ($id, $newId, $date, $before, $userId) {
+            DB::table(static::TABLE)->where('id', $id)->update(['end_date' => $before, 'updated_user_id' => $userId, 'updated_at' => now()]);
+            DB::table(static::EXCEPTIONS)->where('schedule_id', $id)->where('original_date', '>=', $date)->delete();
+            DB::table(static::ITEMS)->where('schedule_id', $id)->where('original_date', '>=', $date)->update(['schedule_id' => $newId]);
+        });
+
+        return [$newId, []];
+    }
+
     public static function delete(int $projectId, int $id): void
     {
         if (static::find($projectId, $id) === null) {
@@ -306,7 +336,7 @@ class PortalSchedule
             return $made;
         }
         $today = $today ?? PortalTime::today();
-        $cal = new BusinessCalendar();
+        $cal = PortalCalendarDays::calendar();
         foreach (DB::table(static::TABLE)->where('enabled', 1)->orderBy('id')->get() as $s) {
             $project = $projectTable->getValueModel()->query()->withoutGlobalScopes()->find(intval($s->project_id));
             if (!isset($project) || boolval(array_get($project->value, 'archived'))) {
