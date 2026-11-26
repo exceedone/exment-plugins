@@ -7005,7 +7005,8 @@ window.PmPortalBoot = function () {
                 if (kind === 'pdf' && rows) { pvMsg(bd, 'PDF'); return; }
                 var type = kind === 'pdf' ? 'application/pdf' : 'image/' + (pvExt(name) === 'jpg' ? 'jpeg' : pvExt(name));
                 var u = URL.createObjectURL(new Blob([buf], { type: type }));
-                PV_URLS.push(u);
+                // the window's own are let go when it closes; a card's stay with the page
+                if (bd.closest && bd.closest('#pp-pv')) { PV_URLS.push(u); }
                 var el = document.createElement(kind === 'pdf' ? 'iframe' : 'img');
                 el.className = kind === 'pdf' ? 'pp-pvpdf' : 'pp-pvimg';
                 el.src = u;
