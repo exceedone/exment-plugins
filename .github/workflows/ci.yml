@@ -124,8 +124,26 @@ jobs:
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
 
+      - name: Simple or full issue screen (ExmentPM)
+        run: node project-management/tools/test-pm-simple.js
+      # Where each person's notice arrives (ISS02931): the chips, and the rule of the server.
+      - name: Notice channels (ExmentPM)
+        run: |
+          node project-management/tools/test-pm-notify-to.js
+          php project-management/tools/test-pm-notify-to.php
+      - name: Command palette (ExmentPM)
+        run: node project-management/tools/test-pm-palette.js
+      - name: Issue actions in one menu (ExmentPM)
+        run: node project-management/tools/test-pm-issue-actions.js
+
       - name: Recent updates pages (ExmentPM)
         run: php project-management/tools/test-pm-feed.php
+
+      # The messages of the chat channels of a project (ExmentPM, plain PHP)
+      - name: Chat channels (ExmentPM)
+        run: php project-management/tools/test-pm-channels.php
+      - name: Simple by default (ExmentPM schema 30)
+        run: php project-management/tools/test-pm-features.php
 
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
@@ -146,6 +164,10 @@ jobs:
       # The links to the manuals of ExmentPM, ExmentITSupport and ExmentGroupware.
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php
+
+      # how each person gets the notices: per event, projects muted, quiet hours (ExmentPM)
+      - name: Notice settings (ExmentPM)
+        run: php project-management/tools/test-pm-notify-prefs.php
 
       # The project routes without admin.morph still find a project the same way as the others.
       - name: Morph-less routes check (ExmentPM)

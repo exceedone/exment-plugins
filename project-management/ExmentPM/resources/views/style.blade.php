@@ -576,6 +576,10 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
   border-color:var(--bl-accent);color:var(--bl-accent-d,var(--bl-accent-ink,#2c6e5b));}
 .pmportal .bl-dockbody .bl-chip:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
 .pmportal #pp-notify-chips{display:flex;flex-wrap:wrap;gap:5px;}
+/* ISS02931: where a person's notice arrives besides the bell (mail, Teams), small after the name */
+.pmportal #pp-notify-chips .pp-nb{display:inline-flex;gap:3px;margin-left:4px;font-size:11px;opacity:.75;}
+.pmportal #pp-notify-chips .pp-nb .fa{margin:0;}
+.pmportal .pp-notify-route{margin-top:6px;font-size:12px;color:var(--bl-sub);}
 /* ---- dock cards: quieter heads, the room goes to the fields ---- */
 .pmportal .bl-dockbody .bl-card-box>.bl-boxhead{display:flex;align-items:center;flex-wrap:wrap;gap:2px 0;padding:7px 12px;font-size:13px;}
 .pmportal .bl-dockbody .bl-card-box>.bl-boxbody{padding:10px 12px 12px;}
@@ -585,6 +589,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 /* Two ticks on the head (確認を依頼する, メールでも知らせる): the first one takes
    the push to the right, the second sits beside it. */
 .pmportal .bl-dockbody .bl-boxhead .pp-notify-rv + .pp-notify-mail{margin-left:0;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail + .pp-notify-teams{margin-left:0;}
 /* With 確認を依頼する ticked the picked people are being asked, not only told:
    each picked chip carries the tick, so what the post will do is on screen. */
 .pmportal #pp-notify-chips.rv .bl-chip:not(.off)::after{content:"\f046";font-family:FontAwesome;font-size:12px;margin-left:2px;}
@@ -1503,6 +1508,12 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-ms .nm{width:110px;}
   .pmportal .bl-ms .cnt{width:auto;}
   .pmportal .pp-sf-menu{max-width:calc(100vw - 40px);}
+  /* FIX-1: on a phone the right-side tools wrap to their own line at the
+     left, and a menu hung from the right of its button ran off the left
+     edge (保存した条件, 列). Hung from the row instead, at its left. */
+  .pmportal .bl-fright{position:relative;}
+  .pmportal .pp-sf-wrap,.pmportal .pp-oc-wrap{position:static;}
+  .pmportal .pp-sf-menu,.pmportal .pp-oc-menu{left:0;right:auto;}
   .pp-top .pp-top-menu{max-width:calc(100vw - 32px);}
   .pp-top .pp-top-search{max-width:none;flex-basis:100%;margin:0 0 8px;}
 }
@@ -1927,4 +1938,60 @@ body.pp-ib-open{overflow:hidden;}
   border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);font-size:12.5px;}
 .pp-nedit .pp-ne-more-find:focus{border-color:var(--bl-accent);outline:none;box-shadow:var(--bl-focus);}
 .pp-nedit .pp-ne-more .pp-ne-nomatch{display:none !important;}
+/* Button map: かんたん / くわしく on an issue. Simple keeps the subject, the
+   status, the assignees, the due date, the text and the comments. */
+.pmportal .pp-dmode-wrap{margin-left:auto;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.pmportal .pp-dmode-hint{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 9px;border-radius:var(--bl-radius-s,4px);
+  background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));color:var(--bl-accent-d,var(--bl-ink));font-size:12px;}
+.pmportal .pp-dmode-hint .x{border:0;background:none;font-size:16px;line-height:1;color:inherit;cursor:pointer;min-width:24px;min-height:24px;}
+.pmportal .pp-dmode{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bl-line);background:var(--bl-box);
+  border-radius:var(--bl-radius-s,4px);padding:3px 10px;min-height:28px;font-size:12px;color:var(--bl-sub);cursor:pointer;}
+.pmportal .pp-dmode:hover{background:var(--bl-hover);color:var(--bl-ink);}
+.pmportal .bl-detail.pp-simple .bl-props .row:not([data-top="top"]),
+.pmportal .bl-detail.pp-simple .pp-qf-unset,
+.pmportal .bl-detail.pp-simple #pp-d-childbox,
+.pmportal .bl-detail.pp-simple #pp-d-filebox,
+.pmportal .bl-detail.pp-simple #pp-d-relbox,
+.pmportal .bl-detail.pp-simple .bl-dsum [data-sum="pr"],
+.pmportal .bl-detail.pp-simple .bl-dsum [data-sum="role"],
+.pmportal .bl-detail.pp-simple .bl-dsum .pp-reads{display:none !important;}
+.pmportal .bl-detail.pp-simple:not(.pp-two) #pp-d-propbox{display:none !important;}
+@media (max-width:1199px){.pmportal .bl-detail.pp-simple #pp-d-propbox{display:none !important;}}
+/* L2: the command palette (Ctrl+K / ⌘K) */
+.pmportal .pp-pal{position:fixed;inset:0;z-index:1095;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px;background:rgba(15,23,32,.32);}
+.pmportal .pp-pal .in{width:min(600px,100%);max-height:70vh;display:flex;flex-direction:column;background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius,6px);box-shadow:0 12px 32px rgba(0,0,0,.18);overflow:hidden;}
+.pmportal .pp-pal .hd{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bl-line2);color:var(--bl-sub);}
+.pmportal .pp-pal .hd input{flex:1;min-width:0;border:0;outline:0;background:none;font-size:15px;color:var(--bl-ink);padding:4px 0;}
+.pmportal .pp-pal .hd .x{border:0;background:none;font-size:20px;line-height:1;color:var(--bl-sub);cursor:pointer;min-width:32px;min-height:32px;}
+.pmportal .pp-pal .ls{list-style:none;margin:0;padding:6px 0;overflow-y:auto;}
+.pmportal .pp-pal .gt{padding:6px 14px 2px;font-size:11.5px;font-weight:700;color:var(--bl-sub);}
+.pmportal .pp-pal .it{display:flex;align-items:center;gap:8px;padding:7px 14px;min-height:36px;font-size:13.5px;cursor:pointer;color:var(--bl-ink);}
+.pmportal .pp-pal .it.on,.pmportal .pp-pal .it:hover{background:var(--bl-hover);}
+.pmportal .pp-pal .it .lb{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pmportal .pp-pal .it .ky{font-family:var(--bl-mono,monospace);font-size:12px;color:var(--bl-sub);flex-shrink:0;}
+.pmportal .pp-pal kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid var(--bl-line);border-bottom-width:2px;border-radius:4px;font-size:11.5px;text-align:center;color:var(--bl-sub);background:var(--bl-bg);}
+.pmportal .pp-pal .none{padding:12px 14px;color:var(--bl-faint);font-size:13px;}
+@media (max-width:560px){.pmportal .pp-pal{padding-top:8px;}.pmportal .pp-pal .in{max-height:calc(100vh - 16px);}}
+/* Button map: the issue's ⋯ menu also holds 子課題を追加・注目・お気に入り・ウォッチ.
+   What is on shows as a small icon on the ⋯ button (:has, so it follows a toggle at once). */
+.pmportal .pp-more > .m .sep{display:block;height:0;margin:4px 0;border-top:1px solid var(--bl-line2);}
+.pmportal .pp-more > .m a.on .fa{color:var(--bl-accent-d,var(--bl-accent));}
+/* In the menu every item says its word, on a phone too (the head's 注目 button drops it under 480px) */
+.pmportal .pp-more > .m .pp-star-d .lb{display:inline !important;}
+.pmportal .pp-more > .m a .wc,.pmportal .pp-more > .m a .ct{margin-left:auto;font-size:12px;color:var(--bl-sub);}
+.pmportal .pp-morebtn .pp-act-on{display:inline-flex;gap:3px;margin-left:4px;font-size:11px;color:var(--bl-accent-d,var(--bl-accent));}
+.pmportal .pp-morebtn .pp-act-on .fa{display:none;margin:0;}
+.pmportal .pp-more:has(.m .pp-star.on) .pp-act-on .ind-s,
+.pmportal .pp-more:has(.m .pp-fav.on) .pp-act-on .ind-f,
+.pmportal .pp-more:has(.m .pp-watch.on) .pp-act-on .ind-w{display:inline-block;}
+/* FIX-1: the copy button under each key of the list shows on the row the
+   pointer is on (or when focused), not on every row at once. Touch screens
+   keep it. */
+@media (hover:hover){
+  .pmportal #pp-issue-rows tr .pp-ikcopy{opacity:0;transition:opacity .12s;}
+  .pmportal #pp-issue-rows tr:hover .pp-ikcopy,.pmportal #pp-issue-rows tr:focus-within .pp-ikcopy,.pmportal #pp-issue-rows .pp-ikcopy:focus-visible{opacity:1;}
+}
+/* ISS02931: under a comment, who it was also sent to by mail / Teams */
+.pmportal .pp-ntline{margin:4px 0 0;font-size:11.5px;color:var(--bl-faint);}
+.pmportal .pp-ntline .fa{margin-right:3px;}
 </style>

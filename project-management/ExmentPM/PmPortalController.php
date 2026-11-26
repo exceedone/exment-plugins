@@ -39,9 +39,11 @@ class PmPortalController extends AdminControllerBase
     use PortalProjectTrait;
     use PortalAiTrait;
     use PortalRankingTrait;
+    use PortalNotifySettingsTrait;
     use PortalExportTrait;
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
+    use PortalChannelsTrait;
     use PortalSchedulePageTrait;
     use PortalCalendarPageTrait;
     use PortalReminderPageTrait;
@@ -881,6 +883,8 @@ class PmPortalController extends AdminControllerBase
         $issue_reactions = Star::reactions($issue_name, $ids);
         // Review requests (ISS00341): who was asked to confirm each comment.
         $comment_reviews = Star::reviews('comment', $comment_ids);
+        // ISS02931: who each comment was also sent to by mail / Teams
+        $comment_notices = Star::notices('comment', $comment_ids);
         $comments = [];
         foreach ($comment_rows as $comment) {
             $comments[intval($comment->parent_id)][] = $comment;
@@ -980,6 +984,9 @@ class PmPortalController extends AdminControllerBase
                     // An archived project takes no confirmation (see
                     // reviewComment), so the button is not offered there.
                     $entry['rv_on'] = !$archived;
+                }
+                if (!empty($comment_notices[strval($comment->id)])) {
+                    $entry['nt'] = $comment_notices[strval($comment->id)];
                 }
                 $timeline[] = $entry;
             }
@@ -1185,6 +1192,7 @@ class PmPortalController extends AdminControllerBase
         // The address the bells, the mail and Teams link to: the comment
         // itself once there is one (the screen scrolls to it), else the issue.
         $notice_url = $this->issueUrl($project, $issue);
+        $comment_id = null;
         if ($comment !== '') {
             try {
                 $model = CustomTable::getEloquent(SystemTableName::COMMENT)->getValueModel();
@@ -1205,6 +1213,7 @@ class PmPortalController extends AdminControllerBase
             // Exment's refreshdata empties the comment table. A comment this
             // new cannot have been starred yet.
             Star::purge('comment', $model->id);
+            $comment_id = $model->id;
             $notice_url = static::commentUrl($notice_url, $model->id);
 
             // Review request (ISS00341): the picked people are asked to
@@ -1225,6 +1234,8 @@ class PmPortalController extends AdminControllerBase
             // the issue table's notifications for a comment - its assignees,
             // notified users and creator - which a portal comment never rang.
             $this->runTableNotifies($issue, NotifySavedType::COMMENT, ['comment' => $comment]);
+            // the project's chat channels that take comments (ISS02939), after the answer
+            PortalChannels::commented($issue, $comment);
         }
 
         // ---- the portal's own bell: picked people + watchers.
@@ -1284,10 +1295,64 @@ class PmPortalController extends AdminControllerBase
             $notice_url,
             $this->wantsMail($request)
         );
+        // ISS02931: "also by Teams" - to the people of these bells who would not get it anyway.
+        if ($this->wantsTeams($request)) {
+            PortalNotifyTo::teamsAfterResponse(
+                $issue_name,
+                $issue,
+                $bell_mark,
+                \Exment::getUserId(),
+                'updated',
+                $this->issueKey($project, $issue->id),
+                strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
+                $lines,
+                $notice_url,
+                intval($project->id)
+            );
+        }
 
         // Answer with the refreshed detail so the screen patches itself -
         // a reload would cost another framework boot for data we already have.
-        return $this->issueDetailResponse($project, $issue->id);
+        // ISS02931: with who got a mail and who a Teams message, which the
+        // writer is told (「メールで知らせた: 山田」).
+        return response()->json(array_merge(
+            ['ok' => true, 'notice_to' => $this->noticeTo($issue_name, $issue, $bell_mark, $request, intval($project->id), $comment_id)],
+            $this->issueDetailBody($project, $issue->id)
+        ));
+    }
+
+    /**
+     * Who of the people the bells of this write went to gets it by mail and
+     * who by Teams, by name. Empty lists when nobody does, or when it cannot
+     * be told (the write is saved either way).
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     * @return array{mail: array<int, string>, teams: array<int, string>}
+     */
+    protected function noticeTo(string $issue_name, $issue, int $bell_mark, Request $request, int $project_id, $comment_id = null): array
+    {
+        try {
+            $targets = PortalMail::bellTargets($issue_name, intval($issue->id), $bell_mark, \Exment::getUserId());
+            $plan = PortalNotifyTo::plan($targets, $this->wantsMail($request), $this->wantsTeams($request), $project_id);
+            // ISS02931: kept under the comment (「メールで知らせた: 山田」), read back with the
+            // detail drawn after this. A post with no comment has no line to keep it on.
+            if (!is_null($comment_id) && (!empty($plan['mail']) || !empty($plan['teams']))) {
+                Star::noticeLog('comment', $comment_id, $plan['mail'], $plan['teams']);
+            }
+            $names = $this->usersFor(array_merge($plan['mail'], $plan['teams']));
+            $name = function ($id) use ($names) {
+                return strval(array_get($names, strval($id) . '.n', ''));
+            };
+
+            return [
+                'mail' => array_values(array_filter(array_map($name, $plan['mail']))),
+                'teams' => array_values(array_filter(array_map($name, $plan['teams']))),
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('pm_portal notice list for issue ' . $issue->id . ' failed: ' . $e->getMessage());
+
+            return ['mail' => [], 'teams' => []];
+        }
     }
 
     /**
@@ -1772,6 +1837,16 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * Whether the writer ticked "also send by Teams" (ISS02931).
+     */
+    public function wantsTeams(Request $request): bool
+    {
+        $flag = $request->input('notify_teams');
+
+        return PortalTeams::teamsAvailable() && is_scalar($flag) && in_array(strval($flag), ['1', 'true', 'on'], true);
+    }
+
+    /**
      * Whether the writer ticked "ask them to confirm" (ISS00341).
      */
     public function wantsReview(Request $request): bool
@@ -1837,6 +1912,10 @@ class PmPortalController extends AdminControllerBase
         $reviewers = collect(array_get($detail, 'timeline', []))->flatMap(function ($row) {
             return array_column((array) array_get($row, 'rv', []), 'by');
         });
+        // ...and the people a comment was also sent to by mail or Teams (ISS02931)
+        $reviewers = $reviewers->merge(collect(array_get($detail, 'timeline', []))->flatMap(function ($row) {
+            return array_merge((array) array_get($row, 'nt.mail', []), (array) array_get($row, 'nt.teams', []));
+        }));
 
         return collect(array_get($detail, 'timeline', []))->pluck('by')
             ->merge(collect(array_get($detail, 'reads', []))->pluck('by'))
@@ -3066,6 +3145,8 @@ class PmPortalController extends AdminControllerBase
             'git' => $can['manage'] ? $this->gitState($project) : null,
             // the Files tab with the file server (ISS02825): off unless the feature is on
             'fileserver' => $features['file'] ? PortalFiles::state($project, $can['manage']) : ['on' => false],
+            // the chat channels, for the manager while the feature is on (ISS02939)
+            'channels' => ($can['manage'] && PortalChannels::pageOn()) ? PortalChannels::state(intval($project->id)) : ['on' => false],
             // Whether the issue form shows the AI button, and the numbers it
             // labels the answers with. Never the key.
             'ai' => $this->aiPayload($project),
@@ -3089,6 +3170,15 @@ class PmPortalController extends AdminControllerBase
             // anything moved while it was sitting open.
             'stamp' => $this->projectStampValue($project),
             'users' => $this->usersFor($user_ids),
+            // ISS02931: where each person of the project gets a notice besides
+            // the bell (user id => {mail, teams}), shown on the chips of the
+            // comment dock; one query for all of them.
+            'notify_by' => (object) PortalNotifyTo::channels(array_merge(
+                [intval(array_get($project->value, array_get($pj, 'manager')))],
+                collect($member_ids)->all(),
+                collect($viewer_ids)->all()
+            ), intval($project->id)),
+            'notify_teams' => PortalTeams::teamsAvailable(),
             'statuses' => $statuses,
             'types' => $type_meta,
             'priorities' => $priority_meta,
@@ -3181,6 +3271,7 @@ class PmPortalController extends AdminControllerBase
                 'git_key_remove' => PortalDefinition::url($project->id, 'git_key_remove'),
                 'git_token' => PortalDefinition::url($project->id, 'git_token'),
                 'file_workspace' => PortalDefinition::url($project->id, 'file_workspace'),
+                'channels' => PortalDefinition::url($project->id, 'channels'),
                 'ai_suggest' => PortalDefinition::url($project->id, 'ai', 'suggest'),
                 'ai_feedback' => PortalDefinition::url($project->id, 'ai', 'feedback'),
                 'ai_state' => PortalDefinition::url($project->id, 'ai', 'state'),

@@ -367,6 +367,17 @@ class PortalUpgrade
                 }
             }
 
+            // Schema 30: a new project starts with the basics only. Every
+            // project there already is keeps what it has: an empty switch
+            // (read as on) is written as on first, then the default of the
+            // column turns off. Once, on the way past 30.
+            if ($applied < 30) {
+                $quieted = static::quietNewProjects($names);
+                if ($quieted > 0) {
+                    $steps[] = PortalDefinition::trans('feat_upgrade_step', ['count' => $quieted]);
+                }
+            }
+
             static::repairPluginMenu();
 
             // Schema 25: one sidebar entry (ISS00256). On the way past 26,
@@ -2114,6 +2125,75 @@ class PortalUpgrade
         }
 
         return $map;
+    }
+
+    /**
+     * Schema 30: a new project starts without the Wiki and the chart, and
+     * every project there already is keeps what it has.
+     *
+     * @param array<string, string> $names
+     * @return int project rows changed
+     */
+    protected static function quietNewProjects(array $names): int
+    {
+        $table = CustomTable::getEloquent(array_get($names, 'project_table'));
+        if (!isset($table)) {
+            return 0;
+        }
+        $columns = [];
+        foreach (PortalSchema::QUIET_FEATURES as $role) {
+            $column_name = strval(array_get(PortalSchema::PROJECT_COLUMNS, $role, ''));
+            $column = $column_name === '' ? null : CustomColumn::getEloquent($column_name, $table);
+            if (isset($column)) {
+                $columns[$column_name] = $column;
+            }
+        }
+        if (empty($columns)) {
+            return 0;
+        }
+
+        $changed = 0;
+        foreach ($table->getValueModel()->get() as $row) {
+            $patch = static::keepFeaturesPatch((array) $row->value, array_keys($columns));
+            if (empty($patch)) {
+                continue;
+            }
+            $row->saved_notify(false);
+            $row->setValue($patch);
+            $row->save();
+            $changed++;
+        }
+        foreach ($columns as $column) {
+            if (strval($column->getOption('default')) !== '0') {
+                $column->setOption('default', '0');
+                $column->save();
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
+     * What keeps a project's switches as they read now: an empty one is read
+     * as on (PortalProjectTrait::projectFlag), so it is written as on before
+     * the default of its column turns off. Plain PHP, tested without a
+     * database (tools/test-pm-features.php).
+     *
+     * @param array<string, mixed> $value the row's values
+     * @param array<int, string> $column_names
+     * @return array<string, string>
+     */
+    public static function keepFeaturesPatch(array $value, array $column_names): array
+    {
+        $patch = [];
+        foreach ($column_names as $name) {
+            $now = array_key_exists($name, $value) ? $value[$name] : null;
+            if ($now === null || $now === '' || (is_array($now) && empty($now))) {
+                $patch[$name] = '1';
+            }
+        }
+
+        return $patch;
     }
 
     /**

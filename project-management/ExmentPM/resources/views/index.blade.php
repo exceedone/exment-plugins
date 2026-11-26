@@ -23,10 +23,12 @@
         'col_ty', 'col_key', 'col_subject', 'col_as', 'col_st', 'col_pr', 'col_ms', 'col_cat',
         'col_sd', 'col_dd', 'col_dt', 'col_rc', 'rc_daily', 'rc_weekdays', 'rc_weekly', 'rc_monthly', 'rc_yearly', 'col_pg', 'col_up', 'cnt_line', 'overdue_d', 'left_d',
         'back', 'box_props', 'box_children', 'box_timeline', 'added',
-        'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments', 'issue_more',
+        'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments', 'issue_more', 'dm_more', 'dm_less', 'dm_more_tip', 'dm_less_tip', 'dm_hint', 'act_edit_tip', 'act_more_tip', 'act_watch_tip',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
         'lbl_eh', 'lbl_pg', 'rollup', 'rollup_tip', 'lbl_parent', 'lbl_watch', 'lbl_source', 'lbl_sub_assignees', 'lbl_managers', 'lbl_reviewers', 'lbl_difficulty', 'lbl_author', 'df_easy', 'df_normal', 'df_hard', 'lbl_custom_fields', 'src_created', 'src_updated', 'src_assignees', 'src_assignees_hint', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
-        'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
+        'notify_to', 'notify_mail', 'notify_mail_hint',
+        'nt_teams', 'nt_teams_hint', 'nt_bell', 'nt_mail', 'nt_by_teams', 'nt_tip', 'nt_line_mail', 'nt_line_teams', 'nt_line_bell', 'nt_others', 'nt_sent_mail', 'nt_sent_teams',
+        'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
         'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_dl_csv_all', 'f_dl_csv_screen', 'f_dl_xlsx_all', 'f_dl_xlsx_screen', 'f_dl_busy', 'f_dl_fail', 'tree_ctx_open', 'tree_ctx_close', 'tree_ctx_open_below', 'tree_ctx_close_below', 'tree_ctx_open_all', 'tree_ctx_close_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail', 'tree_ctx_open_w', 'tree_ctx_close_w', 'ctx_add_child', 'ctx_change_parent', 'ctx_copy_link', 'fav', 'fav_on', 'fav_tip', 'fav_add', 'fav_off', 'fav_added', 'fav_removed', 'fav_fail', 'col_alias', 'alias', 'alias_set', 'alias_ask', 'alias_saved', 'alias_fail', 'f_multi', 'f_multi_n', 'f_multi_find', 'f_multi_ok', 'f_multi_clear',
         'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',
         'dock_open', 'dock_title', 'dock_close', 'dock_cancel', 'dock_cmt', 'dock_edit', 'dock_keep',
@@ -83,7 +85,7 @@
         // UX-E
         'ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu',
         // UX-F
-        'feed_more', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
+        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
         'kh_comment', 'kh_status', 'kh_prevnext', 'kh_send', 'kh_close', 'kh_help', 'empty_issues', 'empty_filtered', 'empty_wiki',
         'first_steps', 'fs_add_issue', 'fs_invite', 'fs_statuses', 'f_clear_all',
         // UX-H
@@ -454,9 +456,14 @@
                                      the dock must not grow taller. --}}
                                 <label class="pp-notify-mail pp-notify-rv" title="{{ $lang['rv_ask_hint'] }}"><input type="checkbox" id="pp-notify-rv"> <i class="fa fa-check-square-o"></i> {{ $lang['rv_ask'] }}</label>
                                 <label class="pp-notify-mail" title="{{ $lang['notify_mail_hint'] }}"><input type="checkbox" id="pp-notify-mail"> <i class="fa fa-envelope-o"></i> {{ $lang['notify_mail'] }}</label>
+                                {{-- ISS02931: Teams for everyone of this one notice, where Exment can send it --}}
+                                @if (!empty($payload['notify_teams']))
+                                <label class="pp-notify-mail pp-notify-teams" title="{{ $lang['nt_teams_hint'] }}"><input type="checkbox" id="pp-notify-teams"> <i class="fa fa-commenting-o"></i> {{ $lang['nt_teams'] }}</label>
+                                @endif
                             </div>
                             <div class="bl-boxbody">
                                 <div id="pp-notify-chips"></div>
+                                <div class="pp-notify-route" id="pp-notify-route" hidden></div>
                             </div>
                         </div>
                         </div>

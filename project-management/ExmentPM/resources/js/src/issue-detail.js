@@ -175,22 +175,24 @@
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
                 '<i class="fa fa-arrow-right"></i> ' + fmt(esc(L.to_next), esc(next.l)) + '</button>' : '') +
-            // What is used every day stays a button; what is used now and
-            // then waits in one menu, so the row is one line and the
-            // delete button is not a neighbour of the edit button.
-            // With no children yet the 子課題 box stays away; its one button
-            // waits up here instead of costing a box of its own.
+            // Button map: the main action (the next status) and 編集 stay
+            // buttons; everything else about the issue waits in its one ⋯
+            // menu - adding a child, 注目, お気に入り, ウォッチ first (what is on
+            // shows on the ⋯ button as a small icon), then quote, copy, link,
+            // mail, move, and delete last behind a line.
+            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '" title="' + esc(L.act_edit_tip) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
+            '<span class="pp-more"><a class="bl-btn-sub pp-morebtn" href="javascript:void(0);" role="button" aria-haspopup="true" aria-expanded="false" title="' + esc(L.act_more_tip) + '">' +
+                '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) +
+                '<span class="pp-act-on" aria-hidden="true"><i class="fa fa-star ind-s"></i><i class="fa fa-bookmark ind-f"></i><i class="fa fa-eye ind-w"></i></span></a><span class="m" hidden>' +
             (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
-                ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
-            starDetailBtn(i.id, local.star, local.my_star) +
+                ? '<a class="pp-addchild" href="javascript:void(0);"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
+            starDetailBtn(i.id, local.star, local.my_star).replace('class="bl-btn-sub ', 'class="') +
             // ISS00272: a favorite, the user's own
-            '<a class="bl-btn-sub pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
+            '<a class="pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
                 '" title="' + esc(L.fav_tip) + '"><i class="fa ' + (local.my_fav ? 'fa-bookmark' : 'fa-bookmark-o') + '"></i> <span class="lb">' + esc(local.my_fav ? L.fav_on : L.fav) + '</span></a>' +
-            '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
+            '<a class="pp-watch' + (res.watch.on ? ' on' : '') + '" href="javascript:void(0);" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '" title="' + esc(L.act_watch_tip) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
-            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
-            '<span class="pp-more"><a class="bl-btn-sub pp-morebtn" href="javascript:void(0);" role="button" aria-haspopup="true" aria-expanded="false">' +
-                '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) + '</a><span class="m" hidden>' +
+            '<span class="sep" role="separator"></span>' +
             (res.description ? '<a class="pp-quote pp-dquote" href="javascript:void(0);"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
             (CAN_ADD_ISSUE ? '<a class="pp-issuecopy" href="javascript:void(0);"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
             '<a class="pp-linkcopy" href="javascript:void(0);"><i class="fa fa-link"></i> ' + esc(L.link_copy) + '</a>' +
@@ -213,12 +215,14 @@
             qfSummary(i, res) +
             '<span class="it" data-sum="dd"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
-            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>' +
+            dmodeButton() + '</div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
                 : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>' +
             '<div class="pp-rxrow">' + rxBar(D.issue_table, i.id, res.reactions) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
         ppDbarFill(i);
+        dmodeApply();
         linkifyIssueRefs(document.querySelector('#pp-d-main .bl-desc'));
         // The quote button carries the description as words, not markup, and
         // the rendered block is the shortest way to those words.
@@ -382,6 +386,53 @@
             .sort(function (a, b) { return a.r - b.r || a.n - b.n; })
             .map(function (e) { return e.u; });
     }
+    /* ------------------------------------------------ simple / full ----- */
+    // The button map: an issue can show only the basics - subject, status,
+    // assignees, due date, the text and the comments (かんたん) - or
+    // everything (くわしく): the other fields, children, attachments, related
+    // issues. くわしく unless the person chose かんたん, so nobody loses what
+    // they see today; a one-time hint beside the switch says it is there.
+    // Each person's choice, kept in this browser per user.
+    function dmodeKey() { return 'pmportal.dmode.u' + String(D.me || 0); }
+    function dmodeHintKey() { return 'pmportal.dmode.hint.u' + String(D.me || 0); }
+    function dmodeSimple() {
+        try { return localStorage.getItem(dmodeKey()) === 'simple'; } catch (e) { return false; }
+    }
+    function dmodeHintShown() {
+        try { return localStorage.getItem(dmodeHintKey()) !== '1' && localStorage.getItem(dmodeKey()) === null; } catch (e) { return false; }
+    }
+    function dmodeHintDone() {
+        try { localStorage.setItem(dmodeHintKey(), '1'); } catch (e) { /* shown again next time */ }
+    }
+    function dmodeButton() {
+        var simple = dmodeSimple();
+        return '<span class="pp-dmode-wrap"><button type="button" class="pp-dmode" aria-pressed="' + (simple ? 'true' : 'false') + '" title="' + esc(simple ? L.dm_more_tip : L.dm_less_tip) + '">' +
+            '<i class="fa ' + (simple ? 'fa-plus-square-o' : 'fa-minus-square-o') + '"></i> ' + esc(simple ? L.dm_more : L.dm_less) + '</button>' +
+            (dmodeHintShown() ? '<span class="pp-dmode-hint" role="note">' + esc(L.dm_hint) +
+                ' <button type="button" class="x" aria-label="' + esc(L.m_close) + '" title="' + esc(L.m_close) + '">&times;</button></span>' : '') +
+            '</span>';
+    }
+    function dmodeApply() {
+        var box = document.querySelector('#pmportal .bl-detail') || document.querySelector('.bl-detail');
+        if (box) { box.classList.toggle('pp-simple', dmodeSimple()); }
+    }
+    function dmodeSet(simple) {
+        try { localStorage.setItem(dmodeKey(), simple ? 'simple' : 'full'); } catch (e) { /* the class still changes */ }
+        dmodeHintDone();
+        dmodeRedraw();
+    }
+    function dmodeRedraw() {
+        var wrap = document.querySelector('#pp-d-main .pp-dmode-wrap');
+        if (wrap) { wrap.outerHTML = dmodeButton(); }
+        dmodeApply();
+    }
+    document.addEventListener('click', function onPpDmode(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpDmode); return; }
+        var x = ev.target.closest && ev.target.closest('.pp-dmode-hint .x');
+        if (x) { ev.preventDefault(); dmodeHintDone(); dmodeRedraw(); return; }
+        var btn = ev.target.closest && ev.target.closest('.pp-dmode');
+        if (btn) { ev.preventDefault(); dmodeSet(!dmodeSimple()); }
+    });
     /* ------------------------------------------------ quick edit -------- */
     // Backlog changes an issue from the same form the comment is written in:
     // the fields that move day to day sit under the comment box, and one
@@ -465,7 +516,87 @@
         var c = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
         n.textContent = c ? String(c) : '';
         n.hidden = !c;
+        ntRoutes();
     }
+    /* ------------------------------------------------ where it arrives -- */
+    // ISS02931: where each person's notice arrives besides the bell, which
+    // always rings: their own channels (D.notify_by: {mail, teams}) plus what
+    // the writer ticked for this one notice ("also by mail", "also by
+    // Teams"). Small icons on each chip with the words in its title, and one
+    // line under the chips for the people switched on. A payload without the
+    // channels (an older server) shows nothing.
+    function ntRoute(own, mailAll, teamsAll, teamsOn) {
+        if (!own || typeof own !== 'object') { return null; }
+        return {
+            mail: !!mailAll || !!own.mail,
+            teams: !!teamsOn && (!!teamsAll || !!own.teams)
+        };
+    }
+    function ntWords(r) {
+        return [L.nt_bell].concat(r.mail ? [L.nt_mail] : [], r.teams ? [L.nt_by_teams] : []).join('・');
+    }
+    function ntTicked(id) {
+        var box = document.getElementById(id);
+        return !!(box && box.checked);
+    }
+    function ntRoutes() {
+        var chips = document.querySelectorAll('#pp-notify-chips .pp-notify');
+        var line = document.getElementById('pp-notify-route');
+        var mailAll = ntTicked('pp-notify-mail');
+        var teamsAll = ntTicked('pp-notify-teams');
+        var byMail = [];
+        var byTeams = [];
+        var any = false;
+        Array.prototype.forEach.call(chips, function (c) {
+            var u = c.getAttribute('data-user');
+            var r = ntRoute(own(D.notify_by || {}, String(u)), mailAll, teamsAll, D.notify_teams);
+            var old = c.querySelector('.pp-nb');
+            if (old) { old.parentNode.removeChild(old); }
+            if (!r) { c.removeAttribute('title'); return; }
+            any = true;
+            c.setAttribute('title', fmt(L.nt_tip, user(u).n, ntWords(r)));
+            if (r.mail || r.teams) {
+                var s = document.createElement('span');
+                s.className = 'pp-nb';
+                s.setAttribute('aria-hidden', 'true');
+                s.innerHTML = (r.mail ? '<i class="fa fa-envelope-o"></i>' : '') + (r.teams ? '<i class="fa fa-commenting-o"></i>' : '');
+                c.appendChild(s);
+            }
+            if (!c.classList.contains('off')) {
+                if (r.mail) { byMail.push(user(u).n); }
+                if (r.teams) { byTeams.push(user(u).n); }
+            }
+        });
+        if (!line) { return; }
+        var on = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
+        line.hidden = !any || !on;
+        if (line.hidden) { line.textContent = ''; return; }
+        var parts = [];
+        if (byMail.length) { parts.push(fmt(L.nt_line_mail, byMail.join('、'))); }
+        if (byTeams.length) { parts.push(fmt(L.nt_line_teams, byTeams.join('、'))); }
+        line.textContent = parts.length ? parts.join(' ／ ') : L.nt_line_bell;
+        line.setAttribute('title', L.nt_others);
+    }
+    // What the server says it sent, for the toast after a post.
+    // ISS02931: under a comment, who it was also sent to by mail / Teams.
+    function ntLine(e) {
+        var nt = e && e.nt;
+        if (!nt) { return ''; }
+        var names = function (ids) { return (ids || []).map(function (u) { return user(u).n; }); };
+        var text = ntSentText({ mail: names(nt.mail), teams: names(nt.teams) });
+        return text ? '<div class="pp-ntline"><i class="fa fa-paper-plane-o"></i> ' + esc(text) + '</div>' : '';
+    }
+    function ntSentText(to) {
+        if (!to) { return ''; }
+        var parts = [];
+        if (to.mail && to.mail.length) { parts.push(fmt(L.nt_sent_mail, to.mail.join('、'))); }
+        if (to.teams && to.teams.length) { parts.push(fmt(L.nt_sent_teams, to.teams.join('、'))); }
+        return parts.join(' ／ ');
+    }
+    document.addEventListener('change', function (ev) {
+        var id = ev.target && ev.target.id;
+        if (id === 'pp-notify-mail' || id === 'pp-notify-teams') { ntRoutes(); }
+    });
     function qeSelect(name, options, value, blank) {
         var sel = document.createElement('select');
         sel.className = 'bl-qe-in';
@@ -1595,7 +1726,7 @@
                 // Only the author may rewrite or remove what they wrote; the
                 // address of a comment is public to everyone who can read it.
                 var mine = !!e.del;
-                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) +
+                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) + ntLine(e) +
                     '<div class="act">' + rxBar('comment', e.cid, e.rx) + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
                     '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
                     // ISS02931: each comment's own address, one click away
