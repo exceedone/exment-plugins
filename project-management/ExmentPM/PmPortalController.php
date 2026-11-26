@@ -856,6 +856,79 @@ class PmPortalController extends AdminControllerBase
         return $details;
     }
 
+    /**
+     * BC-1: the parents of these issues up to the top, root first, for the
+     * trail above an issue: [issue id => [['id', 'key', 's' (subject), 'ok']]].
+     * One query a level for all of the issues together (at most the issue
+     * levels, PortalRules::issueLevels), then one for which of them the reader
+     * may open; a parent they may not open is named without its subject.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @param \Illuminate\Support\Collection<int, mixed> $issues
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    protected function ancestorsOf($project, $issues): array
+    {
+        $parent_col = strval(array_get($this->def['issue'], 'parent', ''));
+        $subject_col = strval(array_get($this->def['issue'], 'subject', ''));
+        if ($parent_col === '') {
+            return [];
+        }
+        $parentOf = function ($row) use ($parent_col) {
+            $v = array_get($row->value, $parent_col);
+            $v = is_array($v) ? array_first($v) : $v;
+
+            return intval($v);
+        };
+        $rows = [];
+        $up = [];
+        foreach ($issues as $issue) {
+            $up[intval($issue->id)] = $parentOf($issue);
+        }
+        $want = array_values(array_unique(array_filter(array_values($up))));
+        $levels = max(1, intval(PortalRules::issueLevels()));
+        for ($n = 0; $n < $levels && !empty($want); $n++) {
+            $found = $this->issue_table->getValueModel()->newQueryWithoutScopes()->whereIn('id', $want)->get();
+            $next = [];
+            foreach ($found as $row) {
+                $rows[intval($row->id)] = $row;
+                $p = $parentOf($row);
+                if ($p > 0 && !isset($rows[$p])) {
+                    $next[] = $p;
+                }
+            }
+            $want = array_values(array_unique(array_diff($next, array_keys($rows))));
+        }
+        if (empty($rows)) {
+            return [];
+        }
+        // which of them the reader may open: the table's own permission scope
+        $readable = array_flip(array_map('intval', $this->issue_table->getValueModel()->query()->whereIn('id', array_keys($rows))->pluck('id')->all()));
+
+        $out = [];
+        foreach ($up as $id => $parent) {
+            $chain = [];
+            $seen = [$id => true];
+            while ($parent > 0 && isset($rows[$parent]) && !isset($seen[$parent]) && count($chain) < $levels) {
+                $seen[$parent] = true;
+                $row = $rows[$parent];
+                $ok = isset($readable[$parent]);
+                $chain[] = [
+                    'id' => $parent,
+                    'key' => $ok ? $this->issueKey($project, $parent) : '',
+                    's' => $ok ? strval(array_get($row->value, $subject_col, '')) : '',
+                    'ok' => $ok,
+                ];
+                $parent = $parentOf($row);
+            }
+            if (!empty($chain)) {
+                $out[$id] = array_reverse($chain);
+            }
+        }
+
+        return $out;
+    }
+
     protected function detailsFor($project, $issues, $me): array
     {
         if ($issues->isEmpty()) {
@@ -866,6 +939,9 @@ class PmPortalController extends AdminControllerBase
             return intval($v);
         })->all();
         $count = count($ids);
+
+        // BC-1: the parents of each issue up to the top, for the trail above it
+        $ancestors = $this->ancestorsOf($project, $issues);
 
         // ---- one query each, then grouped by issue in memory
         $revision_cap = max(200, $count * 30);
@@ -1076,6 +1152,8 @@ class PmPortalController extends AdminControllerBase
                 // Schema 25: where an imported issue came from, and the
                 // source's custom attributes. Empty for an issue made here.
                 'source' => $this->issueSource($issue->value),
+                // BC-1: root first; ok false = the reader may not open it
+                'anc' => $ancestors[intval($issue->id)] ?? [],
             ];
             if ($partial) {
                 $out[strval($issue->id)]['partial'] = true;

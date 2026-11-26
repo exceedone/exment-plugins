@@ -69,6 +69,8 @@ const STUBS = `
     function qeCol(key) { return own(D.issue_cols, key) || (xOn(key) ? String(own(D.issue_extra_cols, key) || '') : '') || ''; }
     function xOn(role) { return !!(D.issue_extra_on && own(D.issue_extra_on, role)); }
     function qfPeople(ids) { return (ids || []).join(',') || '—'; }
+    function crumbParents() { return ''; }
+    function crumbAncestors() { return []; }
 `;
 const ux = load(detail, ['qfField', 'qfKeys', 'qfValue', 'qfDayFrom', 'propsShown', 'crumbs', 'qfRoleProps'], STUBS);
 
@@ -531,6 +533,21 @@ test('POS-1 fix: at 390 the name row stays one line', () => {
     assert.ok(style.indexOf('.pmportal .bl-projhead:not(.info-open):not(.note-open){flex-wrap:nowrap;gap:6px;}') > 0);
     assert.ok(style.indexOf('.pmportal .bl-projhead:not(.info-open):not(.note-open) .bl-projinfo{flex:1 1 0;min-width:0;}') > 0);
     assert.ok(/\.pp-projadd,\.pmportal \.bl-projhead \.bl-dback-proj\{flex:none;\}/.test(style));
+});
+
+test('BC-1: the parents in the trail above an issue', () => {
+    const f = new Function("var L = { bc_hidden: '見られない課題', bc_more: '…' }; function esc(s) { return String(s); } function issueHash(id) { return 'issue-' + id; }" +
+        functionSource(detail, 'crumbParents') + 'return crumbParents;')();
+    assert.strictEqual(f([]), '');
+    const one = f([{ id: 3, key: 'WEB-3', s: '親', ok: true }]);
+    assert.ok(one.indexOf('href="#issue-3"') > 0 && one.indexOf('title="WEB-3 親"') > 0 && one.indexOf('pp-crumb-anc last') > 0);
+    const three = f([{ id: 1, key: 'WEB-1', s: 'a', ok: true }, { id: 2, ok: false }, { id: 3, key: 'WEB-3', s: 'c', ok: true }]);
+    assert.ok(/pp-crumb-ancs folded/.test(three) && /pp-crumb-more/.test(three), 'more than two: the middle folds');
+    assert.ok(three.indexOf('見られない課題') > 0 && three.indexOf('href="#issue-2"') < 0, 'one the reader may not open: no link');
+    assert.ok(/crumbParents\(crumbAncestors\(i\)\)/.test(functionSource(detail, 'crumbs')));
+    const ctl = fs.readFileSync(path.join(PM, 'PmPortalController.php'), 'utf8');
+    assert.ok(/'anc' => \$ancestors\[intval\(\$issue->id\)\] \?\? \[\]/.test(ctl) && /function ancestorsOf\(/.test(ctl));
+    assert.ok(ja('bc_hidden') && langJa.indexOf('// BC-1') > 0);
 });
 
 if (failed) {
