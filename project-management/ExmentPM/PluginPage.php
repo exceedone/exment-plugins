@@ -37,6 +37,8 @@ class PluginPage extends PluginPageBase
         PluginEvent::registerGuards();
         // the Files tab with the file server: a feature of Feature management (ISS02825)
         PortalFiles::registerFeature();
+        // recurring schedules: a feature of Feature management, off at first (ISS00432)
+        PortalSchedule::registerFeature();
         // Exment's "?" of the header opens the manual of the plugin (ISS02882)
         ManualLink::register($plugin);
         // before 初期セットアップ: the entry in the left menu that leads to it (7.2.1)
@@ -227,6 +229,27 @@ class PluginPage extends PluginPageBase
     public function hideRevision($id, $issue_id, $revision_id)
     {
         return $this->portal()->hideRevision(request(), $id, $issue_id, $revision_id);
+    }
+
+    // ISS00432: the recurring schedules of a project
+    public function schedulesPage($id)
+    {
+        return $this->respond($this->portal()->schedulesPage(request(), new Content(), $id));
+    }
+
+    public function schedulesSave($id)
+    {
+        return $this->portal()->schedulesSave(request(), $id);
+    }
+
+    public function schedulesDelete($id, $sid)
+    {
+        return $this->portal()->schedulesDelete(request(), $id, $sid);
+    }
+
+    public function schedulesException($id, $sid)
+    {
+        return $this->portal()->schedulesException(request(), $id, $sid);
     }
 
     public function mailIssue($id, $issue_id)

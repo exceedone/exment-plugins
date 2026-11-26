@@ -42,6 +42,7 @@ class PmPortalController extends AdminControllerBase
     use PortalExportTrait;
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
+    use PortalSchedulePageTrait;
 
     /**
      * How many issues one bulk edit may touch.
@@ -135,6 +136,8 @@ class PmPortalController extends AdminControllerBase
         }
         // Recurring issues whose turn has come (at most every few minutes).
         PortalRecurrence::tick();
+        // the issues of the recurring schedules (ISS00432)
+        PortalSchedule::tick();
 
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
@@ -572,6 +575,8 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::projectUrl($project) . ($query !== '' ? '?' . $query : ''));
         }
         PortalRecurrence::tick();
+        // the issues of the recurring schedules (ISS00432)
+        PortalSchedule::tick();
 
         $this->setPageInfo(
             PortalDefinition::trans('title'),
@@ -588,6 +593,9 @@ class PmPortalController extends AdminControllerBase
 
         return $this->AdminContent($content)->body(view(PortalDefinition::view('index'), [
             'payload' => $payload,
+            // the link to the recurring schedules of the project, for its manager (ISS00432)
+            'schedule_url' => (PortalSchedule::enabled() && PortalMembership::canManage($project))
+                ? PortalDefinition::url($project->id, 'schedules') : null,
             'topbar' => $this->topbarData(strval($project->id)),
             'lazy_widgets' => $lazy,
             'board_available' => $this->hasEmbeddedView(ViewKindType::KANBAN),
