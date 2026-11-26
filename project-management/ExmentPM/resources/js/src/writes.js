@@ -12,8 +12,6 @@
         var issueId = currentIssue;
         var epoch = detailEpoch;
         var base = D.urls.base;
-        var table = D.issue_table;
-        var fieldsUrl = (D.urls && D.urls.lightapi_base) + '/data/' + table + '/' + issueId;
         var submittedBox = document.getElementById('pp-cmt-text');
         var text = statusOnly ? '' : submittedBox.value;
         var statusEl = document.getElementById('pp-cmt-status');
@@ -160,10 +158,34 @@
         if (!hasFields) { send(); return; }
 
         ppDockMsg(L.dock_saving, false);
+        qeSaveFields(issueId, changed, version).then(function (r) {
+            if (r.ok) {
+                if (hasText || statusTo) { send(); return; }
+                // Fields alone: there is nothing to say, so nothing is posted.
+                // The issue is read again for the history line the save made.
+                settled();
+                if (current()) { toast(L.m_saved); ppDockMsg('', false); }
+                reloadIssue(issueId, epoch, false);
+                return;
+            }
+            if (r.stale) { stale(null, null); return; }
+            failed(r.error);
+        }).catch(function () {
+            failed(errText(null, null, L.dock_save_fail));
+        });
+    }
+    // Write some fields of one issue through the row API - the dock's save,
+    // and the pencils on the issue's own side (qfOpen). changed holds the
+    // short keys of QE_COLS; version is the updated_at the screen was drawn
+    // from, so a save over somebody else's newer one is refused. Answers
+    // { ok } / { stale } / { error: text }, never rejects.
+    function qeSaveFields(issueId, changed, version) {
+        var table = D.issue_table;
+        var fieldsUrl = (D.urls && D.urls.lightapi_base) + '/data/' + table + '/' + issueId;
         var patchSeq = ++DET_SEQ;
-        var patch = { value: diff };
+        var patch = { value: qeColumns(changed) };
         if (version) { patch.updated_at = version; }
-        fetch(fieldsUrl, {
+        return fetch(fieldsUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
             credentials: 'same-origin',
@@ -184,18 +206,12 @@
                     qeMark();
                 }
                 delete NED.editFormCache[table + '::' + issueId];
-                if (hasText || statusTo) { send(); return; }
-                // Fields alone: there is nothing to say, so nothing is posted.
-                // The issue is read again for the history line the save made.
-                settled();
-                if (current()) { toast(L.m_saved); ppDockMsg('', false); }
-                reloadIssue(issueId, epoch, false);
-                return;
+                return { ok: true };
             }
-            if (res.status === 409 && res.body && res.body.error === 'stale') { stale(null, null); return; }
-            failed(errText(res.status, res.body, L.dock_save_fail));
+            if (res.status === 409 && res.body && res.body.error === 'stale') { return { stale: true }; }
+            return { error: errText(res.status, res.body, L.dock_save_fail) };
         }).catch(function () {
-            failed(errText(null, null, L.dock_save_fail));
+            return { error: errText(null, null, L.dock_save_fail) };
         });
     }
     // The row as the list holds it, brought up to what a save just wrote -
@@ -259,7 +275,7 @@
     // A stored value in the shape the list rows carry it (buildIssueRow).
     function qeRowValue(key, v) {
         var list = Array.isArray(v) ? v : ((v === null || v === undefined || v === '') ? [] : [v]);
-        if (key === 'as') {
+        if (key === 'as' || key === 'sa' || key === 'mg' || key === 'rv' || key === 'nu') {
             return list.map(Number).filter(function (n) { return isFinite(n) && n > 0; });
         }
         if (key === 'cat') { return list.map(String); }

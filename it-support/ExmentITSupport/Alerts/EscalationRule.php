@@ -70,17 +70,19 @@ class EscalationRule
     }
 
     /**
-     * Who is told at a step: the assignee at 1 (every agent when there is none), the leads at 2,
+     * Who is told at a step: the assignees at 1 (every agent when there is none), the leads at 2,
      * the managers at 3; a step with nobody set goes to the one before it.
      *
+     * @param string|array<int, string>|null $assignee one, or several (a column of many users)
      * @param array<int, string> $leads
      * @param array<int, string> $managers
      * @param array<int, string> $agents
      * @return array<int, string>
      */
-    public static function recipients(int $step, ?string $assignee, array $leads, array $managers, array $agents): array
+    public static function recipients(int $step, $assignee, array $leads, array $managers, array $agents): array
     {
-        $first = ($assignee ?? '') !== '' ? [strval($assignee)] : array_values($agents);
+        $assignees = is_array($assignee) ? array_values(array_filter(array_map('strval', $assignee))) : (($assignee ?? '') !== '' ? [strval($assignee)] : []);
+        $first = !empty($assignees) ? $assignees : array_values($agents);
         $second = !empty($leads) ? array_values($leads) : $first;
         $third = !empty($managers) ? array_values($managers) : $second;
         $list = $step >= 3 ? $third : ($step === 2 ? $second : $first);

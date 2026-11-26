@@ -35,6 +35,16 @@ class Its
     const T_KNOWLEDGE = 'its_knowledge';
     const T_TEMPLATE = 'its_template';
     const T_ASSET = 'its_asset';
+    const T_PROBLEM = 'its_problem';
+    const T_CATALOG = 'its_catalog';
+
+    /** The states of a problem (Problems). */
+    const PROBLEM_STATUSES = [
+        'open' => '調べ中',
+        'known_error' => '原因がわかった',
+        'resolved' => '解決',
+        'closed' => '完了',
+    ];
 
     /** Role groups made by the setup. */
     const ROLE_AGENT = 'its_agent_group';
@@ -160,6 +170,10 @@ class Its
         'asset_notice_days' => '30',
         'auto_assign' => 'category',
         'csat_enabled' => '1',
+        // The request catalog on the portal (Catalog): off at first.
+        'catalog_enabled' => '0',
+        // Problems: the tickets of one cause together (Problems): off at first.
+        'problems_enabled' => '0',
         // The SLA escalation in steps (Escalation): off at first.
         'esc_enabled' => '0',
         'esc_warn_percent' => '75',

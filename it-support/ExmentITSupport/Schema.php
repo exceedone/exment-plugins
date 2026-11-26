@@ -37,8 +37,12 @@ class Schema
      * reached from the desk (see arrangeMenu()).
      * 4: the senders of alerts (its_intake_sources, ISS02928).
      * 5: the step of the SLA escalation told (sla_escalation).
+     * 6: problems (its_problem, the ticket's column problem).
+     * 7: the request catalog (its_catalog; the ticket's catalog, approval_state, approver).
+     * 8: the assets synced from monitoring tools (source, external_id, external_url, hostname,
+     *    ip_addresses, sync_state).
      */
-    const VERSION = 5;
+    const VERSION = 8;
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -128,10 +132,51 @@ class Schema
                     ['serial', 'シリアル番号', 'text', ['freeword_search' => '1']],
                     ['os', 'OS・バージョン', 'text', []],
                     ['location', '場所・IP アドレス', 'text', []],
+                    // written by the data sync from monitoring tools (Sync\AssetConnector), empty else
+                    ['hostname', 'ホスト名（FQDN）', 'text', ['index_enabled' => '1', 'freeword_search' => '1']],
+                    ['ip_addresses', 'IP アドレス（監視の道具から）', 'text', ['freeword_search' => '1']],
+                    ['source', '同期の元', 'text', ['index_enabled' => '1', 'help' => '監視の道具から同期した資産（zabbix:接続の番号 など）。手で変えないでください。']],
+                    ['external_id', '監視の道具の ID', 'text', ['index_enabled' => '1']],
+                    ['external_url', '監視の道具の画面', 'url', []],
+                    ['sync_state', '同期の状態', 'select_valtext', ['valtext' => ['active' => '使っている', 'retired' => '引退'], 'index_enabled' => '1']],
                     ['purchase_date', '購入日', 'date', []],
                     ['warranty_end', '保守・保証の期限', 'date', ['index_enabled' => '1']],
                     ['expires_on', 'ライセンス・ドメイン・証明書の期限', 'date', ['index_enabled' => '1']],
                     ['note', 'メモ（社内）', 'textarea', ['help' => 'パスワードは書かないでください。']],
+                ],
+            ],
+            Its::T_CATALOG => [
+                'label' => '申請メニュー',
+                'icon' => 'fa-th-large',
+                'description' => 'お客様の窓口の受付フォームに並べる申請（アカウント・PC の貸し出し・ソフト・アクセスなど）。項目と、承認がいるかを決めます。',
+                'columns' => [
+                    ['name', '名前', 'text', ['required' => '1', 'use_label_flg' => '1', 'freeword_search' => '1']],
+                    ['description', '説明（窓口に出ます）', 'text', []],
+                    ['icon', 'アイコン', 'text', ['help' => 'Font Awesome の名前（fa-laptop など）。']],
+                    ['category', '種類', 'select_table', ['select_target_table_name' => Its::T_CATEGORY]],
+                    ['priority', '優先度', 'select_valtext', ['valtext' => Its::PRIORITIES, 'default' => 'normal']],
+                    ['fields', '項目', 'textarea', ['help' => '1 行に 1 つ、「項目名|種類|必須|選択肢」。種類は text・textarea・date・select・yesno・email・number。例：権限|select|必須|見るだけ,変える']],
+                    ['needs_approval', '承認がいる', 'yesno', ['default' => '0']],
+                    ['approver', '承認する人', 'user', ['help' => '承認がいるとき。ITサポートの担当者でなくてかまいません（メールのリンクから、Exment にログインして承認します）。']],
+                    ['public', '窓口に出す', 'yesno', ['default' => '1']],
+                    ['display_order', '並び順', 'integer', ['default' => '0']],
+                ],
+            ],
+            Its::T_PROBLEM => [
+                'label' => '問題',
+                'icon' => 'fa-bug',
+                'description' => '同じ原因のチケットをまとめるもの。原因・回避のしかた・解決のしかたを書き、つないだチケットをまとめて解決にできます。',
+                'columns' => [
+                    ['problem_no', '問題の番号', 'auto_number', ['auto_number_type' => 'format', 'auto_number_format' => 'PRB-${id:5}', 'index_enabled' => '1', 'freeword_search' => '1']],
+                    ['title', '件名', 'text', ['required' => '1', 'use_label_flg' => '1', 'freeword_search' => '1']],
+                    ['status', '状態', 'select_valtext', ['valtext' => Its::PROBLEM_STATUSES, 'default' => 'open', 'required' => '1', 'index_enabled' => '1']],
+                    ['assignee', '担当者', 'user', ['index_enabled' => '1']],
+                    ['description', '起きていること', 'textarea', ['freeword_search' => '1']],
+                    ['root_cause', '原因', 'textarea', ['freeword_search' => '1']],
+                    ['workaround', '回避のしかた', 'textarea', ['freeword_search' => '1']],
+                    ['resolution', '解決のしかた', 'textarea', ['freeword_search' => '1']],
+                    ['knowledge_id', 'ナレッジの ID', 'integer', ['help' => 'この問題から作ったナレッジ。']],
+                    ['resolved_at', '解決した日時', 'datetime', []],
                 ],
             ],
             Its::T_TICKET => [
@@ -174,6 +219,10 @@ class Schema
                     ['occurrences', '発生回数', 'integer', ['default' => '0']],
                     ['last_occurred_at', '最後に発生した日時', 'datetime', []],
                     ['merged_into', 'まとめた先', 'select_table', ['select_target_table_name' => Its::T_TICKET]],
+                    ['problem', '問題', 'select_table', ['select_target_table_name' => Its::T_PROBLEM, 'index_enabled' => '1']],
+                    ['catalog', '申請メニュー', 'select_table', ['select_target_table_name' => Its::T_CATALOG]],
+                    ['approval_state', '承認', 'select_valtext', ['valtext' => Catalog::APPROVAL_STATES, 'default' => 'none', 'index_enabled' => '1']],
+                    ['approver', '承認する人', 'user', []],
                 ],
             ],
             Its::T_MESSAGE => [
@@ -274,7 +323,7 @@ class Schema
                 'tables' => [
                     Its::T_TICKET => $edit, Its::T_MESSAGE => $edit, Its::T_CUSTOMER => $edit,
                     Its::T_CONTACT => $edit, Its::T_ASSET => $edit, Its::T_KNOWLEDGE => $edit,
-                    Its::T_TEMPLATE => $edit, Its::T_CATEGORY => $view, Its::T_SLA => $view,
+                    Its::T_TEMPLATE => $edit, Its::T_CATEGORY => $view, Its::T_SLA => $view, Its::T_PROBLEM => $edit, Its::T_CATALOG => $view,
                 ],
             ],
             Its::ROLE_CUSTOMER => [

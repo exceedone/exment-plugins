@@ -70,8 +70,17 @@ class PublicController extends Controller
     public function requestForm(Request $request)
     {
         $this->guard();
+        // the request catalog (Catalog): the menu, or the form of one item; an item
+        // not there (or the catalog not used) is not found, as the post says
+        $item = $request->has('item') ? Catalog::item($request->get('item')) : null;
+        if ($request->has('item') && !isset($item)) {
+            return $this->notFound();
+        }
 
         return $this->page('request', [
+            'catalog' => Catalog::publicItems(),
+            'item' => isset($item) ? ['id' => intval($item->id), 'name' => strval(array_get($item->value, 'name')), 'description' => strval(array_get($item->value, 'description')),
+                'approval' => boolval(array_get($item->value, 'needs_approval', '0')), 'fields' => Catalog::fields($item)] : null,
             'categories' => Tickets::options(Its::T_CATEGORY, 'name', function ($row) {
                 return boolval(array_get($row->value, 'public', '1'));
             }),
@@ -95,13 +104,18 @@ class PublicController extends Controller
             return $this->page('message', ['heading' => '受け付けました', 'text' => 'ありがとうございました。']);
         }
 
+        // an item of the request catalog: its own fields instead of the subject and the text
+        $item = $request->has('item') ? Catalog::item($request->get('item')) : null;
+        if ($request->has('item') && !isset($item)) {
+            return $this->notFound();
+        }
         $data = $request->validate([
             'name' => 'required|string|max:100',
             'email' => 'required|email|max:200',
             'company' => 'nullable|string|max:200',
             'category' => 'nullable|integer',
-            'subject' => 'required|string|max:200',
-            'body' => 'required|string|max:20000',
+            'subject' => isset($item) ? 'nullable|string|max:200' : 'required|string|max:200',
+            'body' => isset($item) ? 'nullable|string|max:20000' : 'required|string|max:20000',
             'urgent' => 'nullable|in:1',
             'files.*' => 'file|max:10240',
         ], [], [
@@ -115,6 +129,18 @@ class PublicController extends Controller
             }
         }
 
+        $catalogValues = [];
+        if (isset($item)) {
+            $answers = (array) $request->input('cf', []);
+            $errors = \App\Plugins\ExmentITSupport\Alerts\CatalogSpec::validate(Catalog::fields($item), $answers);
+            if (!empty($errors)) {
+                throw \Illuminate\Validation\ValidationException::withMessages($errors);
+            }
+            $catalogValues = Catalog::ticketValues($item, $answers, strval($data['body'] ?? ''));
+            $data['subject'] = $catalogValues['subject'];
+            $data['body'] = $catalogValues['description'];
+        }
+
         $categories = Tickets::options(Its::T_CATEGORY);
         $body = trim($data['body']) . (!empty($data['company']) ? "\n\n（会社名: " . $data['company'] . '）' : '');
         // Anyone can type any address here. Until its owner opens the link
@@ -123,7 +149,7 @@ class PublicController extends Controller
         // ...except a logged-in user of the portal asking from their own address
         $user = \Exment::user();
         $own = isset($user) && Its::normalizeEmail(strval(optional($user->base_user)->getValue('email'))) === Its::normalizeEmail($data['email']);
-        $ticket = Tickets::create([
+        $values = [
             'tags' => $own ? null : Tickets::TAG_UNVERIFIED,
             'subject' => $data['subject'],
             'description' => $body,
@@ -132,7 +158,16 @@ class PublicController extends Controller
             'requester_email' => $data['email'],
             'category' => isset($categories[strval($data['category'] ?? '')]) ? $data['category'] : null,
             'priority' => !empty($data['urgent']) ? 'high' : Inbox::guessPriority($data['subject'] . "\n" . $data['body']),
-        ], ['body' => $body], $files, $own);
+        ];
+        if (!empty($catalogValues)) {
+            $values = array_merge($values, array_diff_key($catalogValues, ['subject' => 1, 'description' => 1]), [
+                'tags' => implode(', ', array_filter([$values['tags'], $catalogValues['tags']])),
+                'priority' => !empty($data['urgent']) ? 'high' : $catalogValues['priority'],
+                'category' => $catalogValues['category'] ?? $values['category'],
+            ]);
+        }
+        $ticket = Tickets::create($values, ['body' => $body], $files, $own);
+        Catalog::askApproval($ticket);
 
         // The link goes only to the address, never on this page: else anyone
         // could ask in somebody else's name and read the agents' answers.
@@ -144,6 +179,73 @@ class PublicController extends Controller
                 ? '確認のメールを ' . $data['email'] . ' にお送りしました。進み具合は、メールにあるリンクからいつでも見られます（ログインは要りません）。メールが届かないときは、アドレスをお確かめのうえ、もう一度お送りください。'
                 : 'いま確認のメールをお送りできませんでした。担当者から ' . $data['email'] . ' にご連絡します。'),
             'warnPassword' => Its::looksLikePassword($data['body']),
+        ]);
+    }
+
+    // ---- the approval of a request (Catalog) -----------------------------
+
+    /**
+     * The page the approver opens from the mail. Here, not among the plugin's pages: an
+     * approver is often no agent of IT Support (a manager), and the plugin's pages ask for its
+     * role group. The Exment login is asked for still, and only the approver (or a system
+     * administrator) may decide.
+     *
+     * @return mixed
+     */
+    protected function approvalTicket(Request $request, $id)
+    {
+        if (!Catalog::enabled()) {
+            return $this->notFound();
+        }
+        if (\Exment::user() === null) {
+            session()->put('url.intended', $request->fullUrl());
+
+            return redirect(admin_url('auth/login'));
+        }
+        $ticket = Tickets::find($id);
+        if (!isset($ticket) || empty(array_get($ticket->value, 'catalog')) || !Catalog::mayDecide($ticket)) {
+            return $this->page('message', [
+                'heading' => 'この申請は承認できません',
+                'text' => '承認できるのは、申請メニューで決めた「承認する人」と、システム管理者だけです。',
+            ], 403);
+        }
+
+        return $ticket;
+    }
+
+    public function approvalPage(Request $request, $id)
+    {
+        $this->guard();
+        $ticket = $this->approvalTicket($request, $id);
+        if (!$ticket instanceof CustomValue) {
+            return $ticket;
+        }
+
+        return $this->page('approval', ['ticket' => $ticket, 'states' => Catalog::APPROVAL_STATES]);
+    }
+
+    public function postApproval(Request $request, $id)
+    {
+        $this->guard();
+        if (!Tokens::allow('approval', 20)) {
+            return $this->tooMany();
+        }
+        $ticket = $this->approvalTicket($request, $id);
+        if (!$ticket instanceof CustomValue) {
+            return $ticket;
+        }
+        $decision = strval($request->get('decision'));
+        if (!in_array($decision, ['approve', 'reject'], true)) {
+            return redirect(Its::publicUrl('approval', strval($ticket->id)));
+        }
+        $approve = $decision === 'approve';
+        if (!Catalog::decide($ticket, $approve, strval($request->get('comment', '')))) {
+            return $this->page('message', ['heading' => 'この申請は、もう承認待ちではありません', 'text' => 'ほかの人が先に決めたか、取り下げられました。']);
+        }
+
+        return $this->page('message', [
+            'heading' => $approve ? '承認しました' : '却下しました',
+            'text' => $approve ? '担当者が対応を始めます。' : '依頼した人にメールで知らせました。',
         ]);
     }
 

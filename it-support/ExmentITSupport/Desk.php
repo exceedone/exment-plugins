@@ -151,6 +151,8 @@ class Desk
                     'merge' => Its::url('ticket', '__ID__', 'merge'),
                     'lock' => Its::url('ticket', '__ID__', 'lock'),
                     'knowledge' => Its::url('ticket', '__ID__', 'to-knowledge'),
+                    'problem_link' => Its::url('ticket', '__ID__', 'problem'),
+                    'problem' => Its::url('problem', '__ID__'),
                     'ksearch' => Its::url('knowledge', 'search'),
                     'bulk' => Its::url('bulk'),
                     'edit' => Its::dataUrl(Its::T_TICKET, '__ID__', 'edit'),
@@ -302,6 +304,11 @@ class Desk
             'occurrences' => intval($v['occurrences'] ?? 0),
             'last_occurred_at' => strval($v['last_occurred_at'] ?? ''),
             'merged_into' => strval($v['merged_into'] ?? ''),
+            // the problem of the ticket (Problems; null while they are not used)
+            'problems_on' => Problems::enabled(),
+            'problem' => Problems::enabled() && !empty($v['problem']) && ($p = Problems::find($v['problem'])) !== null
+                ? ['id' => intval($p->id), 'no' => strval(array_get($p->value, 'problem_no')), 'title' => strval(array_get($p->value, 'title')), 'status' => strval(array_get($p->value, 'status'))]
+                : null,
             'csat' => intval($v['csat'] ?? 0),
             'csat_comment' => strval($v['csat_comment'] ?? ''),
             'created' => Carbon::parse($ticket->created_at)->toIso8601String(),
@@ -728,6 +735,159 @@ class Desk
         return $this->back(Its::url('ticket', strval($into->id)), array_get($ticket->value, 'ticket_no') . ' をこのチケットにまとめました。');
     }
 
+    // ---- the request catalog (Catalog) ------------------------------------
+
+    public function postCatalogTemplates(Request $request)
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        $n = Catalog::installTemplates();
+
+        return $this->back(Its::dataUrl(Its::T_CATALOG), $n > 0
+            ? "申請メニューのひな形を {$n} 件入れました。承認がいるものは「承認する人」を選んでください（選ぶまでは承認なしで受け付けます）。"
+            : '申請メニューのひな形は、もう入っています。');
+    }
+
+    /**
+     * The approval page of a request: for its approver (and the system administrators), who
+     * need not be agents. Exment's login and the plugin's role group still apply.
+     */
+    /**
+     * The approval page moved to /support/approval/{id} (PublicController): an approver need not
+     * be in the plugin's role group. A link of the plugin's address goes there.
+     */
+    public function approval(Request $request, $id)
+    {
+        return redirect(Its::publicUrl('approval', strval(intval($id))));
+    }
+
+    public function postApproval(Request $request, $id)
+    {
+        return redirect(Its::publicUrl('approval', strval(intval($id))));
+    }
+
+    // ---- problems (Problems) ---------------------------------------------
+
+    /** The gate of the problem pages: an agent, and problems used. */
+    protected function problemGate()
+    {
+        if ($r = $this->gate()) {
+            return $r;
+        }
+        if (!Problems::enabled()) {
+            return $this->back(Its::url(), '問題は使っていません（設定の「問題」）。', true);
+        }
+
+        return null;
+    }
+
+    public function problems(Request $request)
+    {
+        if ($r = $this->problemGate()) {
+            return $r;
+        }
+        $all = $request->get('all') === '1';
+
+        return $this->view('problems', ['rows' => Problems::listRows($all), 'all' => $all, 'statuses' => Its::PROBLEM_STATUSES]);
+    }
+
+    public function problem(Request $request, $id)
+    {
+        if ($r = $this->problemGate()) {
+            return $r;
+        }
+        $problem = Problems::find($id);
+        if (!isset($problem)) {
+            return $this->back(Its::url('problems'), '問題が見つかりません。', true);
+        }
+
+        return $this->view('problem', [
+            'problem' => $problem,
+            'tickets' => Problems::tickets($problem),
+            'statuses' => Its::PROBLEM_STATUSES,
+            'ticketStatuses' => Its::STATUSES,
+        ]);
+    }
+
+    /** From the desk: link the ticket to a problem (by its number), make a new one, or unlink. */
+    public function postTicketProblem(Request $request, $id)
+    {
+        if ($r = $this->problemGate()) {
+            return $r;
+        }
+        $ticket = Tickets::find($id);
+        if (!isset($ticket)) {
+            return $this->back(Its::url(), 'チケットが見つかりません。', true);
+        }
+        $url = Its::url('ticket', strval($ticket->id));
+        switch (strval($request->get('action'))) {
+            case 'new':
+                $problem = Problems::createFrom($ticket);
+
+                return $this->back(Its::url('problem', strval($problem->id)), '問題 ' . array_get($problem->value, 'problem_no') . ' を作って、このチケットをつなぎました。');
+            case 'unlink':
+                Problems::unlink($ticket);
+
+                return $this->back($url, '問題とのつながりを外しました。');
+        }
+        $problem = Problems::findByNo(strval($request->get('no', '')));
+        if (!isset($problem)) {
+            return $this->back($url, '問題の番号が見つかりません。', true);
+        }
+        Problems::link($ticket, $problem);
+
+        return $this->back($url, '問題 ' . array_get($problem->value, 'problem_no') . ' につなぎました。');
+    }
+
+    public function postProblem(Request $request, $id)
+    {
+        if ($r = $this->problemGate()) {
+            return $r;
+        }
+        $problem = Problems::find($id);
+        if (!isset($problem)) {
+            return $this->back(Its::url('problems'), '問題が見つかりません。', true);
+        }
+        $url = Its::url('problem', strval($problem->id));
+        switch (strval($request->get('action'))) {
+            case 'resolve':
+                $n = Problems::resolveAll($problem, strval($request->get('note', '')));
+
+                return $this->back($url, "つないだチケット {$n} 件を解決にしました。問題も「解決」にしました。");
+            case 'knowledge':
+                $row = Problems::toKnowledge($problem);
+
+                return isset($row)
+                    ? $this->back(Its::dataUrl(Its::T_KNOWLEDGE, $row->id, 'edit'), 'ナレッジの下書きを作りました。読み直してから「お客様に公開」にしてください。')
+                    : $this->back($url, 'ナレッジを作れませんでした。', true);
+            case 'unlink':
+                $ticket = Tickets::find($request->get('ticket'));
+                if (isset($ticket) && strval(array_get($ticket->value, 'problem')) === strval($problem->id)) {
+                    Problems::unlink($ticket);
+                }
+
+                return $this->back($url, 'つながりを外しました。');
+        }
+        // the fields of the problem
+        $values = [];
+        foreach (['title' => 250, 'description' => 20000, 'root_cause' => 20000, 'workaround' => 20000, 'resolution' => 20000] as $col => $max) {
+            if ($request->has($col)) {
+                $values[$col] = mb_substr(strval($request->get($col)), 0, $max);
+            }
+        }
+        if (isset(Its::PROBLEM_STATUSES[strval($request->get('status'))])) {
+            $values['status'] = strval($request->get('status'));
+        }
+        if (isset($values['title']) && trim($values['title']) === '') {
+            unset($values['title']);
+        }
+        $problem->setValue($values);
+        $problem->save();
+
+        return $this->back($url, '保存しました。');
+    }
+
     public function postLock(Request $request, $id)
     {
         if (!Its::isInstalled() || !static::isAgent()) {
@@ -978,7 +1138,7 @@ class Desk
             }
             if ($request->has($key)) {
                 $values[$key] = $request->get($key);
-            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled'], true)) {
+            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled', 'problems_enabled', 'catalog_enabled'], true)) {
                 $values[$key] = '0';
             } elseif (in_array($key, ['esc_lead_users', 'esc_manager_users', 'esc_channels'], true) && $request->has('esc_form')) {
                 // lists left empty on the page

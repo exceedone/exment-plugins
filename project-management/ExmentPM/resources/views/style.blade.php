@@ -202,6 +202,16 @@
 .pmportal .bl-list td.pp-ed-fail{background:#fde8e6 !important;box-shadow:inset 0 0 0 2px #e74c3c;}
 /* the tree slot at the indent: ▼/▶ + count for a parent, └ for a leaf child */
 .pmportal .bl-list .pp-tind .pp-tgl,.pmportal .bl-list .pp-tind .pp-tbr{display:inline-block;min-width:26px;margin-right:4px;}
+/* ISS00361: the ▼/▶ is a 28px target (36px on a touch screen), so a near miss does not open the issue */
+.pmportal .bl-list .pp-tind .pp-tgl{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;margin:-6px 4px -6px -4px;padding:0 4px;}
+.pmportal .bl-list .pp-tgl:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
+@media (pointer: coarse){.pmportal .bl-list .pp-tind .pp-tgl{min-width:36px;min-height:36px;margin:-10px 4px -10px -6px;}}
+/* the Wiki tree: the same ▼/▶ (ISS00361) */
+.pmportal #pp-wtree .pp-wtgl,.pmportal #pp-wtree .pp-wtgl-sp{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;margin:-6px 0 -6px -6px;}
+.pmportal #pp-wtree .pp-wtgl{color:var(--bl-sub);font-size:11px;text-decoration:none;border-radius:var(--bl-radius-s,4px);}
+.pmportal #pp-wtree .pp-wtgl:hover{color:var(--bl-accent-d);background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));}
+.pmportal #pp-wtree .pp-wtgl:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
+@media (pointer: coarse){.pmportal #pp-wtree .pp-wtgl,.pmportal #pp-wtree .pp-wtgl-sp{min-width:36px;min-height:36px;margin:-10px 0 -10px -8px;}}
 .pmportal .bl-list .pp-tind .pp-tgl .n{font-size:10px;margin-left:2px;}
 /* tree view: make children obvious - branch mark, tinted row, accent edge; parents bold */
 /* └ branch mark: dark accent, bold and a bit larger so it reads at a glance (snoro 2026-11-18) */
@@ -1638,5 +1648,24 @@ body.pp-ib-open{overflow:hidden;}
 @media (min-width:761px) and (min-height:560px){
   .pmportal .bl-tablewrap{max-height:calc(100vh - 70px);}
 }
+
+/* ISS02931: the project's settings beside its name */
+.pmportal .bl-projset{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:1px 8px;border:1px solid var(--bl-line);
+  border-radius:var(--bl-radius-pill, 999px);color:var(--bl-faint);font-size:12px;font-weight:400;text-decoration:none;vertical-align:middle;}
+.pmportal .bl-projset:hover,.pmportal .bl-projset:focus{color:var(--bl-accent-d);border-color:var(--bl-accent);}
+/* ISS02931: set the roles, the hours and the people told on the issue itself */
+.pmportal .pp-qf-pen{border:0;background:none;padding:0 2px;margin-left:2px;color:var(--bl-faint);cursor:pointer;font-size:12px;line-height:1;}
+.pmportal .pp-qf-pen:hover,.pmportal .pp-qf-pen:focus{color:var(--bl-accent-d);}
+.pmportal .pp-qf{flex-basis:100%;display:block;margin:6px 0 8px;padding:8px 10px;border:1px solid var(--bl-line);border-radius:6px;background:var(--bl-box);}
+.pmportal .pp-qf-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:6px;}
+.pmportal .pp-qf-msg{margin-right:auto;font-size:12px;color:#c0392b;}
+.pmportal .pp-qf-sub{color:var(--bl-faint);font-size:11.5px;margin-right:6px;}
+.pmportal .pp-qf-mail{font-size:12px;margin-left:6px;white-space:nowrap;}
+/* ISS02931: the optional columns of the issue list */
+.pmportal .pp-oc-wrap{position:relative;display:inline-block;}
+.pmportal .pp-oc-btn{border:0;background:none;padding:0;cursor:pointer;}
+.pmportal .pp-oc-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:170px;padding:6px 10px;
+  background:var(--bl-box);border:1px solid var(--bl-line);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.12);}
+.pmportal .pp-oc-menu label{display:block;margin:4px 0;font-weight:400;white-space:nowrap;cursor:pointer;}
 
 </style>

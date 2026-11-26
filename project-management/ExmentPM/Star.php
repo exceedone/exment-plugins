@@ -21,6 +21,11 @@ class Star extends ModelBase
     public const TYPE_STAR = 'star';
     public const TYPE_WATCH = 'watch';
     /**
+     * A favorite issue (ISS00272): the user's own bookmark. Never counted nor shown to anybody
+     * else, unlike TYPE_STAR (注目), which is a count everybody sees.
+     */
+    public const TYPE_FAV = 'fav';
+    /**
      * "This user has opened this issue", kept by the time of the last opening
      * (updated_at). Read receipts and the list's unread mark come from it.
      */

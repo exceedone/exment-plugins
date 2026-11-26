@@ -39,6 +39,8 @@ class PmPortalController extends AdminControllerBase
     use PortalProjectTrait;
     use PortalAiTrait;
     use PortalRankingTrait;
+    use PortalExportTrait;
+    use PortalAllIssuesTrait;
 
     /**
      * How many issues one bulk edit may touch.
@@ -60,6 +62,9 @@ class PmPortalController extends AdminControllerBase
      * user table; ids past it are ignored rather than refused, the same way an
      * id that cannot read the issue is.
      */
+    /** The mails of "mail this issue" a person sends in an hour at most. */
+    private const MAIL_ISSUE_PER_HOUR = 30;
+
     private const NOTIFY_PICK_LIMIT = 100;
 
     /**
@@ -537,7 +542,16 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::url('setup'));
         }
 
-        $project = $this->findProject($id);
+        try {
+            $project = $this->findProject($id);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            // not there, or not one of the caller's (ISS00395): said so, with the way back,
+            // instead of Exment's page of an error. Both answer alike.
+            if (!in_array($e->getStatusCode(), [403, 404], true)) {
+                throw $e;
+            }
+            return $this->notMemberPage($content);
+        }
         // ISS00440: the page's address is the project's code. An id, a code in
         // another case or an old code is sent on to it; the browser keeps the
         // part after the #, and the script rewrites an old #issue- there.
@@ -1133,6 +1147,9 @@ class PmPortalController extends AdminControllerBase
             }
         }
 
+        // The address the bells, the mail and Teams link to: the comment
+        // itself once there is one (the screen scrolls to it), else the issue.
+        $notice_url = $this->issueUrl($project, $issue);
         if ($comment !== '') {
             try {
                 $model = CustomTable::getEloquent(SystemTableName::COMMENT)->getValueModel();
@@ -1153,6 +1170,7 @@ class PmPortalController extends AdminControllerBase
             // Exment's refreshdata empties the comment table. A comment this
             // new cannot have been starred yet.
             Star::purge('comment', $model->id);
+            $notice_url = static::commentUrl($notice_url, $model->id);
 
             // Review request (ISS00341): the picked people are asked to
             // confirm this comment. After the purge above, which would take
@@ -1206,7 +1224,7 @@ class PmPortalController extends AdminControllerBase
             ])));
         }
         try {
-            $this->ringPortalBells($request, $project, $issue, $bell_mark, implode("\n", $lines));
+            $this->ringPortalBells($request, $project, $issue, $bell_mark, implode("\n", $lines), $notice_url);
         } catch (\Throwable $e) {
             // Saved is saved: an error answer now would only get the comment
             // posted a second time.
@@ -1228,7 +1246,7 @@ class PmPortalController extends AdminControllerBase
             $this->issueKey($project, $issue->id),
             strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
             $lines,
-            $this->issueUrl($project, $issue),
+            $notice_url,
             $this->wantsMail($request)
         );
 
@@ -1591,6 +1609,13 @@ class PmPortalController extends AdminControllerBase
         $issue = $this->findIssue($project, $issue_id);
         $me = intval(\Exment::getUserId());
 
+        // a person sends a few of these an hour, not a stream
+        $limitKey = 'exment_pm_mail_issue:' . $me;
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($limitKey, self::MAIL_ISSUE_PER_HOUR)) {
+            return $this->messageError(429, 'mail_too_many', ['n' => strval(self::MAIL_ISSUE_PER_HOUR)]);
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($limitKey, 3600);
+
         $picked = collect((array) $request->get('users', []))
             ->filter(function ($v) {
                 return is_numeric($v) && intval($v) > 0;
@@ -1801,7 +1826,7 @@ class PmPortalController extends AdminControllerBase
      * @param \Exceedone\Exment\Model\CustomValue $project
      * @param \Exceedone\Exment\Model\CustomValue $issue
      */
-    protected function ringPortalBells(Request $request, $project, $issue, int $bell_mark, string $body): void
+    protected function ringPortalBells(Request $request, $project, $issue, int $bell_mark, string $body, ?string $url = null): void
     {
         $me = intval(\Exment::getUserId());
         $issue_name = $this->issue_table->table_name;
@@ -1832,7 +1857,7 @@ class PmPortalController extends AdminControllerBase
             . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')));
         // the issue's address under the text: on the notification's own page
         // it is the way to the issue
-        $body = PortalDefinition::notifyBodyWithLink($body, $this->issueUrl($project, $issue));
+        $body = PortalDefinition::notifyBodyWithLink($body, $url ?? $this->issueUrl($project, $issue));
         foreach ($targets as $target_user_id) {
             try {
                 $notify = new NotifyNavbar();
@@ -1911,6 +1936,8 @@ class PmPortalController extends AdminControllerBase
         $my_stars = Star::mine(Star::TYPE_STAR, $issue_name, [$issue->id], $me);
         $detail['issue']['star'] = intval(array_get($star_counts, strval($issue->id), 0));
         $detail['issue']['my_star'] = in_array(strval($issue->id), $my_stars);
+        // ISS00272: the user's own favorite
+        $detail['issue']['my_fav'] = !empty(Star::mine(Star::TYPE_FAV, $issue_name, [$issue->id], $me));
 
         return array_merge($detail, [
             'users' => $this->usersFor($this->detailUserIds($detail)),
@@ -1986,6 +2013,38 @@ class PmPortalController extends AdminControllerBase
         }
 
         return response()->json(['ok' => true, 'files' => $out]);
+    }
+
+    /**
+     * The address of one comment: the issue's page with ?c=<id> on its hash
+     * (#issue-KEY?c=12). The hash is the portal's router, so the comment
+     * rides in its query; the screen scrolls to the comment and marks it.
+     */
+    public static function commentUrl(string $issue_url, $comment_id): string
+    {
+        return $issue_url . '?c=' . rawurlencode(strval($comment_id));
+    }
+
+    /**
+     * Which issue a comment of this project hangs off, for an address that
+     * names only the comment (#comment-12). GET {id}/comment/{comment_id}.
+     */
+    public function commentIssue(Request $request, $id, $comment_id)
+    {
+        $project = $this->findProject($id);
+        $comment = ctype_digit(strval($comment_id)) ? getModelName(SystemTableName::COMMENT)::find($comment_id) : null;
+        if (!isset($comment) || strval($comment->parent_type) !== $this->issue_table->table_name) {
+            return $this->messageError(404, 'not_found');
+        }
+        // 404 when the issue is not this project's or the user cannot see it
+        $issue = $this->findIssue($project, $comment->parent_id);
+
+        return response()->json([
+            'ok' => true,
+            'issue' => intval($issue->id),
+            'comment' => intval($comment->id),
+            'url' => static::commentUrl($this->issueUrl($project, $issue), $comment->id),
+        ]);
     }
 
     /**
@@ -2329,7 +2388,7 @@ class PmPortalController extends AdminControllerBase
 
         $star_type = strval($request->get('star_type'));
         $target_type = strval($request->get('target_type'));
-        $allowed_types = [Star::TYPE_STAR, Star::TYPE_WATCH];
+        $allowed_types = [Star::TYPE_STAR, Star::TYPE_WATCH, Star::TYPE_FAV];
         $allowed_targets = array_filter([
             $this->issue_table->table_name,
             $this->project_table->table_name,
@@ -2344,6 +2403,11 @@ class PmPortalController extends AdminControllerBase
         if ((!$reaction && !in_array($star_type, $allowed_types)) || !in_array($target_type, $allowed_targets)) {
             return $this->messageError(400, 'invalid_params');
         }
+        // a favorite is of an issue, and nobody learns how many people have one (ISS00272)
+        if ($star_type === Star::TYPE_FAV && $target_type !== $this->issue_table->table_name) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        $private = $star_type === Star::TYPE_FAV;
         $target_id = $request->get('target_id');
         $target_id = is_scalar($target_id) ? strval($target_id) : '';
         $me = \Exment::getUserId();
@@ -2355,6 +2419,9 @@ class PmPortalController extends AdminControllerBase
         // target they could read when they marked it.
         if ($target_id !== '' && !empty(Star::mine($star_type, $target_type, [$target_id], $me))) {
             $result = Star::toggle($star_type, $target_type, $target_id, $me);
+            if ($private) {
+                unset($result['count']);
+            }
             if ($reaction) {
                 $result['users'] = Star::userIds($star_type, $target_type, $target_id);
             }
@@ -2380,6 +2447,9 @@ class PmPortalController extends AdminControllerBase
         if ($reaction) {
             // Who is on it now, so the chip's names are right without a reload.
             $result['users'] = Star::userIds($star_type, $target_type, $target_id);
+        }
+        if ($private) {
+            unset($result['count']);
         }
 
         return response()->json(['ok' => true] + $result);
@@ -2941,6 +3011,11 @@ class PmPortalController extends AdminControllerBase
             // an install that has not run the upgrade simply has not got them,
             // and the form has to lay out whatever is actually there.
             'issue_extra_cols' => array_get($this->def, 'issue_extra', []),
+            // ...and which of them the table really has: the issue screen and
+            // the list offer only those (an install that has not run the
+            // upgrade has not got the roles of schema 27).
+            'issue_extra_on' => $this->issueExtraOn(),
+            'difficulties' => PortalSchema::DIFFICULTIES,
             'related_table' => $related_meta['table'],
             'related_cols' => $related_meta['cols'],
             'wiki_table' => $this->def['wiki_table'],
@@ -3280,12 +3355,15 @@ class PmPortalController extends AdminControllerBase
         // Keyed once: in_array over every row was quadratic on a big project.
         $my_stars = array_flip(array_map('strval', (array) $my_stars));
         $my_watches = array_flip(array_map('strval', (array) $my_watches));
+        // ISS00272: the reader's own favorites, one indexed read
+        $my_favs = array_flip(array_map('strval', Star::mine(Star::TYPE_FAV, $this->issue_table->table_name, $issues->pluck('id')->all(), \Exment::getUserId())));
         foreach ($issues as $issue) {
             $row = $this->buildIssueRow($project, $issue, $lean);
             $row['my_rv'] = isset($review[intval($issue->id)]);
             $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
             $row['my_star'] = isset($my_stars[strval($issue->id)]);
             $row['my_watch'] = isset($my_watches[strval($issue->id)]);
+            $row['my_fav'] = isset($my_favs[strval($issue->id)]);
             $row['unread'] = isset($unread[intval($issue->id)]);
             $rows[] = $row;
         }
@@ -3401,6 +3479,9 @@ class PmPortalController extends AdminControllerBase
             'mg' => $this->userIds($v, 'managers'),
             'rv' => $this->userIds($v, 'reviewers'),
             'df' => strval(array_get($v, array_get($this->def, 'issue_extra.difficulty', 'difficulty'), '')),
+            // The people told of every change (お知らせ先), shown and set on
+            // the issue's own side as well as in the form.
+            'nu' => $this->userIds($v, 'notified_users'),
         ];
         if ($lean) {
             // Rebuilt by the page's script (unpackRows) from the id, the
@@ -3439,8 +3520,8 @@ class PmPortalController extends AdminControllerBase
     const ROW_DEFAULTS = [
         'sub' => '', 'rc' => '', 'ms' => '', 'dt' => '', 'df' => '',
         'sd' => null, 'dd' => null, 'pg' => null, 'eh' => null, 'ah' => null, 'parent' => null, 'by' => null,
-        'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [],
-        'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'unread' => false,
+        'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [], 'nu' => [],
+        'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'my_fav' => false, 'unread' => false,
     ];
 
     /**
@@ -3464,6 +3545,23 @@ class PmPortalController extends AdminControllerBase
                 }
             }
             $out[] = $row;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The added issue columns the issue screen and the list show and set,
+     * by role, and whether the issue table has each one.
+     *
+     * @return array<string, bool>
+     */
+    protected function issueExtraOn(): array
+    {
+        $out = [];
+        foreach (array_merge(PortalSchema::ROLE_COLUMNS, ['difficulty', 'notified_users']) as $role) {
+            $column = strval(array_get($this->def, 'issue_extra.' . $role, PortalSchema::ISSUE_COLUMNS[$role] ?? $role));
+            $out[$role] = $column !== '' && CustomColumn::getEloquent($column, $this->issue_table) !== null;
         }
 
         return $out;
@@ -3972,6 +4070,21 @@ class PmPortalController extends AdminControllerBase
      * @param mixed $id
      * @return \Exceedone\Exment\Model\CustomValue
      */
+    /**
+     * The page of a project the caller cannot open: not a member, or no such project.
+     */
+    protected function notMemberPage(Content $content)
+    {
+        $title = strval(PortalDefinition::trans('not_member.title'));
+        $body = '<div class="box box-default" style="padding:24px;max-width:640px;">'
+            . '<h3 style="margin-top:0;">' . esc_html($title) . '</h3>'
+            . '<p>' . esc_html(strval(PortalDefinition::trans('not_member.body'))) . '</p>'
+            . '<p><a class="btn btn-default" href="' . esc_html(PortalDefinition::url()) . '">' . esc_html(strval(PortalDefinition::trans('not_member.back'))) . '</a></p>'
+            . '</div>';
+
+        return response($content->title($title)->body($body)->render(), 404);
+    }
+
     protected function findProject($id)
     {
         if (!isset($this->project_table) || !isset($this->issue_table)) {

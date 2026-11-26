@@ -31,6 +31,12 @@ class PluginPage extends PluginPageBase
         } catch (\Throwable $e) {
             \Log::error('ExmentITSupport could not register its features: ' . $e->getMessage());
         }
+        // the data sync of Exment 7.3: the hosts of monitoring tools into the IT assets
+        try {
+            AssetSync::register();
+        } catch (\Throwable $e) {
+            \Log::error('ExmentITSupport could not register its sync connectors: ' . $e->getMessage());
+        }
         try {
             PublicRoutes::register();
         } catch (\Throwable $e) {
@@ -120,6 +126,41 @@ class PluginPage extends PluginPageBase
     public function postAlertSharedKey()
     {
         return $this->desk()->postAlertSharedKey(request());
+    }
+
+    public function postCatalogTemplates()
+    {
+        return $this->desk()->postCatalogTemplates(request());
+    }
+
+    public function approval($id)
+    {
+        return $this->desk()->approval(request(), $id);
+    }
+
+    public function postApproval($id)
+    {
+        return $this->desk()->postApproval(request(), $id);
+    }
+
+    public function problems()
+    {
+        return $this->desk()->problems(request());
+    }
+
+    public function problem($id)
+    {
+        return $this->desk()->problem(request(), $id);
+    }
+
+    public function postProblem($id)
+    {
+        return $this->desk()->postProblem(request(), $id);
+    }
+
+    public function postTicketProblem($id)
+    {
+        return $this->desk()->postTicketProblem(request(), $id);
     }
 
     public function dashboard()

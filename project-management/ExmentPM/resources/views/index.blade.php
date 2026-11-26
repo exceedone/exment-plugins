@@ -27,7 +27,7 @@
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
         'lbl_eh', 'lbl_pg', 'rollup', 'rollup_tip', 'lbl_parent', 'lbl_watch', 'lbl_source', 'lbl_sub_assignees', 'lbl_managers', 'lbl_reviewers', 'lbl_difficulty', 'lbl_author', 'df_easy', 'df_normal', 'df_hard', 'lbl_custom_fields', 'src_created', 'src_updated', 'src_assignees', 'src_assignees_hint', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
         'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
-        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail',
+        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_dl_csv_all', 'f_dl_csv_screen', 'f_dl_xlsx_all', 'f_dl_xlsx_screen', 'f_dl_busy', 'f_dl_fail', 'tree_ctx_open', 'tree_ctx_close', 'tree_ctx_open_below', 'tree_ctx_close_below', 'tree_ctx_open_all', 'tree_ctx_close_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail', 'tree_ctx_open_w', 'tree_ctx_close_w', 'ctx_add_child', 'ctx_change_parent', 'ctx_copy_link', 'fav', 'fav_on', 'fav_tip', 'fav_add', 'fav_off', 'fav_added', 'fav_removed', 'fav_fail',
         'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',
         'dock_open', 'dock_title', 'dock_close', 'dock_cancel', 'dock_cmt', 'dock_edit', 'dock_keep',
         'dock_draft', 'dock_saving', 'dock_save_fail', 'dock_stale', 'dock_stale_keep', 'dock_empty',
@@ -42,6 +42,8 @@
         'ct_link_label', 'cmt_uploading', 'cmt_up_ok', 'cmt_up_fail', 'cmt_menu',
         'rx_add', 'rx_fail', 'rx_like', 'rx_heart', 'rx_haha', 'rx_wow', 'rx_sad', 'rx_angry', 'rx_thanks', 'rx_clap', 'rx_party', 'rx_eyes', 'rx_ok',
         'cmt_edit', 'cmt_copy', 'cmt_copied', 'cmt_save', 'cmt_cancel', 'cmt_saved',
+        'cmt_link', 'cmt_link_tip', 'cmt_not_found', 'proj_settings', 'qf_edit', 'qf_save', 'qf_stale',
+        'lbl_notify', 'lbl_notified', 'f_rl', 'oc_menu',
         'cmt_del_ask', 'cmt_deleted', 'cmt_del_fail',
         'wiki_pages', 'wiki_add', 'wiki_edit', 'wiki_hist', 'wiki_files', 'wiki_meta', 'wiki_none', 'wiki_empty',
         'board_none', 'gantt_none',
@@ -199,9 +201,19 @@
                     <select id="pp-f-ms"><option value="">{{ $lang['f_ms'] }}: {{ $lang['f_all'] }}</option></select>
                     <select id="pp-f-cat"><option value="">{{ $lang['f_cat'] }}: {{ $lang['f_all'] }}</option></select>
                     <select id="pp-f-rd"><option value="">{{ $lang['f_rd'] }}: {{ $lang['f_all'] }}</option><option value="unread">{{ $lang['f_rd'] }}: {{ $lang['f_rd_unread'] }}</option><option value="read">{{ $lang['f_rd'] }}: {{ $lang['f_rd_read'] }}</option></select>
+                    {{-- ISS02931: the other people of an issue and its difficulty;
+                         shown by the script where the issue table has them. --}}
+                    <select id="pp-f-rl" hidden><option value="">{{ $lang['f_rl'] }}: {{ $lang['f_all'] }}</option></select>
+                    <select id="pp-f-df" hidden><option value="">{{ $lang['lbl_difficulty'] }}: {{ $lang['f_all'] }}</option></select>
                     <span class="bl-fright">
                         {{-- Tree view (ISS00253): off by default; the two
                              fold links only show while it is on. --}}
+                        <span class="pp-oc-wrap" id="pp-oc-wrap" hidden>
+                            <button type="button" class="sv pp-oc-btn" id="pp-oc-btn" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-columns"></i> {{ $lang['oc_menu'] }} <i class="fa fa-caret-down"></i>
+                            </button>
+                            <div class="pp-oc-menu" id="pp-oc-menu" hidden></div>
+                        </span>
                         <button type="button" class="bl-treebtn" id="pp-tree-btn" aria-pressed="false"><i class="fa fa-sitemap"></i> {{ $lang['tree_view'] ?? 'ツリー表示' }}</button>
                         <a class="sv" href="javascript:void(0);" id="pp-tree-open" hidden>{{ $lang['tree_open_all'] ?? 'すべて開く' }}</a>
                         <a class="sv" href="javascript:void(0);" id="pp-tree-close" hidden>{{ $lang['tree_close_all'] ?? 'すべて閉じる' }}</a>
@@ -254,6 +266,10 @@
                         <th class="pp-tcol" id="pp-tcol-head" hidden></th>
                         <th data-sort="subject">{{ $lang['col_subject'] }}</th>
                         <th data-sort="as">{{ $lang['col_as'] }}</th>
+                        <th data-sort="sa" data-ocol="sa" hidden>{{ $lang['lbl_sub_assignees'] }}</th>
+                        <th data-sort="mg" data-ocol="mg" hidden>{{ $lang['lbl_managers'] }}</th>
+                        <th data-sort="rv" data-ocol="rv" hidden>{{ $lang['lbl_reviewers'] }}</th>
+                        <th data-sort="df" data-ocol="df" hidden>{{ $lang['lbl_difficulty'] }}</th>
                         <th data-sort="st">{{ $lang['col_st'] }}</th>
                         <th data-sort="pr">{{ $lang['col_pr'] }}</th>
                         <th data-sort="ms">{{ $lang['col_ms'] }}</th>
