@@ -106,6 +106,20 @@ class PluginBatch extends PluginBatchBase
             return 0;
         }
 
+        // --param1=schedule: the issues of the recurring schedules (ISS00432), once a day or more
+        if ($target === 'schedule') {
+            \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            if (!PortalSchedule::enabled()) {
+                $this->say('schedule_off');
+
+                return 0;
+            }
+            $made = PortalSchedule::run($dry);
+            $this->say($dry ? 'schedule_dry' : 'schedule', ['count' => count($made)]);
+
+            return 0;
+        }
+
         if ($target === 'recur') {
             \Exceedone\Exment\Middleware\Morph::defineMorphMap();
             $made = PortalRecurrence::run($dry);

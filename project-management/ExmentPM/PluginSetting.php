@@ -106,6 +106,11 @@ class PluginSetting
             ->help(PortalDefinition::trans(PortalTeams::teamsAvailable() ? 'teams.setting_help' : 'teams.setting_unavailable'))
             ->default('bell');
 
+        // recurring schedules on an Exment without Feature management (ISS00432)
+        if (!class_exists(PortalSchedule::FEATURES)) {
+            $form->switchbool('schedule_on', PortalDefinition::trans('sched.on'))->help(PortalDefinition::trans('sched.on_help'))->default('0');
+        }
+
         $form->exmheader($a('header'))->hr();
         $form->description($a('description'));
 
