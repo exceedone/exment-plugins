@@ -293,7 +293,8 @@
             if (window.jQuery) { jQuery(inp).on('dp.change', function () { commit(inp.value.trim()); }); }
             inp.addEventListener('blur', function () {
                 setTimeout(function () {
-                    if (!done && !document.querySelector('.bootstrap-datetimepicker-widget')) { cancel(); }
+                    // an open calendar (the old picker, or flatpickr on 7.3) keeps the editor
+                    if (!done && !document.querySelector('.bootstrap-datetimepicker-widget, .flatpickr-calendar.open')) { cancel(); }
                 }, 200);
             });
             inp.focus();
