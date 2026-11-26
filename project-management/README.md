@@ -17,6 +17,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 **Unreleased / 未リリース**
 
+- The top bar has one ⚙ 設定 menu (the button map): 通知の受け取り方, 全体の設定 (administrators) and the manual are in it instead of three items of their own. 「アップグレードが必要」 stays on the bar.
+  上のバーに「⚙ 設定」のメニューを 1 つだけ置きました（ボタンの地図）。「通知の受け取り方」「全体の設定」（管理者だけ）「マニュアル」は、それぞれのボタンでなく、このメニューの中にあります。「アップグレードが必要」は今までどおりバーに出します。
 - Small fixes from the screen review: on a phone, the menus 「保存した条件」 and 「列」 of the issue list open at the left of their row instead of running off the left edge; the copy button under each key shows on the row the pointer is on (touch screens keep it on every row).
   画面の見直しで見つけた小さな直し：スマホで、課題の一覧の「保存した条件」と「列」のメニューが左にはみ出さないようにしました。キーの下のコピーのボタンは、マウスを乗せた行だけに出します（タッチの画面では今までどおり全部の行に出ます）。
 - Where each person gets a notice (bell, mail, Teams) is read in one place, `PortalNotifyPrefs::channelsFor()`, per person and event; for now it is each person's choice of the 「通知」 menu, as before. The settings per event and per project come next behind it.

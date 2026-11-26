@@ -65,8 +65,6 @@
 .pp-top .pp-top-home:hover,.pp-top .pp-top-dd>button:hover{background:var(--bl-hover,var(--exm-ui-accent-soft,#f2f8f5));}
 .pp-top .pp-top-home.on{box-shadow:inset 0 -3px 0 var(--bl-accent,var(--exm-ui-accent,#4caf93));font-weight:700;}
 .pp-top .pp-top-dd{position:relative;display:flex;}
-.pp-top .pp-top-settings{color:var(--bl-sub,#8a97a3);}
-.pp-top .pp-top-manual{color:var(--bl-sub,#8a97a3);}
 .pp-top .pp-top-upgrade{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:14px;
     background:var(--bl-amber,#eda62a);color:#fff;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;}
 .pp-top .pp-top-upgrade:hover{color:#fff;text-decoration:none;filter:brightness(.95);}
@@ -89,6 +87,8 @@
     font-size:10.5px;color:var(--bl-sub,#8a97a3);}
 .pp-top .pp-top-mi .ar{flex:none;background:#7f8c8d;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;}
 .pp-top .pp-top-none{padding:12px 14px;color:var(--bl-sub,#8a97a3);font-size:12px;}
+.pp-top .pp-top-gh{padding:9px 13px 5px;color:var(--bl-sub,#8a97a3);font-size:11.5px;font-weight:700;}
+.pp-top .pp-top-gear .pp-top-mi.pp-top-settings{border-top:1px solid var(--bl-line,#eef2f5);}
 
 /* project menu - the dashboard's project panel, in a dropdown ---------- */
 /* The header, the filter box and プロジェクトの追加 stay put; only the
@@ -216,8 +216,8 @@
     .pp-top .pp-top-search{flex:1 1 160px;min-width:110px;}
 }
 @media (min-width:761px) and (max-width:1599px){
-    .pp-top .pp-top-notifywrap>button>span,.pp-top .pp-top-settings>span,.pp-top .pp-top-manual>span{display:none;}
-    .pp-top .pp-top-notifywrap>button,.pp-top .pp-top-settings,.pp-top .pp-top-manual{padding:0 10px;}
+    .pp-top .pp-top-gear>button>span{display:none;}
+    .pp-top .pp-top-gear>button{padding:0 10px;}
 }
 /* the phone-only controls */
 .pp-top .pp-top-burger,.pp-top .pp-top-stgl,.pp-top .pp-top-curpj{display:none;}
@@ -401,16 +401,18 @@
         </div>
     </div>
     @endif
-    {{-- ISS02863: how this user gets the notices of the issues: bell only, mail, Teams, both --}}
-    @if(!empty($topbar['notify_by_url']))
-    <div class="pp-top-dd pp-top-notifywrap">
-        {{-- S7: a setting (how the notices come), not the list of them -
-             that is Exment's bell - so not the bell's icon. --}}
-        <button type="button" aria-haspopup="true" aria-expanded="false" title="{{ PortalDefinition::trans('teams.menu_title') }}">
-            <i class="fa fa-sliders"></i><span>{{ PortalDefinition::trans('teams.menu') }}</span><i class="fa fa-caret-down"></i>
+    {{-- Button map: settings only under the gear. One menu holds how this user
+         gets the notices (ISS02863), the settings of the whole portal (for
+         administrators, ISS00256) and the manual (ISS02882). A project's own
+         settings are under the gear beside its name. --}}
+    <div class="pp-top-dd pp-top-gear">
+        <button type="button" aria-haspopup="true" aria-expanded="false" title="{{ $tt('top_gear_tip') }}">
+            <i class="fa fa-cog"></i><span>{{ $tt('top_gear') }}</span><i class="fa fa-caret-down"></i>
         </button>
-        <div class="pp-top-menu pp-top-menu-r" hidden data-notify-by="{{ $topbar['notify_by_url'] }}">
-            <div class="pp-top-none">{{ PortalDefinition::trans('teams.menu_title') }}</div>
+        <div class="pp-top-menu pp-top-menu-r" hidden @if(!empty($topbar['notify_by_url'])) data-notify-by="{{ $topbar['notify_by_url'] }}" @endif>
+            @if(!empty($topbar['notify_by_url']))
+            {{-- S7: a setting (how the notices come), not the list of them - that is Exment's bell --}}
+            <div class="pp-top-gh"><i class="fa fa-sliders"></i> {{ PortalDefinition::trans('teams.menu_title') }}</div>
             @foreach($topbar['notify_choices'] as $choice)
             <a class="pp-top-mi pp-notify-by" href="#" data-choice="{{ $choice }}" aria-checked="{{ $topbar['notify_by'] === $choice ? 'true' : 'false' }}" role="menuitemradio">
                 <i class="fa {{ $topbar['notify_by'] === $choice ? 'fa-check' : 'fa-fw' }}"></i>
@@ -420,28 +422,23 @@
             @if(!empty($topbar['notify_settings_url']))
             <a class="pp-top-mi" href="{{ $topbar['notify_settings_url'] }}"><i class="fa fa-fw"></i><span class="nm">{{ PortalDefinition::trans('nset.menu') }}</span></a>
             @endif
+            @endif
+            @if(!empty($topbar['settings_url']))
+            <a class="pp-top-mi pp-top-settings" href="{{ $topbar['settings_url'] }}" title="{{ PortalDefinition::trans('global_settings') }}">
+                <i class="fa fa-cog"></i><span class="nm">{{ PortalDefinition::trans('global_settings') }}</span>
+            </a>
+            @endif
+            {{-- the manual of the plugin, in the language of the user (ISS02882) --}}
+            <a class="pp-top-mi pp-top-manual" href="{{ \App\Plugins\ExmentPM\ManualLink::url() }}" target="_blank" rel="noopener" title="{{ \App\Plugins\ExmentPM\ManualLink::label() }}">
+                <i class="fa fa-question-circle"></i><span class="nm">{{ \App\Plugins\ExmentPM\ManualLink::label() }}</span>
+            </a>
         </div>
     </div>
-    @endif
-    {{-- ISS00256: the sidebar shows only "プロジェクト管理", so the portal's
-         settings (and the master lists under it) open from here - for
-         administrators only. --}}
-    @if(!empty($topbar['settings_url']))
-    {{-- S8: the settings of the whole portal; a project's own are under the
-         gear beside its name. --}}
-    <a class="pp-top-home pp-top-settings" href="{{ $topbar['settings_url'] }}" title="{{ PortalDefinition::trans('global_settings') }}">
-        <i class="fa fa-cog"></i><span>{{ PortalDefinition::trans('global_settings') }}</span>
-    </a>
-    @if(!empty($topbar['upgrade_needed']))
+    @if(!empty($topbar['settings_url']) && !empty($topbar['upgrade_needed']))
     <a class="pp-top-upgrade" href="{{ $topbar['settings_url'] }}" title="{{ $tt('upgrade_needed_tip') }}">
         <i class="fa fa-exclamation-circle"></i><span>{{ $tt('upgrade_needed') }}</span>
     </a>
     @endif
-    @endif
-    {{-- the manual of the plugin, in the language of the user (ISS02882) --}}
-    <a class="pp-top-home pp-top-manual" href="{{ \App\Plugins\ExmentPM\ManualLink::url() }}" target="_blank" rel="noopener" title="{{ \App\Plugins\ExmentPM\ManualLink::label() }}">
-        <i class="fa fa-question-circle"></i><span>{{ \App\Plugins\ExmentPM\ManualLink::label() }}</span>
-    </a>
 </nav>
 
 <script>
