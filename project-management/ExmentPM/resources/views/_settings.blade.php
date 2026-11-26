@@ -15,6 +15,9 @@
         'fs' => PortalDefinition::trans('fileserver'),
         'ch' => PortalDefinition::trans('channels'),
         'ai' => PortalDefinition::trans('ai'),
+        'feat_site_on' => PortalDefinition::trans('feat_site_on'),
+        'feat_site_off' => PortalDefinition::trans('feat_site_off'),
+        'feat_site_open' => PortalDefinition::trans('feat_site_open'),
         'required' => PortalDefinition::trans('ned_required'),
         'none' => PortalDefinition::trans('ned_none'),
         'lkp_search' => PortalDefinition::trans('lkp_search'),
@@ -110,6 +113,12 @@
         'lightapi' => $payload['urls']['lightapi_base'],
         'members_url' => $payload['urls']['lightapi_base'] . '/project/' . $pjId . '/members',
         'lists' => $setLists,
+        // the features of the site in the features pane, read only (ISS00432): on or off by
+        // Feature management, and their page for the manager
+        'site_features' => [
+            ['label' => PortalDefinition::trans('remind.page_title'), 'on' => \App\Plugins\ExmentPM\PortalReminder::enabled(), 'url' => $reminder_url ?? null],
+            ['label' => PortalDefinition::trans('sched.page_title'), 'on' => \App\Plugins\ExmentPM\PortalSchedule::enabled(), 'url' => $schedule_url ?? null],
+        ],
     ];
 
     // Columns this deployment added to the project table itself. Everything
@@ -806,6 +815,23 @@
             (MAP.features || []).forEach(function (name) {
                 var col = colOf(name);
                 if (col) { frag.appendChild(switchRow(col, L['feat_' + name])); }
+            });
+            // the features of the site: read only here, on or off for the whole site
+            (S.site_features || []).forEach(function (f) {
+                var row = el('div', 'pp-set-f');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.gap = '10px';
+                var nm = el('span', 'pp-set-lab', f.label);
+                nm.style.margin = '0';
+                row.appendChild(nm);
+                row.appendChild(el('span', 'pp-set-note', f.on ? LANG.feat_site_on : LANG.feat_site_off));
+                if (f.on && f.url) {
+                    var a = el('a', '', LANG.feat_site_open);
+                    a.href = f.url;
+                    row.appendChild(a);
+                }
+                frag.appendChild(row);
             });
             var rule = colOf(MAP.formatting_rule);
             if (rule) {
