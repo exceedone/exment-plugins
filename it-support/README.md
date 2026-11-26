@@ -72,6 +72,9 @@ ITreview の「ヘルプデスクツール」カテゴリー（2026 年 11 月�
 
 **Unreleased / 未リリース**: SLA のエスカレーションを段階に分けられるようにしました（設定の「SLA のエスカレーション」、初めは使わない）。期限までの時間の 75%（変えられます）で担当者へ、期限を過ぎたらリーダーへ、さらに 60 分（変えられます）過ぎたら管理者へ、それぞれ 1 回だけ知らせます。知らせ方は、画面のベル・メール・Teams のワークフロー・LINE WORKS（Exment 7.3 以降）・Webhook（JSON）から選びます。優先度が変わるなどで期限が変わると、はじめからやり直します。使うあいだは、今までの「まもなく期限」「超過」の 1 回の知らせのかわりになります。
 
+**Unreleased / 未リリース**: The two entries in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5); another language reads English.
+機能の管理に出る 2 つの入口の名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
+
 自動処理（メールの受信・SLA・返事待ち・完了・資産の期限）は 5 分ごとに動きます。Exment のスケジューラー（`php artisan schedule:run` を cron で毎分）が動いている必要があります。
 
 ### 機能の管理（機能の管理の入った Exment で）
