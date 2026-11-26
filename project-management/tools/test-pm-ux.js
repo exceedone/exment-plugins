@@ -504,12 +504,16 @@ test('HINT-1 fix: the list hint is above the table and its link opens 保存し�
     assert.ok(/ev\.stopPropagation\(\);/.test(show) && /setTimeout\(go, 0\)/.test(show));
 });
 
-test('QE-SA: the dock changes the sub-assignees too, where the table has them', () => {
+test('QE-SA / QE-ROLES: the dock changes 副担当者, 管理者, レビュアー and 難易度, where the table has them', () => {
     const qe = functionSource(detail, 'renderQuickEdit');
-    assert.ok(/if \(qeCol\(QE_COLS\.sa\)\) \{\s*box\.appendChild\(qeRow\(L\.lbl_sub_assignees, qeChips\('sa', people, QE\.base\.sa/.test(qe));
-    assert.ok(qe.indexOf("qeChips('as'") < qe.indexOf("qeChips('sa'") && qe.indexOf("qeChips('sa'") < qe.indexOf("qeChips('cat'"), 'right under the assignees');
-    assert.ok(/sa: 'sub_assignees'/.test(detail), 'saved by the same column map');
-    assert.ok(index.indexOf("'lbl_sub_assignees'") > 0);
+    assert.ok(/QF_ROLES\.forEach\(function \(r\) \{/.test(qe));
+    assert.ok(/if \(!qeCol\(QE_COLS\[r\[0\]\]\)\) \{ return; \}/.test(qe), 'only where the column is there');
+    assert.ok(/qeChips\(r\[0\], people, QE\.base\[r\[0\]\], named, true\)/.test(qe), 'the assignees picker');
+    assert.ok(/if \(qeCol\(QE_COLS\.df\)\) \{\s*box\.appendChild\(qeRow\(L\.lbl_difficulty, qeSelect\('df'/.test(qe));
+    assert.ok(qe.indexOf("qeChips('as'") < qe.indexOf('QF_ROLES.forEach') && qe.indexOf('QF_ROLES.forEach') < qe.indexOf("qeChips('cat'"), 'right under the assignees');
+    assert.ok(/var QF_ROLES = \[\['sa', 'sub_assignees', 'lbl_sub_assignees'\], \['mg', 'managers', 'lbl_managers'\], \['rv', 'reviewers', 'lbl_reviewers'\]\];/.test(detail));
+    assert.ok(/sa: 'sub_assignees', mg: 'managers', rv: 'reviewers', df: 'difficulty', nu: 'notified_users'/.test(detail), 'saved by the same column map');
+    ['lbl_sub_assignees', 'lbl_managers', 'lbl_reviewers', 'lbl_difficulty'].forEach((k) => assert.ok(index.indexOf("'" + k + "'") > 0, k));
 });
 
 test('POS-1: one 課題の追加 in a project (its header row), the project settings at the right of the tabs', () => {
