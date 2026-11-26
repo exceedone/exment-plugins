@@ -31,6 +31,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   見られるすべてのプロジェクトの課題を 1 つの一覧で見られるページを足しました（トップの「自分の課題」の見出しから）。プロジェクト・担当者（「自分」も）・状態（「完了以外」も）・優先度・種別をそれぞれ複数選んで、期限・件名のことばでも絞り込めます。期限・優先度・更新日時・番号で並べ替えられます。1 ページ 50 件で、絞り込みとページ分けはサーバーで行います。条件はアドレスに入り、名前を付けてブラウザーに保存できます。
 - The list across the projects downloads as Excel or CSV too (every column or the list's, with the project of each issue first), with its filters and order.
   すべてのプロジェクトの課題も、Excel・CSV でダウンロードできます（すべての項目か一覧と同じ項目。先頭にプロジェクト）。今の絞り込みと並び順で出します。
+- The Wiki tree folds too, with the same ▼/▶, right-click menu and keys; the folded pages are remembered, and the page shown is never hidden. The right-click menu of an issue row has 「子課題を追加」, 「親課題を変える（編集を開く）」 and 「課題のリンクをコピー」.
+  Wiki のツリーも、同じ ▼／▶・右クリックのメニュー・キーで開いたりたたんだりできます（たたんだページは覚えます。開いているページは隠れません）。課題の行の右クリックのメニューに「子課題を追加」「親課題を変える（編集を開く）」「課題のリンクをコピー」を足しました。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
