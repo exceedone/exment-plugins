@@ -1967,6 +1967,7 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .bl-detail.pp-simple #pp-d-childbox,
 .pmportal .bl-detail.pp-simple #pp-d-filebox,
 .pmportal .bl-detail.pp-simple #pp-d-relbox,
+.pmportal .bl-detail.pp-simple #pp-d-reclinkbox,
 .pmportal .bl-detail.pp-simple .bl-dsum [data-sum="pr"],
 .pmportal .bl-detail.pp-simple .bl-dsum [data-sum="role"],
 .pmportal .bl-detail.pp-simple .bl-dsum .pp-reads{display:none !important;}

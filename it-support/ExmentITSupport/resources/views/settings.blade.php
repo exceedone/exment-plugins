@@ -208,8 +208,8 @@
 
     <div class="its-card">
         <h3><i class="fa fa-table" aria-hidden="true"></i>テーブル・権限</h3>
-        <div class="its-sub">項目・画面・ワークフローは Exment の画面で自由に変えられます。担当者は役割グループ「ITサポート 担当者」に、ログインするお客様は「ITサポート お客様」に入れてください。</div>
-        <ul class="its-tables" aria-label="ITサポートのテーブル">
+        <div class="its-sub">項目・画面・ワークフローは Exment の画面で自由に変えられます。担当者は役割グループ「サポート窓口 担当者」に、ログインするお客様は「サポート窓口 お客様」に入れてください。</div>
+        <ul class="its-tables" aria-label="サポート窓口のテーブル">
             @foreach([[$Its::T_TICKET, 'チケット'], [$Its::T_CUSTOMER, 'お客様（会社）'], [$Its::T_CONTACT, 'お客様の担当者'], [$Its::T_ASSET, 'IT 資産'], [$Its::T_KNOWLEDGE, 'ナレッジ（FAQ）'], [$Its::T_TEMPLATE, '定型文'], [$Its::T_CATEGORY, 'チケットの種類'], [$Its::T_SLA, 'SLA']] as [$tn, $label])
             <li><a href="{{ $Its::dataUrl($tn) }}">{{ $label }}</a></li>
             @endforeach

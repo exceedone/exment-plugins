@@ -17,6 +17,8 @@
         'ai' => PortalDefinition::trans('ai'),
         // the custom attributes of the project's issues (ISS02939)
         'at' => PortalDefinition::trans('attributes'),
+        // the tables of Exment the issues link to (ISS02939)
+        'ln' => PortalDefinition::trans('links'),
         'feat_site_on' => PortalDefinition::trans('feat_site_on'),
         'feat_site_off' => PortalDefinition::trans('feat_site_off'),
         'feat_site_open' => PortalDefinition::trans('feat_site_open'),
@@ -104,6 +106,9 @@
         // the definitions of the custom attributes (ISS02939): {on:false} unless the manager's
         'attributes_url' => $payload['urls']['attributes'] ?? null,
         'attributes' => $payload['attributes'] ?? ['on' => false],
+        // the tables the issues link to (ISS02939): {on:false} unless the manager's
+        'link_tables_url' => $payload['urls']['link_tables'] ?? null,
+        'record_links' => $payload['record_links']['settings'] ?? ['on' => false],
         'delete_url' => $payload['urls']['delete_project'],
         'dashboard_url' => $payload['urls']['dashboard'],
         'map' => $payload['settings_map'] ?? [],
@@ -183,6 +188,10 @@
     // The custom attributes, while the project uses them and its manager looks (ISS02939).
     if (boolval(array_get($setData, 'attributes.on'))) {
         $setSections[] = ['attributes', $st('tab_attributes'), 'fa-tags'];
+    }
+    // The tables of Exment the issues link to, for the manager (ISS02939).
+    if (boolval(array_get($setData, 'record_links.on')) && !empty($setData['link_tables_url'])) {
+        $setSections[] = ['links', $st('tab_links'), 'fa-link'];
     }
     if ($setData['can_delete']) {
         $setSections[] = ['danger', $st('tab_danger'), 'fa-trash-o'];
@@ -2249,10 +2258,118 @@
             return frag;
         }
 
+        // ---- the tables the issues link to (ISS02939) ----------------------
+        // Read when the pane opens: the choices are every data table of the
+        // site, which the page does not carry. The order of the kept tables
+        // stays; a newly ticked one goes at the end.
+        var LN = null;
+        function lnOrder(kept, ticked, choices) {
+            var on = {};
+            ticked.forEach(function (n) { on[n] = true; });
+            var out = kept.filter(function (n) { return on[n]; });
+            choices.forEach(function (c) {
+                if (on[c.name] && out.indexOf(c.name) < 0) { out.push(c.name); }
+            });
+            return out;
+        }
+        function paneLinks() {
+            var frag = document.createDocumentFragment();
+            var T = LANG.ln || {};
+            frag.appendChild(el('div', 'pp-set-note', T.note || ''));
+            var err = el('div', 'pp-set-warn');
+            err.hidden = true;
+            var fail = function (status, b) {
+                err.textContent = errText(status, b, L.save_fail);
+                err.hidden = false;
+            };
+            if (!LN) {
+                var wait = el('div', 'help', LANG.m_loading || '');
+                frag.appendChild(wait);
+                frag.appendChild(err);
+                ppq(function () {
+                    return fetch(S.link_tables_url, {
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    }).then(readJson);
+                }).then(function (res) {
+                    var j = res.body || {};
+                    if (res.status === 200 && j.ok && j.links) {
+                        LN = j.links;
+                        if (current === 'links') { renderPane('links'); }
+                        return;
+                    }
+                    wait.hidden = true;
+                    fail(res.status, res.body);
+                }).catch(function () {
+                    wait.hidden = true;
+                    fail(0, null);
+                });
+                return frag;
+            }
+            var kept = (LN.tables || []).map(String);
+            var choices = (LN.choices || []).slice();
+            // a kept table no longer among the choices still shows, to be unticked
+            kept.forEach(function (n) {
+                if (!choices.some(function (c) { return c.name === n; })) { choices.push({ name: n, label: n }); }
+            });
+            var f = el('div', 'pp-set-f');
+            f.appendChild(el('label', 'pp-set-lab', T.tables || ''));
+            var checks = [];
+            if (!choices.length) {
+                f.appendChild(el('div', 'help', T.none_tables || ''));
+                frag.appendChild(f);
+                frag.appendChild(err);
+                return frag;
+            }
+            choices.forEach(function (c) {
+                var l = el('label', null);
+                l.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin-right:14px;font-weight:400;';
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = c.name;
+                cb.checked = kept.indexOf(c.name) >= 0;
+                checks.push(cb);
+                l.appendChild(cb);
+                l.appendChild(document.createTextNode(c.label || c.name));
+                f.appendChild(l);
+            });
+            f.appendChild(el('div', 'help', T.tables_help || ''));
+            frag.appendChild(f);
+            frag.appendChild(err);
+            var save = el('button', 'pp-set-btn main', T.save || '');
+            save.type = 'button';
+            save.addEventListener('click', function () {
+                var ticked = checks.filter(function (cb) { return cb.checked; }).map(function (cb) { return cb.value; });
+                err.hidden = true;
+                save.disabled = true;
+                fetch(S.link_tables_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ tables: lnOrder(kept, ticked, choices) })
+                }).then(readJson).then(function (res) {
+                    var j = res.body || {};
+                    if (res.status === 200 && j.ok) {
+                        LN = j.links || LN;
+                        renderPane('links');
+                        say(T.saved || '', 'ok');
+                        return;
+                    }
+                    fail(res.status, res.body);
+                    save.disabled = false;
+                }).catch(function () {
+                    fail(0, null);
+                    save.disabled = false;
+                });
+            });
+            frag.appendChild(save);
+            return frag;
+        }
+
         var PANES = {
             basic: paneBasic, people: panePeople, features: paneFeatures,
             other: paneOther, git: paneGit, ai: paneAi, danger: paneDanger, fileserver: paneFiles, channels: paneChannels,
-            attributes: paneAttributes,
+            attributes: paneAttributes, links: paneLinks,
             statuses: function () { return paneList('statuses'); },
             types: function () { return paneList('types'); },
             categories: function () { return paneList('categories'); },
@@ -2274,7 +2391,7 @@
             // The save bar belongs to the panes that edit project columns.
             // Git and delete carry their own buttons, and a master list
             // saves each row the moment it is changed.
-            foot.hidden = ['git', 'fileserver', 'channels', 'attributes', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
+            foot.hidden = ['git', 'fileserver', 'channels', 'attributes', 'links', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
             nav.querySelectorAll('a').forEach(function (a) {
                 a.classList.toggle('on', a.getAttribute('data-sec') === name);
             });

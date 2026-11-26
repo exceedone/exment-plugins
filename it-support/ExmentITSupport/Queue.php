@@ -147,6 +147,12 @@ class Queue
         if ($current !== '' && static::statusOf($stages, $current) === $status) {
             return $current;
         }
+        // from one end to the other (the automation closes what was resolved): the end stays,
+        // a quote won (受注, resolved) does not become lost (失注, closed)
+        if ($current !== '' && in_array($status, static::END_STATUSES, true)
+            && in_array(strval(static::statusOf($stages, $current)), static::END_STATUSES, true)) {
+            return $current;
+        }
         foreach ($stages as $s) {
             if ($s['status'] === $status) {
                 return $s['name'];
@@ -164,6 +170,20 @@ class Queue
         }
 
         return $stages[0]['name'] ?? '';
+    }
+
+    /**
+     * How a ticket ended, for the kinds that win or lose (a quote): its end stage standing for
+     * resolved is won, for closed lost; else null (not ended, or a kind without it).
+     */
+    public static function outcome(string $kind, array $stages, string $stage): ?string
+    {
+        if (static::kindOf($kind) !== 'quote') {
+            return null;
+        }
+        $status = static::statusOf($stages, $stage);
+
+        return $status === 'resolved' ? 'won' : ($status === 'closed' ? 'lost' : null);
     }
 
     /** How far along the flow a stage is, 0 to 100 (an end stage is 100). */

@@ -128,6 +128,9 @@ jobs:
       # how a value reads, the filters, the sort and the bulk edit.
       - name: Custom attributes check (ExmentPM screen)
         run: node project-management/tools/test-pm-attributes.js
+      # The records of other tables an issue links to (ISS02939): the rows, safe links, the search.
+      - name: Record links check (ExmentPM screen)
+        run: node project-management/tools/test-pm-record-links.js
       - name: Simple or full issue screen (ExmentPM)
         run: node project-management/tools/test-pm-simple.js
       # Where each person's notice arrives (ISS02931): the chips, and the rule of the server.

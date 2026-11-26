@@ -34,6 +34,7 @@ const FILES = [
     'list.js',             // issue list, bulk edit, CSV, saved conditions, staying current
     'burndown.js',
     'issue-detail.js',     // issue detail, quick edit, related issues
+    'issue-record-links.js', // the records of other tables an issue links to (ISS02939)
     'wiki.js',
     'files.js',            // files, Office view
     'attach-edit.js',      // attachments edited in place, their versions (ISS02938)
