@@ -12,6 +12,7 @@
 - A new version of this plugin may ask for a newer ibisOffice (ISS02827). Until now the site then said ibisOffice was not installed and Office stopped. Now Office keeps opening with the version already installed, and Feature management and the page of the plugin say a newer version is there, with **ibisOffice を X に更新する**. The update installs it as an install does (checked by its SHA-256) and then deletes the older folders.
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
 - Web mail: the dates of the mails are shown in the time zone the user chose in Exment (Exment 7.2.4; a user who chose none gets the time zone of the site). On an older Exment they are shown in the time zone of the browser, as before.
+- The names and descriptions in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5). Another language reads English.
 
 **Changed in 0.4.7**
 
@@ -145,6 +146,7 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
+- 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
 
 **0.4.7 で変わったこと**
 

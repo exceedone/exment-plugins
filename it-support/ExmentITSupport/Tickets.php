@@ -615,6 +615,27 @@ class Tickets
     /**
      * @return array<string, string> user id => name, for the agent pickers
      */
+    /**
+     * The assignees of a ticket: one user as the plugin makes the column, or several when a site
+     * made it a column of many users.
+     *
+     * @return array<int, string>
+     */
+    public static function assigneeIds(CustomValue $ticket): array
+    {
+        $value = array_get($ticket->value, 'assignee');
+        if (is_string($value) && str_starts_with(trim($value), '[')) {
+            $value = json_decode($value, true);
+        }
+        $list = is_array($value) ? $value : (is_null($value) || $value === '' ? [] : explode(',', strval($value)));
+
+        return array_values(array_unique(array_filter(array_map(function ($id) {
+            return is_scalar($id) ? trim(strval($id)) : '';
+        }, $list), function ($id) {
+            return $id !== '' && ctype_digit($id);
+        })));
+    }
+
     public static function agentOptions(): array
     {
         $users = CustomTable::getEloquent(SystemTableName::USER);

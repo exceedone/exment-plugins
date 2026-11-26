@@ -129,7 +129,10 @@ class Syncer
         return ['status' => $status, 'counts' => $self ? $counts : [], 'problems' => $problems, 'message' => $message];
     }
 
-    public function run(int $limit): void
+    /**
+     * The mapping and the issue table of ExmentPM, before any issue is written.
+     */
+    public function prepare(): void
     {
         if (empty($this->map['backlog_project_id'])) {
             throw new \RuntimeException(Lang::t('error_no_mapping'));
@@ -141,10 +144,19 @@ class Syncer
         foreach ($this->issueTable->custom_columns as $c) {
             $this->cols[$c->column_name] = true;
         }
+    }
 
-        $cursor = $this->conn->cursor_updated ?: null;
+    /**
+     * The issues changed since the cursor and not taken yet, at most $limit: [the issues, the
+     * newest updated of them (the cursor when none), whether none is left].
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: string|null, 2: bool}
+     */
+    public function changed(?string $cursor, int $limit): array
+    {
         $host = $this->bl->host();
         $todo = [];
+        $left = false;
         foreach ($this->bl->issues(intval($this->map['backlog_project_id']), $cursor) as $issue) {
             // Backlog filters by day only; the same day's earlier changes come again.
             $link = Links::find($host, 'issue', intval($issue['id']));
@@ -153,10 +165,60 @@ class Syncer
                 continue;
             }
             if (count($todo) >= $limit) {
+                $left = true;
                 break;
             }
             $todo[] = $issue;
         }
+        $newest = $cursor;
+        foreach ($todo as $issue) {
+            $newest = max(strval($newest), strval($issue['updated']));
+        }
+        return [$todo, $newest, !$left];
+    }
+
+    /**
+     * Write one issue (the data sync of Exment 7.3, ExmentPMBacklog\BacklogConnector): 'add' or
+     * 'update', the Exment id, and the parent it waits for (its Backlog id, 0: none).
+     *
+     * @param array<string, mixed> $issue
+     * @return array{kind: string, id: int, parent: int}
+     */
+    public function writeOne(array $issue): array
+    {
+        $host = $this->bl->host();
+        $before = $this->counts['add'];
+        $needParent = [];
+        DB::transaction(function () use ($issue, $host, &$needParent) {
+            $this->one($issue, $host, $needParent);
+        });
+        $link = Links::find($host, 'issue', intval($issue['id']));
+        return [
+            'kind' => $this->counts['add'] > $before ? 'add' : 'update',
+            'id' => $link ? intval($link->exment_id) : 0,
+            'parent' => intval($needParent[intval($issue['id'])] ?? 0),
+        ];
+    }
+
+    /**
+     * The problems noted so far (and forget them).
+     *
+     * @return array<int, string>
+     */
+    public function takeProblems(): array
+    {
+        $problems = $this->problems;
+        $this->problems = [];
+        return $problems;
+    }
+
+    public function run(int $limit): void
+    {
+        $this->prepare();
+
+        $cursor = $this->conn->cursor_updated ?: null;
+        $host = $this->bl->host();
+        [$todo] = $this->changed($cursor, $limit);
 
         $failed = [];
         $newest = $cursor;
@@ -182,7 +244,22 @@ class Syncer
         }
         Connections::patch(intval($this->conn->id), ['cursor_updated' => $newest]);
 
-        // A child that came before its parent.
+        $this->resolveParents($needParent);
+
+        // Once a day: the issues gone from this Backlog project. Only after a
+        // run that took everything, so a half-done first import is not
+        // mistaken for deletions.
+        $this->dailyCheck(!$failed && count($todo) < $limit);
+    }
+
+    /**
+     * A child that came before its parent: its parent now.
+     *
+     * @param array<int, int> $needParent the Backlog id of the child => the one of its parent
+     */
+    public function resolveParents(array $needParent): void
+    {
+        $host = $this->bl->host();
         foreach ($needParent as $bid => $parentBid) {
             $child = Links::find($host, 'issue', $bid);
             $parent = Links::find($host, 'issue', $parentBid);
@@ -202,12 +279,17 @@ class Syncer
                 $this->problem(Lang::t('problem_parent_refused', ['key' => $child->backlog_key, 'reason' => static::firstError($e)]));
             }
         }
+    }
 
-        // Once a day: the issues gone from this Backlog project. Only after a
-        // run that took everything, so a half-done first import is not
-        // mistaken for deletions.
+    /**
+     * Once a day: the issues gone from this Backlog project (fullCheck), when the run took
+     * everything ($complete).
+     */
+    public function dailyCheck(bool $complete): void
+    {
+        $host = $this->bl->host();
         $last = $this->conn->last_full_check_at ?? null;
-        if (!$failed && count($todo) < $limit && (!$last || Carbon::parse($last)->lt(Carbon::now()->subDay()))) {
+        if ($complete && (!$last || Carbon::parse($last)->lt(Carbon::now()->subDay()))) {
             try {
                 $this->fullCheck($host);
                 Connections::patch(intval($this->conn->id), ['last_full_check_at' => Carbon::now()]);

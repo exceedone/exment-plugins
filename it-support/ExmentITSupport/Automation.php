@@ -205,8 +205,8 @@ class Automation
      */
     public static function notifyAgents(CustomValue $ticket, string $subject, string $body): void
     {
-        $assignee = array_get($ticket->value, 'assignee');
-        $ids = !empty($assignee) ? [strval($assignee)] : Tickets::agentIds();
+        $assignees = Tickets::assigneeIds($ticket);
+        $ids = !empty($assignees) ? $assignees : Tickets::agentIds();
         static::notifyUsers($ticket, array_map('strval', $ids), $subject, $body);
     }
 
@@ -231,6 +231,8 @@ class Automation
             if (Its::isEmail($email)) {
                 try {
                     \Illuminate\Support\Facades\Mail::raw($body . "\n\n" . $url, function ($m) use ($email, $subject) {
+                        // without it, a site with no MAIL_FROM_ADDRESS has the mail refused
+                        Mailer::setFrom($m);
                         $m->to($email)->subject($subject);
                     });
                 } catch (\Throwable $e) {
