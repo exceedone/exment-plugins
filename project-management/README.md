@@ -72,6 +72,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   繰り返しの予定の段 2b：プロジェクトの「予定のカレンダー」（月・年。休みの日に色）、日付ごとの「ここから先を変える」（今の予定はその前の日で終わり、その日から新しい予定。その日からあとに作った課題は新しい予定のもの）、管理者の「会社の休みと休日出勤」（サイト全体。営業日を数えるところで、日本の祝日といっしょに使います）。新しいテーブル pm_portal_calendar_days。
 - The filters of the issue list (assignee, type, priority, milestone, category) take several values: 「複数選ぶ…」 at the end of each opens a list to tick; the filter then shows how many are chosen. The URL and the saved conditions keep them.
   課題の一覧の絞り込み（担当者・種別・優先度・マイルストーン・カテゴリー）で、いくつも選べるようにしました。それぞれのいちばん下の「複数選ぶ…」で一覧が開き、チェックを付けて選びます。選んだ数が絞り込みに出ます。URL と保存した条件にも残ります。
+- Reminders before the due date (ISS00432, off at first: 「プロジェクト管理：期限のリマインド」 in Feature management, or the plugin setting on an Exment without it). A bell, then the mail or Teams each person chose: so many days before (in business days if wanted; a day off moves it to the business day before), on the morning of the due date, every business day once overdue; to the assignees, sub-assignees, managers or watchers who can read the issue. Set in the plugin settings; sent by `php artisan exment:batch --name=ExmentPM --param1=remind` (every 15 minutes from cron; `--param3=dry` only counts) and on page loads. Never twice (a new table, pm_portal_reminder_logs).
+  期限のリマインドを足しました（ISS00432。初めは使いません。機能の管理の「プロジェクト管理：期限のリマインド」か、機能の管理のない Exment ではプラグインの設定で使うにします）。ベルと、ひとりひとりが選んだ方法（メール・Teams）で、期限の何日前（営業日で数えることもできます。休みの日に当たったら前の営業日）・期限の日の朝・期限を過ぎたら営業日に毎日、知らせます。送る相手は、その課題を見られる担当者・副担当者・責任者・ウォッチしている人です。決まりはプラグインの設定で決めます。cron で `php artisan exment:batch --name=ExmentPM --param1=remind` を 15 分ごとに動かしてください（`--param3=dry` で数えるだけ）。ポータルを開いたときにも送ります。同じ知らせは 2 回送りません（新しいテーブル pm_portal_reminder_logs）。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
