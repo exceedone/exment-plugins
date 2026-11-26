@@ -719,7 +719,12 @@ class Desk
                 $values['trial_key'] = SalesLink::cleanKey($request->get('trial_key'));
             }
             if ($request->has('trial_until')) {
-                $values['trial_until'] = SalesLink::cleanDate($request->get('trial_until'));
+                // empty clears it; a value that is not a date is refused, the saved one stays
+                $until = trim(strval($request->get('trial_until')));
+                if ($until !== '' && SalesLink::cleanDate($until) === null) {
+                    return $this->back(Its::url() . '?open=' . intval($ticket->id), '試用の期限は 2027-01-31 のような日付で入れてください。', true);
+                }
+                $values['trial_until'] = $until === '' ? null : $until;
             }
         }
         // a stage of the ticket's box (its status follows, Tickets::applyStage)
