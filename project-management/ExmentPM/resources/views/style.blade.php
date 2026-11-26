@@ -2061,15 +2061,16 @@ body.pp-ib-open{overflow:hidden;}
   padding:2px 8px;font-size:11.5px;color:var(--bl-sub);cursor:pointer;}
 .pmportal .pp-md-badge .mk{font-weight:700;font-size:10.5px;border:1px solid currentColor;border-radius:3px;padding:0 3px;line-height:1.3;}
 .pmportal .pp-md-badge:hover{color:var(--bl-ink);background:var(--bl-hover);}
-.pmportal .pp-md-sheet{position:absolute;right:0;bottom:calc(100% + 4px);z-index:60;min-width:260px;max-height:60vh;overflow:auto;padding:4px 0;
-  background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius,6px);box-shadow:0 8px 24px rgba(0,0,0,.14);}
-.pmportal .pp-md-sheet[hidden]{display:none;}
-.pmportal .pp-md-row{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:6px 12px;text-align:left;cursor:pointer;font-size:12.5px;color:var(--bl-ink);}
-.pmportal .pp-md-row:hover{background:var(--bl-hover);}
-.pmportal .pp-md-row .lb{flex:1;}
-.pmportal .pp-md-row .ex{font-size:11.5px;color:var(--bl-sub);background:none;padding:0;white-space:nowrap;}
-.pmportal .pp-md-row.note{cursor:default;flex-direction:column;align-items:flex-start;gap:2px;}
-.pmportal .pp-md-row.note .ex{white-space:normal;}
+/* the cheat sheet hangs off <body> (fixed, above the PM header and the info box) */
+.pp-md-sheet{position:fixed;z-index:1100;min-width:260px;max-width:calc(100vw - 16px);max-height:60vh;overflow:auto;padding:4px 0;
+  background:var(--bl-box,#fff);border:1px solid var(--bl-line,#dfe5ea);border-radius:var(--bl-radius,6px);box-shadow:0 8px 24px rgba(0,0,0,.14);}
+.pp-md-sheet[hidden]{display:none;}
+.pp-md-sheet .pp-md-row{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:6px 12px;text-align:left;cursor:pointer;font-size:12.5px;color:var(--bl-ink);}
+.pp-md-sheet .pp-md-row:hover{background:var(--bl-hover);}
+.pp-md-sheet .pp-md-row .lb{flex:1;}
+.pp-md-sheet .pp-md-row .ex{font-size:11.5px;color:var(--bl-sub);background:none;padding:0;white-space:nowrap;}
+.pp-md-sheet .pp-md-row.note{cursor:default;flex-direction:column;align-items:flex-start;gap:2px;}
+.pp-md-sheet .pp-md-row.note .ex{white-space:normal;}
 .pmportal .pp-md-split{display:inline-flex;align-items:center;gap:4px;margin:0;font-weight:400;cursor:pointer;}
 .pmportal .pp-md-side{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:8px 10px;overflow:auto;background:var(--bl-box);}
 .pmportal .pp-md-side .pp-md-empty{color:var(--bl-faint);font-size:12px;}

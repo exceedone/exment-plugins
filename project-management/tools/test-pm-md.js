@@ -99,6 +99,16 @@ test('the three editors, and 書く｜プレビュー for the comment box', () =
     assert.ok(/'ct_bold' => '太字 \*\*…\*\*'/.test(langJa), 'the toolbar says the Markdown');
 });
 
+test('the cheat sheet hangs off <body>, fixed, closes on Esc and an outside click', () => {
+    const attach = functionSource(src, 'ppMdAttach');
+    assert.ok(/document\.body\.appendChild\(sheet\)/.test(attach) && /getBoundingClientRect\(\)/.test(attach));
+    assert.ok(/addEventListener\('scroll', onMove, true\)/.test(attach) && /addEventListener\('resize', onMove\)/.test(attach));
+    assert.ok(/mdInsert\(ta, MD_ITEMS/.test(attach), 'its lines write into its own textarea');
+    assert.ok(/ev\.key !== 'Escape'/.test(src) && /onPpMdOutside/.test(src));
+    const style = fs.readFileSync(path.join(PM, 'resources', 'views', 'style.blade.php'), 'utf8');
+    assert.ok(/\n\.pp-md-sheet\{position:fixed;z-index:1100;/.test(style));
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

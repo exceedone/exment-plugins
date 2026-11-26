@@ -14511,8 +14511,7 @@ window.PmPortalBoot = function () {
         bar.className = 'pp-md-bar';
         bar.innerHTML = '<label class="pp-md-split" title="' + esc(L.md_split_tip) + '"><input type="checkbox"> ' + esc(L.md_split) + '</label>' +
             '<span class="pp-md-wrap"><button type="button" class="pp-md-badge" aria-haspopup="true" aria-expanded="false" title="' + esc(L.md_badge_tip) + '">' +
-            '<span class="mk" aria-hidden="true">M↓</span> ' + esc(L.md_badge) + '</button>' +
-            '<div class="pp-md-sheet" hidden role="menu">' + mdSheetHtml() + '</div></span>';
+            '<span class="mk" aria-hidden="true">M↓</span> ' + esc(L.md_badge) + '</button></span>';
         ta.parentNode.insertBefore(bar, ta.nextSibling);
         var side = document.createElement('div');
         side.className = 'pp-md-side bl-md';
@@ -14548,24 +14547,59 @@ window.PmPortalBoot = function () {
             mdSaveSplit(ev.target.checked);
             apply();
         });
-        bar.addEventListener('click', function (ev) {
-            var badge = ev.target.closest('.pp-md-badge');
-            var sheet = bar.querySelector('.pp-md-sheet');
-            if (badge) {
-                ev.preventDefault();
-                ev.stopPropagation();
-                sheet.hidden = !sheet.hidden;
-                badge.setAttribute('aria-expanded', sheet.hidden ? 'false' : 'true');
+        // The cheat sheet hangs off <body>, fixed, so no box of the page
+        // (the strip under the title, the header) is drawn over it; placed
+        // from the badge and again on scroll and resize. It belongs to this
+        // editor: its lines write into this textarea.
+        var badge = bar.querySelector('.pp-md-badge');
+        var sheet = document.createElement('div');
+        sheet.className = 'pmportal pp-md-sheet';
+        sheet.hidden = true;
+        sheet.setAttribute('role', 'menu');
+        sheet.innerHTML = mdSheetHtml();
+        sheet._ppMdBadge = badge;
+        document.body.appendChild(sheet);
+        var place = function () {
+            if (sheet.hidden) { return; }
+            var r = badge.getBoundingClientRect();
+            var w = sheet.offsetWidth, h = sheet.offsetHeight;
+            var left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+            var top = r.top - h - 4 >= 8 ? r.top - h - 4 : Math.min(r.bottom + 4, window.innerHeight - h - 8);
+            sheet.style.left = Math.round(left) + 'px';
+            sheet.style.top = Math.round(Math.max(8, top)) + 'px';
+        };
+        var show = function (on) {
+            if (on && !ta.isConnected) { on = false; }
+            sheet.hidden = !on;
+            badge.setAttribute('aria-expanded', on ? 'true' : 'false');
+            if (on) { place(); }
+        };
+        sheet._ppMdShow = show;
+        badge.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            mdCloseSheets(sheet);
+            show(sheet.hidden);
+        });
+        sheet.addEventListener('click', function (ev) {
+            var row = ev.target.closest('.pp-md-row[data-md]');
+            ev.stopPropagation();
+            if (!row) { return; }
+            ev.preventDefault();
+            show(false);
+            mdInsert(ta, MD_ITEMS[parseInt(row.getAttribute('data-md'), 10)]);
+        });
+        var onMove = function () {
+            if (!ta.isConnected) {
+                window.removeEventListener('scroll', onMove, true);
+                window.removeEventListener('resize', onMove);
+                sheet.remove();
                 return;
             }
-            var row = ev.target.closest('.pp-md-row[data-md]');
-            if (row) {
-                ev.preventDefault();
-                ev.stopPropagation();
-                sheet.hidden = true;
-                mdInsert(ta, MD_ITEMS[parseInt(row.getAttribute('data-md'), 10)]);
-            }
-        });
+            place();
+        };
+        window.addEventListener('scroll', onMove, true);
+        window.addEventListener('resize', onMove);
         window.addEventListener('resize', function onMdResize() {
             if (!ta.isConnected) { window.removeEventListener('resize', onMdResize); return; }
             apply();
@@ -14573,11 +14607,28 @@ window.PmPortalBoot = function () {
         apply();
     }
     window.ppMdAttach = ppMdAttach;
+    // Every open cheat sheet but one closes (an outside click, Esc).
+    function mdCloseSheets(keep) {
+        document.querySelectorAll('.pp-md-sheet').forEach(function (s) {
+            if (s === keep || s.hidden) { return; }
+            if (s._ppMdShow) { s._ppMdShow(false); } else { s.hidden = true; }
+        });
+    }
     document.addEventListener('click', function onPpMdOutside(ev) {
-        if (!alive()) { document.removeEventListener('click', onPpMdOutside); return; }
-        if (ev.target.closest && ev.target.closest('.pp-md-wrap')) { return; }
-        document.querySelectorAll('.pp-md-sheet').forEach(function (s) { s.hidden = true; });
+        if (!alive()) { document.removeEventListener('click', onPpMdOutside); mdCloseSheets(null); return; }
+        if (ev.target.closest && ev.target.closest('.pp-md-sheet, .pp-md-badge')) { return; }
+        mdCloseSheets(null);
     });
+    document.addEventListener('keydown', function onPpMdEsc(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onPpMdEsc); return; }
+        if (ev.key !== 'Escape') { return; }
+        var open = document.querySelector('.pp-md-sheet:not([hidden])');
+        if (!open) { return; }
+        ev.preventDefault();
+        ev.stopPropagation();
+        mdCloseSheets(null);
+        if (open._ppMdBadge) { try { open._ppMdBadge.focus(); } catch (e) { /* gone */ } }
+    }, true);
     // The issue body and a wiki page: the editor of the form, found when it
     // gets the focus (the form is drawn by its own code, later).
     document.addEventListener('focusin', function onPpMdFocus(ev) {
