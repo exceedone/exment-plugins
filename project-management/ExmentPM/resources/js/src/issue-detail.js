@@ -168,6 +168,9 @@
             (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
+            // ISS00272: a favorite, the user's own
+            '<a class="bl-btn-sub pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
+                '" title="' + esc(L.fav_tip) + '"><i class="fa ' + (local.my_fav ? 'fa-bookmark' : 'fa-bookmark-o') + '"></i> <span class="lb">' + esc(local.my_fav ? L.fav_on : L.fav) + '</span></a>' +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
@@ -189,6 +192,7 @@
             // No user here for the source's assignee (schema 29): its name, greyed.
             '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') ||
                 (res.source && res.source.asg ? '<span style="color:var(--bl-faint);" title="' + esc(L.src_assignees_hint) + '">' + esc(res.source.asg) + '</span>' : '—')) + '</span>' +
+            qfSummary(i, res) +
             '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
             '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
@@ -209,18 +213,19 @@
         var props = [
             [L.col_st, pill(i.st)], [L.col_pr, prio(i.pr)],
             [L.col_as, (i.as || []).map(function (u) { return avname(u); }).join('<br>') || '—'],
-            // Schema 27 (ISS00252): the other people on the issue.
-            [L.lbl_sub_assignees, (i.sa || []).map(function (u) { return avname(u); }).join('<br>')],
-            [L.lbl_managers, (i.mg || []).map(function (u) { return avname(u); }).join('<br>')],
-            [L.lbl_reviewers, (i.rv || []).map(function (u) { return avname(u); }).join('<br>')],
-            [L.lbl_difficulty, i.df ? esc(L['df_' + i.df] || i.df) : ''],
+            // Schema 27 (ISS00252): the other people on the issue are on the
+            // summary row beside the assignees (qfSummary), set or not.
             // An import's author is the source's; Exment's is the importer.
             [L.lbl_author, res.source && res.source.cby ? esc(res.source.cby) : (i.by ? avname(i.by) : '')],
             [L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:5px;"></i>' + esc(ms.l) : '—'],
             [L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
             [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
-            [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
+            // ISS02931: the hours and who is told, on the issue's own side and
+            // not only in the comment box - shown when empty too, with the
+            // way to set them.
+            [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah)) + qfPen('time', res)],
+            [L.lbl_notify, qfNotify(i, res)],
             [L.lbl_pg, pbar(i.pg) + rollupBadge(rollupMap(), i.id)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_source, sourceHtml(res.source)],
@@ -235,7 +240,8 @@
         var setProps = props.filter(function (p) {
             if (shown.indexOf(p[0]) >= 0) { return false; }
             var v = String(p[1] === null || p[1] === undefined ? '' : p[1]);
-            if (p[0] === L.lbl_eh) { return i.eh !== null && i.eh !== undefined && i.eh !== '' || i.ah !== null && i.ah !== undefined && i.ah !== ''; }
+            if (p[0] === L.lbl_eh) { return !!(qeCol('estimate') || qeCol('actual')); }
+            if (p[0] === L.lbl_notify) { return true; }
             if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0 || p[1].indexOf('pp-rollup') >= 0; }
             return v !== '' && v !== '—' && v !== esc('—');
         });
@@ -339,11 +345,18 @@
     // is stored under.
     var QE_COLS = {
         pr: 'priority', as: 'assignees', ms: 'milestone', cat: 'category',
-        sd: 'start', dd: 'due', dt: 'due_time', eh: 'estimate', ah: 'actual', pg: 'progress'
+        sd: 'start', dd: 'due', dt: 'due_time', eh: 'estimate', ah: 'actual', pg: 'progress',
+        // Schema 27 and the notified users: set from the issue's own side
+        // (qfOpen), saved the same way as the dock's fields.
+        sa: 'sub_assignees', mg: 'managers', rv: 'reviewers', df: 'difficulty', nu: 'notified_users'
     };
     // Column names live in the def map, not in this file: an install that
-    // renamed one overrides the map instead of patching code.
-    function qeCol(key) { return own(D.issue_cols, key) || ''; }
+    // renamed one overrides the map instead of patching code. The columns the
+    // schema upgrade added count only where the table has them.
+    function qeCol(key) {
+        return own(D.issue_cols, key) || (xOn(key) ? String(own(D.issue_extra_cols, key) || '') : '') || '';
+    }
+    function xOn(role) { return !!(D.issue_extra_on && own(D.issue_extra_on, role)); }
     // One field of the dock: its label over its widget. `size` names how
     // much room the field is worth (see .bl-qe in the stylesheet) - a date is
     // ten characters wherever it is shown, and a field that stretches to the
@@ -524,7 +537,9 @@
             sd: i.sd || '', dd: i.dd || '', dt: i.dt || '',
             eh: i.eh == null ? '' : String(i.eh),
             ah: i.ah == null ? '' : String(i.ah),
-            pg: i.pg == null ? '' : String(i.pg)
+            pg: i.pg == null ? '' : String(i.pg),
+            sa: (i.sa || []).map(String), mg: (i.mg || []).map(String), rv: (i.rv || []).map(String),
+            nu: (i.nu || []).map(String), df: i.df == null ? '' : String(i.df)
         };
         // The two date rows carry a picker each, and the calendar they open
         // lives off <body> - so the picker has to be told before its input
@@ -917,6 +932,144 @@
         ppDbarFit(top);
         ppWtreeFit(top);
     }
+    /* ------------------------------------------------ issue-side edit --- */
+    // ISS02931: the roles, the hours and the people told are seen and set on
+    // the issue itself, not only in the comment box. A pencil opens the same
+    // widgets the dock uses under the value; 保存 writes them through the row
+    // API like the dock does (qeSaveFields), so the server's rules - who may
+    // edit, who may be picked - are the same ones.
+    var QF_ROLES = [['sa', 'sub_assignees', 'lbl_sub_assignees'], ['mg', 'managers', 'lbl_managers'], ['rv', 'reviewers', 'lbl_reviewers']];
+    function qfPen(field, res) {
+        if (!res || !res.editable) { return ''; }
+        return '<button type="button" class="pp-qf-pen" data-qf="' + esc(field) + '" title="' + esc(L.qf_edit) + '" aria-label="' + esc(L.qf_edit) + '">' +
+            '<i class="fa fa-pencil"></i></button>';
+    }
+    function qfPeople(ids) {
+        return (ids || []).map(function (u) { return avname(u); }).join('') || '—';
+    }
+    function qfSummary(i, res) {
+        var out = '';
+        QF_ROLES.forEach(function (r) {
+            if (!xOn(r[1])) { return; }
+            out += '<span class="it pp-qf-it" data-qf-at="' + r[0] + '"><span class="k">' + esc(L[r[2]]) + '</span>' + qfPeople(i[r[0]]) + qfPen(r[0], res) + '</span>';
+        });
+        if (xOn('difficulty')) {
+            out += '<span class="it pp-qf-it" data-qf-at="df"><span class="k">' + esc(L.lbl_difficulty) + '</span>' +
+                (i.df ? esc(L['df_' + i.df] || i.df) : '—') + qfPen('df', res) + '</span>';
+        }
+
+        return out;
+    }
+    function qfNotify(i, res) {
+        var out = '';
+        if (xOn('notified_users')) {
+            out += '<span class="pp-qf-it" data-qf-at="nu"><span class="pp-qf-sub">' + esc(L.lbl_notified) + '</span>' + qfPeople(i.nu) + qfPen('nu', res) + '</span><br>';
+        }
+        out += '<span class="pp-qf-sub">' + esc(L.lbl_watch) + '</span>' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people)) +
+            ' <a class="pp-mailbtn pp-qf-mail" href="javascript:void(0);"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>';
+
+        return out;
+    }
+    function qfClose() {
+        document.querySelectorAll('#pp-issue .pp-qf').forEach(function (n) { n.remove(); });
+    }
+    // The project's people a field may name: the assignee rule (members and
+    // the manager) for a sub-assignee, everybody on the project otherwise.
+    function qfOptions(key) {
+        var p = D.project || {};
+        var ids = key === 'sa' ? [p.manager].concat(p.members || []) : [p.manager].concat(p.members || [], p.viewers || []);
+        return ids.filter(function (v, x, a) { return v && a.indexOf(v) === x; })
+            .map(function (u) { return [String(u), user(u).n]; });
+    }
+    function qfOpen(field, pen) {
+        var issueId = currentIssue;
+        var i = issueById(issueId) || (own(DET, String(issueId)) || {}).issue;
+        if (!i || !pen) { return; }
+        qfClose();
+        var keys = field === 'time' ? ['eh', 'ah'] : [field];
+        var box = document.createElement('div');
+        box.className = 'pp-qf';
+        var fields = document.createElement('div');
+        fields.className = 'bl-qe';
+        var widgets = {};
+        keys.forEach(function (k) {
+            var w;
+            var label = L.qf_edit;
+            if (k === 'eh' || k === 'ah') {
+                w = qeInput(k, 'number', i[k] == null ? '' : String(i[k]), { min: '0', step: '0.5' });
+                fields.appendChild(qeRow(k === 'eh' ? L.lbl_eh_only : L.lbl_ah_only, w, 'w-num', 'h'));
+            } else if (k === 'df') {
+                w = qeSelect('df', (D.difficulties || ['easy', 'normal', 'hard']).map(function (d) { return [d, L['df_' + d] || d]; }), i.df || '', L.empty);
+                fields.appendChild(qeRow(L.lbl_difficulty, w, 'w-sel'));
+            } else {
+                w = qeChips(k, qfOptions(k), (i[k] || []).map(String), function (v) {
+                    var u = own(D.users, v);
+                    return u ? String(u.n) : qeUnlisted(v);
+                }, true);
+                QF_ROLES.forEach(function (r) { if (r[0] === k) { label = L[r[2]]; } });
+                fields.appendChild(qeRow(k === 'nu' ? L.lbl_notified : label, w, 'w-full'));
+            }
+            widgets[k] = w;
+        });
+        box.appendChild(fields);
+        var foot = document.createElement('div');
+        foot.className = 'pp-qf-foot';
+        foot.innerHTML = '<span class="pp-qf-msg"></span>' +
+            '<button type="button" class="bl-btn-sub pp-qf-cancel">' + esc(L.dock_cancel) + '</button>' +
+            '<button type="button" class="bl-btn-main pp-qf-save">' + esc(L.qf_save) + '</button>';
+        box.appendChild(foot);
+        var at = pen.closest('.pp-qf-it, .row') || pen.parentNode;
+        at.parentNode.insertBefore(box, at.nextSibling);
+        var msg = foot.querySelector('.pp-qf-msg');
+        foot.querySelector('.pp-qf-cancel').addEventListener('click', qfClose);
+        box.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { qfClose(); } });
+        var save = foot.querySelector('.pp-qf-save');
+        save.addEventListener('click', function () {
+            var changed = {};
+            keys.forEach(function (k) {
+                var w = widgets[k];
+                var now = w.dataset.qeMulti
+                    ? Array.prototype.map.call(w.querySelectorAll('.bl-chip:not(.off)'), function (c) { return String(c.dataset.val); })
+                    : String(w.value == null ? '' : w.value);
+                var was = Array.isArray(now) ? (i[k] || []).map(String) : (i[k] == null ? '' : String(i[k]));
+                if (!qeSame(now, was)) { changed[k] = now; }
+            });
+            if (!Object.keys(changed).length) { qfClose(); return; }
+            save.disabled = true;
+            msg.textContent = L.dock_saving;
+            var ours = QE.issue !== null && String(QE.issue) === String(issueId);
+            qeSaveFields(issueId, changed, ours ? QE.ua : null).then(function (r) {
+                if (!alive()) { return; }
+                if (r.ok) {
+                    qfClose();
+                    toast(L.m_saved);
+                    if (String(currentIssue) === String(issueId) && own(DET, String(issueId))) { buildDetail(DET[String(issueId)]); }
+                    // read again for the line the save left in the history
+                    reloadIssue(issueId, undefined, false);
+                    return;
+                }
+                save.disabled = false;
+                if (r.stale) {
+                    msg.textContent = L.qf_stale;
+                    reloadIssue(issueId, undefined, true);
+                    return;
+                }
+                msg.textContent = r.error || L.dock_save_fail;
+            });
+        });
+        var first = box.querySelector('input, select, .bl-chip');
+        if (first && first.focus) { first.focus(); }
+    }
+    var ppIssueEl = document.getElementById('pp-issue');
+    if (ppIssueEl) {
+        ppIssueEl.addEventListener('click', function (ev) {
+            var pen = ev.target.closest && ev.target.closest('.pp-qf-pen');
+            if (!pen) { return; }
+            ev.preventDefault();
+            ev.stopPropagation();
+            qfOpen(pen.getAttribute('data-qf'), pen);
+        });
+    }
     function ppDbarFill(i) {
         var bar = document.getElementById('pp-dbar');
         if (!bar) { return; }
@@ -1068,12 +1221,15 @@
                 body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) +
                     '<div class="act">' + rxBar('comment', e.cid, e.rx) + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
                     '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
-                    '<span class="cmenu"><a href="javascript:void(0);" class="pp-cmenu" title="' + esc(L.cmt_menu) + '"><i class="fa fa-ellipsis-h"></i></a>' +
+                    // ISS02931: each comment's own address, one click away
+                    // (it used to wait in the menu below).
+                    '<a href="javascript:void(0);" class="pp-ccopy" data-cid="' + esc(e.cid) + '" title="' + esc(L.cmt_link_tip) + '"><i class="fa fa-link"></i> ' + esc(L.cmt_link) + '</a>' +
+                    // The menu holds the author's own actions: nobody else's comment needs it.
+                    (mine ? '<span class="cmenu"><a href="javascript:void(0);" class="pp-cmenu" title="' + esc(L.cmt_menu) + '"><i class="fa fa-ellipsis-h"></i></a>' +
                     '<span class="m" hidden>' +
-                    (mine ? '<a href="javascript:void(0);" class="pp-cedit" data-cid="' + esc(e.cid) + '" data-text="' + esc(e.text) + '">' + esc(L.cmt_edit) + '</a>' : '') +
-                    '<a href="javascript:void(0);" class="pp-ccopy" data-cid="' + esc(e.cid) + '">' + esc(L.cmt_copy) + '</a>' +
-                    (mine ? '<a href="javascript:void(0);" class="pp-cdel" data-cid="' + esc(e.cid) + '">' + esc(L.del) + '</a>' : '') +
-                    '</span></span></div>';
+                    '<a href="javascript:void(0);" class="pp-cedit" data-cid="' + esc(e.cid) + '" data-text="' + esc(e.text) + '">' + esc(L.cmt_edit) + '</a>' +
+                    '<a href="javascript:void(0);" class="pp-cdel" data-cid="' + esc(e.cid) + '">' + esc(L.del) + '</a>' +
+                    '</span></span>' : '') + '</div>';
             }
             return '<div class="ent"' + (e.tp === 'cmt' ? ' id="pp-c' + esc(e.cid) + '"' : '') + '>' + av(e.by, 1) +
                 '<div class="body"><div class="head"><span class="who">' + esc(user(e.by).n) + '</span><span class="tm">' + esc(e.at) + '</span></div>' + body + '</div></div>';
@@ -1208,11 +1364,19 @@
             });
         }
 
+        // A fence may name its language on the first line (```js): the name is
+        // the block's, not a line of its code. Only a word of name characters,
+        // so it can go in a class as it is.
+        html = html.replace(/```[ \t]*([A-Za-z0-9_+#.\-]+)[ \t]*\r?\n([\s\S]*?)```/g, function (m, lang, body) {
+            return keep('<pre class="bl-code" data-lang="' + lang.toLowerCase() + '">' + body.replace(/\s+$/, '') + '</pre>');
+        });
         html = html.replace(/```[ \t]*\r?\n?([\s\S]*?)```/g, function (m, body) {
             return keep('<pre class="bl-code">' + body.replace(/\s+$/, '') + '</pre>');
         });
         html = html.replace(/`([^`\r\n]+)`/g, function (m, body) { return keep('<code>' + body + '</code>'); });
-        html = html.replace(/\\([\[\]])/g, function (m, ch) {
+        // A backslash before a character markdown would read keeps the
+        // character as it is (\* \_ \# \~ \| \! \\ and the brackets).
+        html = html.replace(/\\([\[\]*_`#~|!\\])/g, function (m, ch) {
             lits.push(ch);
             return LIT + (lits.length - 1) + LIT;
         });
@@ -1221,30 +1385,49 @@
         // reader's session - so on this site only a file may be one, and a
         // comment cannot make its readers' browsers call anything else here
         // (a GET logout, say). Any other safe address is an ordinary link.
-        html = html.replace(/!\[([^\]\r\n]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
+        // The title after the address ([text](url "title")) is the tooltip.
+        // It is escaped text already, so it can go in the attribute.
+        function titleAttr(title) { return title ? ' title="' + unlit(title) + '"' : ''; }
+        html = html.replace(/!\[([^\]\r\n]*)\]\(([^)\s]+)(?:[ \t]+&quot;([^\r\n]*?)&quot;)?\)/g, function (m, alt, url, title) {
             var href = unlit(url);
             if (!safeHref(href)) { return m; }
             if (!imgSrcOk(unesc(href))) {
-                return keep('<a href="' + href + '" target="_blank" rel="noopener">' + (unlit(alt) || href) + '</a>');
+                return keep('<a href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' + (unlit(alt) || href) + '</a>');
             }
-            return keep('<a class="bl-cimg" href="' + href + '" target="_blank" rel="noopener">' +
+            return keep('<a class="bl-cimg" href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' +
                 '<img src="' + href + '" alt="' + unlit(alt) + '"></a>');
         });
-        html = html.replace(/\[([^\]\r\n]+)\]\(([^)\s]+)\)/g, function (m, label, url) {
+        html = html.replace(/\[([^\]\r\n]+)\]\(([^)\s]+)(?:[ \t]+&quot;([^\r\n]*?)&quot;)?\)/g, function (m, label, url, title) {
             var href = unlit(url);
             if (!safeHref(href)) { return m; }
-            return keep('<a href="' + href + '" target="_blank" rel="noopener">' + unlit(label) + '</a>');
+            return keep('<a href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' + unlit(label) + '</a>');
+        });
+        // <https://...>: the brackets are markdown's, not the address's.
+        html = html.replace(/&lt;(https?:\/\/[^\s]+?)&gt;/g, function (m, url) {
+            var href = unlit(url);
+            if (!safeHref(unesc(href))) { return m; }
+            return keep('<a href="' + href + '" target="_blank" rel="noopener">' + href + '</a>');
         });
         // A bare address is a link too - the commonest thing anyone pastes.
         // Trailing punctuation is sentence, not URL, so it stays outside.
         html = html.replace(/https?:\/\/[^\s<>]+/g, function (m) {
+            // The text was escaped first: an address ends where a quote or an
+            // angle bracket of the sentence begins, not after its entity.
+            var cut = m.search(/&(?:quot|lt|gt|#x27);/);
+            var rest = cut >= 0 ? m.slice(cut) : '';
+            m = cut >= 0 ? m.slice(0, cut) : m;
             var tail = m.match(/[.,;:)\]}]+$/);
             var url = unlit(tail ? m.slice(0, m.length - tail[0].length) : m);
-            return keep('<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>') + (tail ? tail[0] : '');
+            return keep('<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>') + (tail ? tail[0] : '') + rest;
         });
 
+        html = html.replace(/\*\*\*([^*\r\n]+)\*\*\*/g, '<b><i>$1</i></b>');
         html = html.replace(/\*\*([^*\r\n]+)\*\*/g, '<b>$1</b>');
         html = html.replace(/(^|[^*\w])\*([^*\r\n]+)\*(?!\w)/g, '$1<i>$2</i>');
+        // The underscore forms, only around words: snake_case and a file
+        // name with underscores stay as they are.
+        html = html.replace(/(^|[^\w])__([^_\r\n]+)__(?!\w)/g, '$1<b>$2</b>');
+        html = html.replace(/(^|[^\w])_([^_\r\n]+)_(?!\w)/g, '$1<i>$2</i>');
         html = html.replace(/~~([^~\r\n]+)~~/g, '<s>$1</s>');
         html = mdBlocks(html);
 
@@ -1438,7 +1621,8 @@
     // Only addresses a browser can be pointed at without running anything.
     // "javascript:" survives escaping untouched, so it is stopped here.
     function safeHref(url) {
-        return /^(https?:\/\/|\/|\.{1,2}\/|#)/i.test(String(url || ''));
+        // a path of this site starts with one "/": "//host" and "/\host" go to another site
+        return /^(https?:\/\/|\/(?![\/\\])|\.{1,2}\/|#)/i.test(String(url || ''));
     }
     // An address for a link the page writes itself; anything that is not a
     // safe one points nowhere.
@@ -1476,12 +1660,14 @@
     // "- [ ] still to do" / "- [x] done". The box shows the state; it does
     // not change it, because the state is a character in the text and this is
     // the rendered copy of that text.
+    // The item is left open: a list indented under it goes inside it, and
+    // mdBlocks closes it (</li>) before the next item or with its list.
     function mdListItem(text) {
         var box = text.match(/^\[([ xX])\]\s+(.*)$/);
-        if (!box) { return '<li>' + text + '</li>'; }
+        if (!box) { return '<li>' + text; }
 
         return '<li class="task"><input type="checkbox" disabled' +
-            (box[1] === ' ' ? '' : ' checked') + '> ' + box[2] + '</li>';
+            (box[1] === ' ' ? '' : ' checked') + '> ' + box[2];
     }
     // Lines into blocks: headings, rules, tables, quotes, code, the two kinds
     // of list - and a <br> for each newline that stands between two ordinary
@@ -1495,7 +1681,57 @@
         // Every block ends the paragraph above it, so the next ordinary line
         // opens a new one and the empty lines in between are already spent.
         function opened() { plain = false; blanks = 0; lastText = null; }
-        function closeList() { if (list) { out.push('</' + list + '>'); list = null; } lastText = null; }
+        // The lists open now, the outermost first: each with its tag and the
+        // indent of its items. An item indented under another is a list of
+        // its own inside that item.
+        var lists = [];
+        function closeList() {
+            while (lists.length) { out.push('</li></' + lists.pop().tag + '>'); }
+            list = null;
+            lastText = null;
+        }
+        function listItem(tag, width, number, text) {
+            while (lists.length && width < lists[lists.length - 1].width) {
+                out.push('</li></' + lists.pop().tag + '>');
+            }
+            var top = lists[lists.length - 1];
+            if (top && width === top.width && top.tag !== tag) {
+                out.push('</li></' + lists.pop().tag + '>');
+                top = lists[lists.length - 1];
+            }
+            if (!top || width > top.width) {
+                lists.push({ tag: tag, width: width });
+                out.push('<' + tag + (tag === 'ol' && number !== 1 ? ' start="' + number + '"' : '') + '>');
+            } else {
+                out.push('</li>');
+            }
+            list = tag;
+            out.push(mdListItem(text));
+        }
+        // Lines of a quote are gathered and written together: one quote with
+        // its lines, and a quote inside it for the lines with one more >.
+        var quote = null;
+        function quoteHtml(lines) {
+            var html = '', inner = [], first = true;
+            function flushInner() {
+                if (inner.length) { html += '<blockquote>' + quoteHtml(inner) + '</blockquote>'; inner = []; first = true; }
+            }
+            lines.forEach(function (l) {
+                var deeper = l.match(/^\s*&gt;\s?(.*)$/);
+                if (deeper) { inner.push(deeper[1]); return; }
+                flushInner();
+                html += (first ? '' : '<br>') + l;
+                first = false;
+            });
+            flushInner();
+            return html;
+        }
+        function closeQuote() {
+            if (!quote) { return; }
+            out.push('<blockquote>' + quoteHtml(quote) + '</blockquote>');
+            quote = null;
+            opened();
+        }
         // A line that was indented stays indented. Markdown drops the spaces
         // and html collapses what is left, and a stack trace or a pasted
         // listing is only readable while its shape survives. This renderer
@@ -1531,12 +1767,19 @@
             var cells = function (row) {
                 return row.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
             };
+            // :--- left, :---: center, ---: right, as the divider row says
+            var align = cells(rows[1]).map(function (c) {
+                c = c.trim();
+                var left = c.charAt(0) === ':', right = c.charAt(c.length - 1) === ':';
+                return left && right ? 'center' : (right ? 'right' : (left ? 'left' : ''));
+            });
+            var at = function (n) { return align[n] ? ' style="text-align:' + align[n] + '"' : ''; };
             var t = '<table><thead><tr>';
-            cells(rows[0]).forEach(function (c) { t += '<th>' + c.trim() + '</th>'; });
+            cells(rows[0]).forEach(function (c, n) { t += '<th' + at(n) + '>' + c.trim() + '</th>'; });
             t += '</tr></thead><tbody>';
             for (i = 2; i < rows.length; i++) {
                 t += '<tr>';
-                cells(rows[i]).forEach(function (c) { t += '<td>' + c.trim() + '</td>'; });
+                cells(rows[i]).forEach(function (c, n) { t += '<td' + at(n) + '>' + c.trim() + '</td>'; });
                 t += '</tr>';
             }
             out.push(t + '</tbody></table>');
@@ -1554,6 +1797,8 @@
             opened();
         }
         html.split(/\r?\n/).forEach(function (line) {
+            var quoted = line.match(/^\s*&gt;\s?(.*)$/);
+            if (quote && !quoted) { closeQuote(); }
             if (code) {
                 // A blank line is only a gap inside the block; anything that
                 // has come back to the margin has left it.
@@ -1603,20 +1848,19 @@
                 code = [line.replace(/^(?: {4}|\t)/, '')];
                 return;
             }
-            var ul = line.match(/^\s*[-*]\s+(.*)$/);
-            var ol = line.match(/^\s*\d+\.\s+(.*)$/);
-            var quote = line.match(/^\s*&gt;\s?(.*)$/);
+            var ul = line.match(/^([ \t]*)[-*+]\s+(.*)$/);
+            var ol = line.match(/^([ \t]*)(\d{1,9})[.)]\s+(.*)$/);
             if (ul || ol) {
-                var want = ul ? 'ul' : 'ol';
-                if (list !== want) { closeList(); out.push('<' + want + '>'); list = want; }
-                out.push(mdListItem(ul ? ul[1] : ol[1]));
+                var lead = (ul || ol)[1].replace(/\t/g, '    ').length;
+                listItem(ul ? 'ul' : 'ol', lead, ol ? parseInt(ol[2], 10) : 1, ul ? ul[2] : ol[3]);
                 opened();
                 return;
             }
             closeList();
-            if (quote) { out.push('<blockquote>' + quote[1] + '</blockquote>'); opened(); return; }
+            if (quoted) { quote = quote || []; quote.push(quoted[1]); return; }
             pushLine(line);
         });
+        closeQuote();
         closeCode();
         closeList();
         closeTable();

@@ -1,0 +1,33 @@
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "hostid": "10084",
+      "host": "Zabbix server",
+      "name": "Zabbix server",
+      "status": "0",
+      "interfaces": [{"ip": "127.0.0.1", "dns": ""}],
+      "inventory": [],
+      "hostgroups": [{"name": "Zabbix servers"}]
+    },
+    {
+      "hostid": "10501",
+      "host": "fs01.example.invalid",
+      "name": "ファイルサーバー（本社）",
+      "status": "0",
+      "interfaces": [{"ip": "192.0.2.30", "dns": "fs01.example.invalid"}, {"ip": "198.51.100.30", "dns": ""}],
+      "inventory": {"os": "Windows", "os_full": "Windows Server 2022 Standard", "vendor": "Dell", "model": "PowerEdge R650", "serialno_a": "ABC1234", "asset_tag": "IT-0042", "hardware": ""},
+      "hostgroups": [{"name": "本社"}, {"name": "Windows servers"}]
+    },
+    {
+      "hostid": "10502",
+      "host": "printer-3f",
+      "name": "printer-3f",
+      "status": "1",
+      "interfaces": [{"ip": "192.0.2.40", "dns": ""}],
+      "inventory": {"vendor": "", "model": "", "hardware": "MFP", "serialno_a": ""},
+      "hostgroups": [{"name": "本社"}]
+    }
+  ],
+  "id": 1
+}

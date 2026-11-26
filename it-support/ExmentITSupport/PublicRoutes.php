@@ -50,6 +50,9 @@ class PublicRoutes
             Route::get('mine', $c . '@mineForm');
             Route::post('mine', $c . '@postMine');
             Route::get('mine/{token}', $c . '@mineList');
+            // the approval of a request (Catalog): an Exment login, the approver only
+            Route::get('approval/{id}', $c . '@approvalPage')->where('id', '[0-9]+');
+            Route::post('approval/{id}', $c . '@postApproval')->where('id', '[0-9]+');
             Route::get('t/{token}', $c . '@ticket');
             Route::post('t/{token}/reply', $c . '@postReply');
             Route::post('t/{token}/otp/send', $c . '@postOtpSend');

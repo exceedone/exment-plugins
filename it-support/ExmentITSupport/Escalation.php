@@ -103,7 +103,7 @@ class Escalation
         $url = Its::url('ticket', strval($ticket->id));
         $ids = EscalationRule::recipients(
             $step,
-            empty(array_get($ticket->value, 'assignee')) ? null : strval(array_get($ticket->value, 'assignee')),
+            Tickets::assigneeIds($ticket),
             static::ids('esc_lead_users'),
             static::ids('esc_manager_users'),
             array_map('strval', Tickets::agentIds())

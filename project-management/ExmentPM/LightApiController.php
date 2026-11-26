@@ -232,7 +232,7 @@ class LightApiController
         // above finds nothing for them and the picker offered every project's
         // milestones - including the ones an issue here must never point at.
         $scopeName = $request->query('scope_column');
-        $scopeColumn = is_scalar($scopeName) ? CustomColumn::getEloquent(strval($scopeName), $table) : null;
+        $scopeColumn = is_scalar($scopeName) ? $this->filterColumn($table, strval($scopeName)) : null;
         if (isset($scopeColumn) && is_scalar($parentId) && ctype_digit(strval($parentId))) {
             $model->where($scopeColumn->getQueryKey(), strval($parentId));
         }
@@ -248,7 +248,7 @@ class LightApiController
         // cannot be one. Named as a column rather than baked in, so the
         // endpoint stays a filter and the rule stays in PortalRules.
         $emptyName = $request->query('empty');
-        $emptyColumn = is_scalar($emptyName) ? CustomColumn::getEloquent(strval($emptyName), $table) : null;
+        $emptyColumn = is_scalar($emptyName) ? $this->filterColumn($table, strval($emptyName)) : null;
         if (isset($emptyColumn)) {
             $this->whereColumnEmpty($model, $emptyColumn);
         }
@@ -275,6 +275,23 @@ class LightApiController
         })->values();
 
         return response()->json(['results' => $results]);
+    }
+
+    /**
+     * A column a lookup may be narrowed by: one that points at a row of another table (the
+     * project of a milestone, the parent of an issue), never a column of the users or the
+     * organizations, nor one of plain values (a lookup answers with ids and labels only).
+     */
+    protected function filterColumn(CustomTable $table, string $name): ?CustomColumn
+    {
+        if (in_array($table->table_name, [SystemTableName::USER, SystemTableName::ORGANIZATION], true)) {
+            return null;
+        }
+        $column = CustomColumn::getEloquent($name, $table);
+        if (!isset($column) || $column->column_type !== 'select_table') {
+            return null;
+        }
+        return $column;
     }
 
     /**
@@ -797,6 +814,12 @@ class LightApiController
         $parentType = array_get($scope, 'parent_type');
         $parentId = array_get($scope, 'parent_id');
         if (!is_nullorempty($parentType) && !is_nullorempty($parentId)) {
+            // the templates of a project the caller may read, and of no other
+            $parentTable = CustomTable::getEloquent(strval($parentType));
+            $parentRow = isset($parentTable) ? $parentTable->getValueModel()->find(intval($parentId)) : null;
+            if (!isset($parentTable, $parentRow) || $parentTable->hasPermissionData($parentRow) !== true) {
+                return null;
+            }
             $query->where('parent_type', strval($parentType))
                 ->where('parent_id', strval($parentId));
         }

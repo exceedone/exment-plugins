@@ -37,6 +37,9 @@
     <div class="its-card">
         <h2><i class="fa fa-paper-plane" aria-hidden="true"></i>メールを送る</h2>
         <div class="its-sub its-lead">送信は Exment の「システム設定 → メール」の設定を使います。いま送る元のアドレス: <code>{{ $mailFrom ?: '（未設定）' }}</code></div>
+        @if($mailFrom === '')
+        <div class="its-flash error" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"></i><div>送る元のアドレスがありません。このままでは、お客様へのメールも担当者への知らせのメールも送れません。下の「窓口のアドレス」か、Exment の「システム設定 → メール」の送信元を入れてください。</div></div>
+        @endif
         <div class="its-form-grid">
             <label for="s-addr">窓口のアドレス</label><input type="email" id="s-addr" name="support_address" value="{{ $s['support_address'] }}" placeholder="support@example.co.jp（返信先になります）">
             <label for="s-name">差出人の名前</label><input type="text" id="s-name" name="support_name" value="{{ $s['support_name'] }}">
@@ -65,6 +68,7 @@
             <label for="s-presolve">返事待ちを解決に</label><span class="its-inline"><input type="number" id="s-presolve" name="pending_resolve_days" value="{{ $s['pending_resolve_days'] }}" min="0"> 日たったら（0 でしない）</span>
             <label for="s-close">解決を完了に</label><span class="its-inline"><input type="number" id="s-close" name="resolved_close_days" value="{{ $s['resolved_close_days'] }}" min="0"> 日たったら（0 でしない）</span>
             <label for="s-asset">IT 資産の期限</label><span class="its-inline"><input type="number" id="s-asset" name="asset_notice_days" value="{{ $s['asset_notice_days'] }}" min="1"> 日前にチケットを作る</span>
+            <label for="s-catalog">申請メニュー</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-catalog" name="catalog_enabled" value="1" @checked($s['catalog_enabled'] === '1')> お客様の窓口の受付フォームに申請メニュー（項目と承認）を出す</label>
             <label for="s-problems">問題</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-problems" name="problems_enabled" value="1" @checked($s['problems_enabled'] === '1')> 同じ原因のチケットを「問題」にまとめる（原因・回避のしかた・まとめて解決）</label>
             <label for="s-csat">満足度を聞く</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-csat" name="csat_enabled" value="1" @checked($s['csat_enabled'] === '1')> 解決にしたとき、お客様に 5 段階で聞く</label>
         </div>
@@ -191,6 +195,15 @@
             <form method="post" action="{{ $Its::url('settings', 'intake-key') }}" onsubmit="return confirm('今のキーは使えなくなります。よろしいですか？')">@csrf<button class="its-btn small danger" type="submit"><i class="fa fa-refresh" aria-hidden="true"></i>共有のキーを作り直す</button></form>
         </div>
         <div class="its-sub">今：共有のキーで{{ $s['alert_shared_key'] === '1' ? 'もアラートを受けます' : 'は、アラートを受けません' }}。</div>
+    </div>
+
+    <div class="its-card">
+        <h3><i class="fa fa-th-large" aria-hidden="true"></i>申請メニュー</h3>
+        <div class="its-sub">アカウントの問題・パスワードの再設定・PC の貸し出し・ソフトのインストール・アクセスの申請の 5 つのひな形を入れます（同じ名前のものは入れません）。項目と「承認する人」は、申請メニューのテーブルで直せます。窓口に出すのは、「自動で進める」の「申請メニュー」をオンにしてからです。</div>
+        <div class="its-row" style="margin-top:10px">
+            <form method="post" action="{{ $Its::url('settings', 'catalog-templates') }}">@csrf<button class="its-btn small" type="submit"><i class="fa fa-plus" aria-hidden="true"></i>ひな形を入れる</button></form>
+            <a class="its-btn small ghost" href="{{ $Its::dataUrl($Its::T_CATALOG) }}">申請メニューのテーブル</a>
+        </div>
     </div>
 
     <div class="its-card">

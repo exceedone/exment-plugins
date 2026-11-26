@@ -132,9 +132,20 @@ jobs:
           node project-management/tools/test-issue-levels.js
           php project-management/tools/test-issue-levels.php
 
+      # The Markdown of issue bodies, comments and wiki pages (ISS00245): what each rule
+      # makes, and that nothing typed becomes markup.
+      - name: Markdown check (ExmentPM)
+        run: node project-management/tools/test-pm-markdown.js
+
       # The links to the manuals of ExmentPM, ExmentITSupport and ExmentGroupware.
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php
+
+      # Every locale has the keys and placeholders of ja (ExmentPM) or en (the others).
+      # A warning only: a new ja key waits for its translations in a later PR.
+      - name: Lang keys check (warning only)
+        continue-on-error: true
+        run: php project-management/tools/test-lang-keys.php
 
       # The messages of ExmentPMBacklog have no secret (plain PHP)
       - name: Messages check (ExmentPMBacklog)
@@ -148,3 +159,16 @@ jobs:
       # The steps of the SLA escalation (ExmentITSupport, plain PHP).
       - name: SLA escalation check (ExmentITSupport)
         run: php it-support/tools/test-sla-escalation.php
+
+      # The fields of the request catalog (ExmentITSupport, plain PHP).
+      - name: Request catalog check (ExmentITSupport)
+        run: php it-support/tools/test-catalog-spec.php
+
+      # The hosts of Mackerel and Zabbix into IT assets, and which asset a host is (plain PHP).
+      - name: Asset sync check (ExmentITSupport)
+        run: php it-support/tools/test-asset-sync.php
+
+      # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
+      # plain PHP)
+      - name: kintone API check (ExmentKintone)
+        run: php kintone/tools/test-kintone-api.php

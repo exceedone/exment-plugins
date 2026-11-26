@@ -662,6 +662,11 @@ window.PmPortalBoot = function () {
             '<div class="bl-projinfo"><span class="bl-projttl"><span class="bl-projname">' + esc(p.name) + '</span>' +
             (p.key ? '<span class="bl-projkey">' + esc(p.key) + '</span>' : '') +
             (p.status ? '<span class="bl-pill" style="background:' + ppColor(p.status.c) + ';">' + esc(p.status.l) + '</span>' : '') +
+            // ISS02931: the project's settings, where they are looked for -
+            // beside its name, for the people who may change them (the same
+            // rule as the 設定 tab).
+            (D.can && D.can.manage ? '<a class="bl-projset" href="#settings" title="' + esc(L.proj_settings) + '" aria-label="' + esc(L.proj_settings) + '">' +
+                '<i class="fa fa-cog"></i><span class="tx">' + esc(L.proj_settings) + '</span></a>' : '') +
             '</span><div class="bl-projmeta"><span class="mi"><i class="fa fa-calendar"></i>' +
             esc(p.start || '—') + ' 〜 ' + esc(p.end || '—') + '</span>' +
             '<span class="mi"><i class="fa fa-user"></i>' + esc(L.role_pm) + ': ' + esc(user(p.manager).n) + '</span>' +
@@ -786,8 +791,10 @@ window.PmPortalBoot = function () {
     }
 
     /* ------------------------------------------------ issues ------------ */
-    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', rd: '', q: '' };
-    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'rd', 'kw'];
+    // rl: one of the other people of an issue (ISS02931), as "<role>:<user>"
+    // - sa:12 is "12 is a sub-assignee"; df: the difficulty.
+    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', rd: '', q: '', rl: '', df: '' };
+    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'rd', 'rl', 'df', 'kw'];
     // These were per browser, so a shared machine handed the next person the
     // last one's filters and saved conditions. They are per person now. What
     // is still under the old key is taken over once, by whoever opens the
@@ -1030,6 +1037,7 @@ window.PmPortalBoot = function () {
         if (k === 'cat') { return own(D.categories, v) ? v : ''; }
         if (k === 'pr') { return own(D.priorities, v) ? v : ''; }
         if (k === 'rd') { return (v === 'unread' || v === 'read') ? v : ''; }
+        if (k === 'df') { return difficulties().indexOf(v) >= 0 ? v : ''; }
         return v;
     }
     try {
@@ -1111,8 +1119,89 @@ window.PmPortalBoot = function () {
         sd: { t: false, v: function (i) { return i.sd || ''; } },
         dd: { t: false, v: function (i) { return i.dd ? i.dd + ' ' + (i.dt || '99:99') : ''; } },
         pg: { t: false, v: function (i) { return (i.pg === null || i.pg === undefined) ? null : Number(i.pg); } },
-        up: { t: false, v: function (i) { return String(i.up || ''); } }
+        up: { t: false, v: function (i) { return String(i.up || ''); } },
+        // The optional columns (ISS02931)
+        sa: { t: true, v: function (i) { return (i.sa && i.sa.length) ? String(user(i.sa[0]).n) : ''; } },
+        mg: { t: true, v: function (i) { return (i.mg && i.mg.length) ? String(user(i.mg[0]).n) : ''; } },
+        rv: { t: true, v: function (i) { return (i.rv && i.rv.length) ? String(user(i.rv[0]).n) : ''; } },
+        df: { t: false, v: function (i) { var r = difficulties().indexOf(String(i.df || '')); return r < 0 ? null : r; } }
     };
+    /* ---- optional columns (ISS02931) ---- */
+    // The other people of an issue and its difficulty, as columns of the list
+    // the reader turns on (off at first: the list is wide already), kept per
+    // browser. Offered only where the issue table has the column.
+    var OCOLS = [
+        { k: 'sa', role: 'sub_assignees', l: 'lbl_sub_assignees' },
+        { k: 'mg', role: 'managers', l: 'lbl_managers' },
+        { k: 'rv', role: 'reviewers', l: 'lbl_reviewers' },
+        { k: 'df', role: 'difficulty', l: 'lbl_difficulty' }
+    ];
+    var OCOL_KEY = 'pmportal.listcols';
+    var OCOL_ON = {};
+    try {
+        (JSON.parse(localStorage.getItem(OCOL_KEY) || '[]') || []).forEach(function (k) {
+            if (typeof k === 'string') { OCOL_ON[k] = true; }
+        });
+    } catch (e) { /* ignore */ }
+    function difficulties() { return (D.difficulties || ['easy', 'normal', 'hard']).map(String); }
+    function ocolsOffered() { return OCOLS.filter(function (c) { return xOn(c.role); }); }
+    function ocolsShown() { return ocolsOffered().filter(function (c) { return own(OCOL_ON, c.k); }); }
+    function ocolSave() {
+        try { localStorage.setItem(OCOL_KEY, JSON.stringify(Object.keys(OCOL_ON))); } catch (e) { /* ignore */ }
+    }
+    function ocolCell(i, c) {
+        if (c.k === 'df') { return '<td style="white-space:nowrap;">' + (i.df ? esc(L['df_' + i.df] || i.df) : '') + '</td>'; }
+        return '<td>' + avlist(i[c.k]) + '</td>';
+    }
+    // The headers, the columns menu and the two filters, drawn from what the
+    // table has.
+    function renderOcols() {
+        var offered = ocolsOffered();
+        var head = document.getElementById('pp-issue-head');
+        if (head) {
+            head.querySelectorAll('th[data-ocol]').forEach(function (th) {
+                var k = th.getAttribute('data-ocol');
+                th.hidden = !offered.some(function (c) { return c.k === k && own(OCOL_ON, k); });
+            });
+        }
+        var wrap = document.getElementById('pp-oc-wrap');
+        if (wrap) { wrap.hidden = !offered.length; }
+        var menu = document.getElementById('pp-oc-menu');
+        if (menu && !menu._ppBuilt && offered.length) {
+            menu._ppBuilt = true;
+            menu.innerHTML = offered.map(function (c) {
+                return '<label><input type="checkbox" data-ocol="' + esc(c.k) + '"' + (own(OCOL_ON, c.k) ? ' checked' : '') + '> ' + esc(L[c.l]) + '</label>';
+            }).join('');
+        }
+        var rl = document.getElementById('pp-f-rl');
+        if (rl) {
+            var roles = offered.filter(function (c) { return c.k !== 'df'; });
+            rl.hidden = !roles.length;
+            if (roles.length && rl.options.length <= 1) {
+                var people = Object.keys(D.users || {}).sort(function (a, b) { return cmpText(user(a).n, user(b).n); });
+                roles.forEach(function (c) {
+                    var g = document.createElement('optgroup');
+                    g.label = L[c.l];
+                    people.forEach(function (u) { g.appendChild(new Option(L[c.l] + ': ' + user(u).n, c.k + ':' + u)); });
+                    rl.appendChild(g);
+                });
+            }
+        }
+        var df = document.getElementById('pp-f-df');
+        if (df) {
+            df.hidden = !xOn('difficulty');
+            if (!df.hidden && df.options.length <= 1) {
+                difficulties().forEach(function (d) { df.add(new Option(L.lbl_difficulty + ': ' + (L['df_' + d] || d), d)); });
+            }
+        }
+    }
+    function rlMatch(i, v) {
+        var at = String(v).indexOf(':');
+        if (at < 0) { return true; }
+        var k = String(v).slice(0, at), u = String(v).slice(at + 1);
+        if (['sa', 'mg', 'rv'].indexOf(k) < 0) { return true; }
+        return (i[k] || []).map(String).indexOf(u) >= 0;
+    }
     function sortBlank(v) {
         if (v === '' || v === null || v === undefined) { return true; }
         return typeof v === 'number' && !isFinite(v);
@@ -1399,6 +1488,8 @@ window.PmPortalBoot = function () {
         setVal('pp-f-ms', FILTER.ms);
         setVal('pp-f-cat', FILTER.cat);
         setVal('pp-f-rd', FILTER.rd);
+        setVal('pp-f-rl', FILTER.rl);
+        setVal('pp-f-df', FILTER.df);
         setVal('pp-jump', FILTER.kw);
         setVal('pp-pg-size', String(PAGE.size));
         // Offered only when there is something to clear, so the row does not
@@ -1437,6 +1528,8 @@ window.PmPortalBoot = function () {
             if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
             if (FILTER.rd === 'unread' && !i.unread) { return false; }
             if (FILTER.rd === 'read' && i.unread) { return false; }
+            if (FILTER.rl && !rlMatch(i, FILTER.rl)) { return false; }
+            if (FILTER.df && String(i.df || '') !== String(FILTER.df)) { return false; }
             if (kw && (i.key + ' ' + i.subject + ' ' + (i.sub || '')).toLowerCase().indexOf(kw) < 0) { return false; }
 
             return true;
@@ -1444,8 +1537,10 @@ window.PmPortalBoot = function () {
     }
     function renderIssues() {
         dropCarriedFilterIfEmpty();
+        renderOcols();
         renderIssueFilters();
         renderSortHead();
+        var ocols = ocolsShown();
 
         var matched = filteredIssues();
         // Tree mode pages over the rows that are actually listed (folded
@@ -1519,6 +1614,7 @@ window.PmPortalBoot = function () {
                 '<td class="sub">' + parent + rcMark(i) + esc(i.subject) +
                     (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
+                ocols.map(function (c) { return ocolCell(i, c); }).join('') +
                 '<td' + edAttr('st') + '>' + pill(i.st) + '</td>' +
                 '<td' + edAttr('pr') + '>' + prio(i.pr) + '</td>' +
                 '<td style="white-space:nowrap;"' + edAttr('ms') + '>' + esc(ms ? ms.l : '') + '</td>' +
@@ -1772,53 +1868,6 @@ window.PmPortalBoot = function () {
             toast(xhrErr(xhr, L.bk_fail), true);
             bkDisarm();
         });
-    }
-
-    /* ------------------------------------------------ csv --------------- */
-    function csvCell(v) {
-        var s = (v === null || v === undefined) ? '' : String(v);
-        // A cell opening with =, +, - or @ (or a tab or CR in front of one)
-        // is a formula to a spreadsheet, not a subject line. A leading
-        // apostrophe makes it text again, and excel hides the apostrophe. A
-        // plain negative number is the one '-' cell left as it is, so it
-        // still sorts and sums as a number.
-        if (/^[=+@\t\r]/.test(s) || /^-(?!\d+(\.\d+)?$)/.test(s)) { s = "'" + s; }
-
-        return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    }
-    function exportCsv() {
-        var rows = filteredIssues();
-        if (!rows.length) { toast(L.f_csv_empty, true); return; }
-        var lines = [[L.col_ty, L.col_key, L.col_subject, L.col_as, L.col_st, L.col_pr,
-            L.col_ms, L.col_cat, L.col_sd, L.col_dd, L.col_pg, L.col_up].map(csvCell).join(',')];
-        rows.forEach(function (i) {
-            lines.push([
-                (own(D.types, i.ty) || {}).l || '',
-                i.key,
-                i.subject,
-                (i.as || []).map(function (u) { return user(u).n; }).join(' / '),
-                (own(ST, i.st) || {}).l || '',
-                (own(D.priorities, i.pr) || {}).l || '',
-                (own(D.milestones, i.ms) || {}).l || '',
-                (i.cat || []).map(function (c) { return own(D.categories, c) || ''; }).join(' / '),
-                i.sd || '',
-                i.dd || '',
-                (i.pg === null || i.pg === undefined) ? '' : i.pg,
-                i.up || ''
-            ].map(csvCell).join(','));
-        });
-        // Excel on a japanese windows reads a UTF-8 file with no byte order
-        // mark as shift_jis and turns every label into mojibake, so the mark
-        // is not optional here. CRLF for the same reader.
-        var blob = new Blob(['\ufeff' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8;' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = (D.project.key || 'issues') + '-' + D.today + '.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
 
     /* ------------------------------------------------ saved conditions -- */
@@ -2093,9 +2142,11 @@ window.PmPortalBoot = function () {
         // Emptied so the next render fills them from the data that just
         // arrived; leaving them would keep offering a milestone that has been
         // deleted and hide the member who joined this morning.
-        ['pp-f-as', 'pp-f-ty', 'pp-f-pr', 'pp-f-ms', 'pp-f-cat'].forEach(function (id) {
+        ['pp-f-as', 'pp-f-ty', 'pp-f-pr', 'pp-f-ms', 'pp-f-cat', 'pp-f-rl', 'pp-f-df'].forEach(function (id) {
             var sel = document.getElementById(id);
             while (sel && sel.options.length > 1) { sel.remove(1); }
+            // the people of the role filter come in groups
+            if (sel) { sel.querySelectorAll('optgroup').forEach(function (g) { g.remove(); }); }
         });
         ['pp-bk-st', 'pp-bk-as', 'pp-bk-ty', 'pp-bk-pr', 'pp-bk-ms'].forEach(function (id) {
             var sel = document.getElementById(id);
@@ -2425,6 +2476,9 @@ window.PmPortalBoot = function () {
             (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
+            // ISS00272: a favorite, the user's own
+            '<a class="bl-btn-sub pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
+                '" title="' + esc(L.fav_tip) + '"><i class="fa ' + (local.my_fav ? 'fa-bookmark' : 'fa-bookmark-o') + '"></i> <span class="lb">' + esc(local.my_fav ? L.fav_on : L.fav) + '</span></a>' +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
@@ -2446,6 +2500,7 @@ window.PmPortalBoot = function () {
             // No user here for the source's assignee (schema 29): its name, greyed.
             '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') ||
                 (res.source && res.source.asg ? '<span style="color:var(--bl-faint);" title="' + esc(L.src_assignees_hint) + '">' + esc(res.source.asg) + '</span>' : '—')) + '</span>' +
+            qfSummary(i, res) +
             '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
             '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
@@ -2466,18 +2521,19 @@ window.PmPortalBoot = function () {
         var props = [
             [L.col_st, pill(i.st)], [L.col_pr, prio(i.pr)],
             [L.col_as, (i.as || []).map(function (u) { return avname(u); }).join('<br>') || '—'],
-            // Schema 27 (ISS00252): the other people on the issue.
-            [L.lbl_sub_assignees, (i.sa || []).map(function (u) { return avname(u); }).join('<br>')],
-            [L.lbl_managers, (i.mg || []).map(function (u) { return avname(u); }).join('<br>')],
-            [L.lbl_reviewers, (i.rv || []).map(function (u) { return avname(u); }).join('<br>')],
-            [L.lbl_difficulty, i.df ? esc(L['df_' + i.df] || i.df) : ''],
+            // Schema 27 (ISS00252): the other people on the issue are on the
+            // summary row beside the assignees (qfSummary), set or not.
             // An import's author is the source's; Exment's is the importer.
             [L.lbl_author, res.source && res.source.cby ? esc(res.source.cby) : (i.by ? avname(i.by) : '')],
             [L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:5px;"></i>' + esc(ms.l) : '—'],
             [L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
             [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
             [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
-            [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah))],
+            // ISS02931: the hours and who is told, on the issue's own side and
+            // not only in the comment box - shown when empty too, with the
+            // way to set them.
+            [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah)) + qfPen('time', res)],
+            [L.lbl_notify, qfNotify(i, res)],
             [L.lbl_pg, pbar(i.pg) + rollupBadge(rollupMap(), i.id)],
             [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
             [L.lbl_source, sourceHtml(res.source)],
@@ -2492,7 +2548,8 @@ window.PmPortalBoot = function () {
         var setProps = props.filter(function (p) {
             if (shown.indexOf(p[0]) >= 0) { return false; }
             var v = String(p[1] === null || p[1] === undefined ? '' : p[1]);
-            if (p[0] === L.lbl_eh) { return i.eh !== null && i.eh !== undefined && i.eh !== '' || i.ah !== null && i.ah !== undefined && i.ah !== ''; }
+            if (p[0] === L.lbl_eh) { return !!(qeCol('estimate') || qeCol('actual')); }
+            if (p[0] === L.lbl_notify) { return true; }
             if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0 || p[1].indexOf('pp-rollup') >= 0; }
             return v !== '' && v !== '—' && v !== esc('—');
         });
@@ -2596,11 +2653,18 @@ window.PmPortalBoot = function () {
     // is stored under.
     var QE_COLS = {
         pr: 'priority', as: 'assignees', ms: 'milestone', cat: 'category',
-        sd: 'start', dd: 'due', dt: 'due_time', eh: 'estimate', ah: 'actual', pg: 'progress'
+        sd: 'start', dd: 'due', dt: 'due_time', eh: 'estimate', ah: 'actual', pg: 'progress',
+        // Schema 27 and the notified users: set from the issue's own side
+        // (qfOpen), saved the same way as the dock's fields.
+        sa: 'sub_assignees', mg: 'managers', rv: 'reviewers', df: 'difficulty', nu: 'notified_users'
     };
     // Column names live in the def map, not in this file: an install that
-    // renamed one overrides the map instead of patching code.
-    function qeCol(key) { return own(D.issue_cols, key) || ''; }
+    // renamed one overrides the map instead of patching code. The columns the
+    // schema upgrade added count only where the table has them.
+    function qeCol(key) {
+        return own(D.issue_cols, key) || (xOn(key) ? String(own(D.issue_extra_cols, key) || '') : '') || '';
+    }
+    function xOn(role) { return !!(D.issue_extra_on && own(D.issue_extra_on, role)); }
     // One field of the dock: its label over its widget. `size` names how
     // much room the field is worth (see .bl-qe in the stylesheet) - a date is
     // ten characters wherever it is shown, and a field that stretches to the
@@ -2781,7 +2845,9 @@ window.PmPortalBoot = function () {
             sd: i.sd || '', dd: i.dd || '', dt: i.dt || '',
             eh: i.eh == null ? '' : String(i.eh),
             ah: i.ah == null ? '' : String(i.ah),
-            pg: i.pg == null ? '' : String(i.pg)
+            pg: i.pg == null ? '' : String(i.pg),
+            sa: (i.sa || []).map(String), mg: (i.mg || []).map(String), rv: (i.rv || []).map(String),
+            nu: (i.nu || []).map(String), df: i.df == null ? '' : String(i.df)
         };
         // The two date rows carry a picker each, and the calendar they open
         // lives off <body> - so the picker has to be told before its input
@@ -3174,6 +3240,144 @@ window.PmPortalBoot = function () {
         ppDbarFit(top);
         ppWtreeFit(top);
     }
+    /* ------------------------------------------------ issue-side edit --- */
+    // ISS02931: the roles, the hours and the people told are seen and set on
+    // the issue itself, not only in the comment box. A pencil opens the same
+    // widgets the dock uses under the value; 保存 writes them through the row
+    // API like the dock does (qeSaveFields), so the server's rules - who may
+    // edit, who may be picked - are the same ones.
+    var QF_ROLES = [['sa', 'sub_assignees', 'lbl_sub_assignees'], ['mg', 'managers', 'lbl_managers'], ['rv', 'reviewers', 'lbl_reviewers']];
+    function qfPen(field, res) {
+        if (!res || !res.editable) { return ''; }
+        return '<button type="button" class="pp-qf-pen" data-qf="' + esc(field) + '" title="' + esc(L.qf_edit) + '" aria-label="' + esc(L.qf_edit) + '">' +
+            '<i class="fa fa-pencil"></i></button>';
+    }
+    function qfPeople(ids) {
+        return (ids || []).map(function (u) { return avname(u); }).join('') || '—';
+    }
+    function qfSummary(i, res) {
+        var out = '';
+        QF_ROLES.forEach(function (r) {
+            if (!xOn(r[1])) { return; }
+            out += '<span class="it pp-qf-it" data-qf-at="' + r[0] + '"><span class="k">' + esc(L[r[2]]) + '</span>' + qfPeople(i[r[0]]) + qfPen(r[0], res) + '</span>';
+        });
+        if (xOn('difficulty')) {
+            out += '<span class="it pp-qf-it" data-qf-at="df"><span class="k">' + esc(L.lbl_difficulty) + '</span>' +
+                (i.df ? esc(L['df_' + i.df] || i.df) : '—') + qfPen('df', res) + '</span>';
+        }
+
+        return out;
+    }
+    function qfNotify(i, res) {
+        var out = '';
+        if (xOn('notified_users')) {
+            out += '<span class="pp-qf-it" data-qf-at="nu"><span class="pp-qf-sub">' + esc(L.lbl_notified) + '</span>' + qfPeople(i.nu) + qfPen('nu', res) + '</span><br>';
+        }
+        out += '<span class="pp-qf-sub">' + esc(L.lbl_watch) + '</span>' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people)) +
+            ' <a class="pp-mailbtn pp-qf-mail" href="javascript:void(0);"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>';
+
+        return out;
+    }
+    function qfClose() {
+        document.querySelectorAll('#pp-issue .pp-qf').forEach(function (n) { n.remove(); });
+    }
+    // The project's people a field may name: the assignee rule (members and
+    // the manager) for a sub-assignee, everybody on the project otherwise.
+    function qfOptions(key) {
+        var p = D.project || {};
+        var ids = key === 'sa' ? [p.manager].concat(p.members || []) : [p.manager].concat(p.members || [], p.viewers || []);
+        return ids.filter(function (v, x, a) { return v && a.indexOf(v) === x; })
+            .map(function (u) { return [String(u), user(u).n]; });
+    }
+    function qfOpen(field, pen) {
+        var issueId = currentIssue;
+        var i = issueById(issueId) || (own(DET, String(issueId)) || {}).issue;
+        if (!i || !pen) { return; }
+        qfClose();
+        var keys = field === 'time' ? ['eh', 'ah'] : [field];
+        var box = document.createElement('div');
+        box.className = 'pp-qf';
+        var fields = document.createElement('div');
+        fields.className = 'bl-qe';
+        var widgets = {};
+        keys.forEach(function (k) {
+            var w;
+            var label = L.qf_edit;
+            if (k === 'eh' || k === 'ah') {
+                w = qeInput(k, 'number', i[k] == null ? '' : String(i[k]), { min: '0', step: '0.5' });
+                fields.appendChild(qeRow(k === 'eh' ? L.lbl_eh_only : L.lbl_ah_only, w, 'w-num', 'h'));
+            } else if (k === 'df') {
+                w = qeSelect('df', (D.difficulties || ['easy', 'normal', 'hard']).map(function (d) { return [d, L['df_' + d] || d]; }), i.df || '', L.empty);
+                fields.appendChild(qeRow(L.lbl_difficulty, w, 'w-sel'));
+            } else {
+                w = qeChips(k, qfOptions(k), (i[k] || []).map(String), function (v) {
+                    var u = own(D.users, v);
+                    return u ? String(u.n) : qeUnlisted(v);
+                }, true);
+                QF_ROLES.forEach(function (r) { if (r[0] === k) { label = L[r[2]]; } });
+                fields.appendChild(qeRow(k === 'nu' ? L.lbl_notified : label, w, 'w-full'));
+            }
+            widgets[k] = w;
+        });
+        box.appendChild(fields);
+        var foot = document.createElement('div');
+        foot.className = 'pp-qf-foot';
+        foot.innerHTML = '<span class="pp-qf-msg"></span>' +
+            '<button type="button" class="bl-btn-sub pp-qf-cancel">' + esc(L.dock_cancel) + '</button>' +
+            '<button type="button" class="bl-btn-main pp-qf-save">' + esc(L.qf_save) + '</button>';
+        box.appendChild(foot);
+        var at = pen.closest('.pp-qf-it, .row') || pen.parentNode;
+        at.parentNode.insertBefore(box, at.nextSibling);
+        var msg = foot.querySelector('.pp-qf-msg');
+        foot.querySelector('.pp-qf-cancel').addEventListener('click', qfClose);
+        box.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { qfClose(); } });
+        var save = foot.querySelector('.pp-qf-save');
+        save.addEventListener('click', function () {
+            var changed = {};
+            keys.forEach(function (k) {
+                var w = widgets[k];
+                var now = w.dataset.qeMulti
+                    ? Array.prototype.map.call(w.querySelectorAll('.bl-chip:not(.off)'), function (c) { return String(c.dataset.val); })
+                    : String(w.value == null ? '' : w.value);
+                var was = Array.isArray(now) ? (i[k] || []).map(String) : (i[k] == null ? '' : String(i[k]));
+                if (!qeSame(now, was)) { changed[k] = now; }
+            });
+            if (!Object.keys(changed).length) { qfClose(); return; }
+            save.disabled = true;
+            msg.textContent = L.dock_saving;
+            var ours = QE.issue !== null && String(QE.issue) === String(issueId);
+            qeSaveFields(issueId, changed, ours ? QE.ua : null).then(function (r) {
+                if (!alive()) { return; }
+                if (r.ok) {
+                    qfClose();
+                    toast(L.m_saved);
+                    if (String(currentIssue) === String(issueId) && own(DET, String(issueId))) { buildDetail(DET[String(issueId)]); }
+                    // read again for the line the save left in the history
+                    reloadIssue(issueId, undefined, false);
+                    return;
+                }
+                save.disabled = false;
+                if (r.stale) {
+                    msg.textContent = L.qf_stale;
+                    reloadIssue(issueId, undefined, true);
+                    return;
+                }
+                msg.textContent = r.error || L.dock_save_fail;
+            });
+        });
+        var first = box.querySelector('input, select, .bl-chip');
+        if (first && first.focus) { first.focus(); }
+    }
+    var ppIssueEl = document.getElementById('pp-issue');
+    if (ppIssueEl) {
+        ppIssueEl.addEventListener('click', function (ev) {
+            var pen = ev.target.closest && ev.target.closest('.pp-qf-pen');
+            if (!pen) { return; }
+            ev.preventDefault();
+            ev.stopPropagation();
+            qfOpen(pen.getAttribute('data-qf'), pen);
+        });
+    }
     function ppDbarFill(i) {
         var bar = document.getElementById('pp-dbar');
         if (!bar) { return; }
@@ -3325,12 +3529,15 @@ window.PmPortalBoot = function () {
                 body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) +
                     '<div class="act">' + rxBar('comment', e.cid, e.rx) + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
                     '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
-                    '<span class="cmenu"><a href="javascript:void(0);" class="pp-cmenu" title="' + esc(L.cmt_menu) + '"><i class="fa fa-ellipsis-h"></i></a>' +
+                    // ISS02931: each comment's own address, one click away
+                    // (it used to wait in the menu below).
+                    '<a href="javascript:void(0);" class="pp-ccopy" data-cid="' + esc(e.cid) + '" title="' + esc(L.cmt_link_tip) + '"><i class="fa fa-link"></i> ' + esc(L.cmt_link) + '</a>' +
+                    // The menu holds the author's own actions: nobody else's comment needs it.
+                    (mine ? '<span class="cmenu"><a href="javascript:void(0);" class="pp-cmenu" title="' + esc(L.cmt_menu) + '"><i class="fa fa-ellipsis-h"></i></a>' +
                     '<span class="m" hidden>' +
-                    (mine ? '<a href="javascript:void(0);" class="pp-cedit" data-cid="' + esc(e.cid) + '" data-text="' + esc(e.text) + '">' + esc(L.cmt_edit) + '</a>' : '') +
-                    '<a href="javascript:void(0);" class="pp-ccopy" data-cid="' + esc(e.cid) + '">' + esc(L.cmt_copy) + '</a>' +
-                    (mine ? '<a href="javascript:void(0);" class="pp-cdel" data-cid="' + esc(e.cid) + '">' + esc(L.del) + '</a>' : '') +
-                    '</span></span></div>';
+                    '<a href="javascript:void(0);" class="pp-cedit" data-cid="' + esc(e.cid) + '" data-text="' + esc(e.text) + '">' + esc(L.cmt_edit) + '</a>' +
+                    '<a href="javascript:void(0);" class="pp-cdel" data-cid="' + esc(e.cid) + '">' + esc(L.del) + '</a>' +
+                    '</span></span>' : '') + '</div>';
             }
             return '<div class="ent"' + (e.tp === 'cmt' ? ' id="pp-c' + esc(e.cid) + '"' : '') + '>' + av(e.by, 1) +
                 '<div class="body"><div class="head"><span class="who">' + esc(user(e.by).n) + '</span><span class="tm">' + esc(e.at) + '</span></div>' + body + '</div></div>';
@@ -3465,11 +3672,19 @@ window.PmPortalBoot = function () {
             });
         }
 
+        // A fence may name its language on the first line (```js): the name is
+        // the block's, not a line of its code. Only a word of name characters,
+        // so it can go in a class as it is.
+        html = html.replace(/```[ \t]*([A-Za-z0-9_+#.\-]+)[ \t]*\r?\n([\s\S]*?)```/g, function (m, lang, body) {
+            return keep('<pre class="bl-code" data-lang="' + lang.toLowerCase() + '">' + body.replace(/\s+$/, '') + '</pre>');
+        });
         html = html.replace(/```[ \t]*\r?\n?([\s\S]*?)```/g, function (m, body) {
             return keep('<pre class="bl-code">' + body.replace(/\s+$/, '') + '</pre>');
         });
         html = html.replace(/`([^`\r\n]+)`/g, function (m, body) { return keep('<code>' + body + '</code>'); });
-        html = html.replace(/\\([\[\]])/g, function (m, ch) {
+        // A backslash before a character markdown would read keeps the
+        // character as it is (\* \_ \# \~ \| \! \\ and the brackets).
+        html = html.replace(/\\([\[\]*_`#~|!\\])/g, function (m, ch) {
             lits.push(ch);
             return LIT + (lits.length - 1) + LIT;
         });
@@ -3478,30 +3693,49 @@ window.PmPortalBoot = function () {
         // reader's session - so on this site only a file may be one, and a
         // comment cannot make its readers' browsers call anything else here
         // (a GET logout, say). Any other safe address is an ordinary link.
-        html = html.replace(/!\[([^\]\r\n]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
+        // The title after the address ([text](url "title")) is the tooltip.
+        // It is escaped text already, so it can go in the attribute.
+        function titleAttr(title) { return title ? ' title="' + unlit(title) + '"' : ''; }
+        html = html.replace(/!\[([^\]\r\n]*)\]\(([^)\s]+)(?:[ \t]+&quot;([^\r\n]*?)&quot;)?\)/g, function (m, alt, url, title) {
             var href = unlit(url);
             if (!safeHref(href)) { return m; }
             if (!imgSrcOk(unesc(href))) {
-                return keep('<a href="' + href + '" target="_blank" rel="noopener">' + (unlit(alt) || href) + '</a>');
+                return keep('<a href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' + (unlit(alt) || href) + '</a>');
             }
-            return keep('<a class="bl-cimg" href="' + href + '" target="_blank" rel="noopener">' +
+            return keep('<a class="bl-cimg" href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' +
                 '<img src="' + href + '" alt="' + unlit(alt) + '"></a>');
         });
-        html = html.replace(/\[([^\]\r\n]+)\]\(([^)\s]+)\)/g, function (m, label, url) {
+        html = html.replace(/\[([^\]\r\n]+)\]\(([^)\s]+)(?:[ \t]+&quot;([^\r\n]*?)&quot;)?\)/g, function (m, label, url, title) {
             var href = unlit(url);
             if (!safeHref(href)) { return m; }
-            return keep('<a href="' + href + '" target="_blank" rel="noopener">' + unlit(label) + '</a>');
+            return keep('<a href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' + unlit(label) + '</a>');
+        });
+        // <https://...>: the brackets are markdown's, not the address's.
+        html = html.replace(/&lt;(https?:\/\/[^\s]+?)&gt;/g, function (m, url) {
+            var href = unlit(url);
+            if (!safeHref(unesc(href))) { return m; }
+            return keep('<a href="' + href + '" target="_blank" rel="noopener">' + href + '</a>');
         });
         // A bare address is a link too - the commonest thing anyone pastes.
         // Trailing punctuation is sentence, not URL, so it stays outside.
         html = html.replace(/https?:\/\/[^\s<>]+/g, function (m) {
+            // The text was escaped first: an address ends where a quote or an
+            // angle bracket of the sentence begins, not after its entity.
+            var cut = m.search(/&(?:quot|lt|gt|#x27);/);
+            var rest = cut >= 0 ? m.slice(cut) : '';
+            m = cut >= 0 ? m.slice(0, cut) : m;
             var tail = m.match(/[.,;:)\]}]+$/);
             var url = unlit(tail ? m.slice(0, m.length - tail[0].length) : m);
-            return keep('<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>') + (tail ? tail[0] : '');
+            return keep('<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>') + (tail ? tail[0] : '') + rest;
         });
 
+        html = html.replace(/\*\*\*([^*\r\n]+)\*\*\*/g, '<b><i>$1</i></b>');
         html = html.replace(/\*\*([^*\r\n]+)\*\*/g, '<b>$1</b>');
         html = html.replace(/(^|[^*\w])\*([^*\r\n]+)\*(?!\w)/g, '$1<i>$2</i>');
+        // The underscore forms, only around words: snake_case and a file
+        // name with underscores stay as they are.
+        html = html.replace(/(^|[^\w])__([^_\r\n]+)__(?!\w)/g, '$1<b>$2</b>');
+        html = html.replace(/(^|[^\w])_([^_\r\n]+)_(?!\w)/g, '$1<i>$2</i>');
         html = html.replace(/~~([^~\r\n]+)~~/g, '<s>$1</s>');
         html = mdBlocks(html);
 
@@ -3695,7 +3929,8 @@ window.PmPortalBoot = function () {
     // Only addresses a browser can be pointed at without running anything.
     // "javascript:" survives escaping untouched, so it is stopped here.
     function safeHref(url) {
-        return /^(https?:\/\/|\/|\.{1,2}\/|#)/i.test(String(url || ''));
+        // a path of this site starts with one "/": "//host" and "/\host" go to another site
+        return /^(https?:\/\/|\/(?![\/\\])|\.{1,2}\/|#)/i.test(String(url || ''));
     }
     // An address for a link the page writes itself; anything that is not a
     // safe one points nowhere.
@@ -3733,12 +3968,14 @@ window.PmPortalBoot = function () {
     // "- [ ] still to do" / "- [x] done". The box shows the state; it does
     // not change it, because the state is a character in the text and this is
     // the rendered copy of that text.
+    // The item is left open: a list indented under it goes inside it, and
+    // mdBlocks closes it (</li>) before the next item or with its list.
     function mdListItem(text) {
         var box = text.match(/^\[([ xX])\]\s+(.*)$/);
-        if (!box) { return '<li>' + text + '</li>'; }
+        if (!box) { return '<li>' + text; }
 
         return '<li class="task"><input type="checkbox" disabled' +
-            (box[1] === ' ' ? '' : ' checked') + '> ' + box[2] + '</li>';
+            (box[1] === ' ' ? '' : ' checked') + '> ' + box[2];
     }
     // Lines into blocks: headings, rules, tables, quotes, code, the two kinds
     // of list - and a <br> for each newline that stands between two ordinary
@@ -3752,7 +3989,57 @@ window.PmPortalBoot = function () {
         // Every block ends the paragraph above it, so the next ordinary line
         // opens a new one and the empty lines in between are already spent.
         function opened() { plain = false; blanks = 0; lastText = null; }
-        function closeList() { if (list) { out.push('</' + list + '>'); list = null; } lastText = null; }
+        // The lists open now, the outermost first: each with its tag and the
+        // indent of its items. An item indented under another is a list of
+        // its own inside that item.
+        var lists = [];
+        function closeList() {
+            while (lists.length) { out.push('</li></' + lists.pop().tag + '>'); }
+            list = null;
+            lastText = null;
+        }
+        function listItem(tag, width, number, text) {
+            while (lists.length && width < lists[lists.length - 1].width) {
+                out.push('</li></' + lists.pop().tag + '>');
+            }
+            var top = lists[lists.length - 1];
+            if (top && width === top.width && top.tag !== tag) {
+                out.push('</li></' + lists.pop().tag + '>');
+                top = lists[lists.length - 1];
+            }
+            if (!top || width > top.width) {
+                lists.push({ tag: tag, width: width });
+                out.push('<' + tag + (tag === 'ol' && number !== 1 ? ' start="' + number + '"' : '') + '>');
+            } else {
+                out.push('</li>');
+            }
+            list = tag;
+            out.push(mdListItem(text));
+        }
+        // Lines of a quote are gathered and written together: one quote with
+        // its lines, and a quote inside it for the lines with one more >.
+        var quote = null;
+        function quoteHtml(lines) {
+            var html = '', inner = [], first = true;
+            function flushInner() {
+                if (inner.length) { html += '<blockquote>' + quoteHtml(inner) + '</blockquote>'; inner = []; first = true; }
+            }
+            lines.forEach(function (l) {
+                var deeper = l.match(/^\s*&gt;\s?(.*)$/);
+                if (deeper) { inner.push(deeper[1]); return; }
+                flushInner();
+                html += (first ? '' : '<br>') + l;
+                first = false;
+            });
+            flushInner();
+            return html;
+        }
+        function closeQuote() {
+            if (!quote) { return; }
+            out.push('<blockquote>' + quoteHtml(quote) + '</blockquote>');
+            quote = null;
+            opened();
+        }
         // A line that was indented stays indented. Markdown drops the spaces
         // and html collapses what is left, and a stack trace or a pasted
         // listing is only readable while its shape survives. This renderer
@@ -3788,12 +4075,19 @@ window.PmPortalBoot = function () {
             var cells = function (row) {
                 return row.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
             };
+            // :--- left, :---: center, ---: right, as the divider row says
+            var align = cells(rows[1]).map(function (c) {
+                c = c.trim();
+                var left = c.charAt(0) === ':', right = c.charAt(c.length - 1) === ':';
+                return left && right ? 'center' : (right ? 'right' : (left ? 'left' : ''));
+            });
+            var at = function (n) { return align[n] ? ' style="text-align:' + align[n] + '"' : ''; };
             var t = '<table><thead><tr>';
-            cells(rows[0]).forEach(function (c) { t += '<th>' + c.trim() + '</th>'; });
+            cells(rows[0]).forEach(function (c, n) { t += '<th' + at(n) + '>' + c.trim() + '</th>'; });
             t += '</tr></thead><tbody>';
             for (i = 2; i < rows.length; i++) {
                 t += '<tr>';
-                cells(rows[i]).forEach(function (c) { t += '<td>' + c.trim() + '</td>'; });
+                cells(rows[i]).forEach(function (c, n) { t += '<td' + at(n) + '>' + c.trim() + '</td>'; });
                 t += '</tr>';
             }
             out.push(t + '</tbody></table>');
@@ -3811,6 +4105,8 @@ window.PmPortalBoot = function () {
             opened();
         }
         html.split(/\r?\n/).forEach(function (line) {
+            var quoted = line.match(/^\s*&gt;\s?(.*)$/);
+            if (quote && !quoted) { closeQuote(); }
             if (code) {
                 // A blank line is only a gap inside the block; anything that
                 // has come back to the margin has left it.
@@ -3860,20 +4156,19 @@ window.PmPortalBoot = function () {
                 code = [line.replace(/^(?: {4}|\t)/, '')];
                 return;
             }
-            var ul = line.match(/^\s*[-*]\s+(.*)$/);
-            var ol = line.match(/^\s*\d+\.\s+(.*)$/);
-            var quote = line.match(/^\s*&gt;\s?(.*)$/);
+            var ul = line.match(/^([ \t]*)[-*+]\s+(.*)$/);
+            var ol = line.match(/^([ \t]*)(\d{1,9})[.)]\s+(.*)$/);
             if (ul || ol) {
-                var want = ul ? 'ul' : 'ol';
-                if (list !== want) { closeList(); out.push('<' + want + '>'); list = want; }
-                out.push(mdListItem(ul ? ul[1] : ol[1]));
+                var lead = (ul || ol)[1].replace(/\t/g, '    ').length;
+                listItem(ul ? 'ul' : 'ol', lead, ol ? parseInt(ol[2], 10) : 1, ul ? ul[2] : ol[3]);
                 opened();
                 return;
             }
             closeList();
-            if (quote) { out.push('<blockquote>' + quote[1] + '</blockquote>'); opened(); return; }
+            if (quoted) { quote = quote || []; quote.push(quoted[1]); return; }
             pushLine(line);
         });
+        closeQuote();
         closeCode();
         closeList();
         closeTable();
@@ -4113,6 +4408,42 @@ window.PmPortalBoot = function () {
 
     /* ------------------------------------------------ wiki -------------- */
     var currentWiki = null;
+    // the folded pages of the Wiki tree, per person and project (ISS00361)
+    var WIKI_FOLD_KEY = userKey('wf');
+    var WIKI_FOLD = {};
+    try {
+        (JSON.parse(localStorage.getItem(WIKI_FOLD_KEY) || '[]') || []).forEach(function (id) { WIKI_FOLD['w' + id] = true; });
+    } catch (e) { /* ignore */ }
+    function wikiFolded(id) { return Object.prototype.hasOwnProperty.call(WIKI_FOLD, 'w' + id); }
+    function wikiFoldSave() {
+        try {
+            var ids = Object.keys(WIKI_FOLD).map(function (k) { return k.slice(1); });
+            if (ids.length) { localStorage.setItem(WIKI_FOLD_KEY, JSON.stringify(ids)); } else { localStorage.removeItem(WIKI_FOLD_KEY); }
+        } catch (e) { /* ignore */ }
+    }
+    // the pages with children under a page, the page included when it has some
+    function wikiBelow(id) {
+        var kids = {};
+        ((D.wiki || {}).pages || []).forEach(function (p) {
+            if (p.parent) { (kids['w' + p.parent] = kids['w' + p.parent] || []).push(String(p.id)); }
+        });
+        var out = [], seen = {}, todo = id === null ? Object.keys(kids).map(function (k) { return k.slice(1); }) : [String(id)];
+        while (todo.length) {
+            var k = todo.shift();
+            if (seen[k] || !kids['w' + k]) { continue; }
+            seen[k] = true;
+            out.push(k);
+            todo = todo.concat(kids['w' + k]);
+        }
+        return out;
+    }
+    function wikiSet(ids, fold, focusId) {
+        ids.forEach(function (k) { if (fold) { WIKI_FOLD['w' + k] = true; } else { delete WIKI_FOLD['w' + k]; } });
+        wikiFoldSave();
+        renderWiki(currentWiki);
+        var again = focusId && document.querySelector('#pp-wtree .pp-wtgl[data-wtgl="' + String(focusId).replace(/[^0-9A-Za-z_-]/g, '') + '"]');
+        if (again) { again.focus(); }
+    }
     function renderWiki(selectId) {
         var wiki = D.wiki || { enabled: false, pages: [] };
         // With no page to show, the article card is an empty frame: it steps
@@ -4141,7 +4472,10 @@ window.PmPortalBoot = function () {
             (kids[parent] = kids[parent] || []).push(page);
         });
         var byId = {};
-        wiki.pages.forEach(function (p) { byId[p.id] = true; });
+        wiki.pages.forEach(function (p) { byId[p.id] = p; });
+        // the page shown is never inside a folded branch: its parents open for this drawing
+        var openNow = {};
+        for (var up = byId[selectId], guard = 0; up && up.parent && guard < 50; up = byId[up.parent], guard++) { openNow[up.parent] = true; }
         var drawn = {};
         // The nesting is unbounded; only the indent class is capped. Every
         // descendant used to be handed level 1, so a grandchild sat at exactly
@@ -4155,9 +4489,18 @@ window.PmPortalBoot = function () {
             var has = !!kids[page.id];
             var cls = 'nd' + (level ? ' lv' + Math.min(level, 4) : '') + (orphan ? ' orphan' : '') +
                 (String(page.id) === String(selectId) ? ' on' : '');
-            var html = '<div class="' + cls + '" data-wiki="' + esc(page.id) + '">' +
-                '<i class="fa ' + (has ? 'fa-folder-o' : 'fa-file-text-o') + '"></i>' + esc(page.title) + '</div>';
-            (kids[page.id] || []).forEach(function (child) { html += node(child, level + 1, false); });
+            var folded = has && wikiFolded(page.id) && !openNow[page.id];
+            var tgl = has
+                ? '<a href="javascript:void(0);" role="button" class="pp-wtgl" data-wtgl="' + esc(page.id) + '" aria-expanded="' + (folded ? 'false' : 'true') +
+                    '" title="' + esc(folded ? L.tree_ctx_open : L.tree_ctx_close) + '">' + (folded ? '▶' : '▼') + '</a>'
+                : '<span class="pp-wtgl-sp"></span>';
+            var html = '<div class="' + cls + '" data-wiki="' + esc(page.id) + '">' + tgl +
+                '<i class="fa ' + (has ? (folded ? 'fa-folder-o' : 'fa-folder-open-o') : 'fa-file-text-o') + '"></i>' + esc(page.title) + '</div>';
+            if (has) {
+                var inner = '';
+                (kids[page.id] || []).forEach(function (child) { inner += node(child, level + 1, false); });
+                html += '<div class="pp-wkids"' + (folded ? ' hidden' : '') + '>' + inner + '</div>';
+            }
             return html;
         }
         var tree = (kids[0] || []).map(function (page) { return node(page, 0, false); }).join('');
@@ -4631,8 +4974,6 @@ window.PmPortalBoot = function () {
         var issueId = currentIssue;
         var epoch = detailEpoch;
         var base = D.urls.base;
-        var table = D.issue_table;
-        var fieldsUrl = (D.urls && D.urls.lightapi_base) + '/data/' + table + '/' + issueId;
         var submittedBox = document.getElementById('pp-cmt-text');
         var text = statusOnly ? '' : submittedBox.value;
         var statusEl = document.getElementById('pp-cmt-status');
@@ -4779,10 +5120,34 @@ window.PmPortalBoot = function () {
         if (!hasFields) { send(); return; }
 
         ppDockMsg(L.dock_saving, false);
+        qeSaveFields(issueId, changed, version).then(function (r) {
+            if (r.ok) {
+                if (hasText || statusTo) { send(); return; }
+                // Fields alone: there is nothing to say, so nothing is posted.
+                // The issue is read again for the history line the save made.
+                settled();
+                if (current()) { toast(L.m_saved); ppDockMsg('', false); }
+                reloadIssue(issueId, epoch, false);
+                return;
+            }
+            if (r.stale) { stale(null, null); return; }
+            failed(r.error);
+        }).catch(function () {
+            failed(errText(null, null, L.dock_save_fail));
+        });
+    }
+    // Write some fields of one issue through the row API - the dock's save,
+    // and the pencils on the issue's own side (qfOpen). changed holds the
+    // short keys of QE_COLS; version is the updated_at the screen was drawn
+    // from, so a save over somebody else's newer one is refused. Answers
+    // { ok } / { stale } / { error: text }, never rejects.
+    function qeSaveFields(issueId, changed, version) {
+        var table = D.issue_table;
+        var fieldsUrl = (D.urls && D.urls.lightapi_base) + '/data/' + table + '/' + issueId;
         var patchSeq = ++DET_SEQ;
-        var patch = { value: diff };
+        var patch = { value: qeColumns(changed) };
         if (version) { patch.updated_at = version; }
-        fetch(fieldsUrl, {
+        return fetch(fieldsUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
             credentials: 'same-origin',
@@ -4803,18 +5168,12 @@ window.PmPortalBoot = function () {
                     qeMark();
                 }
                 delete NED.editFormCache[table + '::' + issueId];
-                if (hasText || statusTo) { send(); return; }
-                // Fields alone: there is nothing to say, so nothing is posted.
-                // The issue is read again for the history line the save made.
-                settled();
-                if (current()) { toast(L.m_saved); ppDockMsg('', false); }
-                reloadIssue(issueId, epoch, false);
-                return;
+                return { ok: true };
             }
-            if (res.status === 409 && res.body && res.body.error === 'stale') { stale(null, null); return; }
-            failed(errText(res.status, res.body, L.dock_save_fail));
+            if (res.status === 409 && res.body && res.body.error === 'stale') { return { stale: true }; }
+            return { error: errText(res.status, res.body, L.dock_save_fail) };
         }).catch(function () {
-            failed(errText(null, null, L.dock_save_fail));
+            return { error: errText(null, null, L.dock_save_fail) };
         });
     }
     // The row as the list holds it, brought up to what a save just wrote -
@@ -4878,7 +5237,7 @@ window.PmPortalBoot = function () {
     // A stored value in the shape the list rows carry it (buildIssueRow).
     function qeRowValue(key, v) {
         var list = Array.isArray(v) ? v : ((v === null || v === undefined || v === '') ? [] : [v]);
-        if (key === 'as') {
+        if (key === 'as' || key === 'sa' || key === 'mg' || key === 'rv' || key === 'nu') {
             return list.map(Number).filter(function (n) { return isFinite(n) && n > 0; });
         }
         if (key === 'cat') { return list.map(String); }
@@ -5702,9 +6061,10 @@ window.PmPortalBoot = function () {
     // issue; "copy" repeats what the open issue says, minus its key, its
     // history and its status - a duplicate starts at the project's first
     // status, the way a brand new issue does.
-    function issuePrefill(kind) {
+    function issuePrefill(kind, id) {
         var cols = D.issue_cols || {};
-        var i = issueById(currentIssue);
+        // id: the issue of a row's menu; the one open otherwise
+        var i = issueById(id !== undefined && id !== null ? id : currentIssue);
         if (!i || !cols.subject) { return null; }
         var out = {};
         function put(key, value) {
@@ -10094,6 +10454,12 @@ window.PmPortalBoot = function () {
             show('home');
             return;
         }
+        // ISS02931: an address that names only a comment (#comment-12). Its
+        // issue is looked up - in the details already here, else on the
+        // server - and the address becomes the issue's with ?c=12, which
+        // scrolls to the comment and marks it.
+        var cm = path.match(/^comment-(\d+)$/);
+        if (cm) { commentRoute(cm[1]); return; }
         var m = path.match(/^issue-(.+)$/);
         if (m) {
             var id = resolveIssueRef(m[1]);
@@ -10189,6 +10555,33 @@ window.PmPortalBoot = function () {
             filterToUrl();
         }
         show(path);
+    }
+    function commentRoute(cid) {
+        var to = function (hash) {
+            if (history.replaceState) { history.replaceState(null, '', hash); } else { location.hash = hash; }
+            route();
+        };
+        var found = null;
+        Object.keys(DET).forEach(function (key) {
+            if (found !== null) { return; }
+            var det = DET[key];
+            (det && det.timeline || []).forEach(function (e) {
+                if (e.tp === 'cmt' && String(e.cid) === String(cid)) { found = key; }
+            });
+        });
+        var row = found !== null ? issueById(found) : null;
+        if (row) { to('#issue-' + keyRef(row) + '?c=' + encodeURIComponent(cid)); return; }
+        if (!(D.urls && D.urls.base)) { to('#issues'); return; }
+        $.getJSON(D.urls.base + '/comment/' + encodeURIComponent(cid)).then(function (res) {
+            if (!alive()) { return; }
+            var url = res && res.ok ? String(res.url || '') : '';
+            var at = url.indexOf('#');
+            to(at >= 0 ? url.slice(at) : '#issues');
+        }, function () {
+            if (!alive()) { return; }
+            toast(L.cmt_not_found, true);
+            to('#issues');
+        });
     }
     window.addEventListener('hashchange', function onHash(ev) {
         if (!alive()) { window.removeEventListener('hashchange', onHash); return; }
@@ -10620,6 +11013,12 @@ window.PmPortalBoot = function () {
         if (!ev.target.closest('.pp-rxbar')) {
             document.querySelectorAll('.pp-rxpick').forEach(function (p) { p.hidden = true; });
         }
+        var fav = ev.target.closest('.pp-fav');
+        if (fav) {
+            ev.stopPropagation();
+            favToggle(fav.dataset.targetId, fav);
+            return;
+        }
         var star = ev.target.closest('.pp-star');
         if (star) {
             ev.stopPropagation();
@@ -10713,6 +11112,13 @@ window.PmPortalBoot = function () {
         if (moveDo) { issueMoveRun(currentIssue, moveDo); return; }
         var issueDel = ev.target.closest('.pp-issuedel');
         if (issueDel) { issueDelete(currentIssue, issueDel); return; }
+        var wtgl = ev.target.closest('.pp-wtgl');
+        if (wtgl) {
+            // a fold, not a way into the page (ISS00361)
+            ev.preventDefault();
+            wikiSet([wtgl.getAttribute('data-wtgl')], !wikiFolded(wtgl.getAttribute('data-wtgl')), wtgl.getAttribute('data-wtgl'));
+            return;
+        }
         var wikiNode = ev.target.closest('[data-wiki]');
         if (wikiNode) {
             ev.preventDefault();
@@ -10836,12 +11242,37 @@ window.PmPortalBoot = function () {
         afterFilterChange();
     });
     [['pp-f-kw', 'kw', 'input'], ['pp-f-as', 'as', 'change'], ['pp-f-ty', 'ty', 'change'],
-     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change']].forEach(function (def) {
+     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change'],
+     ['pp-f-rl', 'rl', 'change'], ['pp-f-df', 'df', 'change']].forEach(function (def) {
         document.getElementById(def[0]).addEventListener(def[2], function () {
             FILTER[def[1]] = this.value;
             afterFilterChange();
         });
     });
+    // The optional columns: the menu opens under its button, a tick shows or
+    // hides one column and is remembered for the next visit.
+    (function () {
+        var btn = document.getElementById('pp-oc-btn');
+        var menu = document.getElementById('pp-oc-menu');
+        if (!btn || !menu) { return; }
+        btn.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            menu.hidden = !menu.hidden;
+            btn.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+        });
+        menu.addEventListener('click', function (ev) { ev.stopPropagation(); });
+        menu.addEventListener('change', function (ev) {
+            var k = ev.target && ev.target.getAttribute('data-ocol');
+            if (!k) { return; }
+            if (ev.target.checked) { OCOL_ON[k] = true; } else { delete OCOL_ON[k]; }
+            ocolSave();
+            renderIssues();
+        });
+        document.addEventListener('click', function onPpOc() {
+            if (!alive()) { document.removeEventListener('click', onPpOc); return; }
+            if (!menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+        });
+    })();
     // Clicking the column already in charge turns it around; clicking any
     // other one takes over, ascending, which is the direction a reader means
     // by "sort by this".
@@ -10995,6 +11426,35 @@ window.PmPortalBoot = function () {
         if ((D.issues || []).some(function (i) { return !!i.unread; })) {
             items.push({ l: L.ctx_read_all, i: 'fa-check-square-o', f: readAll });
         }
+        // the issue itself (ISS00361): a child, its parent (in the edit form), its link
+        if (ids.length === 1) {
+            if (CAN_ADD_ISSUE) {
+                items.push({ l: L.ctx_add_child, i: 'fa-level-down', f: function () { openNcreate(D.issue_table, issuePrefill('child', id), 'child' + id); } });
+            }
+            if (row.editable !== false) {
+                // the editor lives in the issue's own screen: go there with ?edit, as the address of the editor does
+                items.push({ l: L.ctx_change_parent, i: 'fa-sitemap', f: function () { location.hash = '#' + issueHash(id) + '?edit'; } });
+            }
+            items.push({ l: L.ctx_copy_link, i: 'fa-link', f: function () { copyText(issuePageUrl(id), L.link_copied); } });
+            items.push(row.my_fav
+                ? { l: L.fav_off, i: 'fa-bookmark', f: function () { favToggle(id, null); } }
+                : { l: L.fav_add, i: 'fa-bookmark-o', f: function () { favToggle(id, null); } });
+        }
+        // the tree (ISS00361): this row, the rows under it, and all of them
+        if (TREE_ON && ids.length === 1) {
+            var below = treeBelow(id);
+            if (below.length) {
+                items.push(treeFolded(id)
+                    ? { l: L.tree_ctx_open, i: 'fa-caret-down', f: function () { treeSet([id], false, id); } }
+                    : { l: L.tree_ctx_close, i: 'fa-caret-right', f: function () { treeSet([id], true, id); } });
+                if (below.length > 1) {
+                    items.push({ l: L.tree_ctx_open_below, i: 'fa-angle-double-down', f: function () { treeSet(below, false, id); } });
+                    items.push({ l: L.tree_ctx_close_below, i: 'fa-angle-double-right', f: function () { treeSet(below, true, id); } });
+                }
+            }
+            items.push({ l: L.tree_ctx_open_all, i: 'fa-plus-square-o', f: function () { var b = document.getElementById('pp-tree-open'); if (b) { b.click(); } } });
+            items.push({ l: L.tree_ctx_close_all, i: 'fa-minus-square-o', f: function () { var b = document.getElementById('pp-tree-close'); if (b) { b.click(); } } });
+        }
         ctxOpen(ev.clientX, ev.clientY, items);
     });
     document.getElementById('pp-issue-rows').addEventListener('click', function (ev) {
@@ -11004,9 +11464,108 @@ window.PmPortalBoot = function () {
         ev.preventDefault();
         ev.stopPropagation();
         var id = tgl.getAttribute('data-tgl');
-        if (treeFolded(id)) { delete TREE_FOLD['i' + id]; } else { TREE_FOLD['i' + id] = true; }
-        treeRerender(false);
+        treeSet([id], !treeFolded(id), id);
     });
+    // ← closes, → opens a parent whose ▼/▶ has the focus; Enter on it toggles, as a click
+    // (ISS00361). Up and down move between the toggles of the list.
+    document.getElementById('pp-issue-rows').addEventListener('keydown', function (ev) {
+        var tgl = ev.target.closest('.pp-tgl');
+        if (!tgl || ev.altKey || ev.ctrlKey || ev.metaKey) { return; }
+        var id = tgl.getAttribute('data-tgl');
+        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+            ev.preventDefault();
+            var fold = ev.key === 'ArrowLeft';
+            if (treeFolded(id) !== fold) { treeSet([id], fold, id); }
+        } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+            var all = Array.prototype.slice.call(document.querySelectorAll('#pp-issue-rows .pp-tgl'));
+            var next = all[all.indexOf(tgl) + (ev.key === 'ArrowDown' ? 1 : -1)];
+            if (next) { ev.preventDefault(); next.focus(); }
+        }
+    });
+    // A favorite issue (ISS00272): on or off, from the detail's button or the row's menu.
+    function favToggle(issueId, btn) {
+        $.ajax({
+            url: D.urls.base + '/star', type: 'POST',
+            data: { star_type: 'fav', target_type: D.issue_table, target_id: issueId },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            var issue = issueById(issueId);
+            if (issue) { issue.my_fav = !!res.on; }
+            document.querySelectorAll('.pp-fav[data-target-id="' + String(issueId).replace(/[^0-9]/g, '') + '"]').forEach(function (b) {
+                b.classList.toggle('on', !!res.on);
+                b.setAttribute('aria-pressed', res.on ? 'true' : 'false');
+                b.querySelector('i').className = 'fa ' + (res.on ? 'fa-bookmark' : 'fa-bookmark-o');
+                b.querySelector('.lb').textContent = res.on ? L.fav_on : L.fav;
+            });
+            toast(res.on ? L.fav_added : L.fav_removed);
+        }).fail(function (xhr) { toast(xhrErr(xhr, L.fav_fail), true); });
+    }
+    // The Wiki tree (ISS00361): the same menu and keys as the issue tree.
+    (function () {
+        var wtree = document.getElementById('pp-wtree');
+        if (!wtree) { return; }
+        wtree.addEventListener('contextmenu', function (ev) {
+            if (ev.shiftKey) { return; }
+            var nd = ev.target.closest('[data-wiki]');
+            if (!nd) { return; }
+            ev.preventDefault();
+            var wid = nd.getAttribute('data-wiki');
+            var below = wikiBelow(wid);
+            var items = [{ l: L.ctx_open, i: 'fa-external-link', f: function () { location.hash = 'wiki-' + wid; } }];
+            if (below.length) {
+                items.push(wikiFolded(wid)
+                    ? { l: L.tree_ctx_open_w, i: 'fa-caret-down', f: function () { wikiSet([wid], false, wid); } }
+                    : { l: L.tree_ctx_close_w, i: 'fa-caret-right', f: function () { wikiSet([wid], true, wid); } });
+                if (below.length > 1) {
+                    items.push({ l: L.tree_ctx_open_below, i: 'fa-angle-double-down', f: function () { wikiSet(below, false, wid); } });
+                    items.push({ l: L.tree_ctx_close_below, i: 'fa-angle-double-right', f: function () { wikiSet(below, true, wid); } });
+                }
+            }
+            items.push({ l: L.tree_ctx_open_all, i: 'fa-plus-square-o', f: function () { wikiSet(wikiBelow(null), false, wid); } });
+            items.push({ l: L.tree_ctx_close_all, i: 'fa-minus-square-o', f: function () { wikiSet(wikiBelow(null), true, wid); } });
+            ctxOpen(ev.clientX, ev.clientY, items);
+        });
+        wtree.addEventListener('keydown', function (ev) {
+            var tgl = ev.target.closest('.pp-wtgl');
+            if (!tgl || ev.altKey || ev.ctrlKey || ev.metaKey) { return; }
+            var wid = tgl.getAttribute('data-wtgl');
+            if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+                ev.preventDefault();
+                var fold = ev.key === 'ArrowLeft';
+                if (wikiFolded(wid) !== fold) { wikiSet([wid], fold, wid); }
+            } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+                var all = Array.prototype.slice.call(wtree.querySelectorAll('.pp-wtgl'));
+                var next = all[all.indexOf(tgl) + (ev.key === 'ArrowDown' ? 1 : -1)];
+                if (next) { ev.preventDefault(); next.focus(); }
+            }
+        });
+    })();
+    // The parents under a row, the row included when it has children: who "open / close all
+    // below" changes.
+    function treeBelow(id) {
+        var kids = {};
+        (D.issues || []).forEach(function (i) {
+            if (i.parent) { (kids['i' + i.parent] = kids['i' + i.parent] || []).push(String(i.id)); }
+        });
+        var out = [], seen = {}, todo = [String(id)];
+        while (todo.length) {
+            var k = todo.shift();
+            if (seen[k] || !kids['i' + k]) { continue; }
+            seen[k] = true;
+            out.push(k);
+            todo = todo.concat(kids['i' + k]);
+        }
+        return out;
+    }
+    // Fold or unfold some parents, then put the focus back on the toggle of the row it was on.
+    function treeSet(ids, fold, focusId) {
+        ids.forEach(function (k) {
+            if (fold) { TREE_FOLD['i' + k] = true; } else { delete TREE_FOLD['i' + k]; }
+        });
+        treeRerender(false);
+        var again = focusId && document.querySelector('#pp-issue-rows .pp-tgl[data-tgl="' + String(focusId).replace(/[^0-9A-Za-z_-]/g, '') + '"]');
+        if (again) { again.focus(); }
+    }
     // ---- inline cell edit, like Exment's Excel-style grid (snoro 2026-11-18) ----
     // Double-click a status / type / priority / milestone / category / start
     // / due cell: it turns into a picker (dates use the portal's calendar).
@@ -11174,7 +11733,51 @@ window.PmPortalBoot = function () {
         if (!alive()) { window.removeEventListener('focus', onPpFocus); return; }
         checkStamp(CHECK_GAP_FOCUS);
     });
-    document.getElementById('pp-f-csv').addEventListener('click', exportCsv);
+    // ISS00275: CSV or Excel, every column or the list's; the server makes the file
+    document.getElementById('pp-f-csv').addEventListener('click', function (ev) {
+        var r = this.getBoundingClientRect();
+        ev.preventDefault();
+        ctxOpen(r.left, r.bottom + 2, [
+            { l: L.f_dl_xlsx_all, i: 'fa-file-excel-o', f: function () { exportIssues('xlsx', 'all'); } },
+            { l: L.f_dl_xlsx_screen, i: 'fa-file-excel-o', f: function () { exportIssues('xlsx', 'screen'); } },
+            { l: L.f_dl_csv_all, i: 'fa-file-text-o', f: function () { exportIssues('csv', 'all'); } },
+            { l: L.f_dl_csv_screen, i: 'fa-file-text-o', f: function () { exportIssues('csv', 'screen'); } }
+        ]);
+    });
+    var EXPORT_BUSY = false;
+    function exportIssues(fmt, cols) {
+        var rows = filteredIssues();
+        if (!rows.length) { toast(L.f_csv_empty, true); return; }
+        if (EXPORT_BUSY) { return; }
+        EXPORT_BUSY = true;
+        toast(L.f_dl_busy);
+        var body = new FormData();
+        body.append('ids', rows.map(function (i) { return i.id; }).join(','));
+        body.append('fmt', fmt);
+        body.append('cols', cols);
+        fetch(D.urls.base + '/export', {
+            method: 'POST', body: body, credentials: 'same-origin',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (res) {
+            if (!res.ok) {
+                return res.json().catch(function () { return {}; }).then(function (j) { throw new Error((j && j.message) || L.f_dl_fail); });
+            }
+            return res.blob();
+        }).then(function (blob) {
+            EXPORT_BUSY = false;
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = (D.project.key || 'issues') + '-' + D.today + '.' + fmt;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        }).catch(function (e) {
+            EXPORT_BUSY = false;
+            toast((e && e.message) || L.f_dl_fail, true);
+        });
+    }
     document.getElementById('pp-jump').addEventListener('input', function () {
         FILTER.kw = this.value;
         if (parseHash().path !== 'issues') {

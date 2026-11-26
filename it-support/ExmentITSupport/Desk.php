@@ -735,6 +735,38 @@ class Desk
         return $this->back(Its::url('ticket', strval($into->id)), array_get($ticket->value, 'ticket_no') . ' をこのチケットにまとめました。');
     }
 
+    // ---- the request catalog (Catalog) ------------------------------------
+
+    public function postCatalogTemplates(Request $request)
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        $n = Catalog::installTemplates();
+
+        return $this->back(Its::dataUrl(Its::T_CATALOG), $n > 0
+            ? "申請メニューのひな形を {$n} 件入れました。承認がいるものは「承認する人」を選んでください（選ぶまでは承認なしで受け付けます）。"
+            : '申請メニューのひな形は、もう入っています。');
+    }
+
+    /**
+     * The approval page of a request: for its approver (and the system administrators), who
+     * need not be agents. Exment's login and the plugin's role group still apply.
+     */
+    /**
+     * The approval page moved to /support/approval/{id} (PublicController): an approver need not
+     * be in the plugin's role group. A link of the plugin's address goes there.
+     */
+    public function approval(Request $request, $id)
+    {
+        return redirect(Its::publicUrl('approval', strval(intval($id))));
+    }
+
+    public function postApproval(Request $request, $id)
+    {
+        return redirect(Its::publicUrl('approval', strval(intval($id))));
+    }
+
     // ---- problems (Problems) ---------------------------------------------
 
     /** The gate of the problem pages: an agent, and problems used. */
@@ -1106,7 +1138,7 @@ class Desk
             }
             if ($request->has($key)) {
                 $values[$key] = $request->get($key);
-            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled', 'problems_enabled'], true)) {
+            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled', 'problems_enabled', 'catalog_enabled'], true)) {
                 $values[$key] = '0';
             } elseif (in_array($key, ['esc_lead_users', 'esc_manager_users', 'esc_channels'], true) && $request->has('esc_form')) {
                 // lists left empty on the page

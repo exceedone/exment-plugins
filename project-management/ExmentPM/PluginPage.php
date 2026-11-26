@@ -190,6 +190,27 @@ class PluginPage extends PluginPageBase
         return $this->portal()->postComment(request(), $id, $issue_id);
     }
 
+    // ISS00264: the issue list across the projects
+    public function allIssues()
+    {
+        return $this->respond($this->portal()->allIssues(request(), new Content()));
+    }
+
+    public function allIssuesData()
+    {
+        return $this->portal()->allIssuesData(request());
+    }
+
+    public function allIssuesExport()
+    {
+        return $this->portal()->allIssuesExport(request());
+    }
+
+    public function exportIssues($id)
+    {
+        return $this->portal()->exportIssues(request(), $id);
+    }
+
     public function mailIssue($id, $issue_id)
     {
         return $this->portal()->mailIssue(request(), $id, $issue_id);
@@ -238,6 +259,11 @@ class PluginPage extends PluginPageBase
     public function uploadIssueFile($id, $issue_id)
     {
         return $this->portal()->uploadIssueFile(request(), $id, $issue_id);
+    }
+
+    public function commentIssue($id, $comment_id)
+    {
+        return $this->portal()->commentIssue(request(), $id, $comment_id);
     }
 
     public function updateComment($id, $comment_id)

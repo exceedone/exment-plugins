@@ -216,9 +216,10 @@
     // issue; "copy" repeats what the open issue says, minus its key, its
     // history and its status - a duplicate starts at the project's first
     // status, the way a brand new issue does.
-    function issuePrefill(kind) {
+    function issuePrefill(kind, id) {
         var cols = D.issue_cols || {};
-        var i = issueById(currentIssue);
+        // id: the issue of a row's menu; the one open otherwise
+        var i = issueById(id !== undefined && id !== null ? id : currentIssue);
         if (!i || !cols.subject) { return null; }
         var out = {};
         function put(key, value) {

@@ -1,0 +1,15 @@
+{
+    "plugin_name": "ExmentKintone",
+    "uuid": "81665c22-f7aa-4d90-9fa3-d667a2ede53d",
+    "plugin_view_name": "Exment Plugin kintone 連携",
+    "description": "kintone のアプリのレコードを、Exment のテーブルに取り込みます（Exment 7.3.0 以降の「データ同期」のコネクタ）。kintone のアプリの定義から、Exment のテーブルも作れます。",
+    "author": "Exceedone",
+    "version": "0.1.0",
+    "plugin_type": "page",
+    "uri": "exment_kintone",
+    "icon": "fa-exchange",
+    "route": [
+        { "method": "get", "uri": "", "function": "index" },
+        { "method": "post", "uri": "table", "function": "makeTable" }
+    ]
+}
