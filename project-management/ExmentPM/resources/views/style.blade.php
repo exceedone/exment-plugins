@@ -2028,4 +2028,12 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-hint .fa-lightbulb-o{color:var(--bl-accent-d,var(--bl-accent));}
 .pmportal .pp-hint .go{white-space:nowrap;font-weight:600;color:var(--bl-accent-d,var(--bl-accent));}
 .pmportal #pp-hint-home{margin:0 0 10px;}
+/* POS-1: 課題の追加 at the right of the project's header row; the project's settings at the right end of the tabs */
+.pmportal .bl-projhead .pp-projadd{flex:none;margin-left:12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.pmportal .bl-tabs .pp-tab-set{margin-left:auto;}
+@media (max-width:760px){
+  .pmportal .bl-projhead .pp-projadd{margin-left:auto;padding:6px 10px;min-height:36px;}
+  .pmportal .bl-projhead .pp-projadd .tx{display:none;}
+  .pmportal .bl-tabs .pp-tab-set{margin-left:0;}
+}
 </style>

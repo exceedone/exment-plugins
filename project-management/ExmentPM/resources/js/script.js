@@ -1318,7 +1318,11 @@ window.PmPortalBoot = function () {
             // fetched is what tells the two apart.
             '<span class="pp-freshat">' + esc(String(L.rf_at).replace(':time', String(D.now || ''))) + '</span>' +
             '<a class="bl-btn-sub pp-refresh" href="javascript:void(0);" title="' + esc(L.rf_button) + '">' +
-            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a></div>';
+            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a></div>' +
+            // POS-1: the one 課題の追加 inside a project, at the right of its
+            // name's row (the top bar's is for the pages across projects).
+            (CAN_ADD_ISSUE && !p.archived ? '<a class="bl-btn-main pp-projadd" href="#new" title="' + esc(L.pos_add_tip) + '">' +
+                '<i class="fa fa-plus"></i><span class="tx"> ' + esc(L.add_issue) + '</span></a>' : '');
         var head = document.getElementById('pp-projhead');
         if (head && !head._ppHeadBound) {
             head._ppHeadBound = true;
@@ -14200,8 +14204,9 @@ window.PmPortalBoot = function () {
             var scr = tab.getAttribute('data-scr');
             out.push({ g: L.kh_move, l: String(tab.textContent || '').trim(), k: keys[scr] || '', run: function () { tab.click(); } });
         });
-        if (document.querySelector('#pp-top .pp-top-addmain')) {
-            out.push({ g: L.kh_list, l: L.add_issue, k: 'a', run: palPress('#pp-top .pp-top-addmain') });
+        var addSel = document.querySelector('#pp-projhead .pp-projadd') ? '#pp-projhead .pp-projadd' : '#pp-top .pp-top-addmain';
+        if (document.querySelector(addSel)) {
+            out.push({ g: L.kh_list, l: L.add_issue, k: 'a', run: palPress(addSel) });
         }
         if (document.getElementById('pp-jump')) {
             out.push({ g: L.kh_list, l: L.kh_search, k: '/', run: function () {
@@ -14388,7 +14393,7 @@ window.PmPortalBoot = function () {
         }
         if (k === 'a') {
             // S5: the top bar's 課題の追加, which adds to this project.
-            var add = document.querySelector('#pp-top .pp-top-addmain');
+            var add = document.querySelector('#pp-projhead .pp-projadd') || document.querySelector('#pp-top .pp-top-addmain');
             if (add) { ev.preventDefault(); add.click(); }
             return;
         }

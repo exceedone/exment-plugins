@@ -20,7 +20,7 @@
         }
         if (k === 'a') {
             // S5: the top bar's 課題の追加, which adds to this project.
-            var add = document.querySelector('#pp-top .pp-top-addmain');
+            var add = document.querySelector('#pp-projhead .pp-projadd') || document.querySelector('#pp-top .pp-top-addmain');
             if (add) { ev.preventDefault(); add.click(); }
             return;
         }
