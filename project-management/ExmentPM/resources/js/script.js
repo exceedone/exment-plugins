@@ -14001,8 +14001,8 @@ window.PmPortalBoot = function () {
                 palOpen(false);
             }
         });
-        box.style.setProperty('--pp-top-safe', ppTopSafe() + 'px');
         (root.closest('.pmportal') || root).appendChild(box);
+        ppPlaceBox(box);
         PAL.el = box;
         palRender();
         input.focus();
@@ -14118,29 +14118,30 @@ window.PmPortalBoot = function () {
             lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
             '<div class="pp-sh-tip">' + esc(L.sh_palette) + '</div></div>';
     }
-    // Where a box over the page may start: under Exment's fixed header (50px
-    // on a desktop, 100px on a phone where it wraps), measured when the box
-    // opens. 0 where there is no fixed header.
+    // Where a box over the page may start: below the top of the portal
+    // itself (Exment's bar is above it - in the modern design the bar is not
+    // fixed, the page scrolls inside .wrapper and the bar is drawn on top),
+    // or below Exment's header when that reaches lower. Never above 0.
     function ppTopSafe() {
-        // Whatever is fixed (or sticky) at the very top of the window, found
-        // from the point there rather than by a class name: the header is
-        // built differently by Exment's classic and modern designs.
         var out = 0;
-        [0.5, 0.1, 0.9].forEach(function (fx) {
-            var el = null;
-            try { el = document.elementFromPoint(Math.round(window.innerWidth * fx), 2); } catch (e) { el = null; }
-            while (el && el !== document.body && el !== document.documentElement) {
-                var pos = '';
-                try { pos = window.getComputedStyle(el).position; } catch (e) { pos = ''; }
-                if (pos === 'fixed' || pos === 'sticky') {
-                    var r = el.getBoundingClientRect();
-                    if (r.top <= 2 && r.bottom > out) { out = Math.round(r.bottom); }
-                    break;
-                }
-                el = el.parentElement;
-            }
-        });
-        return out;
+        var portal = root.closest('.pmportal') || root;
+        try { out = Math.max(out, Math.round(portal.getBoundingClientRect().top)); } catch (e) { /* none */ }
+        var head = document.querySelector('.main-header');
+        if (head) {
+            try { out = Math.max(out, Math.round(head.getBoundingClientRect().bottom)); } catch (e) { /* none */ }
+        }
+        return Math.max(0, out);
+    }
+    // One helper for the ? box and the palette: set on open, and again when
+    // the window changes size while the box is there.
+    function ppPlaceBox(box) {
+        var set = function () { box.style.setProperty('--pp-top-safe', ppTopSafe() + 'px'); };
+        set();
+        var onResize = function () {
+            if (!box.isConnected) { window.removeEventListener('resize', onResize); return; }
+            set();
+        };
+        window.addEventListener('resize', onResize);
     }
     function keyHelp(show) {
         var box = document.getElementById('pp-keyhelp');
@@ -14164,8 +14165,8 @@ window.PmPortalBoot = function () {
         box.addEventListener('click', function (ev) {
             if (ev.target === box || (ev.target.closest && ev.target.closest('.x'))) { keyHelp(false); }
         });
-        box.style.setProperty('--pp-top-safe', ppTopSafe() + 'px');
         (root.closest('.pmportal') || root).appendChild(box);
+        ppPlaceBox(box);
         var x = box.querySelector('.x');
         if (x) { x.focus(); }
     }

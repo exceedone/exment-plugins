@@ -462,10 +462,18 @@ test('HELP-1: the ? box says what the buttons of this screen do', () => {
 
 test('HELP-1 fix: the ? box and the palette start under the fixed header', () => {
     const bootSrc = read('boot.js');
-    assert.ok(/elementFromPoint\(/.test(functionSource(bootSrc, 'ppTopSafe')), 'the fixed header found from the top of the window');
-    assert.ok(/--pp-top-safe', ppTopSafe\(\)/.test(functionSource(bootSrc, 'keyHelp')));
-    assert.ok(/--pp-top-safe', ppTopSafe\(\)/.test(functionSource(read('palette.js'), 'palOpen')));
-    assert.ok(style.indexOf('.pmportal .pp-keyhelp{align-items:flex-start;padding:calc(var(--pp-top-safe, 0px) + 8px) 16px 16px;}') > 0);
+    const safe = functionSource(bootSrc, 'ppTopSafe');
+    assert.ok(/portal\.getBoundingClientRect\(\)\.top/.test(safe) && /\.main-header/.test(safe), 'below the top of the portal, or the header');
+    const f = new Function('root', 'document', safe + 'return ppTopSafe();');
+    const portal = { getBoundingClientRect: () => ({ top: 63 }) };
+    const fakeRoot = { closest: () => portal };
+    assert.strictEqual(f(fakeRoot, { querySelector: () => ({ getBoundingClientRect: () => ({ bottom: 50 }) }) }), 63);
+    assert.strictEqual(f(fakeRoot, { querySelector: () => ({ getBoundingClientRect: () => ({ bottom: 100 }) }) }), 100);
+    assert.strictEqual(f({ closest: () => ({ getBoundingClientRect: () => ({ top: -400 }) }) }, { querySelector: () => null }), 0, 'never above 0');
+    assert.ok(/ppPlaceBox\(box\);/.test(functionSource(bootSrc, 'keyHelp')), 'the ? box');
+    assert.ok(/ppPlaceBox\(box\);/.test(functionSource(read('palette.js'), 'palOpen')), 'the palette, the same helper');
+    assert.ok(/addEventListener\('resize'/.test(functionSource(bootSrc, 'ppPlaceBox')));
+    assert.ok(style.indexOf('.pmportal .pp-keyhelp{align-items:flex-start;padding:calc(var(--pp-top-safe, 0px) + 8px) 16px 16px;z-index:1100;}') > 0);
     assert.ok(style.indexOf('.pmportal .pp-keyhelp .in{max-height:calc(100vh - var(--pp-top-safe, 0px) - 24px);overflow:auto;}') > 0);
 });
 
