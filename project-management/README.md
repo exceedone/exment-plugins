@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- A file that is not a picture, pasted or dropped on the body of a saved issue, is attached to the issue and a link to it is put at the caret (as the comment box already did). A picture goes as before. On a new issue or a wiki page, a message says to attach it with 「ファイル」.
+  保存してある課題の本文に、画像でないファイルを貼る・落とすと、その課題に添付して、本文にリンクを入れます（コメント欄は前からできていました）。画像は今までどおりです。新しい課題と Wiki では、「ファイル」から添付するよう案内します。
+
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
 - A viewer of a project (somebody who may not add an issue there) no longer gets an error in the browser console each time the project page opens: the form to add an issue was fetched ahead to open faster, and refused. It is no longer fetched for somebody who may not add an issue. The label 「子の進捗」 of the second progress number of a parent issue (list and issue detail) was missing; it is shown again. The Files tab of a project with no workspace of the file server yet (or one the user may not open) showed only a folder icon; it shows its message again ("no workspace yet" and who makes one, or "no permission").

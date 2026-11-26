@@ -337,6 +337,60 @@
             if (alive() && fresh) { NED.portalStale = false; }
         });
     }
+    // A file that is not a picture, pasted or dropped on the body (ISS00245): it
+    // goes onto the issue as an attachment at once - the endpoint the comment
+    // box uses - and a link to it is put at the caret. Only an issue that is
+    // saved has a place for it; a new issue or a wiki page says how instead.
+    // @return bool whether it was taken (else the reason was shown)
+    function nedFileUpload(input, files) {
+        if (NED.mode !== 'edit' || NED.table !== D.issue_table || !NED.rowId) {
+            nedShowAlert(L.ned_file_after_create || L.cmt_up_fail, false);
+            return false;
+        }
+        if (NED.busy) { nedShowAlert(nedGetLangKey('ned_saving'), false); return true; }
+        var epoch = NED.epoch, start = input.selectionStart, end = input.selectionEnd;
+        var html = mdAuthoredAsHtml(input.value);
+        var data = new FormData();
+        files.forEach(function (f) { data.append('file_data[]', f, f.name || 'file'); });
+        NED.busy = true;
+        input.readOnly = true;
+        nedShowAlert(L.cmt_uploading, true);
+        var done = function () {
+            NED.busy = false;
+            input.readOnly = false;
+            nedUpdateChangeCount();
+            nedGuard(nedDirty());
+        };
+        $.ajax({
+            url: D.urls.base + '/issue/' + NED.rowId + '/upload', type: 'POST', data: data,
+            dataType: 'json', processData: false, contentType: false, headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!nedCurrent(epoch)) { return; }
+            done();
+            if (!res || !res.ok || !res.files || !res.files.length) { nedShowAlert(errText(null, res, L.cmt_up_fail), false); return; }
+            var det = own(DET, String(NED.rowId));
+            if (det) {
+                det.files = (det.files || []).concat(res.files.map(function (f) {
+                    return { name: f.name, url: f.url, img: f.img, by: D.me, at: '' };
+                }));
+            }
+            // The name is the text of the link, escaped (mdFileLink): a file named
+            // to close the link early cannot point it somewhere else.
+            var markup = res.files.map(function (f) {
+                return html ? '<a href="' + esc(f.url) + '">' + esc(f.name) + '</a>' : mdFileLink(f.name, f.url, !!f.img);
+            });
+            input.setRangeText(markup.join(html ? ' ' : '\n'), start, end, 'end');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            nedDraftSave();
+            nedShowAlert(fmt(L.cmt_up_ok, res.files.length), true);
+            input.focus();
+        }).fail(function (xhr) {
+            if (!nedCurrent(epoch)) { return; }
+            done();
+            nedShowAlert(errText(xhr && xhr.status, xhr && xhr.responseJSON, L.cmt_up_fail), false);
+        });
+        return true;
+    }
     function nedImagePaste(ev) {
         var input = ev.target;
         // ISS00245: the issue description and the wiki page body (2026-11-18)
@@ -345,16 +399,23 @@
         var field = input.closest('[data-fname]');
         var col = field && nedAiCol(field.dataset.fname);
         if (!col || col.type !== 'richtext' || !ev.clipboardData) { return; }
-        var files = [];
+        var all = [];
         Array.prototype.forEach.call(ev.clipboardData.items || [], function (item) {
             if (item.kind !== 'file') { return; }
             var file = item.getAsFile();
-            if (file && /^image\//i.test(file.type)) { files.push(file); }
+            if (file) { all.push(file); }
         });
-        if (!files.length) {
-            files = Array.prototype.filter.call(ev.clipboardData.files || [], function (file) {
-                return /^image\//i.test(file.type);
-            });
+        if (!all.length) { all = Array.prototype.slice.call(ev.clipboardData.files || []); }
+        var files = all.filter(function (file) { return /^image\//i.test(file.type); });
+        // ISS00245: a file that is not a picture is attached to the issue and
+        // linked at the caret, as a comment does with it
+        var others = all.filter(function (file) { return !/^image\//i.test(file.type); });
+        if (others.length) {
+            ev.preventDefault();
+            // with pictures among them, all go up together as attachments (one
+            // upload at a time); where there is no issue yet, the pictures go on
+            // the old way and the others are refused with a word
+            if (nedFileUpload(input, files.concat(others))) { return; }
         }
         if (!files.length) { return; }
         ev.preventDefault();
@@ -722,8 +783,7 @@
                     || !(ev.dataTransfer.files && ev.dataTransfer.files.length)) { return; }
                 // never let the browser open a dropped file in place of the form
                 ev.preventDefault();
-                var hasImage = Array.prototype.some.call(ev.dataTransfer.files, function (f) { return /^image\//i.test(f.type); });
-                if (!hasImage) { nedShowAlert('本文に入れられるのは画像だけです。ほかのファイルは「ファイル」から添付してください。', false); return; }
+                // pictures as pasted ones, other files attached and linked (nedFileUpload)
                 nedImagePaste({ target: t, clipboardData: ev.dataTransfer, preventDefault: function () {} });
             });
             form.addEventListener('input', nedUpdateChangeCount);

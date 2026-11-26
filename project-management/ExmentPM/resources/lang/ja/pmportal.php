@@ -549,6 +549,8 @@ return [
     'cmt_uploading' => 'アップロード中…',
     'cmt_up_ok' => '%s 件を添付しました',
     'cmt_up_fail' => 'ファイルをアップロードできませんでした',
+    // ISS00245: a file that is not a picture, on the body of an issue not saved yet, or a wiki page
+    'ned_file_after_create' => '画像でないファイルは、保存してある課題の本文に入れられます（その課題に添付して、リンクを入れます）。いまは「ファイル」から添付してください。',
     'cmt_menu' => 'その他',
     // Reactions on an issue and a comment (ISS00259)
     'rx_add' => 'リアクション',
