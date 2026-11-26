@@ -197,6 +197,13 @@
 .pmportal .bl-list td.pp-al{white-space:nowrap;font-family:Menlo,Consolas,monospace;font-size:12px;}
 .pmportal .pp-al-d{margin-left:8px;padding:1px 7px;border-radius:9px;background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));font-family:Menlo,Consolas,monospace;font-size:12px;}
 .pmportal .pp-al-set{margin-left:6px;color:var(--bl-sub);}
+/* the picker of several values of a filter (ISS00255) */
+.pmportal .pp-fpick{position:fixed;z-index:1060;background:var(--bl-box);border:1px solid var(--bl-line,#dfe5ea);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.14);padding:8px;width:260px;}
+.pmportal .pp-fpick .s{width:100%;margin-bottom:6px;padding:4px 6px;border:1px solid var(--bl-line,#dfe5ea);border-radius:4px;}
+.pmportal .pp-fpick .ls{max-height:300px;overflow:auto;}
+.pmportal .pp-fpick label{display:flex;align-items:center;gap:6px;padding:4px 6px;margin:0;font-weight:400;font-size:12.5px;cursor:pointer;border-radius:4px;}
+.pmportal .pp-fpick label:hover{background:var(--bl-hover,#f2f8f5);}
+.pmportal .pp-fpick .ft{display:flex;justify-content:flex-end;gap:6px;margin-top:8px;}
 .pmportal .bl-list .pp-tcol{width:1%;white-space:nowrap;padding-left:4px;padding-right:0;}
 /* 件名サブ (schema 19): second subject line, smaller and muted */
 .pmportal .bl-list td.sub .pp-subsub{font-size:12px;font-weight:400;color:var(--bl-sub);margin-top:2px;line-height:1.35;}

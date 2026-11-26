@@ -644,6 +644,12 @@
      ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change'],
      ['pp-f-rl', 'rl', 'change'], ['pp-f-df', 'df', 'change']].forEach(function (def) {
         document.getElementById(def[0]).addEventListener(def[2], function () {
+            // 「複数選ぶ…」: the picker sets the filter; the select shows what was there (ISS00255)
+            if (this.value === '__multi') {
+                setFilterVal(def[0], FILTER[def[1]]);
+                multiPick(this, def[1]);
+                return;
+            }
             FILTER[def[1]] = this.value;
             afterFilterChange();
         });
