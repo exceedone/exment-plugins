@@ -16,7 +16,7 @@ class Report
     /**
      * @return array<string, mixed>
      */
-    public static function build(string $month): array
+    public static function build(string $month, string $group = ''): array
     {
         $start = Carbon::createFromFormat('Y-m-d H:i:s', $month . '-01 00:00:00');
         $end = $start->copy()->endOfMonth();
@@ -26,6 +26,15 @@ class Report
         $created = Tickets::query()->whereBetween('created_at', [$from, $to])->get();
         $resolved = Tickets::query()->whereBetween('value->resolved_at', [$from, $to])->get();
         $open = Tickets::query()->whereIn('value->status', Its::ACTIVE_STATUSES)->get();
+        // IT support or the inquiries only (ISS02941); a ticket of no box is IT
+        if (isset(Queue::GROUPS[$group])) {
+            $in = function ($t) use ($group) {
+                return Tickets::boxOf(array_get($t->value, 'category'))['group'] === $group;
+            };
+            $created = $created->filter($in)->values();
+            $resolved = $resolved->filter($in)->values();
+            $open = $open->filter($in)->values();
+        }
 
         // First response time and SLA, over tickets that got an answer.
         $firstMinutes = [];
@@ -145,7 +154,7 @@ class Report
         $categories = Tickets::options(Its::T_CATEGORY);
         $byCategory = [];
         foreach ($created as $t) {
-            $name = $categories[strval(array_get($t->value, 'category'))] ?? '（種類なし）';
+            $name = $categories[strval(array_get($t->value, 'category'))] ?? '（受付箱なし）';
             $byCategory[$name] = ($byCategory[$name] ?? 0) + 1;
         }
         arsort($byCategory);
@@ -182,7 +191,74 @@ class Report
             'byAgent' => $byAgent,
             'byCustomer' => $by,
             'daily' => $daily,
+            'byBox' => static::byBox($created, $resolved, $open),
         ];
+    }
+
+    /**
+     * Each 受付箱 (ISS02941): received and solved in the month, open now with their mean
+     * progress, the first reply's median, the SLA kept, and for quotes won / lost and the rate.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function byBox($created, $resolved, $open): array
+    {
+        $rows = [];
+        $row = function ($t) use (&$rows) {
+            $box = Tickets::boxOf(array_get($t->value, 'category'));
+            $key = strval($box['id'] ?? 0);
+            if (!isset($rows[$key])) {
+                $rows[$key] = ['id' => $key, 'name' => $box['id'] ? $box['name'] : '（受付箱なし）', 'kind' => $box['kind'], 'stages' => $box['stages'],
+                    'created' => 0, 'resolved' => 0, 'open' => 0, 'progress' => [], 'first' => [], 'sla_n' => 0, 'sla_met' => 0, 'won' => 0, 'lost' => 0];
+            }
+
+            return $key;
+        };
+        foreach ($created as $t) {
+            $k = $row($t);
+            $rows[$k]['created']++;
+            $v = (array) $t->value;
+            if (!empty($v['first_responded_at'])) {
+                $rows[$k]['first'][] = max(0, intval(Carbon::parse($t->created_at)->diffInMinutes(Carbon::parse($v['first_responded_at']))));
+            }
+        }
+        foreach ($resolved as $t) {
+            $k = $row($t);
+            $rows[$k]['resolved']++;
+            $state = Sla::state($t);
+            if ($state !== 'none') {
+                $rows[$k]['sla_n']++;
+                $rows[$k]['sla_met'] += $state === 'breached' ? 0 : 1;
+            }
+            $outcome = Queue::outcome($rows[$k]['kind'], $rows[$k]['stages'], strval(array_get($t->value, 'stage')));
+            if ($outcome !== null) {
+                $rows[$k][$outcome]++;
+            }
+        }
+        foreach ($open as $t) {
+            $k = $row($t);
+            $rows[$k]['open']++;
+            $rows[$k]['progress'][] = intval(array_get($t->value, 'progress', 0));
+        }
+        $out = [];
+        foreach ($rows as $r) {
+            sort($r['first']);
+            $decided = $r['won'] + $r['lost'];
+            $out[] = [
+                'id' => $r['id'], 'name' => $r['name'], 'kind' => $r['kind'],
+                'created' => $r['created'], 'resolved' => $r['resolved'], 'open' => $r['open'],
+                'progress' => empty($r['progress']) ? null : intval(round(array_sum($r['progress']) / count($r['progress']))),
+                'first_median' => empty($r['first']) ? null : $r['first'][intdiv(count($r['first']), 2)],
+                'sla' => $r['sla_n'] > 0 ? intval(round($r['sla_met'] * 100 / $r['sla_n'])) : null,
+                'won' => $r['won'], 'lost' => $r['lost'],
+                'win_rate' => $decided > 0 ? intval(round($r['won'] * 100 / $decided)) : null,
+            ];
+        }
+        usort($out, function ($a, $b) {
+            return ($b['created'] + $b['open']) <=> ($a['created'] + $a['open']);
+        });
+
+        return $out;
     }
 
     public static function minutesText(?int $minutes): string

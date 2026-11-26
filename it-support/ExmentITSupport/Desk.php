@@ -124,6 +124,11 @@ class Desk
                 'open' => $openId !== null ? intval($openId) : null,
                 'queue' => isset(static::QUEUES[$request->get('queue')]) ? strval($request->get('queue')) : 'todo',
                 'queues' => static::QUEUES,
+                // a link of the report (?category= / ?customer=): the list opens filtered
+                'filter' => [
+                    'category' => ctype_digit(strval($request->get('category'))) ? strval($request->get('category')) : '',
+                    'customer' => ctype_digit(strval($request->get('customer'))) ? strval($request->get('customer')) : '',
+                ],
                 'statuses' => Its::STATUSES,
                 'statusColors' => Its::STATUS_COLORS,
                 'priorities' => Its::PRIORITIES,
@@ -1103,7 +1108,9 @@ class Desk
         }
         $month = preg_match('/^\d{4}-\d{2}$/', strval($request->get('month'))) ? strval($request->get('month')) : Carbon::now()->format('Y-m');
 
-        return $this->view('dashboard', array_merge(Report::build($month), ['month' => $month]));
+        $group = isset(Queue::GROUPS[$request->get('group')]) ? strval($request->get('group')) : '';
+
+        return $this->view('dashboard', array_merge(Report::build($month, $group), ['month' => $month, 'group' => $group, 'groups' => Queue::GROUPS, 'kinds' => Queue::kindLabels()]));
     }
 
     public function reportCsv(Request $request)
