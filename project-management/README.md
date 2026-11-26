@@ -35,6 +35,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   Wiki のツリーも、同じ ▼／▶・右クリックのメニュー・キーで開いたりたたんだりできます（たたんだページは覚えます。開いているページは隠れません）。課題の行の右クリックのメニューに「子課題を追加」「親課題を変える（編集を開く）」「課題のリンクをコピー」を足しました。
 - Favorite issues: 「お気に入り」 on the issue's detail and in the right-click menu of a row marks an issue for oneself only (nobody else sees it, nor how many have it). 「お気に入りの課題」 on the top page, or 「お気に入りだけ」 on the list across the projects, lists them.
   お気に入りの課題: 課題の詳細の「お気に入り」と、行の右クリックのメニューで、自分だけの印を付けられます（ほかの人には見えず、数も出ません）。トップの「お気に入りの課題」か、すべてのプロジェクトの課題の「お気に入りだけ」で一覧にできます。
+- More of Markdown in issue bodies, comments and wiki pages: lists inside list items (by indent), `+` bullets, numbered lists that start at another number (`3.`, `1)`), quotes of several lines and quotes inside quotes, `__bold__` / `_italic_` / `***both***` (not inside words such as snake_case), link titles (`[text](url "title")`), `<https://...>`, table column alignment (`:---:`), backslash escapes (`\*`, `\#` ...), and the language of a code fence (```` ```js ````) is no longer shown as its first line. Everything typed is still escaped first: HTML and scripts stay text, and every link opens in a new tab with `rel="noopener"`.
+  課題の本文・コメント・Wiki の Markdown で書けることを増やしました：項目の中のリスト（字下げ）、`+` の箇条書き、ほかの番号から始まる番号つきリスト（`3.`・`1)`）、何行もの引用と引用の中の引用、`__太字__`・`_斜体_`・`***両方***`（snake_case のような語の中ではそのまま）、リンクのタイトル（`[文字](URL "タイトル")`）、`<https://...>`、表の列のそろえ（`:---:`）、バックスラッシュでの打ち消し（`\*`・`\#` など）。コードの囲み（```` ```js ````）の言語名は、コードの 1 行目に出なくなりました。書いたものは今までどおり先にエスケープします（HTML・スクリプトは文字のまま、リンクは新しいタブで `rel="noopener"`）。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 

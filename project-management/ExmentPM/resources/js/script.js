@@ -3672,11 +3672,19 @@ window.PmPortalBoot = function () {
             });
         }
 
+        // A fence may name its language on the first line (```js): the name is
+        // the block's, not a line of its code. Only a word of name characters,
+        // so it can go in a class as it is.
+        html = html.replace(/```[ \t]*([A-Za-z0-9_+#.\-]+)[ \t]*\r?\n([\s\S]*?)```/g, function (m, lang, body) {
+            return keep('<pre class="bl-code" data-lang="' + lang.toLowerCase() + '">' + body.replace(/\s+$/, '') + '</pre>');
+        });
         html = html.replace(/```[ \t]*\r?\n?([\s\S]*?)```/g, function (m, body) {
             return keep('<pre class="bl-code">' + body.replace(/\s+$/, '') + '</pre>');
         });
         html = html.replace(/`([^`\r\n]+)`/g, function (m, body) { return keep('<code>' + body + '</code>'); });
-        html = html.replace(/\\([\[\]])/g, function (m, ch) {
+        // A backslash before a character markdown would read keeps the
+        // character as it is (\* \_ \# \~ \| \! \\ and the brackets).
+        html = html.replace(/\\([\[\]*_`#~|!\\])/g, function (m, ch) {
             lits.push(ch);
             return LIT + (lits.length - 1) + LIT;
         });
@@ -3685,30 +3693,49 @@ window.PmPortalBoot = function () {
         // reader's session - so on this site only a file may be one, and a
         // comment cannot make its readers' browsers call anything else here
         // (a GET logout, say). Any other safe address is an ordinary link.
-        html = html.replace(/!\[([^\]\r\n]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
+        // The title after the address ([text](url "title")) is the tooltip.
+        // It is escaped text already, so it can go in the attribute.
+        function titleAttr(title) { return title ? ' title="' + unlit(title) + '"' : ''; }
+        html = html.replace(/!\[([^\]\r\n]*)\]\(([^)\s]+)(?:[ \t]+&quot;([^\r\n]*?)&quot;)?\)/g, function (m, alt, url, title) {
             var href = unlit(url);
             if (!safeHref(href)) { return m; }
             if (!imgSrcOk(unesc(href))) {
-                return keep('<a href="' + href + '" target="_blank" rel="noopener">' + (unlit(alt) || href) + '</a>');
+                return keep('<a href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' + (unlit(alt) || href) + '</a>');
             }
-            return keep('<a class="bl-cimg" href="' + href + '" target="_blank" rel="noopener">' +
+            return keep('<a class="bl-cimg" href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' +
                 '<img src="' + href + '" alt="' + unlit(alt) + '"></a>');
         });
-        html = html.replace(/\[([^\]\r\n]+)\]\(([^)\s]+)\)/g, function (m, label, url) {
+        html = html.replace(/\[([^\]\r\n]+)\]\(([^)\s]+)(?:[ \t]+&quot;([^\r\n]*?)&quot;)?\)/g, function (m, label, url, title) {
             var href = unlit(url);
             if (!safeHref(href)) { return m; }
-            return keep('<a href="' + href + '" target="_blank" rel="noopener">' + unlit(label) + '</a>');
+            return keep('<a href="' + href + '" target="_blank" rel="noopener"' + titleAttr(title) + '>' + unlit(label) + '</a>');
+        });
+        // <https://...>: the brackets are markdown's, not the address's.
+        html = html.replace(/&lt;(https?:\/\/[^\s]+?)&gt;/g, function (m, url) {
+            var href = unlit(url);
+            if (!safeHref(unesc(href))) { return m; }
+            return keep('<a href="' + href + '" target="_blank" rel="noopener">' + href + '</a>');
         });
         // A bare address is a link too - the commonest thing anyone pastes.
         // Trailing punctuation is sentence, not URL, so it stays outside.
         html = html.replace(/https?:\/\/[^\s<>]+/g, function (m) {
+            // The text was escaped first: an address ends where a quote or an
+            // angle bracket of the sentence begins, not after its entity.
+            var cut = m.search(/&(?:quot|lt|gt|#x27);/);
+            var rest = cut >= 0 ? m.slice(cut) : '';
+            m = cut >= 0 ? m.slice(0, cut) : m;
             var tail = m.match(/[.,;:)\]}]+$/);
             var url = unlit(tail ? m.slice(0, m.length - tail[0].length) : m);
-            return keep('<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>') + (tail ? tail[0] : '');
+            return keep('<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>') + (tail ? tail[0] : '') + rest;
         });
 
+        html = html.replace(/\*\*\*([^*\r\n]+)\*\*\*/g, '<b><i>$1</i></b>');
         html = html.replace(/\*\*([^*\r\n]+)\*\*/g, '<b>$1</b>');
         html = html.replace(/(^|[^*\w])\*([^*\r\n]+)\*(?!\w)/g, '$1<i>$2</i>');
+        // The underscore forms, only around words: snake_case and a file
+        // name with underscores stay as they are.
+        html = html.replace(/(^|[^\w])__([^_\r\n]+)__(?!\w)/g, '$1<b>$2</b>');
+        html = html.replace(/(^|[^\w])_([^_\r\n]+)_(?!\w)/g, '$1<i>$2</i>');
         html = html.replace(/~~([^~\r\n]+)~~/g, '<s>$1</s>');
         html = mdBlocks(html);
 
@@ -3941,12 +3968,14 @@ window.PmPortalBoot = function () {
     // "- [ ] still to do" / "- [x] done". The box shows the state; it does
     // not change it, because the state is a character in the text and this is
     // the rendered copy of that text.
+    // The item is left open: a list indented under it goes inside it, and
+    // mdBlocks closes it (</li>) before the next item or with its list.
     function mdListItem(text) {
         var box = text.match(/^\[([ xX])\]\s+(.*)$/);
-        if (!box) { return '<li>' + text + '</li>'; }
+        if (!box) { return '<li>' + text; }
 
         return '<li class="task"><input type="checkbox" disabled' +
-            (box[1] === ' ' ? '' : ' checked') + '> ' + box[2] + '</li>';
+            (box[1] === ' ' ? '' : ' checked') + '> ' + box[2];
     }
     // Lines into blocks: headings, rules, tables, quotes, code, the two kinds
     // of list - and a <br> for each newline that stands between two ordinary
@@ -3960,7 +3989,57 @@ window.PmPortalBoot = function () {
         // Every block ends the paragraph above it, so the next ordinary line
         // opens a new one and the empty lines in between are already spent.
         function opened() { plain = false; blanks = 0; lastText = null; }
-        function closeList() { if (list) { out.push('</' + list + '>'); list = null; } lastText = null; }
+        // The lists open now, the outermost first: each with its tag and the
+        // indent of its items. An item indented under another is a list of
+        // its own inside that item.
+        var lists = [];
+        function closeList() {
+            while (lists.length) { out.push('</li></' + lists.pop().tag + '>'); }
+            list = null;
+            lastText = null;
+        }
+        function listItem(tag, width, number, text) {
+            while (lists.length && width < lists[lists.length - 1].width) {
+                out.push('</li></' + lists.pop().tag + '>');
+            }
+            var top = lists[lists.length - 1];
+            if (top && width === top.width && top.tag !== tag) {
+                out.push('</li></' + lists.pop().tag + '>');
+                top = lists[lists.length - 1];
+            }
+            if (!top || width > top.width) {
+                lists.push({ tag: tag, width: width });
+                out.push('<' + tag + (tag === 'ol' && number !== 1 ? ' start="' + number + '"' : '') + '>');
+            } else {
+                out.push('</li>');
+            }
+            list = tag;
+            out.push(mdListItem(text));
+        }
+        // Lines of a quote are gathered and written together: one quote with
+        // its lines, and a quote inside it for the lines with one more >.
+        var quote = null;
+        function quoteHtml(lines) {
+            var html = '', inner = [], first = true;
+            function flushInner() {
+                if (inner.length) { html += '<blockquote>' + quoteHtml(inner) + '</blockquote>'; inner = []; first = true; }
+            }
+            lines.forEach(function (l) {
+                var deeper = l.match(/^\s*&gt;\s?(.*)$/);
+                if (deeper) { inner.push(deeper[1]); return; }
+                flushInner();
+                html += (first ? '' : '<br>') + l;
+                first = false;
+            });
+            flushInner();
+            return html;
+        }
+        function closeQuote() {
+            if (!quote) { return; }
+            out.push('<blockquote>' + quoteHtml(quote) + '</blockquote>');
+            quote = null;
+            opened();
+        }
         // A line that was indented stays indented. Markdown drops the spaces
         // and html collapses what is left, and a stack trace or a pasted
         // listing is only readable while its shape survives. This renderer
@@ -3996,12 +4075,19 @@ window.PmPortalBoot = function () {
             var cells = function (row) {
                 return row.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
             };
+            // :--- left, :---: center, ---: right, as the divider row says
+            var align = cells(rows[1]).map(function (c) {
+                c = c.trim();
+                var left = c.charAt(0) === ':', right = c.charAt(c.length - 1) === ':';
+                return left && right ? 'center' : (right ? 'right' : (left ? 'left' : ''));
+            });
+            var at = function (n) { return align[n] ? ' style="text-align:' + align[n] + '"' : ''; };
             var t = '<table><thead><tr>';
-            cells(rows[0]).forEach(function (c) { t += '<th>' + c.trim() + '</th>'; });
+            cells(rows[0]).forEach(function (c, n) { t += '<th' + at(n) + '>' + c.trim() + '</th>'; });
             t += '</tr></thead><tbody>';
             for (i = 2; i < rows.length; i++) {
                 t += '<tr>';
-                cells(rows[i]).forEach(function (c) { t += '<td>' + c.trim() + '</td>'; });
+                cells(rows[i]).forEach(function (c, n) { t += '<td' + at(n) + '>' + c.trim() + '</td>'; });
                 t += '</tr>';
             }
             out.push(t + '</tbody></table>');
@@ -4019,6 +4105,8 @@ window.PmPortalBoot = function () {
             opened();
         }
         html.split(/\r?\n/).forEach(function (line) {
+            var quoted = line.match(/^\s*&gt;\s?(.*)$/);
+            if (quote && !quoted) { closeQuote(); }
             if (code) {
                 // A blank line is only a gap inside the block; anything that
                 // has come back to the margin has left it.
@@ -4068,20 +4156,19 @@ window.PmPortalBoot = function () {
                 code = [line.replace(/^(?: {4}|\t)/, '')];
                 return;
             }
-            var ul = line.match(/^\s*[-*]\s+(.*)$/);
-            var ol = line.match(/^\s*\d+\.\s+(.*)$/);
-            var quote = line.match(/^\s*&gt;\s?(.*)$/);
+            var ul = line.match(/^([ \t]*)[-*+]\s+(.*)$/);
+            var ol = line.match(/^([ \t]*)(\d{1,9})[.)]\s+(.*)$/);
             if (ul || ol) {
-                var want = ul ? 'ul' : 'ol';
-                if (list !== want) { closeList(); out.push('<' + want + '>'); list = want; }
-                out.push(mdListItem(ul ? ul[1] : ol[1]));
+                var lead = (ul || ol)[1].replace(/\t/g, '    ').length;
+                listItem(ul ? 'ul' : 'ol', lead, ol ? parseInt(ol[2], 10) : 1, ul ? ul[2] : ol[3]);
                 opened();
                 return;
             }
             closeList();
-            if (quote) { out.push('<blockquote>' + quote[1] + '</blockquote>'); opened(); return; }
+            if (quoted) { quote = quote || []; quote.push(quoted[1]); return; }
             pushLine(line);
         });
+        closeQuote();
         closeCode();
         closeList();
         closeTable();
