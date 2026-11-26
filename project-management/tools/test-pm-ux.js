@@ -460,6 +460,15 @@ test('HELP-1: the ? box says what the buttons of this screen do', () => {
     assert.ok(langJa.indexOf('// HELP-1') > 0);
 });
 
+test('HELP-1 fix: the ? box and the palette start under the fixed header', () => {
+    const bootSrc = read('boot.js');
+    assert.ok(/querySelector\('\.main-header'\)/.test(functionSource(bootSrc, 'ppTopSafe')));
+    assert.ok(/--pp-top-safe', ppTopSafe\(\)/.test(functionSource(bootSrc, 'keyHelp')));
+    assert.ok(/--pp-top-safe', ppTopSafe\(\)/.test(functionSource(read('palette.js'), 'palOpen')));
+    assert.ok(style.indexOf('.pmportal .pp-keyhelp{align-items:flex-start;padding:calc(var(--pp-top-safe, 0px) + 8px) 16px 16px;}') > 0);
+    assert.ok(style.indexOf('.pmportal .pp-keyhelp .in{max-height:calc(100vh - var(--pp-top-safe, 0px) - 24px);overflow:auto;}') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

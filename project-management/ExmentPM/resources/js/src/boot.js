@@ -99,6 +99,18 @@
             lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
             '<div class="pp-sh-tip">' + esc(L.sh_palette) + '</div></div>';
     }
+    // Where a box over the page may start: under Exment's fixed header (50px
+    // on a desktop, 100px on a phone where it wraps), measured when the box
+    // opens. 0 where there is no fixed header.
+    function ppTopSafe() {
+        var head = document.querySelector('.main-header');
+        if (!head) { return 0; }
+        var pos = '';
+        try { pos = window.getComputedStyle(head).position; } catch (e) { pos = ''; }
+        if (pos !== 'fixed' && pos !== 'sticky') { return 0; }
+        var r = head.getBoundingClientRect();
+        return r.bottom > 0 ? Math.round(r.bottom) : 0;
+    }
     function keyHelp(show) {
         var box = document.getElementById('pp-keyhelp');
         if (!show) { if (box) { box.remove(); } return; }
@@ -121,6 +133,7 @@
         box.addEventListener('click', function (ev) {
             if (ev.target === box || (ev.target.closest && ev.target.closest('.x'))) { keyHelp(false); }
         });
+        box.style.setProperty('--pp-top-safe', ppTopSafe() + 'px');
         (root.closest('.pmportal') || root).appendChild(box);
         var x = box.querySelector('.x');
         if (x) { x.focus(); }

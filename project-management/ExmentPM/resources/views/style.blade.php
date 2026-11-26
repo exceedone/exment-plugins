@@ -2012,4 +2012,14 @@ body.pp-ib-open{overflow:hidden;}
 /* HELP-1: what this screen's buttons do, above the keys in the ? box */
 .pmportal .pp-keyhelp .pp-sh ul{margin:0 0 4px;padding-left:18px;font-size:13px;color:var(--bl-ink);line-height:1.6;}
 .pmportal .pp-keyhelp .pp-sh-tip{font-size:12px;color:var(--bl-sub);margin:2px 0 6px;}
+/* The ? box and the palette start under Exment's fixed header (--pp-top-safe, measured when they
+   open) and stay within the screen, scrolling inside. */
+.pmportal .pp-keyhelp{align-items:flex-start;padding:calc(var(--pp-top-safe, 0px) + 8px) 16px 16px;}
+.pmportal .pp-keyhelp .in{max-height:calc(100vh - var(--pp-top-safe, 0px) - 24px);overflow:auto;}
+.pmportal .pp-pal{padding-top:max(12vh, calc(var(--pp-top-safe, 0px) + 8px));}
+.pmportal .pp-pal .in{max-height:min(70vh, calc(100vh - var(--pp-top-safe, 0px) - 24px));}
+@media (max-width:560px){
+  .pmportal .pp-pal{padding-top:calc(var(--pp-top-safe, 0px) + 8px);}
+  .pmportal .pp-pal .in{max-height:calc(100vh - var(--pp-top-safe, 0px) - 16px);}
+}
 </style>

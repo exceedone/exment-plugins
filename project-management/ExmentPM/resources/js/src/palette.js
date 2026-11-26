@@ -187,6 +187,7 @@
                 palOpen(false);
             }
         });
+        box.style.setProperty('--pp-top-safe', ppTopSafe() + 'px');
         (root.closest('.pmportal') || root).appendChild(box);
         PAL.el = box;
         palRender();
