@@ -220,6 +220,12 @@
             show('home');
             return;
         }
+        // ISS02931: an address that names only a comment (#comment-12). Its
+        // issue is looked up - in the details already here, else on the
+        // server - and the address becomes the issue's with ?c=12, which
+        // scrolls to the comment and marks it.
+        var cm = path.match(/^comment-(\d+)$/);
+        if (cm) { commentRoute(cm[1]); return; }
         var m = path.match(/^issue-(.+)$/);
         if (m) {
             var id = resolveIssueRef(m[1]);
@@ -315,6 +321,33 @@
             filterToUrl();
         }
         show(path);
+    }
+    function commentRoute(cid) {
+        var to = function (hash) {
+            if (history.replaceState) { history.replaceState(null, '', hash); } else { location.hash = hash; }
+            route();
+        };
+        var found = null;
+        Object.keys(DET).forEach(function (key) {
+            if (found !== null) { return; }
+            var det = DET[key];
+            (det && det.timeline || []).forEach(function (e) {
+                if (e.tp === 'cmt' && String(e.cid) === String(cid)) { found = key; }
+            });
+        });
+        var row = found !== null ? issueById(found) : null;
+        if (row) { to('#issue-' + keyRef(row) + '?c=' + encodeURIComponent(cid)); return; }
+        if (!(D.urls && D.urls.base)) { to('#issues'); return; }
+        $.getJSON(D.urls.base + '/comment/' + encodeURIComponent(cid)).then(function (res) {
+            if (!alive()) { return; }
+            var url = res && res.ok ? String(res.url || '') : '';
+            var at = url.indexOf('#');
+            to(at >= 0 ? url.slice(at) : '#issues');
+        }, function () {
+            if (!alive()) { return; }
+            toast(L.cmt_not_found, true);
+            to('#issues');
+        });
     }
     window.addEventListener('hashchange', function onHash(ev) {
         if (!alive()) { window.removeEventListener('hashchange', onHash); return; }

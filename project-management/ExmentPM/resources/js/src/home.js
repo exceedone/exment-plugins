@@ -16,6 +16,11 @@
             '<div class="bl-projinfo"><span class="bl-projttl"><span class="bl-projname">' + esc(p.name) + '</span>' +
             (p.key ? '<span class="bl-projkey">' + esc(p.key) + '</span>' : '') +
             (p.status ? '<span class="bl-pill" style="background:' + ppColor(p.status.c) + ';">' + esc(p.status.l) + '</span>' : '') +
+            // ISS02931: the project's settings, where they are looked for -
+            // beside its name, for the people who may change them (the same
+            // rule as the 設定 tab).
+            (D.can && D.can.manage ? '<a class="bl-projset" href="#settings" title="' + esc(L.proj_settings) + '" aria-label="' + esc(L.proj_settings) + '">' +
+                '<i class="fa fa-cog"></i><span class="tx">' + esc(L.proj_settings) + '</span></a>' : '') +
             '</span><div class="bl-projmeta"><span class="mi"><i class="fa fa-calendar"></i>' +
             esc(p.start || '—') + ' 〜 ' + esc(p.end || '—') + '</span>' +
             '<span class="mi"><i class="fa fa-user"></i>' + esc(L.role_pm) + ': ' + esc(user(p.manager).n) + '</span>' +

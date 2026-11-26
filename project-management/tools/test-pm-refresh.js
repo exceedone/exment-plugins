@@ -227,6 +227,40 @@ test('a mark that failed is sent again at the next opening', () => {
     assert.strictEqual(env.timers.length, 1);
 });
 
+// ISS02931: the other people of an issue on the list, and set from the issue.
+test('the role filter matches the person in that role only', () => {
+    const rlMatch = new Function(functionSource(list, 'rlMatch') + '; return rlMatch;')();
+    const i = { sa: [3], mg: [5], rv: [] };
+    assert.strictEqual(rlMatch(i, 'sa:3'), true);
+    assert.strictEqual(rlMatch(i, 'mg:3'), false);
+    assert.strictEqual(rlMatch(i, 'rv:5'), false);
+    assert.strictEqual(rlMatch({}, 'sa:3'), false, 'a row without the column');
+    assert.strictEqual(rlMatch(i, 'zz:3'), true, 'a value off the address bar that names no role filters nothing');
+    assert.ok(/'rl'/.test(list.slice(0, list.indexOf('\n', list.indexOf('var FILTER_FIELDS')))), 'rl rides in the URL and the saved filters');
+});
+
+test('a saved role or notified-users field comes back as user ids', () => {
+    const qeRowValue = new Function(functionSource(writes, 'qeRowValue') + '; return qeRowValue;')();
+    ['sa', 'mg', 'rv', 'nu'].forEach((k) => assert.deepStrictEqual(qeRowValue(k, ['3', '0', 'x', 5]), [3, 5], k));
+    assert.strictEqual(qeRowValue('df', 'hard'), 'hard');
+});
+
+test('the dock and the issue-side pencils save through one function', () => {
+    const post = functionSource(writes, 'postComment');
+    assert.ok(/qeSaveFields\(issueId, changed, version\)/.test(post), 'the dock calls qeSaveFields');
+    const detail = read('issue-detail.js');
+    assert.ok(/qeSaveFields\(issueId, changed, /.test(functionSource(detail, 'qfOpen')), 'the pencils call qeSaveFields');
+    assert.ok(/fetch\(fieldsUrl/.test(functionSource(writes, 'qeSaveFields')), 'through the row API');
+});
+
+test('each comment carries its own link, and #comment-<id> is a route', () => {
+    const detail = read('issue-detail.js');
+    const tl = functionSource(detail, 'renderTimeline');
+    assert.ok(/class="pp-ccopy" data-cid=/.test(tl), 'a copy-link button on every comment');
+    const routing = read('routing.js');
+    assert.ok(functionSource(routing, 'route').indexOf('path.match(/^comment-(\\d+)$/)') >= 0, 'route() knows #comment-<id>');
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

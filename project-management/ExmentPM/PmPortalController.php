@@ -1133,6 +1133,9 @@ class PmPortalController extends AdminControllerBase
             }
         }
 
+        // The address the bells, the mail and Teams link to: the comment
+        // itself once there is one (the screen scrolls to it), else the issue.
+        $notice_url = $this->issueUrl($project, $issue);
         if ($comment !== '') {
             try {
                 $model = CustomTable::getEloquent(SystemTableName::COMMENT)->getValueModel();
@@ -1153,6 +1156,7 @@ class PmPortalController extends AdminControllerBase
             // Exment's refreshdata empties the comment table. A comment this
             // new cannot have been starred yet.
             Star::purge('comment', $model->id);
+            $notice_url = static::commentUrl($notice_url, $model->id);
 
             // Review request (ISS00341): the picked people are asked to
             // confirm this comment. After the purge above, which would take
@@ -1206,7 +1210,7 @@ class PmPortalController extends AdminControllerBase
             ])));
         }
         try {
-            $this->ringPortalBells($request, $project, $issue, $bell_mark, implode("\n", $lines));
+            $this->ringPortalBells($request, $project, $issue, $bell_mark, implode("\n", $lines), $notice_url);
         } catch (\Throwable $e) {
             // Saved is saved: an error answer now would only get the comment
             // posted a second time.
@@ -1228,7 +1232,7 @@ class PmPortalController extends AdminControllerBase
             $this->issueKey($project, $issue->id),
             strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
             $lines,
-            $this->issueUrl($project, $issue),
+            $notice_url,
             $this->wantsMail($request)
         );
 
@@ -1801,7 +1805,7 @@ class PmPortalController extends AdminControllerBase
      * @param \Exceedone\Exment\Model\CustomValue $project
      * @param \Exceedone\Exment\Model\CustomValue $issue
      */
-    protected function ringPortalBells(Request $request, $project, $issue, int $bell_mark, string $body): void
+    protected function ringPortalBells(Request $request, $project, $issue, int $bell_mark, string $body, ?string $url = null): void
     {
         $me = intval(\Exment::getUserId());
         $issue_name = $this->issue_table->table_name;
@@ -1832,7 +1836,7 @@ class PmPortalController extends AdminControllerBase
             . strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')));
         // the issue's address under the text: on the notification's own page
         // it is the way to the issue
-        $body = PortalDefinition::notifyBodyWithLink($body, $this->issueUrl($project, $issue));
+        $body = PortalDefinition::notifyBodyWithLink($body, $url ?? $this->issueUrl($project, $issue));
         foreach ($targets as $target_user_id) {
             try {
                 $notify = new NotifyNavbar();
@@ -1986,6 +1990,38 @@ class PmPortalController extends AdminControllerBase
         }
 
         return response()->json(['ok' => true, 'files' => $out]);
+    }
+
+    /**
+     * The address of one comment: the issue's page with ?c=<id> on its hash
+     * (#issue-KEY?c=12). The hash is the portal's router, so the comment
+     * rides in its query; the screen scrolls to the comment and marks it.
+     */
+    public static function commentUrl(string $issue_url, $comment_id): string
+    {
+        return $issue_url . '?c=' . rawurlencode(strval($comment_id));
+    }
+
+    /**
+     * Which issue a comment of this project hangs off, for an address that
+     * names only the comment (#comment-12). GET {id}/comment/{comment_id}.
+     */
+    public function commentIssue(Request $request, $id, $comment_id)
+    {
+        $project = $this->findProject($id);
+        $comment = ctype_digit(strval($comment_id)) ? getModelName(SystemTableName::COMMENT)::find($comment_id) : null;
+        if (!isset($comment) || strval($comment->parent_type) !== $this->issue_table->table_name) {
+            return $this->messageError(404, 'not_found');
+        }
+        // 404 when the issue is not this project's or the user cannot see it
+        $issue = $this->findIssue($project, $comment->parent_id);
+
+        return response()->json([
+            'ok' => true,
+            'issue' => intval($issue->id),
+            'comment' => intval($comment->id),
+            'url' => static::commentUrl($this->issueUrl($project, $issue), $comment->id),
+        ]);
     }
 
     /**
@@ -2941,6 +2977,11 @@ class PmPortalController extends AdminControllerBase
             // an install that has not run the upgrade simply has not got them,
             // and the form has to lay out whatever is actually there.
             'issue_extra_cols' => array_get($this->def, 'issue_extra', []),
+            // ...and which of them the table really has: the issue screen and
+            // the list offer only those (an install that has not run the
+            // upgrade has not got the roles of schema 27).
+            'issue_extra_on' => $this->issueExtraOn(),
+            'difficulties' => PortalSchema::DIFFICULTIES,
             'related_table' => $related_meta['table'],
             'related_cols' => $related_meta['cols'],
             'wiki_table' => $this->def['wiki_table'],
@@ -3401,6 +3442,9 @@ class PmPortalController extends AdminControllerBase
             'mg' => $this->userIds($v, 'managers'),
             'rv' => $this->userIds($v, 'reviewers'),
             'df' => strval(array_get($v, array_get($this->def, 'issue_extra.difficulty', 'difficulty'), '')),
+            // The people told of every change (お知らせ先), shown and set on
+            // the issue's own side as well as in the form.
+            'nu' => $this->userIds($v, 'notified_users'),
         ];
         if ($lean) {
             // Rebuilt by the page's script (unpackRows) from the id, the
@@ -3439,7 +3483,7 @@ class PmPortalController extends AdminControllerBase
     const ROW_DEFAULTS = [
         'sub' => '', 'rc' => '', 'ms' => '', 'dt' => '', 'df' => '',
         'sd' => null, 'dd' => null, 'pg' => null, 'eh' => null, 'ah' => null, 'parent' => null, 'by' => null,
-        'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [],
+        'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [], 'nu' => [],
         'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'unread' => false,
     ];
 
@@ -3464,6 +3508,23 @@ class PmPortalController extends AdminControllerBase
                 }
             }
             $out[] = $row;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The added issue columns the issue screen and the list show and set,
+     * by role, and whether the issue table has each one.
+     *
+     * @return array<string, bool>
+     */
+    protected function issueExtraOn(): array
+    {
+        $out = [];
+        foreach (array_merge(PortalSchema::ROLE_COLUMNS, ['difficulty', 'notified_users']) as $role) {
+            $column = strval(array_get($this->def, 'issue_extra.' . $role, PortalSchema::ISSUE_COLUMNS[$role] ?? $role));
+            $out[$role] = $column !== '' && CustomColumn::getEloquent($column, $this->issue_table) !== null;
         }
 
         return $out;
