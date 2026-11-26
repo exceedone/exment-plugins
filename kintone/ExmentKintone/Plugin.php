@@ -14,7 +14,7 @@ use Exceedone\Exment\Services\Plugin\PluginPageBase;
  * Exment builds the class of a page plugin on every request (and the data sync asks for it in a
  * worker and in a command): this is where the connector is registered.
  */
-class PluginPage extends PluginPageBase
+class Plugin extends PluginPageBase
 {
     /**
      * @param \Exceedone\Exment\Model\Plugin $plugin

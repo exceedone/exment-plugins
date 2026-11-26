@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Http;
  * the apps of the tokens) or the login name and the password of a user (then the apps are
  * listed). The secrets are kept encrypted by Exment and never written to a log.
  *
- * Loaded only when Exment has the data sync (PluginPage): the interface is not in Exment 7.2.
+ * Loaded only when Exment has the data sync (Plugin): the interface is not in Exment 7.2.
  */
 class KintoneConnector implements SyncConnector
 {

@@ -1,4 +1,4 @@
-{{-- Exment Plugin kintone 連携: PluginPage@index --}}
+{{-- Exment Plugin kintone 連携: Plugin@index --}}
 @php $t = function ($key, $replace = []) { return \App\Plugins\ExmentKintone\Lang::t($key, $replace); }; @endphp
 <div class="box box-default">
     <div class="box-header with-border"><h3 class="box-title">{{ $t('title') }}</h3></div>
