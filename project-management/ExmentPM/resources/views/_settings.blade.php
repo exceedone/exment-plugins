@@ -13,6 +13,7 @@
         'set' => PortalDefinition::trans('set'),
         'git' => PortalDefinition::trans('git_repo'),
         'fs' => PortalDefinition::trans('fileserver'),
+        'ch' => PortalDefinition::trans('channels'),
         'ai' => PortalDefinition::trans('ai'),
         'required' => PortalDefinition::trans('ned_required'),
         'none' => PortalDefinition::trans('ned_none'),
@@ -93,6 +94,8 @@
         'git_token_url' => $payload['urls']['git_token'],
         'file_workspace_url' => $payload['urls']['file_workspace'] ?? null,
         'fileserver' => $payload['fileserver'] ?? ['on' => false],
+        'channels_url' => $payload['urls']['channels'] ?? null,
+        'channels' => $payload['channels'] ?? ['on' => false],
         'delete_url' => $payload['urls']['delete_project'],
         'dashboard_url' => $payload['urls']['dashboard'],
         'map' => $payload['settings_map'] ?? [],
@@ -158,6 +161,10 @@
     // The workspace of the Files tab, while the feature is on (ISS02825).
     if (boolval(array_get($setData, 'fileserver.on'))) {
         $setSections[] = ['fileserver', $st('tab_fileserver'), 'fa-folder-open'];
+    }
+    // The chat channels, while the feature is on (ISS02939).
+    if (boolval(array_get($setData, 'channels.on'))) {
+        $setSections[] = ['channels', $st('tab_channels'), 'fa-comments-o'];
     }
     if ($setData['can_delete']) {
         $setSections[] = ['danger', $st('tab_danger'), 'fa-trash-o'];
@@ -1846,9 +1853,153 @@
             return frag;
         }
 
+        // ---- the chat channels (ISS02939) ----------------------------------
+        var CH = S.channels || {};
+        function paneChannels() {
+            var frag = document.createDocumentFragment();
+            var C = LANG.ch || {};
+            var typeName = { slack: 'Slack', teams: 'Microsoft Teams', line_works: 'LINE WORKS', chatwork: 'Chatwork', webhook: C.type_webhook || 'Webhook (JSON)' };
+            var post = function (body, btn, err) {
+                err.hidden = true;
+                if (btn) { btn.disabled = true; }
+                fetch(S.channels_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(body)
+                }).then(readJson).then(function (res) {
+                    var j = res.body || {};
+                    if (res.status === 200 && j.ok) {
+                        CH = j.channels || CH;
+                        renderPane('channels');
+                        say(j.message || C.saved || '', j.sent === false ? 'err' : 'ok');
+                        return;
+                    }
+                    err.textContent = errText(res.status, res.body, L.save_fail);
+                    err.hidden = false;
+                    if (btn) { btn.disabled = false; }
+                }).catch(function () {
+                    err.textContent = errText(0, null, L.save_fail);
+                    err.hidden = false;
+                    if (btn) { btn.disabled = false; }
+                });
+            };
+            var input = function (label, value, placeholder, help) {
+                var f = el('div', 'pp-set-f');
+                f.appendChild(el('label', 'pp-set-lab', label));
+                var i = el('input', 'pp-set-in');
+                i.type = 'text';
+                i.value = value || '';
+                i.placeholder = placeholder || '';
+                i.autocomplete = 'off';
+                f.appendChild(i);
+                if (help) { f.appendChild(el('div', 'help', help)); }
+                return [f, i];
+            };
+            // one channel: kept (c.id) or new (the type chosen)
+            var card = function (c, type) {
+                var box = el('div', 'pp-set-card');
+                box.style.cssText = 'border:1px solid #dfe5ea;border-radius:7px;padding:12px;margin-bottom:12px;';
+                var err = el('div', 'err');
+                err.hidden = true;
+                box.appendChild(el('div', 'pp-set-lab', (typeName[type] || type) + (c.id ? '' : ' — ' + (C.new_channel || ''))));
+                var lab = input(C.label || '', c.label, C.label_ph || '');
+                box.appendChild(lab[0]);
+                var sec = null, tgt = null, sign = null;
+                if (type === 'line_works') {
+                    tgt = input(C.lw_channel || '', c.target, '', C.lw_help || '');
+                } else if (type === 'chatwork') {
+                    tgt = input(C.cw_room || '', c.target, '', C.cw_room_help || '');
+                    sec = input(C.cw_token || '', '', c.masked ? (C.keep || '') + ' (' + c.masked + ')' : '', C.cw_token_help || '');
+                } else {
+                    sec = input(C.url || '', '', c.masked ? (C.keep || '') + ' (' + c.masked + ')' : 'https://', C['url_help_' + type] || '');
+                    if (type === 'webhook') {
+                        sign = input(C.sign || '', '', c.signed ? (C.sign_kept || '') : '', C.sign_help || '');
+                    }
+                }
+                [tgt, sec, sign].forEach(function (x) { if (x) { box.appendChild(x[0]); } });
+                var ev = el('div', 'pp-set-f');
+                ev.appendChild(el('label', 'pp-set-lab', C.events || ''));
+                var checks = {};
+                (CH.events || []).forEach(function (name) {
+                    var l = el('label', null);
+                    l.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin-right:14px;font-weight:400;';
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = c.id ? (c.events || []).indexOf(name) >= 0 : true;
+                    checks[name] = cb;
+                    l.appendChild(cb);
+                    l.appendChild(document.createTextNode(C['ev_' + name] || name));
+                    ev.appendChild(l);
+                });
+                box.appendChild(ev);
+                var on = el('label', null);
+                on.style.cssText = 'display:inline-flex;align-items:center;gap:4px;font-weight:400;';
+                var onCb = document.createElement('input');
+                onCb.type = 'checkbox';
+                onCb.checked = c.id ? !!c.enabled : true;
+                on.appendChild(onCb);
+                on.appendChild(document.createTextNode(C.enabled || ''));
+                var onRow = el('div', 'pp-set-f');
+                onRow.appendChild(on);
+                box.appendChild(onRow);
+                var save = el('button', 'pp-set-btn main', c.id ? (C.save || '') : (C.add || ''));
+                save.type = 'button';
+                save.addEventListener('click', function () {
+                    var body = { action: 'save', id: c.id || 0, type: type, label: lab[1].value, enabled: onCb.checked ? 1 : 0, events: [] };
+                    Object.keys(checks).forEach(function (k) { if (checks[k].checked) { body.events.push(k); } });
+                    if (sec) { body.secret = sec[1].value; }
+                    if (tgt) { body.target = tgt[1].value; }
+                    if (sign) { body.sign_secret = sign[1].value; }
+                    post(body, save, err);
+                });
+                box.appendChild(save);
+                if (c.id) {
+                    var test = el('button', 'pp-set-btn', C.test || '');
+                    test.type = 'button';
+                    test.style.marginLeft = '8px';
+                    test.addEventListener('click', function () { post({ action: 'test', id: c.id }, test, err); });
+                    var rm = el('button', 'pp-set-btn', C.remove || '');
+                    rm.type = 'button';
+                    rm.style.marginLeft = '8px';
+                    rm.addEventListener('click', function () {
+                        if (window.confirm(C.remove_confirm || '')) { post({ action: 'remove', id: c.id }, rm, err); }
+                    });
+                    box.appendChild(test);
+                    box.appendChild(rm);
+                }
+                box.appendChild(err);
+                return box;
+            };
+            frag.appendChild(el('div', 'pp-set-note', C.note || ''));
+            (CH.channels || []).forEach(function (c) { frag.appendChild(card(c, c.type)); });
+            if ((CH.channels || []).length < (CH.max || 10)) {
+                var add = el('div', 'pp-set-f');
+                add.appendChild(el('label', 'pp-set-lab', C.add_label || ''));
+                var sel = el('select', 'pp-set-in');
+                (CH.types || []).forEach(function (t) {
+                    var o = document.createElement('option');
+                    o.value = t;
+                    o.textContent = typeName[t] || t;
+                    sel.appendChild(o);
+                });
+                add.appendChild(sel);
+                var slot = el('div', null);
+                slot.style.marginTop = '8px';
+                var draw = function () { slot.textContent = ''; slot.appendChild(card({}, sel.value)); };
+                sel.addEventListener('change', draw);
+                add.appendChild(slot);
+                frag.appendChild(add);
+                draw();
+            } else {
+                frag.appendChild(el('div', 'help', C.max_reached || ''));
+            }
+            return frag;
+        }
+
         var PANES = {
             basic: paneBasic, people: panePeople, features: paneFeatures,
-            other: paneOther, git: paneGit, ai: paneAi, danger: paneDanger, fileserver: paneFiles,
+            other: paneOther, git: paneGit, ai: paneAi, danger: paneDanger, fileserver: paneFiles, channels: paneChannels,
             statuses: function () { return paneList('statuses'); },
             types: function () { return paneList('types'); },
             categories: function () { return paneList('categories'); },
@@ -1870,7 +2021,7 @@
             // The save bar belongs to the panes that edit project columns.
             // Git and delete carry their own buttons, and a master list
             // saves each row the moment it is changed.
-            foot.hidden = ['git', 'fileserver', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
+            foot.hidden = ['git', 'fileserver', 'channels', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
             nav.querySelectorAll('a').forEach(function (a) {
                 a.classList.toggle('on', a.getAttribute('data-sec') === name);
             });

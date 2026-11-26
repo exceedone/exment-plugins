@@ -65,6 +65,10 @@ class PluginEvent extends PluginEventBase
 
         static::clearMidnightDueTime($model);
         static::check($model);
+        // what the issue was, for its chat channels after the save (ISS02939)
+        if ($model->custom_table->table_name === array_get(PortalDefinition::config(), 'issue_table')) {
+            PortalChannels::issueSaving($model);
+        }
     }
 
     /**
@@ -229,6 +233,12 @@ class PluginEvent extends PluginEventBase
 
         if ($table_name === array_get($def, 'issue_table')) {
             PortalMembership::watchIssue($model);
+            // a new issue or a new status, told to the project's chat channels (ISS02939)
+            try {
+                PortalChannels::issueSaved($model);
+            } catch (\Throwable $e) {
+                Log::warning('pm_portal channels: issue ' . $model->id . ' (' . get_class($e) . ')');
+            }
 
             return;
         }
