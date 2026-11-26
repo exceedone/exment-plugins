@@ -6,6 +6,17 @@
 
     <p><a class="btn btn-primary btn-sm" href="{{ $url('new') }}"><i class="fa fa-plus"></i> {{ $L['add'] }}</a></p>
 
+    @if (!empty($hasSync))
+        <div class="alert alert-info">
+            <strong>{{ $L['sync_header'] }}</strong><br>{{ $L['sync_help'] }}
+            <form method="post" action="{{ $url('to-sync') }}" style="margin-top:8px;">
+                <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-default btn-sm">{{ $L['sync_move'] }}</button>
+                <a class="btn btn-link btn-sm" href="{{ $syncUrl }}">{{ $syncUrl }}</a>
+            </form>
+        </div>
+    @endif
+
     @if (empty($rows))
         <p>{{ $L['none'] }}</p>
     @else
@@ -23,7 +34,7 @@
                 <td>{{ $r['conn']->backlog_project_key }}<br><small style="color:#888;">{{ $r['conn']->space_url }}</small></td>
                 <td>{{ $r['project'] }}</td>
                 <td>{{ str_replace(':n', $r['conn']->interval_minutes, $L['minutes']) }}</td>
-                <td>{{ $r['conn']->enabled ? $L['on'] : $L['off'] }}</td>
+                <td>{{ !empty($hasSync) && !empty($r['conn']->sync_mapping_id) ? $L['sync_is_moved'] : ($r['conn']->enabled ? $L['on'] : $L['off']) }}</td>
                 <td>{{ $r['issues'] }}</td>
                 <td>{{ $r['conn']->last_run_at ? substr($r['conn']->last_run_at, 0, 16) : '—' }}</td>
                 <td>{{ $r['conn']->enabled && $r['conn']->next_run_at ? substr($r['conn']->next_run_at, 0, 16) : '—' }}</td>

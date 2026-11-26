@@ -46,6 +46,7 @@ php artisan exment:batch --name=ExmentPMBacklog --param1=<id> --param2=<件数> 
 
 ## 変更 / Changes
 
+- Unreleased / 未リリース: Exment 7.3.0 以降では、つながりを Exment の「データ同期」に移せます（一覧の「データ同期に移す」、1 回だけ・もう移したものはそのまま）。移したつながりは、データ同期が決まった時間・試し実行・記録・失敗のお知らせを受け持ち、課題・コメント・添付の書き方は今までどおりです。取り込んだ課題の対応（pmbl_links）をそのまま使うので、二重には入りません。移したつながりは、このプラグインのバッチでは動かしません。API キーは Exment が暗号化して持ちます。Exment 7.2 では今までどおり動きます。On Exment 7.3.0 or later a connection can be moved to Exment's "Data sync" (once; one moved before is left as it is): the data sync runs it (schedule, dry run, runs, failure notice), the issues, comments and attachments are written as before, and the links of the issues are kept, so nothing is imported twice. The plugin's batch leaves a moved connection alone. On Exment 7.2 nothing changes.
 - Unreleased / 未リリース: エラーのメッセージ（実行の記録・ログ・お知らせ・画面）から、API キーなどの秘密の値を取り除くようにしました。Secret values (such as the API key) are taken out of the error messages (the runs, the log, the notices, the screen).
 - Unreleased / 未リリース: 動かすつながりがないときも、バッチは成功（終了コード 0）で終わる（前は 1 で、5 分ごとにエラーのログが出ていた）。つながりが失敗したときは 1 のまま。The batch ends with 0 when no connection is due (it was 1, logged as an error every five minutes); 1 when a connection failed.
 - 0.2.1: Backlog で詳細を変えたコメントは「詳細: 変更しました」とだけ書く（前と後の全文を写さない。1 件で数 MB になっていた）
