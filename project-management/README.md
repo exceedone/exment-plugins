@@ -41,6 +41,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   保存してある課題の本文に、画像でないファイルを貼る・落とすと、その課題に添付して、本文にリンクを入れます（コメント欄は前からできていました）。画像は今までどおりです。新しい課題と Wiki では、「ファイル」から添付するよう案内します。
 - The form of an issue shows the time of the due date right under the start and due dates (it was folded in 「その他の項目」, and was not found when an issue was added).
   課題のフォームで、期限日の時刻を、開始日・期限日のすぐ下に出すようにしました（「その他の項目」の中にたたまれていて、課題を追加するときに見つからなかった）。
+- A person named on a project (manager, member, viewer) or on an issue (assignee) gets its share on every save, also when they are not in a role group of ExmentPM yet: before, a project made before its people were put in the role groups could not be opened by them later. For the projects and issues there are, run once `php artisan exment:batch --name=ExmentPM --param1=shares` (`--param3=dry` only counts).
+  プロジェクトの管理者・メンバー・閲覧者や、課題の担当者に入れた人には、保存のたびに共有を付けるようにしました（役割グループに入る前の人にも）。前は、役割グループに入れる前に作ったプロジェクトを、あとから開けませんでした。今あるプロジェクトと課題には、1 回だけ `php artisan exment:batch --name=ExmentPM --param1=shares` を実行してください（`--param3=dry` で数えるだけ）。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 

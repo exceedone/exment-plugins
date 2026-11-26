@@ -603,6 +603,73 @@ class PortalMembership
         $changes = static::changes(static::roles($before, true), static::roles($after, true));
         $orgChanges = static::changes(static::orgRoles($before, true), static::orgRoles($after, true));
         static::apply($project, $changes, $orgChanges);
+        static::ensureShares($project);
+    }
+
+    /**
+     * The shares the share settings of the row's table give the people and the organizations its
+     * columns name (the manager, the members and the viewers of a project, the assignees of an
+     * issue), also to the ones not in a role group of the table yet (ISS00385).
+     *
+     * Exment gives a share only to a user who may use the table already, so a project made before
+     * its people were put in the role groups was never shared with them, and they could not open it
+     * once they were. The share itself gives nothing while its user has no role on the table; it
+     * is what lets them in when they get one. Rows already there are left as they are.
+     *
+     * @return int the shares added
+     */
+    public static function ensureShares(CustomValue $row): int
+    {
+        $table = $row->custom_table;
+        if (!isset($table) || is_nullorempty($table->share_settings)) {
+            return 0;
+        }
+        $wanted = [];
+        foreach ($table->share_settings as $setting) {
+            $column = array_get($setting, 'share_column');
+            if (!$column instanceof CustomColumn || !in_array($column->column_type, [SystemTableName::USER, SystemTableName::ORGANIZATION], true)) {
+                continue;
+            }
+            $edit = array_get($setting, 'share_permission') == \Exceedone\Exment\Enums\SharePermission::EDIT;
+            foreach (static::ids(array_get((array) $row->value, $column->column_name)) as $id) {
+                $key = $column->column_type . ':' . $id;
+                // the stronger share of two settings naming the same one
+                $wanted[$key] = ($wanted[$key] ?? false) || $edit;
+            }
+        }
+        if (empty($wanted)) {
+            return 0;
+        }
+        $held = [];
+        foreach (CustomValueAuthoritable::where('parent_type', $table->table_name)->where('parent_id', $row->id)
+            ->get(['authoritable_type', 'authoritable_user_org_type', 'authoritable_target_id']) as $share) {
+            $held[$share->authoritable_type . ':' . $share->authoritable_user_org_type . ':' . intval($share->authoritable_target_id)] = true;
+        }
+        $now = now();
+        $by = \Exment::getUserId();
+        $insert = [];
+        foreach ($wanted as $key => $edit) {
+            [$type, $id] = explode(':', $key, 2);
+            $permission = $edit ? Permission::CUSTOM_VALUE_EDIT : Permission::CUSTOM_VALUE_VIEW;
+            if (isset($held[$permission . ':' . $type . ':' . intval($id)]) || isset($held[Permission::CUSTOM_VALUE_EDIT . ':' . $type . ':' . intval($id)])) {
+                continue;
+            }
+            $insert[] = [
+                'parent_id' => intval($row->id),
+                'parent_type' => $table->table_name,
+                'authoritable_type' => $permission,
+                'authoritable_user_org_type' => $type,
+                'authoritable_target_id' => intval($id),
+                'created_at' => $now,
+                'updated_at' => $now,
+                'created_user_id' => $by,
+                'updated_user_id' => $by,
+            ];
+        }
+        foreach (array_chunk($insert, 500) as $chunk) {
+            CustomValueAuthoritable::insert($chunk);
+        }
+        return count($insert);
     }
 
     /**
@@ -794,6 +861,7 @@ class PortalMembership
         if ($issue->parent_type !== array_get($def, 'project_table') || is_nullorempty($issue->parent_id)) {
             return;
         }
+        static::ensureShares($issue);
         $assignees = static::ids(array_get((array) $issue->value, array_get($def, 'issue.assignees')));
         if (empty($assignees)) {
             return;
