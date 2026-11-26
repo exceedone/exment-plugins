@@ -20,6 +20,7 @@
 .pp-date-host{position:absolute;top:0;left:0;width:0;height:0;}
 /* Above the issue overlay, which is z-index 1090. */
 .bootstrap-datetimepicker-widget{z-index:1200;}
+.flatpickr-calendar.open{z-index:1200;}
 </style>
 <script>
 (function () {
@@ -38,6 +39,11 @@
     // and moment's locale data - so this reuses what is there instead of
     // shipping a second date library.
     //
+    // Exment 7.3 (admin-core 2.0) has neither: its forms use flatpickr, which
+    // the same layout loads with its language file. There this file uses
+    // flatpickr. The old picker stays first, so a 7.2 screen is the same as
+    // before.
+    //
     // The formats are copied from those three field classes exactly, because
     // the value an input holds here is posted straight to the API and read
     // back by the same code: changing the shape of the string would change
@@ -49,6 +55,13 @@
         date: 'YYYY-MM-DD',
         datetime: 'YYYY-MM-DD HH:mm:ss',
         time: 'HH:mm'
+    };
+
+    // The same formats, written the flatpickr way.
+    var FP_FORMATS = {
+        date: 'Y-m-d',
+        datetime: 'Y-m-d H:i:S',
+        time: 'H:i'
     };
 
     // The time an empty time field starts from when its picker is opened:
@@ -81,14 +94,73 @@
     var warned = false;
     var host = null;
 
-    function available() {
+    function hasOldPicker() {
         return !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.datetimepicker && window.moment);
+    }
+
+    function hasFlatpickr() {
+        return typeof window.flatpickr === 'function';
+    }
+
+    function available() {
+        return hasOldPicker() || hasFlatpickr();
     }
 
     function warnOnce() {
         if (warned || !window.console) { return; }
         warned = true;
-        console.warn('[PmPortal] datetimepicker or moment is missing; date fields stay plain text.');
+        console.warn('[PmPortal] no date picker (datetimepicker with moment, or flatpickr); date fields stay plain text.');
+    }
+
+    /**
+     * The flatpickr picker of one input (Exment 7.3).
+     *
+     * flatpickr writes the input and sends it a native change event, so every
+     * listener here hears it as it is; the bridge of the old picker is not
+     * needed. Its calendar is put on <body> and placed against the page when
+     * it opens, so it only has to follow the field while something scrolls.
+     */
+    function buildFlatpickr(input, type) {
+        if (input._flatpickr) { return; }
+        var l10ns = window.flatpickr.l10ns || {};
+        var follow = null;
+        var config = {
+            dateFormat: FP_FORMATS[type],
+            // Typing a date stays possible, and emptying the field clears it:
+            // "no due date" is a real value (the old picker's clear button).
+            allowInput: true,
+            // Clicking anywhere in the field opens it (it does by itself).
+            enableTime: type !== 'date',
+            noCalendar: type === 'time',
+            enableSeconds: type === 'datetime',
+            time_24hr: true,
+            // An empty time starts from noon (TIME_VIEW) when it is opened.
+            defaultHour: TIME_VIEW.hour,
+            defaultMinute: TIME_VIEW.minute,
+            onOpen: function (dates, text, instance) {
+                follow = function () { instance._positionCalendar(); };
+                window.addEventListener('scroll', follow, true);
+                window.addEventListener('resize', follow);
+            },
+            onClose: function () {
+                if (!follow) { return; }
+                window.removeEventListener('scroll', follow, true);
+                window.removeEventListener('resize', follow);
+                follow = null;
+            }
+        };
+        // Japanese, as the old picker was told; the layout loads the file of
+        // the app's language, and without it the calendar stays English.
+        if (l10ns.ja) { config.locale = 'ja'; }
+        window.flatpickr(input, config);
+    }
+
+    function build(input, type) {
+        if (hasOldPicker()) {
+            buildOldPicker(input, type);
+        } else if (hasFlatpickr()) {
+            buildFlatpickr(input, type);
+        }
     }
 
     /**
@@ -154,7 +226,7 @@
         widget.style.right = 'auto';
     }
 
-    function build(input, type) {
+    function buildOldPicker(input, type) {
         var $input = window.jQuery(input);
         if ($input.data('DateTimePicker')) { return; }
 
@@ -276,8 +348,12 @@
             input.removeEventListener('mousedown', arm);
             input.removeEventListener('focus', arm);
             flush();
-            var picker = window.jQuery(input).data('DateTimePicker');
-            if (picker) { picker.show(); }
+            var picker = window.jQuery ? window.jQuery(input).data('DateTimePicker') : null;
+            if (picker) {
+                picker.show();
+            } else if (input._flatpickr) {
+                input._flatpickr.open();
+            }
         };
         input.addEventListener('mousedown', arm);
         input.addEventListener('focus', arm);
@@ -335,8 +411,9 @@
             : (root.querySelectorAll ? root.querySelectorAll('[data-pp-date]') : []);
         Array.prototype.forEach.call(inputs, function (input) {
             try {
-                var picker = window.jQuery(input).data('DateTimePicker');
+                var picker = window.jQuery ? window.jQuery(input).data('DateTimePicker') : null;
                 if (picker) { picker.destroy(); }
+                if (input._flatpickr) { input._flatpickr.destroy(); }
             } catch (e) { /* already gone */ }
         });
     };
