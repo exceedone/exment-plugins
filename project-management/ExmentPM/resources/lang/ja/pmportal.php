@@ -1589,6 +1589,7 @@ return [
             'description' => '詳細',
             'related' => '関連課題',
         ],
+    ],
     // the issue list across the projects (ISS00264)
     'all' => [
         'title' => 'すべてのプロジェクトの課題',
@@ -1633,6 +1634,11 @@ return [
         'col_as' => '担当者',
         'col_due' => '期限日',
         'col_up' => '更新日時',
+        'dl' => 'ダウンロード',
+        'dl_xlsx_all' => 'Excel（すべての項目）',
+        'dl_xlsx_screen' => 'Excel（一覧と同じ項目）',
+        'dl_csv_all' => 'CSV（すべての項目）',
+        'dl_csv_screen' => 'CSV（一覧と同じ項目）',
     ],
     // the page of a project the user cannot open (ISS00395)
     'not_member' => [

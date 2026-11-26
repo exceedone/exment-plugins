@@ -29,6 +29,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   課題の一覧のツリーを使いやすくしました。▼／▶ の押せる範囲を 28px（タッチの画面は 36px）に広げました。ツリーの行の右クリックのメニューで、その行・その下のすべて・ツリー全体を開いたりたたんだりできます。▼／▶ を選んで ← でたたむ、→ で開く、↑／↓ でとなりへ動けます。
 - A new page lists the issues of every project the user can read (「すべてのプロジェクトの課題」, linked from the head of 「自分の課題」 on the top page): filters by project, assignee (「自分」 too), status (「完了以外」 too), priority, type — each with several values — the due date and words of the subject; sorted by due date, priority, update or number; 50 a page, filtered and paged on the server; the conditions are in the address and can be saved by name in the browser.
   見られるすべてのプロジェクトの課題を 1 つの一覧で見られるページを足しました（トップの「自分の課題」の見出しから）。プロジェクト・担当者（「自分」も）・状態（「完了以外」も）・優先度・種別をそれぞれ複数選んで、期限・件名のことばでも絞り込めます。期限・優先度・更新日時・番号で並べ替えられます。1 ページ 50 件で、絞り込みとページ分けはサーバーで行います。条件はアドレスに入り、名前を付けてブラウザーに保存できます。
+- The list across the projects downloads as Excel or CSV too (every column or the list's, with the project of each issue first), with its filters and order.
+  すべてのプロジェクトの課題も、Excel・CSV でダウンロードできます（すべての項目か一覧と同じ項目。先頭にプロジェクト）。今の絞り込みと並び順で出します。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 

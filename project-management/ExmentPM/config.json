@@ -38,6 +38,7 @@
         { "method": "get", "uri": "search", "function": "searchIssues" },
         { "method": "get", "uri": "issues", "function": "allIssues" },
         { "method": "get", "uri": "issues/data", "function": "allIssuesData" },
+        { "method": "get", "uri": "issues/export", "function": "allIssuesExport" },
         { "method": "get", "uri": "projects", "function": "topbarProjects" },
         { "method": "get", "uri": "ranking", "function": "ranking" },
         { "method": "get", "uri": "view/{key}", "function": "viewIssue" },

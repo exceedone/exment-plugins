@@ -39,6 +39,7 @@ trait PortalAllIssuesTrait
         $boot = [
             'me' => intval(\Exment::getUserId()),
             'data_url' => PortalDefinition::url('issues', 'data'),
+            'export_url' => PortalDefinition::url('issues', 'export'),
             'projects' => array_values(array_map(function ($c) {
                 return ['id' => strval($c['id']), 'n' => $c['name'], 'k' => $c['key'], 'ar' => !empty($c['archived'])];
             }, $cards)),
@@ -55,7 +56,78 @@ trait PortalAllIssuesTrait
         ]));
     }
 
-    public function allIssuesData(Request $request)
+    /**
+     * The same filters and order, as a CSV or Excel file (ISS00264 with ISS00275):
+     * GET issues/export?…&fmt=csv|xlsx&cols=all|screen. At most PortalExportTrait's maximum.
+     */
+    public function allIssuesExport(Request $request)
+    {
+        $found = $this->allIssuesData($request, true);
+        if (!is_array($found)) {
+            return $this->messageError(422, 'export_empty');
+        }
+        [$query, $cards] = $found;
+        $issues = $query->take(static::$EXPORT_MAX)->get()->all();
+        if (empty($issues)) {
+            return $this->messageError(422, 'export_empty');
+        }
+        $fmt = $request->query('fmt') === 'xlsx' ? 'xlsx' : 'csv';
+        $columns = ['project' => ['label' => strval(PortalDefinition::trans('all.col_project')), 'type' => 'text', 'col' => null]]
+            + $this->exportColumns($request->query('cols') !== 'screen');
+        $all = $request->query('cols') !== 'screen';
+
+        // the projects of the rows, read once; the related issues per project
+        $byProject = [];
+        foreach ($issues as $issue) {
+            $byProject[intval($issue->parent_id)][] = $issue;
+        }
+        $projects = [];
+        foreach ($this->project_table->getValueModel()->query()->whereIn('id', array_keys($byProject))->get() as $p) {
+            $projects[intval($p->id)] = $p;
+        }
+        $related = [];
+        if ($all) {
+            foreach ($byProject as $pid => $list) {
+                if (isset($projects[$pid])) {
+                    $related += $this->exportRelated($projects[$pid], $list);
+                }
+            }
+        }
+        $users = $this->exportUserNames($issues);
+        $rows = [];
+        foreach ($issues as $issue) {
+            $project = $projects[intval($issue->parent_id)] ?? null;
+            if (!isset($project)) {
+                continue;
+            }
+            $row = [];
+            foreach ($columns as $key => $column) {
+                $row[] = $key === 'project'
+                    ? strval(array_get($cards, intval($issue->parent_id) . '.name', ''))
+                    : $this->exportCell($project, $issue, $key, $column, $users, $related);
+            }
+            $rows[] = $row;
+        }
+        $heads = array_map(function ($c) {
+            return $c['label'];
+        }, array_values($columns));
+        $types = array_map(function ($c) {
+            return $c['type'];
+        }, array_values($columns));
+        $name = 'all-issues-' . now()->format('Ymd');
+        try {
+            return $fmt === 'xlsx' ? $this->exportXlsx($heads, $types, $rows, $name . '.xlsx') : $this->exportCsv($heads, $rows, $name . '.csv');
+        } catch (\Throwable $e) {
+            \Log::error('pm_portal export across the projects failed: ' . $e->getMessage(), ['exception' => $e]);
+
+            return PortalDefinition::jsonError(500, 'export_failed');
+        }
+    }
+
+    /**
+     * @param bool $forExport the filtered and sorted query and the cards, for allIssuesExport
+     */
+    public function allIssuesData(Request $request, bool $forExport = false)
     {
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
@@ -184,6 +256,9 @@ trait PortalAllIssuesTrait
                 $query->orderByRaw("CASE WHEN $due_key IS NULL OR $due_key = '' THEN 1 ELSE 0 END, $due_key $dir")->orderBy('id', 'desc');
         }
 
+        if ($forExport) {
+            return [$query, $cards];
+        }
         $per = static::$all_per_page;
         $pages = max(1, intval(ceil($total / $per)));
         $page = min($pages, max(1, intval($request->query('page', 1))));

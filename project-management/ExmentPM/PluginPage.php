@@ -190,9 +190,6 @@ class PluginPage extends PluginPageBase
         return $this->portal()->postComment(request(), $id, $issue_id);
     }
 
-    public function exportIssues($id)
-    {
-        return $this->portal()->exportIssues(request(), $id);
     // ISS00264: the issue list across the projects
     public function allIssues()
     {
@@ -202,6 +199,16 @@ class PluginPage extends PluginPageBase
     public function allIssuesData()
     {
         return $this->portal()->allIssuesData(request());
+    }
+
+    public function allIssuesExport()
+    {
+        return $this->portal()->allIssuesExport(request());
+    }
+
+    public function exportIssues($id)
+    {
+        return $this->portal()->exportIssues(request(), $id);
     }
 
     public function mailIssue($id, $issue_id)

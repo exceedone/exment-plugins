@@ -8,7 +8,7 @@
     $texts = [];
     foreach (['projects', 'assignees', 'me', 'status', 'open', 'priority', 'type', 'due', 'due_any', 'due_overdue', 'due_today', 'due_week', 'due_none',
               'words', 'sort_due', 'sort_pr', 'sort_up', 'sort_key', 'count', 'none', 'loading', 'fail', 'prev', 'next', 'clear', 'save', 'save_ask',
-              'saved', 'del', 'all', 'pick', 'col_key', 'col_subject', 'col_project', 'col_type', 'col_status', 'col_priority', 'col_as', 'col_due', 'col_up'] as $k) {
+              'saved', 'del', 'all', 'pick', 'dl', 'dl_xlsx_all', 'dl_xlsx_screen', 'dl_csv_all', 'dl_csv_screen', 'col_key', 'col_subject', 'col_project', 'col_type', 'col_status', 'col_priority', 'col_as', 'col_due', 'col_up'] as $k) {
         $texts[$k] = strval($a($k));
     }
 @endphp
@@ -31,6 +31,7 @@
 .pp-all .pp-a-sv .x{color:var(--a-mute);margin-left:2px;}
 .pp-all .pp-a-head{display:flex;align-items:center;gap:10px;margin:12px 0 6px;font-size:12.5px;color:var(--a-mute);}
 .pp-all .pp-a-head .pg{margin-left:auto;display:flex;gap:6px;align-items:center;}
+.pp-all .pp-a-dl a{margin-left:10px;color:var(--a-accent);font-weight:700;white-space:nowrap;}
 .pp-all .pp-a-head .pg button{border:1px solid var(--a-line);background:var(--a-box);border-radius:4px;padding:3px 9px;cursor:pointer;}
 .pp-all .pp-a-head .pg button[disabled]{opacity:.4;cursor:default;}
 .pp-all table{width:100%;border-collapse:collapse;background:var(--a-box);border:1px solid var(--a-line);border-radius:7px;overflow:hidden;font-size:12.5px;}
@@ -60,7 +61,10 @@
         <h3 style="margin:4px 0 10px;font-size:18px;"><i class="fa fa-list-ul"></i> {{ $a('title') }}</h3>
         <div class="pp-a-bar" id="pp-a-bar"></div>
         <div class="pp-a-sv" id="pp-a-sv"></div>
-        <div class="pp-a-head"><span id="pp-a-count"></span><span class="pg" id="pp-a-pg"></span></div>
+        <div class="pp-a-head"><span id="pp-a-count"></span>
+            {{-- the same list as a file (ISS00275) --}}
+            <span class="pp-a-dl" id="pp-a-dl"></span>
+            <span class="pg" id="pp-a-pg"></span></div>
         <div id="pp-a-list"></div>
     </div>
 </div>
@@ -235,8 +239,15 @@
         var on = F.sort === key;
         return '<th' + (key ? ' data-sort="' + key + '"' : '') + '>' + esc(label) + (on ? (F.dir === 'asc' ? ' ▲' : ' ▼') : '') + '</th>';
     }
+    function drawDl() {
+        var q = query(false);
+        document.getElementById('pp-a-dl').innerHTML = '<i class="fa fa-download"></i>' + [['xlsx', 'all', L.dl_xlsx_all], ['xlsx', 'screen', L.dl_xlsx_screen], ['csv', 'all', L.dl_csv_all], ['csv', 'screen', L.dl_csv_screen]].map(function (d) {
+            return '<a href="' + esc(D.export_url + '?' + (q ? q + '&' : '') + 'fmt=' + d[0] + '&cols=' + d[1]) + '">' + esc(d[2]) + '</a>';
+        }).join('');
+    }
     function draw(res) {
         F.page = res.page || 1;
+        drawDl();
         document.getElementById('pp-a-count').textContent = tx('count', res.total);
         var pages = res.pages || 1;
         document.getElementById('pp-a-pg').innerHTML = pages > 1
