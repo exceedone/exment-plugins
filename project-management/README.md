@@ -25,6 +25,12 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   課題の一覧のダウンロードで、CSV と Excel（.xlsx）を選べるようにしました。すべての項目（担当者などは名前、作成者・更新者・詳細・関連課題も）か、一覧と同じ項目を、今の絞り込みと並び順で出します。ファイルはサーバーで、使う人の権限で作ります。Excel では日付を日付として出し、見出しの行を固定してフィルターを付けます。
 - Opening a project you are not a member of (or one that is not there) shows a page that says so, with the way back to the top, instead of Exment's error page. The message of the migration that asks to replace the masters now names the option as the screen does.
   参加していないプロジェクト（またはないプロジェクト）を開いたときは、Exment のエラーの画面でなく、そのことと、トップへ戻るボタンを出すようにしました。移行で「置き換え」を選ぶように出るメッセージを、画面の選択肢と同じ言葉にしました。
+- The tree of the issue list is easier to work: the ▼/▶ is a 28px target (36px on a touch screen); the right-click menu of a row in the tree opens or folds the row, everything below it, or the whole tree; on a focused ▼/▶, ← folds, → opens and ↑/↓ move to the next one.
+  課題の一覧のツリーを使いやすくしました。▼／▶ の押せる範囲を 28px（タッチの画面は 36px）に広げました。ツリーの行の右クリックのメニューで、その行・その下のすべて・ツリー全体を開いたりたたんだりできます。▼／▶ を選んで ← でたたむ、→ で開く、↑／↓ でとなりへ動けます。
+- A new page lists the issues of every project the user can read (「すべてのプロジェクトの課題」, linked from the head of 「自分の課題」 on the top page): filters by project, assignee (「自分」 too), status (「完了以外」 too), priority, type — each with several values — the due date and words of the subject; sorted by due date, priority, update or number; 50 a page, filtered and paged on the server; the conditions are in the address and can be saved by name in the browser.
+  見られるすべてのプロジェクトの課題を 1 つの一覧で見られるページを足しました（トップの「自分の課題」の見出しから）。プロジェクト・担当者（「自分」も）・状態（「完了以外」も）・優先度・種別をそれぞれ複数選んで、期限・件名のことばでも絞り込めます。期限・優先度・更新日時・番号で並べ替えられます。1 ページ 50 件で、絞り込みとページ分けはサーバーで行います。条件はアドレスに入り、名前を付けてブラウザーに保存できます。
+- The list across the projects downloads as Excel or CSV too (every column or the list's, with the project of each issue first), with its filters and order.
+  すべてのプロジェクトの課題も、Excel・CSV でダウンロードできます（すべての項目か一覧と同じ項目。先頭にプロジェクト）。今の絞り込みと並び順で出します。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 

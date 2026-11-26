@@ -77,6 +77,21 @@
         if ((D.issues || []).some(function (i) { return !!i.unread; })) {
             items.push({ l: L.ctx_read_all, i: 'fa-check-square-o', f: readAll });
         }
+        // the tree (ISS00361): this row, the rows under it, and all of them
+        if (TREE_ON && ids.length === 1) {
+            var below = treeBelow(id);
+            if (below.length) {
+                items.push(treeFolded(id)
+                    ? { l: L.tree_ctx_open, i: 'fa-caret-down', f: function () { treeSet([id], false, id); } }
+                    : { l: L.tree_ctx_close, i: 'fa-caret-right', f: function () { treeSet([id], true, id); } });
+                if (below.length > 1) {
+                    items.push({ l: L.tree_ctx_open_below, i: 'fa-angle-double-down', f: function () { treeSet(below, false, id); } });
+                    items.push({ l: L.tree_ctx_close_below, i: 'fa-angle-double-right', f: function () { treeSet(below, true, id); } });
+                }
+            }
+            items.push({ l: L.tree_ctx_open_all, i: 'fa-plus-square-o', f: function () { var b = document.getElementById('pp-tree-open'); if (b) { b.click(); } } });
+            items.push({ l: L.tree_ctx_close_all, i: 'fa-minus-square-o', f: function () { var b = document.getElementById('pp-tree-close'); if (b) { b.click(); } } });
+        }
         ctxOpen(ev.clientX, ev.clientY, items);
     });
     document.getElementById('pp-issue-rows').addEventListener('click', function (ev) {
@@ -86,9 +101,50 @@
         ev.preventDefault();
         ev.stopPropagation();
         var id = tgl.getAttribute('data-tgl');
-        if (treeFolded(id)) { delete TREE_FOLD['i' + id]; } else { TREE_FOLD['i' + id] = true; }
-        treeRerender(false);
+        treeSet([id], !treeFolded(id), id);
     });
+    // ← closes, → opens a parent whose ▼/▶ has the focus; Enter on it toggles, as a click
+    // (ISS00361). Up and down move between the toggles of the list.
+    document.getElementById('pp-issue-rows').addEventListener('keydown', function (ev) {
+        var tgl = ev.target.closest('.pp-tgl');
+        if (!tgl || ev.altKey || ev.ctrlKey || ev.metaKey) { return; }
+        var id = tgl.getAttribute('data-tgl');
+        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+            ev.preventDefault();
+            var fold = ev.key === 'ArrowLeft';
+            if (treeFolded(id) !== fold) { treeSet([id], fold, id); }
+        } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+            var all = Array.prototype.slice.call(document.querySelectorAll('#pp-issue-rows .pp-tgl'));
+            var next = all[all.indexOf(tgl) + (ev.key === 'ArrowDown' ? 1 : -1)];
+            if (next) { ev.preventDefault(); next.focus(); }
+        }
+    });
+    // The parents under a row, the row included when it has children: who "open / close all
+    // below" changes.
+    function treeBelow(id) {
+        var kids = {};
+        (D.issues || []).forEach(function (i) {
+            if (i.parent) { (kids['i' + i.parent] = kids['i' + i.parent] || []).push(String(i.id)); }
+        });
+        var out = [], seen = {}, todo = [String(id)];
+        while (todo.length) {
+            var k = todo.shift();
+            if (seen[k] || !kids['i' + k]) { continue; }
+            seen[k] = true;
+            out.push(k);
+            todo = todo.concat(kids['i' + k]);
+        }
+        return out;
+    }
+    // Fold or unfold some parents, then put the focus back on the toggle of the row it was on.
+    function treeSet(ids, fold, focusId) {
+        ids.forEach(function (k) {
+            if (fold) { TREE_FOLD['i' + k] = true; } else { delete TREE_FOLD['i' + k]; }
+        });
+        treeRerender(false);
+        var again = focusId && document.querySelector('#pp-issue-rows .pp-tgl[data-tgl="' + String(focusId).replace(/[^0-9A-Za-z_-]/g, '') + '"]');
+        if (again) { again.focus(); }
+    }
     // ---- inline cell edit, like Exment's Excel-style grid (snoro 2026-11-18) ----
     // Double-click a status / type / priority / milestone / category / start
     // / due cell: it turns into a picker (dates use the portal's calendar).
