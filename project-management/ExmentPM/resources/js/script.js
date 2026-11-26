@@ -3045,7 +3045,79 @@ window.PmPortalBoot = function () {
         var c = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
         n.textContent = c ? String(c) : '';
         n.hidden = !c;
+        ntRoutes();
     }
+    /* ------------------------------------------------ where it arrives -- */
+    // ISS02931: where each person's notice arrives besides the bell, which
+    // always rings: their own channels (D.notify_by: {mail, teams}) plus what
+    // the writer ticked for this one notice ("also by mail", "also by
+    // Teams"). Small icons on each chip with the words in its title, and one
+    // line under the chips for the people switched on. A payload without the
+    // channels (an older server) shows nothing.
+    function ntRoute(own, mailAll, teamsAll, teamsOn) {
+        if (!own || typeof own !== 'object') { return null; }
+        return {
+            mail: !!mailAll || !!own.mail,
+            teams: !!teamsOn && (!!teamsAll || !!own.teams)
+        };
+    }
+    function ntWords(r) {
+        return [L.nt_bell].concat(r.mail ? [L.nt_mail] : [], r.teams ? [L.nt_by_teams] : []).join('・');
+    }
+    function ntTicked(id) {
+        var box = document.getElementById(id);
+        return !!(box && box.checked);
+    }
+    function ntRoutes() {
+        var chips = document.querySelectorAll('#pp-notify-chips .pp-notify');
+        var line = document.getElementById('pp-notify-route');
+        var mailAll = ntTicked('pp-notify-mail');
+        var teamsAll = ntTicked('pp-notify-teams');
+        var byMail = [];
+        var byTeams = [];
+        var any = false;
+        Array.prototype.forEach.call(chips, function (c) {
+            var u = c.getAttribute('data-user');
+            var r = ntRoute(own(D.notify_by || {}, String(u)), mailAll, teamsAll, D.notify_teams);
+            var old = c.querySelector('.pp-nb');
+            if (old) { old.parentNode.removeChild(old); }
+            if (!r) { c.removeAttribute('title'); return; }
+            any = true;
+            c.setAttribute('title', fmt(L.nt_tip, user(u).n, ntWords(r)));
+            if (r.mail || r.teams) {
+                var s = document.createElement('span');
+                s.className = 'pp-nb';
+                s.setAttribute('aria-hidden', 'true');
+                s.innerHTML = (r.mail ? '<i class="fa fa-envelope-o"></i>' : '') + (r.teams ? '<i class="fa fa-commenting-o"></i>' : '');
+                c.appendChild(s);
+            }
+            if (!c.classList.contains('off')) {
+                if (r.mail) { byMail.push(user(u).n); }
+                if (r.teams) { byTeams.push(user(u).n); }
+            }
+        });
+        if (!line) { return; }
+        var on = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
+        line.hidden = !any || !on;
+        if (line.hidden) { line.textContent = ''; return; }
+        var parts = [];
+        if (byMail.length) { parts.push(fmt(L.nt_line_mail, byMail.join('、'))); }
+        if (byTeams.length) { parts.push(fmt(L.nt_line_teams, byTeams.join('、'))); }
+        line.textContent = parts.length ? parts.join(' ／ ') : L.nt_line_bell;
+        line.setAttribute('title', L.nt_others);
+    }
+    // What the server says it sent, for the toast after a post.
+    function ntSentText(to) {
+        if (!to) { return ''; }
+        var parts = [];
+        if (to.mail && to.mail.length) { parts.push(fmt(L.nt_sent_mail, to.mail.join('、'))); }
+        if (to.teams && to.teams.length) { parts.push(fmt(L.nt_sent_teams, to.teams.join('、'))); }
+        return parts.join(' ／ ');
+    }
+    document.addEventListener('change', function (ev) {
+        var id = ev.target && ev.target.id;
+        if (id === 'pp-notify-mail' || id === 'pp-notify-teams') { ntRoutes(); }
+    });
     function qeSelect(name, options, value, blank) {
         var sel = document.createElement('select');
         sel.className = 'bl-qe-in';
@@ -5691,6 +5763,7 @@ window.PmPortalBoot = function () {
         var notifyUsers = $('#pp-notify-chips .pp-notify:not(.off)').map(function () { return $(this).data('user'); }).get();
         var mailBox = document.getElementById('pp-notify-mail');
         var notifyMail = !!(mailBox && mailBox.checked);
+        var notifyTeams = ntTicked('pp-notify-teams');
         var current = function () { return detailCurrent(issueId, epoch); };
         var settled = function () {
             if (cmtPending[issueId] === sequence) { delete cmtPending[issueId]; }
@@ -5733,6 +5806,7 @@ window.PmPortalBoot = function () {
             var seq = ++DET_SEQ;
             var data = { comment: text, status_to: statusTo || '', notify_users: notifyUsers };
             if (notifyMail) { data.notify_mail = 1; }
+            if (notifyTeams) { data.notify_teams = 1; }
             if (review) { data.review = 1; }
             if (statusTo && statusFrom !== null) { data.status_from = statusFrom; }
             $.ajax({
@@ -5760,7 +5834,8 @@ window.PmPortalBoot = function () {
                     submittedBox._ppCmtOwner = null;
                 }
                 if (!current()) { return; }
-                toast(L.posted);
+                var sentTo = ntSentText(res.notice_to);
+                toast(L.posted + (sentTo ? ' ' + sentTo : ''));
                 ppDockMsg('', false);
                 var box = document.getElementById('pp-cmt-text');
                 if (!box.value) { cmtPreviewOff(); }
@@ -5772,6 +5847,8 @@ window.PmPortalBoot = function () {
                 document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
                 var mailNow = document.getElementById('pp-notify-mail');
                 if (mailNow) { mailNow.checked = false; }
+                var teamsNow = document.getElementById('pp-notify-teams');
+                if (teamsNow) { teamsNow.checked = false; }
                 if (!statusOnly) { rvAskSync(true); }
                 buildDetail(own(DET, String(issueId)) || res);
                 if (!box.value.trim()) { ppDockOpen(false); }
