@@ -39,6 +39,7 @@ class PmPortalController extends AdminControllerBase
     use PortalProjectTrait;
     use PortalAiTrait;
     use PortalRankingTrait;
+    use PortalNotifySettingsTrait;
     use PortalExportTrait;
     use PortalAllIssuesTrait;
     use PortalFeedTrait;

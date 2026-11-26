@@ -288,6 +288,17 @@ class PluginPage extends PluginPageBase
         return $this->portal()->reminderSave(request(), $id);
     }
 
+    // ISS02863 / ISS02931: how the notices reach this person
+    public function notifySettings()
+    {
+        return $this->respond($this->portal()->notifySettings(request(), new Content()));
+    }
+
+    public function notifySettingsSave()
+    {
+        return $this->portal()->notifySettingsSave(request());
+    }
+
     public function mailIssue($id, $issue_id)
     {
         return $this->portal()->mailIssue(request(), $id, $issue_id);

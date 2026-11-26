@@ -417,6 +417,9 @@
                 <span class="nm">{{ PortalDefinition::trans('teams.choice_' . $choice) }}</span>
             </a>
             @endforeach
+            @if(!empty($topbar['notify_settings_url']))
+            <a class="pp-top-mi" href="{{ $topbar['notify_settings_url'] }}"><i class="fa fa-fw"></i><span class="nm">{{ PortalDefinition::trans('nset.menu') }}</span></a>
+            @endif
         </div>
     </div>
     @endif
