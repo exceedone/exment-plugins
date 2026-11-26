@@ -37,6 +37,8 @@ class PluginPage extends PluginPageBase
         PluginEvent::registerGuards();
         // the Files tab with the file server: a feature of Feature management (ISS02825)
         PortalFiles::registerFeature();
+        // what happens to the issues, told to chat channels: a feature, off at first (ISS02939)
+        PortalChannels::registerFeature();
         // Exment's "?" of the header opens the manual of the plugin (ISS02882)
         ManualLink::register($plugin);
         // before 初期セットアップ: the entry in the left menu that leads to it (7.2.1)
@@ -378,6 +380,16 @@ class PluginPage extends PluginPageBase
     public function postFileWorkspace($id)
     {
         return $this->portal()->postFileWorkspace(request(), $id);
+    }
+
+    public function channels($id)
+    {
+        return $this->portal()->channels(request(), $id);
+    }
+
+    public function postChannels($id)
+    {
+        return $this->portal()->postChannels(request(), $id);
     }
 
     public function aiSuggest($id)
