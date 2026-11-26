@@ -576,6 +576,10 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
   border-color:var(--bl-accent);color:var(--bl-accent-d,var(--bl-accent-ink,#2c6e5b));}
 .pmportal .bl-dockbody .bl-chip:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
 .pmportal #pp-notify-chips{display:flex;flex-wrap:wrap;gap:5px;}
+/* ISS02931: where a person's notice arrives besides the bell (mail, Teams), small after the name */
+.pmportal #pp-notify-chips .pp-nb{display:inline-flex;gap:3px;margin-left:4px;font-size:11px;opacity:.75;}
+.pmportal #pp-notify-chips .pp-nb .fa{margin:0;}
+.pmportal .pp-notify-route{margin-top:6px;font-size:12px;color:var(--bl-sub);}
 /* ---- dock cards: quieter heads, the room goes to the fields ---- */
 .pmportal .bl-dockbody .bl-card-box>.bl-boxhead{display:flex;align-items:center;flex-wrap:wrap;gap:2px 0;padding:7px 12px;font-size:13px;}
 .pmportal .bl-dockbody .bl-card-box>.bl-boxbody{padding:10px 12px 12px;}
@@ -585,6 +589,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 /* Two ticks on the head (確認を依頼する, メールでも知らせる): the first one takes
    the push to the right, the second sits beside it. */
 .pmportal .bl-dockbody .bl-boxhead .pp-notify-rv + .pp-notify-mail{margin-left:0;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail + .pp-notify-teams{margin-left:0;}
 /* With 確認を依頼する ticked the picked people are being asked, not only told:
    each picked chip carries the tick, so what the post will do is on screen. */
 .pmportal #pp-notify-chips.rv .bl-chip:not(.off)::after{content:"\f046";font-family:FontAwesome;font-size:12px;margin-left:2px;}

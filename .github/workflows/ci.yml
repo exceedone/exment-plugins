@@ -126,6 +126,11 @@ jobs:
 
       - name: Simple or full issue screen (ExmentPM)
         run: node project-management/tools/test-pm-simple.js
+      # Where each person's notice arrives (ISS02931): the chips, and the rule of the server.
+      - name: Notice channels (ExmentPM)
+        run: |
+          node project-management/tools/test-pm-notify-to.js
+          php project-management/tools/test-pm-notify-to.php
 
       - name: Recent updates pages (ExmentPM)
         run: php project-management/tools/test-pm-feed.php
