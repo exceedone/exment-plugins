@@ -124,6 +124,18 @@
         if (input._flatpickr) { return; }
         var l10ns = window.flatpickr.l10ns || {};
         var follow = null;
+        var escape = null;
+        var unfollow = function () {
+            if (follow) {
+                window.removeEventListener('scroll', follow, true);
+                window.removeEventListener('resize', follow);
+                follow = null;
+            }
+            if (escape) {
+                document.removeEventListener('keydown', escape, true);
+                escape = null;
+            }
+        };
         var config = {
             dateFormat: FP_FORMATS[type],
             // Typing a date stays possible, and emptying the field clears it:
@@ -138,16 +150,27 @@
             defaultHour: TIME_VIEW.hour,
             defaultMinute: TIME_VIEW.minute,
             onOpen: function (dates, text, instance) {
-                follow = function () { instance._positionCalendar(); };
+                unfollow();
+                follow = function () {
+                    // the field is gone or hidden (its pane was closed or redrawn): the
+                    // calendar goes with it instead of floating over nothing
+                    if (!instance.isOpen || !instance.config) { unfollow(); return; }
+                    if (!input.isConnected || input.getClientRects().length === 0) { instance.close(); return; }
+                    instance._positionCalendar();
+                };
+                // Escape closes the calendar even when the pane takes the key first
+                // (the comment dock closes on Escape)
+                escape = function (e) {
+                    if (e.key === 'Escape' && instance.isOpen) { instance.close(); }
+                };
                 window.addEventListener('scroll', follow, true);
                 window.addEventListener('resize', follow);
+                document.addEventListener('keydown', escape, true);
             },
-            onClose: function () {
-                if (!follow) { return; }
-                window.removeEventListener('scroll', follow, true);
-                window.removeEventListener('resize', follow);
-                follow = null;
-            }
+            onClose: function () { unfollow(); },
+            // destroy() does not call onClose: without this the listeners stay and
+            // call the destroyed instance
+            onDestroy: function () { unfollow(); }
         };
         // Japanese, as the old picker was told; the layout loads the file of
         // the app's language, and without it the calendar stays English.
