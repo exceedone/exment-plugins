@@ -121,9 +121,10 @@ class PluginPage extends PluginPageBase
 
             return redirect($this->url($id))->with('pmbl_ok', $msg);
         } catch (\Throwable $e) {
-            \Log::warning('pm_backlog mapping ' . $id . ': ' . $e->getMessage());
+            $error = Secrets::scrub($e->getMessage(), [Connections::apiKey($conn)]);
+            \Log::warning('pm_backlog mapping ' . $id . ': ' . $error);
 
-            return redirect($this->url($id))->with('pmbl_error', mb_substr($e->getMessage(), 0, 500));
+            return redirect($this->url($id))->with('pmbl_error', mb_substr($error, 0, 500));
         }
     }
 
@@ -177,9 +178,10 @@ class PluginPage extends PluginPageBase
 
             return redirect($this->url($id))->with('pmbl_ok', Lang::t('import_done', $n));
         } catch (\Throwable $e) {
-            \Log::warning('pm_backlog import ' . $id . ': ' . $e->getMessage());
+            $error = Secrets::scrub($e->getMessage(), [Connections::apiKey($conn)]);
+            \Log::warning('pm_backlog import ' . $id . ': ' . $error);
 
-            return redirect($this->url($id))->with('pmbl_error', mb_substr($e->getMessage(), 0, 500));
+            return redirect($this->url($id))->with('pmbl_error', mb_substr($error, 0, 500));
         }
     }
 

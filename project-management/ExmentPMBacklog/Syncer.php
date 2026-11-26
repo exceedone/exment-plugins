@@ -93,8 +93,9 @@ class Syncer
             $self->run($limit);
             $status = $self->counts['error'] > 0 ? 'partial' : 'ok';
         } catch (\Throwable $e) {
-            $message = mb_substr($e->getMessage(), 0, 1000);
-            Log::error('pm_backlog connection ' . $id . ' failed: ' . $message, ['exception' => $e]);
+            // never a secret in the run, the log, the output or the notice
+            $message = mb_substr(Secrets::scrub($e->getMessage(), [Connections::apiKey($conn)]), 0, 1000);
+            Log::error('pm_backlog connection ' . $id . ' failed: ' . get_class($e) . ': ' . $message);
         } finally {
             $counts = $self ? $self->counts : [];
             $problems = $self ? array_slice($self->problems, 0, static::MAX_PROBLEMS) : [];
@@ -169,8 +170,9 @@ class Syncer
             } catch (\Throwable $e) {
                 $this->counts['error']++;
                 $failed[] = strval($issue['updated']);
-                $this->problem($issue['issueKey'] . ': ' . Lang::t('problem_error') . ' ' . mb_substr($e->getMessage(), 0, 300));
-                Log::warning('pm_backlog ' . $issue['issueKey'] . ': ' . $e->getMessage());
+                $error = Secrets::scrub($e->getMessage(), [Connections::apiKey($this->conn)]);
+                $this->problem($issue['issueKey'] . ': ' . Lang::t('problem_error') . ' ' . mb_substr($error, 0, 300));
+                Log::warning('pm_backlog ' . $issue['issueKey'] . ': ' . $error);
             }
         }
 
@@ -210,7 +212,7 @@ class Syncer
                 $this->fullCheck($host);
                 Connections::patch(intval($this->conn->id), ['last_full_check_at' => Carbon::now()]);
             } catch (\Throwable $e) {
-                $this->problem(Lang::t('problem_full_check', ['message' => mb_substr($e->getMessage(), 0, 300)]));
+                $this->problem(Lang::t('problem_full_check', ['message' => mb_substr(Secrets::scrub($e->getMessage(), [Connections::apiKey($this->conn)]), 0, 300)]));
             }
         }
     }
