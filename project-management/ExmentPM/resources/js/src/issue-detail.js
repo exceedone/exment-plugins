@@ -168,6 +168,9 @@
             (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
+            // ISS00272: a favorite, the user's own
+            '<a class="bl-btn-sub pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
+                '" title="' + esc(L.fav_tip) + '"><i class="fa ' + (local.my_fav ? 'fa-bookmark' : 'fa-bookmark-o') + '"></i> <span class="lb">' + esc(local.my_fav ? L.fav_on : L.fav) + '</span></a>' +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +

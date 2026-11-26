@@ -2476,6 +2476,9 @@ window.PmPortalBoot = function () {
             (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
+            // ISS00272: a favorite, the user's own
+            '<a class="bl-btn-sub pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
+                '" title="' + esc(L.fav_tip) + '"><i class="fa ' + (local.my_fav ? 'fa-bookmark' : 'fa-bookmark-o') + '"></i> <span class="lb">' + esc(local.my_fav ? L.fav_on : L.fav) + '</span></a>' +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
@@ -4318,6 +4321,42 @@ window.PmPortalBoot = function () {
 
     /* ------------------------------------------------ wiki -------------- */
     var currentWiki = null;
+    // the folded pages of the Wiki tree, per person and project (ISS00361)
+    var WIKI_FOLD_KEY = userKey('wf');
+    var WIKI_FOLD = {};
+    try {
+        (JSON.parse(localStorage.getItem(WIKI_FOLD_KEY) || '[]') || []).forEach(function (id) { WIKI_FOLD['w' + id] = true; });
+    } catch (e) { /* ignore */ }
+    function wikiFolded(id) { return Object.prototype.hasOwnProperty.call(WIKI_FOLD, 'w' + id); }
+    function wikiFoldSave() {
+        try {
+            var ids = Object.keys(WIKI_FOLD).map(function (k) { return k.slice(1); });
+            if (ids.length) { localStorage.setItem(WIKI_FOLD_KEY, JSON.stringify(ids)); } else { localStorage.removeItem(WIKI_FOLD_KEY); }
+        } catch (e) { /* ignore */ }
+    }
+    // the pages with children under a page, the page included when it has some
+    function wikiBelow(id) {
+        var kids = {};
+        ((D.wiki || {}).pages || []).forEach(function (p) {
+            if (p.parent) { (kids['w' + p.parent] = kids['w' + p.parent] || []).push(String(p.id)); }
+        });
+        var out = [], seen = {}, todo = id === null ? Object.keys(kids).map(function (k) { return k.slice(1); }) : [String(id)];
+        while (todo.length) {
+            var k = todo.shift();
+            if (seen[k] || !kids['w' + k]) { continue; }
+            seen[k] = true;
+            out.push(k);
+            todo = todo.concat(kids['w' + k]);
+        }
+        return out;
+    }
+    function wikiSet(ids, fold, focusId) {
+        ids.forEach(function (k) { if (fold) { WIKI_FOLD['w' + k] = true; } else { delete WIKI_FOLD['w' + k]; } });
+        wikiFoldSave();
+        renderWiki(currentWiki);
+        var again = focusId && document.querySelector('#pp-wtree .pp-wtgl[data-wtgl="' + String(focusId).replace(/[^0-9A-Za-z_-]/g, '') + '"]');
+        if (again) { again.focus(); }
+    }
     function renderWiki(selectId) {
         var wiki = D.wiki || { enabled: false, pages: [] };
         // With no page to show, the article card is an empty frame: it steps
@@ -4346,7 +4385,10 @@ window.PmPortalBoot = function () {
             (kids[parent] = kids[parent] || []).push(page);
         });
         var byId = {};
-        wiki.pages.forEach(function (p) { byId[p.id] = true; });
+        wiki.pages.forEach(function (p) { byId[p.id] = p; });
+        // the page shown is never inside a folded branch: its parents open for this drawing
+        var openNow = {};
+        for (var up = byId[selectId], guard = 0; up && up.parent && guard < 50; up = byId[up.parent], guard++) { openNow[up.parent] = true; }
         var drawn = {};
         // The nesting is unbounded; only the indent class is capped. Every
         // descendant used to be handed level 1, so a grandchild sat at exactly
@@ -4360,9 +4402,18 @@ window.PmPortalBoot = function () {
             var has = !!kids[page.id];
             var cls = 'nd' + (level ? ' lv' + Math.min(level, 4) : '') + (orphan ? ' orphan' : '') +
                 (String(page.id) === String(selectId) ? ' on' : '');
-            var html = '<div class="' + cls + '" data-wiki="' + esc(page.id) + '">' +
-                '<i class="fa ' + (has ? 'fa-folder-o' : 'fa-file-text-o') + '"></i>' + esc(page.title) + '</div>';
-            (kids[page.id] || []).forEach(function (child) { html += node(child, level + 1, false); });
+            var folded = has && wikiFolded(page.id) && !openNow[page.id];
+            var tgl = has
+                ? '<a href="javascript:void(0);" role="button" class="pp-wtgl" data-wtgl="' + esc(page.id) + '" aria-expanded="' + (folded ? 'false' : 'true') +
+                    '" title="' + esc(folded ? L.tree_ctx_open : L.tree_ctx_close) + '">' + (folded ? '▶' : '▼') + '</a>'
+                : '<span class="pp-wtgl-sp"></span>';
+            var html = '<div class="' + cls + '" data-wiki="' + esc(page.id) + '">' + tgl +
+                '<i class="fa ' + (has ? (folded ? 'fa-folder-o' : 'fa-folder-open-o') : 'fa-file-text-o') + '"></i>' + esc(page.title) + '</div>';
+            if (has) {
+                var inner = '';
+                (kids[page.id] || []).forEach(function (child) { inner += node(child, level + 1, false); });
+                html += '<div class="pp-wkids"' + (folded ? ' hidden' : '') + '>' + inner + '</div>';
+            }
             return html;
         }
         var tree = (kids[0] || []).map(function (page) { return node(page, 0, false); }).join('');
@@ -5923,9 +5974,10 @@ window.PmPortalBoot = function () {
     // issue; "copy" repeats what the open issue says, minus its key, its
     // history and its status - a duplicate starts at the project's first
     // status, the way a brand new issue does.
-    function issuePrefill(kind) {
+    function issuePrefill(kind, id) {
         var cols = D.issue_cols || {};
-        var i = issueById(currentIssue);
+        // id: the issue of a row's menu; the one open otherwise
+        var i = issueById(id !== undefined && id !== null ? id : currentIssue);
         if (!i || !cols.subject) { return null; }
         var out = {};
         function put(key, value) {
@@ -10814,6 +10866,12 @@ window.PmPortalBoot = function () {
         if (!ev.target.closest('.pp-rxbar')) {
             document.querySelectorAll('.pp-rxpick').forEach(function (p) { p.hidden = true; });
         }
+        var fav = ev.target.closest('.pp-fav');
+        if (fav) {
+            ev.stopPropagation();
+            favToggle(fav.dataset.targetId, fav);
+            return;
+        }
         var star = ev.target.closest('.pp-star');
         if (star) {
             ev.stopPropagation();
@@ -10907,6 +10965,13 @@ window.PmPortalBoot = function () {
         if (moveDo) { issueMoveRun(currentIssue, moveDo); return; }
         var issueDel = ev.target.closest('.pp-issuedel');
         if (issueDel) { issueDelete(currentIssue, issueDel); return; }
+        var wtgl = ev.target.closest('.pp-wtgl');
+        if (wtgl) {
+            // a fold, not a way into the page (ISS00361)
+            ev.preventDefault();
+            wikiSet([wtgl.getAttribute('data-wtgl')], !wikiFolded(wtgl.getAttribute('data-wtgl')), wtgl.getAttribute('data-wtgl'));
+            return;
+        }
         var wikiNode = ev.target.closest('[data-wiki]');
         if (wikiNode) {
             ev.preventDefault();
@@ -11214,6 +11279,20 @@ window.PmPortalBoot = function () {
         if ((D.issues || []).some(function (i) { return !!i.unread; })) {
             items.push({ l: L.ctx_read_all, i: 'fa-check-square-o', f: readAll });
         }
+        // the issue itself (ISS00361): a child, its parent (in the edit form), its link
+        if (ids.length === 1) {
+            if (CAN_ADD_ISSUE) {
+                items.push({ l: L.ctx_add_child, i: 'fa-level-down', f: function () { openNcreate(D.issue_table, issuePrefill('child', id), 'child' + id); } });
+            }
+            if (row.editable !== false) {
+                // the editor lives in the issue's own screen: go there with ?edit, as the address of the editor does
+                items.push({ l: L.ctx_change_parent, i: 'fa-sitemap', f: function () { location.hash = '#' + issueHash(id) + '?edit'; } });
+            }
+            items.push({ l: L.ctx_copy_link, i: 'fa-link', f: function () { copyText(issuePageUrl(id), L.link_copied); } });
+            items.push(row.my_fav
+                ? { l: L.fav_off, i: 'fa-bookmark', f: function () { favToggle(id, null); } }
+                : { l: L.fav_add, i: 'fa-bookmark-o', f: function () { favToggle(id, null); } });
+        }
         // the tree (ISS00361): this row, the rows under it, and all of them
         if (TREE_ON && ids.length === 1) {
             var below = treeBelow(id);
@@ -11256,6 +11335,64 @@ window.PmPortalBoot = function () {
             if (next) { ev.preventDefault(); next.focus(); }
         }
     });
+    // A favorite issue (ISS00272): on or off, from the detail's button or the row's menu.
+    function favToggle(issueId, btn) {
+        $.ajax({
+            url: D.urls.base + '/star', type: 'POST',
+            data: { star_type: 'fav', target_type: D.issue_table, target_id: issueId },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            var issue = issueById(issueId);
+            if (issue) { issue.my_fav = !!res.on; }
+            document.querySelectorAll('.pp-fav[data-target-id="' + String(issueId).replace(/[^0-9]/g, '') + '"]').forEach(function (b) {
+                b.classList.toggle('on', !!res.on);
+                b.setAttribute('aria-pressed', res.on ? 'true' : 'false');
+                b.querySelector('i').className = 'fa ' + (res.on ? 'fa-bookmark' : 'fa-bookmark-o');
+                b.querySelector('.lb').textContent = res.on ? L.fav_on : L.fav;
+            });
+            toast(res.on ? L.fav_added : L.fav_removed);
+        }).fail(function (xhr) { toast(xhrErr(xhr, L.fav_fail), true); });
+    }
+    // The Wiki tree (ISS00361): the same menu and keys as the issue tree.
+    (function () {
+        var wtree = document.getElementById('pp-wtree');
+        if (!wtree) { return; }
+        wtree.addEventListener('contextmenu', function (ev) {
+            if (ev.shiftKey) { return; }
+            var nd = ev.target.closest('[data-wiki]');
+            if (!nd) { return; }
+            ev.preventDefault();
+            var wid = nd.getAttribute('data-wiki');
+            var below = wikiBelow(wid);
+            var items = [{ l: L.ctx_open, i: 'fa-external-link', f: function () { location.hash = 'wiki-' + wid; } }];
+            if (below.length) {
+                items.push(wikiFolded(wid)
+                    ? { l: L.tree_ctx_open_w, i: 'fa-caret-down', f: function () { wikiSet([wid], false, wid); } }
+                    : { l: L.tree_ctx_close_w, i: 'fa-caret-right', f: function () { wikiSet([wid], true, wid); } });
+                if (below.length > 1) {
+                    items.push({ l: L.tree_ctx_open_below, i: 'fa-angle-double-down', f: function () { wikiSet(below, false, wid); } });
+                    items.push({ l: L.tree_ctx_close_below, i: 'fa-angle-double-right', f: function () { wikiSet(below, true, wid); } });
+                }
+            }
+            items.push({ l: L.tree_ctx_open_all, i: 'fa-plus-square-o', f: function () { wikiSet(wikiBelow(null), false, wid); } });
+            items.push({ l: L.tree_ctx_close_all, i: 'fa-minus-square-o', f: function () { wikiSet(wikiBelow(null), true, wid); } });
+            ctxOpen(ev.clientX, ev.clientY, items);
+        });
+        wtree.addEventListener('keydown', function (ev) {
+            var tgl = ev.target.closest('.pp-wtgl');
+            if (!tgl || ev.altKey || ev.ctrlKey || ev.metaKey) { return; }
+            var wid = tgl.getAttribute('data-wtgl');
+            if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+                ev.preventDefault();
+                var fold = ev.key === 'ArrowLeft';
+                if (wikiFolded(wid) !== fold) { wikiSet([wid], fold, wid); }
+            } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+                var all = Array.prototype.slice.call(wtree.querySelectorAll('.pp-wtgl'));
+                var next = all[all.indexOf(tgl) + (ev.key === 'ArrowDown' ? 1 : -1)];
+                if (next) { ev.preventDefault(); next.focus(); }
+            }
+        });
+    })();
     // The parents under a row, the row included when it has children: who "open / close all
     // below" changes.
     function treeBelow(id) {

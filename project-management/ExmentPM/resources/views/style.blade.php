@@ -206,6 +206,12 @@
 .pmportal .bl-list .pp-tind .pp-tgl{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;margin:-6px 4px -6px -4px;padding:0 4px;}
 .pmportal .bl-list .pp-tgl:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
 @media (pointer: coarse){.pmportal .bl-list .pp-tind .pp-tgl{min-width:36px;min-height:36px;margin:-10px 4px -10px -6px;}}
+/* the Wiki tree: the same ▼/▶ (ISS00361) */
+.pmportal #pp-wtree .pp-wtgl,.pmportal #pp-wtree .pp-wtgl-sp{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;margin:-6px 0 -6px -6px;}
+.pmportal #pp-wtree .pp-wtgl{color:var(--bl-sub);font-size:11px;text-decoration:none;border-radius:var(--bl-radius-s,4px);}
+.pmportal #pp-wtree .pp-wtgl:hover{color:var(--bl-accent-d);background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));}
+.pmportal #pp-wtree .pp-wtgl:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
+@media (pointer: coarse){.pmportal #pp-wtree .pp-wtgl,.pmportal #pp-wtree .pp-wtgl-sp{min-width:36px;min-height:36px;margin:-10px 0 -10px -8px;}}
 .pmportal .bl-list .pp-tind .pp-tgl .n{font-size:10px;margin-left:2px;}
 /* tree view: make children obvious - branch mark, tinted row, accent edge; parents bold */
 /* └ branch mark: dark accent, bold and a bit larger so it reads at a glance (snoro 2026-11-18) */

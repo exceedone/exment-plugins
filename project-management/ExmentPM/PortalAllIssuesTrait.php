@@ -213,6 +213,18 @@ trait PortalAllIssuesTrait
             });
         }
 
+        // the user's favorites only (ISS00272)
+        if ($request->query('fav') === '1') {
+            $favs = Star::where('star_type', Star::TYPE_FAV)->where('target_type', $this->issue_table->table_name)
+                ->where('user_id', $me)->pluck('target_id')->map(function ($v) {
+                    return intval($v);
+                })->filter()->values()->toArray();
+            if (empty($favs)) {
+                return response()->json($empty);
+            }
+            $query->whereIn('id', $favs);
+        }
+
         // words in the subject
         $words = trim(strval($request->query('q', '')));
         if ($words !== '') {
