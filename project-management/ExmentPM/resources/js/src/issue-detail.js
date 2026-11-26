@@ -1553,7 +1553,9 @@
             if (e.tp === 'chg') {
                 body = '<div class="chg">' + (e.chg || []).map(function (c) {
                     return '<div><b>' + esc(c[0]) + '</b>: ' + esc(c[1]) + '<span class="arr">→</span><b>' + esc(c[2]) + '</b></div>';
-                }).join('') + '</div>';
+                }).join('') + '</div>' +
+                    // a change put in by mistake can be hidden (ISS02924)
+                    (e.hide ? '<div class="act"><a href="javascript:void(0);" class="pp-chghide" data-rid="' + esc(e.rid) + '">' + esc(L.chg_hide) + '</a></div>' : '');
             } else if (e.tp === 'add') {
                 body = '<div class="chg"><i class="fa fa-plus" style="color:var(--bl-accent);margin-right:6px;"></i>' + esc(L.added) + '</div>';
             } else if (e.tp === 'file') {

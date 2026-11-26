@@ -493,6 +493,8 @@
         if (cdel) { cmtDelete(cdel); return; }
         var alSet = ev.target.closest('.pp-al-set');
         if (alSet) { aliasSet(alSet); return; }
+        var chgHide = ev.target.closest('.pp-chghide');
+        if (chgHide) { chgHideRun(chgHide); return; }
         var addChild = ev.target.closest('.pp-addchild');
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
         var linkCopy = ev.target.closest('.pp-linkcopy');
