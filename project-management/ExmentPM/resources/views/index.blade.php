@@ -39,7 +39,7 @@
         'nav_prev', 'nav_next', 'nav_pos', 'tl_expand', 'tl_collapse', 'cmt_more', 'cmt_less', 'ct_emoji',
         'cmt_hint', 'cmt_drop', 'ct_attach', 'ct_bold', 'ct_italic', 'ct_strike',
         'ct_ul', 'ct_ol', 'ct_quote', 'ct_code', 'ct_link', 'ct_preview', 'ct_write',
-        'ct_link_label', 'cmt_uploading', 'cmt_up_ok', 'cmt_up_fail', 'cmt_menu',
+        'ct_link_label', 'cmt_uploading', 'cmt_up_ok', 'cmt_up_fail', 'ned_file_after_create', 'cmt_menu',
         'rx_add', 'rx_fail', 'rx_like', 'rx_heart', 'rx_haha', 'rx_wow', 'rx_sad', 'rx_angry', 'rx_thanks', 'rx_clap', 'rx_party', 'rx_eyes', 'rx_ok',
         'cmt_edit', 'cmt_copy', 'cmt_copied', 'cmt_save', 'cmt_cancel', 'cmt_saved',
         'cmt_link', 'cmt_link_tip', 'cmt_not_found', 'proj_settings', 'qf_edit', 'qf_save', 'qf_stale',

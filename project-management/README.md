@@ -37,6 +37,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   お気に入りの課題: 課題の詳細の「お気に入り」と、行の右クリックのメニューで、自分だけの印を付けられます（ほかの人には見えず、数も出ません）。トップの「お気に入りの課題」か、すべてのプロジェクトの課題の「お気に入りだけ」で一覧にできます。
 - More of Markdown in issue bodies, comments and wiki pages: lists inside list items (by indent), `+` bullets, numbered lists that start at another number (`3.`, `1)`), quotes of several lines and quotes inside quotes, `__bold__` / `_italic_` / `***both***` (not inside words such as snake_case), link titles (`[text](url "title")`), `<https://...>`, table column alignment (`:---:`), backslash escapes (`\*`, `\#` ...), and the language of a code fence (```` ```js ````) is no longer shown as its first line. Everything typed is still escaped first: HTML and scripts stay text, and every link opens in a new tab with `rel="noopener"`.
   課題の本文・コメント・Wiki の Markdown で書けることを増やしました：項目の中のリスト（字下げ）、`+` の箇条書き、ほかの番号から始まる番号つきリスト（`3.`・`1)`）、何行もの引用と引用の中の引用、`__太字__`・`_斜体_`・`***両方***`（snake_case のような語の中ではそのまま）、リンクのタイトル（`[文字](URL "タイトル")`）、`<https://...>`、表の列のそろえ（`:---:`）、バックスラッシュでの打ち消し（`\*`・`\#` など）。コードの囲み（```` ```js ````）の言語名は、コードの 1 行目に出なくなりました。書いたものは今までどおり先にエスケープします（HTML・スクリプトは文字のまま、リンクは新しいタブで `rel="noopener"`）。
+- A file that is not a picture, pasted or dropped on the body of a saved issue, is attached to the issue and a link to it is put at the caret (as the comment box already did). A picture goes as before. On a new issue or a wiki page, a message says to attach it with 「ファイル」.
+  保存してある課題の本文に、画像でないファイルを貼る・落とすと、その課題に添付して、本文にリンクを入れます（コメント欄は前からできていました）。画像は今までどおりです。新しい課題と Wiki では、「ファイル」から添付するよう案内します。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
