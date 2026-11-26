@@ -131,10 +131,17 @@ jobs:
         run: |
           node project-management/tools/test-pm-notify-to.js
           php project-management/tools/test-pm-notify-to.php
+      - name: Command palette (ExmentPM)
+        run: node project-management/tools/test-pm-palette.js
+      - name: Issue actions in one menu (ExmentPM)
+        run: node project-management/tools/test-pm-issue-actions.js
 
       - name: Recent updates pages (ExmentPM)
         run: php project-management/tools/test-pm-feed.php
 
+      # The messages of the chat channels of a project (ExmentPM, plain PHP)
+      - name: Chat channels (ExmentPM)
+        run: php project-management/tools/test-pm-channels.php
       - name: Simple by default (ExmentPM schema 30)
         run: php project-management/tools/test-pm-features.php
 
@@ -157,6 +164,10 @@ jobs:
       # The links to the manuals of ExmentPM, ExmentITSupport and ExmentGroupware.
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php
+
+      # how each person gets the notices: per event, projects muted, quiet hours (ExmentPM)
+      - name: Notice settings (ExmentPM)
+        run: php project-management/tools/test-pm-notify-prefs.php
 
       # The project routes without admin.morph still find a project the same way as the others.
       - name: Morph-less routes check (ExmentPM)
