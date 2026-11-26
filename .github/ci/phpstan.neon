@@ -20,6 +20,8 @@ parameters:
             - ../../project-management/ExmentPMBacklog/SyncBridge.php
             # also ExmentKintone, for the same reason
             - ../../kintone/ExmentKintone
+            # its test reads KintoneApi from that folder
+            - ../../kintone/tools
     bootstrapFiles:
         - bootstrap.php
     # The baseline may list files that a branch does not have yet.
