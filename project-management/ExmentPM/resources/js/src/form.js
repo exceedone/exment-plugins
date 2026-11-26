@@ -1013,6 +1013,8 @@
         for (var i = 0; i < cols.length; i++) {
             var c = cols[i];
             if (c.readonly) { continue; }
+            // the custom attributes' JSON is a textarea too, and never the text (ISS02939)
+            if (c.name === nedAtColumnName()) { continue; }
             if (c.type === 'richtext') { return c; }
             if (c.type === 'text' && c.raw_type === 'textarea') { return c; }
         }
@@ -1037,6 +1039,9 @@
         if (col.name === 'created_user_id' || col.name === 'updated_user_id') { return true; }
         if (col.name === 'suuid' || col.name === 'deleted_at' || col.name === 'deleted_user_id') { return true; }
         if (col.name === 'parent_id' || col.name === 'parent_type') { return true; }
+        // The custom attributes: one block of their own, never the raw JSON
+        // (nedAtMount, ISS02939).
+        if (NED.table === D.issue_table && col.name === nedAtColumnName()) { return true; }
         return false;
     }
     // ---- searchable chip picker ----------------------------------------

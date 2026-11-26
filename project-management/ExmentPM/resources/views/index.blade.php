@@ -91,6 +91,9 @@
     })->toArray();
     // The issue form's AI button reads its strings as one block (L.ai.*).
     $lang['ai'] = \App\Plugins\ExmentPM\PortalDefinition::trans('ai');
+    // The custom attributes of the project's issues (ISS02939): the form, the detail, the list
+    // and its filters read their strings as one block (L.attributes.*).
+    $lang['attributes'] = \App\Plugins\ExmentPM\PortalDefinition::trans('attributes');
     // Wording for a failure the portal did not word itself - an expired
     // session, a proxy's error page, a dropped line - picked in the client
     // by the HTTP status (errText). Embedded once so no English transport
@@ -110,6 +113,19 @@
          card below, so Exment's page header would show them twice (snoro
          2026-11-18). Only on this page; the browser tab title is unchanged. --}}
     <style>#app > .content-header{display:none;}</style>
+    {{-- The custom attributes (ISS02939): the widgets of the issue form look
+         like its other inputs, and the filter row wraps like the one above. --}}
+    <style>
+    .pp-nedit .pp-ne-at input.pp-ne-atin,.pp-nedit .pp-ne-at textarea.pp-ne-atin,.pp-nedit .pp-ne-at select.pp-ne-atin{
+      border:1px solid var(--bl-line);background:var(--bl-box);color:var(--bl-ink);border-radius:var(--bl-radius-s,4px);
+      padding:6px 10px;font-size:13px;line-height:1.4;font-family:inherit;min-height:32px;width:100%;box-sizing:border-box;}
+    .pp-nedit .pp-ne-at .pp-ne-atin:focus{border-color:var(--bl-accent);box-shadow:0 0 0 3px rgba(76,175,147,.16);outline:0;}
+    .pp-nedit .pp-ne-at .pp-ne-atin[readonly],.pp-nedit .pp-ne-at .pp-ne-atin:disabled{background:var(--bl-box2);color:var(--bl-sub);}
+    .pp-nedit .pp-ne-at.err .pp-ne-atin{border-color:#e57373;}
+    .pp-nedit .pp-ne-at > .err{margin-top:6px;}
+    .pmportal .pp-f-at{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px;}
+    .pmportal .pp-f-at[hidden]{display:none;}
+    </style>
 
     {{-- Defines window.ppDateField, used by the panes below and by the
          main script. Included before them so it is there when they run. --}}
@@ -249,6 +265,9 @@
                         <a class="sv" href="javascript:void(0);" id="pp-f-csv" title="{{ $lang['f_csv_title'] }}"><i class="fa fa-download"></i> {{ $lang['f_csv'] }}</a>
                     </span>
                 </div>
+                {{-- ISS02939: a filter for each custom attribute of the project;
+                     drawn by the script, only while there are some. --}}
+                <div class="bl-filters pp-f-at" id="pp-f-at" hidden></div>
             </div>
 
             {{-- Appears with the first tick; every control in it starts on
@@ -260,6 +279,9 @@
                 <select id="pp-bk-ty"></select>
                 <select id="pp-bk-pr"></select>
                 <select id="pp-bk-ms"></select>
+                {{-- ISS02939: one custom attribute and its value --}}
+                <select id="pp-bk-at" hidden></select>
+                <span id="pp-bk-atv" hidden></span>
                 <button type="button" class="bl-btn-main" id="pp-bk-apply">{{ $lang['bk_apply'] }}</button>
                 <button type="button" class="bl-btn-sub" id="pp-bk-cancel">{{ $lang['bk_clear'] }}</button>
             </div>

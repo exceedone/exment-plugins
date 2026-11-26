@@ -1486,6 +1486,8 @@
         // Whatever the layout did not name: every column of every other table.
         // These keep the old behaviour and follow in column order.
         metaOrder.forEach(function (name) { slots.grid.appendChild(built[name]); });
+        // The project's custom attributes, after every other field (ISS02939).
+        nedAtMount(slots);
 
         // A type may bring a template subject and description (Backlog's
         // per-type issue template). Only when creating: an existing issue's
