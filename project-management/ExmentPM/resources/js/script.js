@@ -1442,6 +1442,48 @@ window.PmPortalBoot = function () {
         return st === want;
     }
 
+    // S18: 自分が担当 counts this project only; the dashboard has them all.
+    function mineAllLink() {
+        if (FILTER.q !== 'mine' || !(D.urls && D.urls.projects)) { return ''; }
+        return '<a class="pp-mine-all" href="' + esc(D.urls.projects) + '">' + esc(L.mine_all) + ' <i class="fa fa-angle-right"></i></a>';
+    }
+    // S11, M7: a pencil in each cell that can be changed in place; one press
+    // opens the same editor a double-click does (edCell), which stays.
+    function edPen() {
+        return BULK_ON ? '<button type="button" class="pp-ed-pen" tabindex="-1" title="' + esc(L.ed_pen) + '" aria-label="' + esc(L.ed_pen) + '"><i class="fa fa-pencil"></i></button>' : '';
+    }
+    (function () {
+        var rows = document.getElementById('pp-issue-rows');
+        if (!rows) { return; }
+        // Capture: before the row's own click opens the issue.
+        rows.addEventListener('click', function (ev) {
+            var pen = ev.target.closest && ev.target.closest('.pp-ed-pen');
+            if (!pen) { return; }
+            ev.preventDefault();
+            ev.stopPropagation();
+            var td = pen.closest('td[data-ed]');
+            if (!td) { return; }
+            edHintSeen();
+            var dbl;
+            try { dbl = new MouseEvent('dblclick', { bubbles: true, cancelable: true }); } catch (e) { dbl = null; }
+            if (dbl) { td.dispatchEvent(dbl); }
+        }, true);
+        rows.addEventListener('dblclick', function () { edHintSeen(); });
+        // A first visit is told once, under the list, how a cell is changed.
+        var hint = document.getElementById('pp-ed-hint');
+        var seen = true;
+        try { seen = localStorage.getItem('pmportal.edhint') === '1'; } catch (e) { seen = true; }
+        if (hint && BULK_ON && !seen) {
+            hint.hidden = false;
+            var x = hint.querySelector('.x');
+            if (x) { x.addEventListener('click', edHintSeen); }
+        }
+    }());
+    function edHintSeen() {
+        var hint = document.getElementById('pp-ed-hint');
+        if (hint) { hint.hidden = true; }
+        try { localStorage.setItem('pmportal.edhint', '1'); } catch (e) { /* ignore */ }
+    }
     function renderIssueFilters() {
         var tabs = '<button class="bl-sttab' + (FILTER.st === '' ? ' active' : '') + '" data-st="">' +
             esc(L.f_all) + '<span class="ct">' + (D.issues.length + arCount()) + '</span></button>';
@@ -1467,7 +1509,7 @@ window.PmPortalBoot = function () {
                 '" data-q="' + c.k + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
                 '<i class="fa ' + c.i + '"></i>' + esc(L[c.l]) + '<span class="ct">' + n + '</span></button>';
         });
-        document.getElementById('pp-qchips').innerHTML = chips;
+        document.getElementById('pp-qchips').innerHTML = chips + mineAllLink();
 
         var selAs = document.getElementById('pp-f-as');
         if (selAs.options.length <= 1) {
@@ -1660,7 +1702,7 @@ window.PmPortalBoot = function () {
                 (BULK_ON ? '<td class="chk"><input type="checkbox" class="pp-bchk" data-id="' + esc(i.id) + '"' +
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
-                '<td' + edAttr('ty') + '>' + tag(i.ty) + '</td>' +
+                '<td' + edAttr('ty') + '>' + tag(i.ty) + edPen() + '</td>' +
                 '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '" title="' + esc(i.key) + '">' + esc(keyNum(i)) + '</a>' + ikCopyButton(i) + '</td>' +
                 (aliasOn() ? '<td class="pp-al">' + (i.al ? '<a href="#issue-' + esc(i.al) + '">' + esc(i.al) + '</a>' : '') + '</td>' : '') +
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
@@ -1670,12 +1712,12 @@ window.PmPortalBoot = function () {
                     (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
                 ocols.map(function (c) { return ocolCell(i, c); }).join('') +
-                '<td' + edAttr('st') + '>' + pill(i.st) + '</td>' +
-                '<td' + edAttr('pr') + '>' + prio(i.pr) + '</td>' +
-                '<td style="white-space:nowrap;"' + edAttr('ms') + '>' + esc(ms ? ms.l : '') + '</td>' +
-                '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + '</td>' +
-                '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + '</td>' +
-                '<td' + edAttr('dd') + '>' + dueCell(i) + '</td>' +
+                '<td' + edAttr('st') + '>' + pill(i.st) + edPen() + '</td>' +
+                '<td' + edAttr('pr') + '>' + prio(i.pr) + edPen() + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('ms') + '>' + esc(ms ? ms.l : '') + edPen() + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + edPen() + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + edPen() + '</td>' +
+                '<td' + edAttr('dd') + '>' + dueCell(i) + edPen() + '</td>' +
                 '<td>' + pbar(i.pg) + rollupBadge(ru, i.id) + '</td>' +
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });
@@ -2570,7 +2612,7 @@ window.PmPortalBoot = function () {
             // phone it keeps the status, the assignees and the due date
             // (data-sum, see the stylesheet).
             '<div class="bl-dsum">' +
-            '<span class="it" data-sum="st"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
+            '<span class="it" data-sum="st"><span class="k">' + esc(L.col_st) + '</span>' + stBtn(i, res) + '</span>' +
             '<span class="it" data-sum="pr"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
             '<span class="it" data-sum="as"><span class="k">' + esc(L.col_as) + '</span>' + asHtml(i, res, '') + '</span>' +
             qfSummary(i, res) +
@@ -2597,7 +2639,7 @@ window.PmPortalBoot = function () {
         // column at 1200px and wider, 'pr' and 'role' there and on a phone
         // (whose strip keeps the status, the assignees and the due date).
         var props = [
-            ['st', L.col_st, pill(i.st), 'top'],
+            ['st', L.col_st, stBtn(i, res), 'top'],
             ['as', L.col_as, asHtml(i, res, '<br>'), 'top'],
             ['dd', L.col_dd, dueCell(i), 'top'],
             ['pr', L.col_pr, prio(i.pr) || '—', 'pr'],
@@ -3483,6 +3525,69 @@ window.PmPortalBoot = function () {
         return ids.filter(function (v, x, a) { return v && a.indexOf(v) === x; })
             .map(function (u) { return [String(u), user(u).n]; });
     }
+    // M8: the status is pressed to pick another one - any status of the
+    // project, not only the next. Sent the way 次の状態にする is (the comment
+    // endpoint, which notifies people and refuses a stale move).
+    function stBtn(i, res) {
+        if (!res || !res.editable || !(D.statuses || []).length) { return pill(i.st); }
+        return '<button type="button" class="pp-st-btn" title="' + esc(L.st_menu) + '" aria-haspopup="true" aria-expanded="false">' +
+            pill(i.st) + '<i class="fa fa-caret-down"></i></button>';
+    }
+    function stMenuClose() {
+        document.querySelectorAll('#pp-issue .pp-st-menu').forEach(function (m) { m.remove(); });
+        document.querySelectorAll('#pp-issue .pp-st-btn[aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+    }
+    function stMenuOpen(btn) {
+        var issueId = currentIssue;
+        var i = issueById(issueId) || (own(DET, String(issueId)) || {}).issue;
+        if (!i || !btn) { return; }
+        var was = btn.getAttribute('aria-expanded') === 'true';
+        stMenuClose();
+        if (was) { return; }
+        var menu = document.createElement('div');
+        menu.className = 'pp-st-menu';
+        menu.setAttribute('role', 'menu');
+        menu.innerHTML = (D.statuses || []).map(function (st) {
+            var cur = String(st.k) === String(i.st);
+            return '<button type="button" role="menuitem" data-st="' + esc(st.k) + '"' + (cur ? ' disabled aria-current="true"' : '') + '>' +
+                '<span class="dot" style="background:' + ppColor(st.c) + '"></span>' + esc(st.l) + (cur ? ' <i class="fa fa-check"></i>' : '') + '</button>';
+        }).join('');
+        btn.setAttribute('aria-expanded', 'true');
+        btn.parentNode.insertBefore(menu, btn.nextSibling);
+        menu.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-st]');
+            if (!b || b.disabled) { return; }
+            ev.stopPropagation();
+            stMenuClose();
+            postComment(b.getAttribute('data-st'));
+        });
+        menu.addEventListener('keydown', function (ev) {
+            var items = Array.prototype.slice.call(menu.querySelectorAll('button:not([disabled])'));
+            var at = items.indexOf(document.activeElement);
+            if (ev.key === 'Escape') { ev.stopPropagation(); stMenuClose(); btn.focus(); return; }
+            if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+                ev.preventDefault();
+                var next = items[(at + (ev.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length];
+                if (next) { next.focus(); }
+            }
+        });
+        var first = menu.querySelector('button:not([disabled])');
+        if (first) { first.focus(); }
+    }
+    // Key s (boot.js): the status menu of the issue on screen, from the box
+    // beside the text when it is there, else from the strip.
+    function stMenuFromKey() {
+        if (String(currentScreen) !== 'issue') { return false; }
+        var btns = Array.prototype.filter.call(document.querySelectorAll('#pp-issue .pp-st-btn'), function (b) { return b.offsetParent !== null; });
+        if (!btns.length) { return false; }
+        stMenuOpen(btns[0]);
+        return true;
+    }
+    window.ppStMenuFromKey = stMenuFromKey;
+    document.addEventListener('click', function onPpStDoc(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpStDoc); return; }
+        if (!(ev.target.closest && ev.target.closest('.pp-st-menu, .pp-st-btn'))) { stMenuClose(); }
+    });
     // M1: which editor a row of the info box opens, '' for none - only for
     // somebody who may edit the issue, and only for a column the table has.
     function qfField(key, res) {
@@ -3692,6 +3797,8 @@ window.PmPortalBoot = function () {
     var ppIssueEl = document.getElementById('pp-issue');
     if (ppIssueEl) {
         ppIssueEl.addEventListener('click', function (ev) {
+            var stb = ev.target.closest && ev.target.closest('.pp-st-btn');
+            if (stb) { ev.preventDefault(); ev.stopPropagation(); stMenuOpen(stb); return; }
             var pen = ev.target.closest && ev.target.closest('.pp-qf-pen, .pp-qf-add');
             // M1: the value itself opens its editor, unless a link or a
             // button inside it (a parent issue, the mail button) was meant.
@@ -10567,6 +10674,7 @@ window.PmPortalBoot = function () {
                 } else {
                     host.innerHTML = html;
                     execEmbeddedScripts(host);
+                    if (kind === 'board') { kbWatch(host); }
                 }
                 slot.loaded = true;
                 slot.loading = false;
@@ -10612,7 +10720,116 @@ window.PmPortalBoot = function () {
             old.parentNode.replaceChild(ns, old);
         }
     }
-
+    /* ------------------------------------------------ board aids (UX-E) - */
+    // The board is Exment's own kanban (.kb-scroll > .kb-board > lanes of
+    // .kb-col). Around it the portal adds only what helps reading it here:
+    // ‹ › to move sideways while there is more (S9), and on a phone a row of
+    // the status columns to jump to one (M4) - the columns snap one at a time
+    // there (stylesheet). The kanban may draw itself again (its filters), so
+    // the aids are put back whenever its markup changes.
+    function kbCols(scroll) {
+        var seen = {};
+        var out = [];
+        Array.prototype.forEach.call(scroll.querySelectorAll('.kb-col[data-col]'), function (col) {
+            var id = col.getAttribute('data-col');
+            var n = parseInt(((col.querySelector('.kb-col-count') || {}).textContent || '0'), 10) || 0;
+            if (own(seen, id)) { seen[id].n += n; return; }
+            var t = col.querySelector('.kb-col-title');
+            seen[id] = { id: id, l: t ? String(t.textContent || '').trim() : id, n: n, el: col };
+            out.push(seen[id]);
+        });
+        return out;
+    }
+    // The chips of the columns, drawn again when the columns or their counts
+    // change (the kanban fills its columns after it is put on the page).
+    function kbChips(scroll) {
+        var nav = scroll.parentNode ? scroll.parentNode.querySelector(':scope > .pp-kb-nav') : null;
+        var box = nav ? nav.querySelector('.pp-kb-chips') : null;
+        if (!box) { return; }
+        var html = kbCols(scroll).map(function (c) {
+            return '<button type="button" class="pp-kb-chip" data-col="' + esc(c.id) + '">' + esc(c.l) + '<span class="n">' + c.n + '</span></button>';
+        }).join('');
+        if (box._ppHtml !== html) { box._ppHtml = html; box.innerHTML = html; }
+    }
+    function kbFit(scroll) {
+        var wrap = scroll.parentNode;
+        var nav = wrap ? wrap.querySelector(':scope > .pp-kb-nav') : null;
+        if (!nav) { return; }
+        var max = scroll.scrollWidth - scroll.clientWidth;
+        var x = scroll.scrollLeft;
+        wrap.classList.toggle('pp-kb-more-r', x < max - 2);
+        wrap.classList.toggle('pp-kb-more-l', x > 2);
+        nav.querySelector('.pp-kb-prev').disabled = x <= 2;
+        nav.querySelector('.pp-kb-next').disabled = x >= max - 2;
+        // the column whose left edge is nearest the view's
+        var best = null;
+        nav.querySelectorAll('.pp-kb-chip').forEach(function (c) {
+            var col = scroll.querySelector('.kb-col[data-col="' + c.getAttribute('data-col') + '"]');
+            var d = col ? Math.abs(col.offsetLeft - x) : Infinity;
+            if (best === null || d < best.d) { best = { c: c, d: d }; }
+            c.classList.remove('on');
+        });
+        if (best) { best.c.classList.add('on'); }
+    }
+    function kbAids(host) {
+        var scroll = host.querySelector('.kb-scroll');
+        if (!scroll || scroll._ppKb) { return; }
+        scroll._ppKb = true;
+        var wrap = scroll.parentNode;
+        wrap.classList.add('pp-kb-wrap');
+        var nav = document.createElement('div');
+        nav.className = 'pp-kb-nav';
+        nav.innerHTML = '<div class="pp-kb-chips" role="group" aria-label="' + esc(L.kb_cols) + '"></div>' +
+            '<button type="button" class="pp-kb-prev" title="' + esc(L.kb_prev) + '" aria-label="' + esc(L.kb_prev) + '"><i class="fa fa-angle-left"></i></button>' +
+            '<button type="button" class="pp-kb-next" title="' + esc(L.kb_next) + '" aria-label="' + esc(L.kb_next) + '"><i class="fa fa-angle-right"></i></button>';
+        wrap.insertBefore(nav, scroll);
+        kbChips(scroll);
+        var step = function (dir) {
+            var w = Math.max(240, Math.round(scroll.clientWidth * 0.8));
+            scroll.scrollBy ? scroll.scrollBy({ left: dir * w, behavior: 'smooth' }) : (scroll.scrollLeft += dir * w);
+        };
+        nav.querySelector('.pp-kb-prev').addEventListener('click', function () { step(-1); });
+        nav.querySelector('.pp-kb-next').addEventListener('click', function () { step(1); });
+        nav.querySelector('.pp-kb-chips').addEventListener('click', function (ev) {
+            var chip = ev.target.closest('.pp-kb-chip');
+            var col = chip ? scroll.querySelector('.kb-col[data-col="' + chip.getAttribute('data-col') + '"]') : null;
+            if (!col) { return; }
+            var left = col.offsetLeft - (scroll.querySelector('.kb-board') || scroll).offsetLeft;
+            scroll.scrollTo ? scroll.scrollTo({ left: Math.max(0, left), behavior: 'smooth' }) : (scroll.scrollLeft = left);
+        });
+        var pending = false;
+        scroll.addEventListener('scroll', function () {
+            if (pending) { return; }
+            pending = true;
+            window.requestAnimationFrame(function () { pending = false; kbFit(scroll); });
+        }, { passive: true });
+        kbFit(scroll);
+    }
+    function kbWatch(host) {
+        kbAids(host);
+        if (host._ppKbMo || !window.MutationObserver) { return; }
+        var timer = null;
+        host._ppKbMo = new MutationObserver(function () {
+            if (!alive()) { host._ppKbMo.disconnect(); return; }
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                kbAids(host);
+                var sc = host.querySelector('.kb-scroll');
+                if (sc) { kbChips(sc); kbFit(sc); }
+            }, 60);
+        });
+        host._ppKbMo.observe(host, { childList: true, subtree: true });
+        window.addEventListener('resize', function onKbResize() {
+            if (!alive()) { window.removeEventListener('resize', onKbResize); return; }
+            var sc = host.querySelector('.kb-scroll');
+            if (sc) { kbFit(sc); }
+        });
+    }
+    // A board drawn into the page itself (lazy widgets off) gets the same aids.
+    (function () {
+        var inline = document.getElementById('pp-board');
+        if (inline && !inline.querySelector('.pp-embed') && inline.querySelector('.kb-scroll')) { kbWatch(inline); }
+    }());
     /* ------------------------------------------------ routing ----------- */
     /* ------------------------------------------------ recently viewed --- */
     // Every issue opened here is remembered in localStorage, newest first,
@@ -12230,6 +12447,11 @@ window.PmPortalBoot = function () {
             // S5: the top bar's 課題の追加, which adds to this project.
             var add = document.querySelector('#pp-top .pp-top-addmain');
             if (add) { ev.preventDefault(); add.click(); }
+            return;
+        }
+        // M8: s opens the status menu of the issue on screen.
+        if (k === 's' && window.ppStMenuFromKey) {
+            if (window.ppStMenuFromKey()) { ev.preventDefault(); }
             return;
         }
         if (ev.key === '/') {

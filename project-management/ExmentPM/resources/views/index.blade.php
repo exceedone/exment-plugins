@@ -79,6 +79,8 @@
         'bc_label', 'bc_root', 'qf_click', 'qf_unset', 'qf_undo', 'qf_undone', 'qf_today', 'qf_tomorrow', 'qf_next_week', 'qf_assign_me',
         // UX-D
         'pj_switch', 'proj_info',
+        // UX-E
+        'ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu',
     ])->mapWithKeys(function ($key) {
         return [$key => \App\Plugins\ExmentPM\PortalDefinition::trans($key)];
     })->toArray();
@@ -284,6 +286,8 @@
                     </tr></thead>
                     <tbody id="pp-issue-rows"></tbody>
                 </table>
+                {{-- S11: said once, to whoever may change the cells. --}}
+                <div class="pp-ed-hint" id="pp-ed-hint" hidden><i class="fa fa-pencil"></i> {{ $lang['ed_hint'] }} <button type="button" class="x" aria-label="{{ $lang['m_close'] }}">&times;</button></div>
                 <div class="bl-pager">
                     <span class="rg" id="pp-issue-count"></span>
                     <span class="pp-ar-note" id="pp-ar-note"></span>
@@ -303,6 +307,10 @@
 
         {{-- ============ gantt (the real gantt view, embedded) ============ --}}
         <section class="bl-screen" id="pp-gantt">
+            {{-- S10: a phone shows the gantt's list only; say that it moves
+                 sideways, and offer the same issues as a list by due date. --}}
+            <div class="pp-gantt-hint"><i class="fa fa-info-circle"></i> <span>{{ $lang['gantt_hint'] }}</span>
+                <a href="#issues?st=%21done&amp;so=dd&amp;sd=asc">{{ $lang['gantt_list'] }} <i class="fa fa-angle-right"></i></a></div>
             @if(!empty($lazy_widgets))
                 @if($gantt_available)
                 <div class="pp-embed" id="pp-embed-gantt" data-embed="gantt" data-embed-url="{{ $payload['urls']['embed_gantt'] }}">

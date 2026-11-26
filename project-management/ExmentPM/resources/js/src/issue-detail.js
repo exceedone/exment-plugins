@@ -207,7 +207,7 @@
             // phone it keeps the status, the assignees and the due date
             // (data-sum, see the stylesheet).
             '<div class="bl-dsum">' +
-            '<span class="it" data-sum="st"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
+            '<span class="it" data-sum="st"><span class="k">' + esc(L.col_st) + '</span>' + stBtn(i, res) + '</span>' +
             '<span class="it" data-sum="pr"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
             '<span class="it" data-sum="as"><span class="k">' + esc(L.col_as) + '</span>' + asHtml(i, res, '') + '</span>' +
             qfSummary(i, res) +
@@ -234,7 +234,7 @@
         // column at 1200px and wider, 'pr' and 'role' there and on a phone
         // (whose strip keeps the status, the assignees and the due date).
         var props = [
-            ['st', L.col_st, pill(i.st), 'top'],
+            ['st', L.col_st, stBtn(i, res), 'top'],
             ['as', L.col_as, asHtml(i, res, '<br>'), 'top'],
             ['dd', L.col_dd, dueCell(i), 'top'],
             ['pr', L.col_pr, prio(i.pr) || '—', 'pr'],
@@ -1120,6 +1120,69 @@
         return ids.filter(function (v, x, a) { return v && a.indexOf(v) === x; })
             .map(function (u) { return [String(u), user(u).n]; });
     }
+    // M8: the status is pressed to pick another one - any status of the
+    // project, not only the next. Sent the way 次の状態にする is (the comment
+    // endpoint, which notifies people and refuses a stale move).
+    function stBtn(i, res) {
+        if (!res || !res.editable || !(D.statuses || []).length) { return pill(i.st); }
+        return '<button type="button" class="pp-st-btn" title="' + esc(L.st_menu) + '" aria-haspopup="true" aria-expanded="false">' +
+            pill(i.st) + '<i class="fa fa-caret-down"></i></button>';
+    }
+    function stMenuClose() {
+        document.querySelectorAll('#pp-issue .pp-st-menu').forEach(function (m) { m.remove(); });
+        document.querySelectorAll('#pp-issue .pp-st-btn[aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+    }
+    function stMenuOpen(btn) {
+        var issueId = currentIssue;
+        var i = issueById(issueId) || (own(DET, String(issueId)) || {}).issue;
+        if (!i || !btn) { return; }
+        var was = btn.getAttribute('aria-expanded') === 'true';
+        stMenuClose();
+        if (was) { return; }
+        var menu = document.createElement('div');
+        menu.className = 'pp-st-menu';
+        menu.setAttribute('role', 'menu');
+        menu.innerHTML = (D.statuses || []).map(function (st) {
+            var cur = String(st.k) === String(i.st);
+            return '<button type="button" role="menuitem" data-st="' + esc(st.k) + '"' + (cur ? ' disabled aria-current="true"' : '') + '>' +
+                '<span class="dot" style="background:' + ppColor(st.c) + '"></span>' + esc(st.l) + (cur ? ' <i class="fa fa-check"></i>' : '') + '</button>';
+        }).join('');
+        btn.setAttribute('aria-expanded', 'true');
+        btn.parentNode.insertBefore(menu, btn.nextSibling);
+        menu.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-st]');
+            if (!b || b.disabled) { return; }
+            ev.stopPropagation();
+            stMenuClose();
+            postComment(b.getAttribute('data-st'));
+        });
+        menu.addEventListener('keydown', function (ev) {
+            var items = Array.prototype.slice.call(menu.querySelectorAll('button:not([disabled])'));
+            var at = items.indexOf(document.activeElement);
+            if (ev.key === 'Escape') { ev.stopPropagation(); stMenuClose(); btn.focus(); return; }
+            if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+                ev.preventDefault();
+                var next = items[(at + (ev.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length];
+                if (next) { next.focus(); }
+            }
+        });
+        var first = menu.querySelector('button:not([disabled])');
+        if (first) { first.focus(); }
+    }
+    // Key s (boot.js): the status menu of the issue on screen, from the box
+    // beside the text when it is there, else from the strip.
+    function stMenuFromKey() {
+        if (String(currentScreen) !== 'issue') { return false; }
+        var btns = Array.prototype.filter.call(document.querySelectorAll('#pp-issue .pp-st-btn'), function (b) { return b.offsetParent !== null; });
+        if (!btns.length) { return false; }
+        stMenuOpen(btns[0]);
+        return true;
+    }
+    window.ppStMenuFromKey = stMenuFromKey;
+    document.addEventListener('click', function onPpStDoc(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpStDoc); return; }
+        if (!(ev.target.closest && ev.target.closest('.pp-st-menu, .pp-st-btn'))) { stMenuClose(); }
+    });
     // M1: which editor a row of the info box opens, '' for none - only for
     // somebody who may edit the issue, and only for a column the table has.
     function qfField(key, res) {
@@ -1329,6 +1392,8 @@
     var ppIssueEl = document.getElementById('pp-issue');
     if (ppIssueEl) {
         ppIssueEl.addEventListener('click', function (ev) {
+            var stb = ev.target.closest && ev.target.closest('.pp-st-btn');
+            if (stb) { ev.preventDefault(); ev.stopPropagation(); stMenuOpen(stb); return; }
             var pen = ev.target.closest && ev.target.closest('.pp-qf-pen, .pp-qf-add');
             // M1: the value itself opens its editor, unless a link or a
             // button inside it (a parent issue, the mail button) was meant.

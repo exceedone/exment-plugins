@@ -84,20 +84,23 @@
 .pp-dash .pp-pj.arch{background:#f6f7f8;}
 .pp-dash .pp-pj.arch .pp-pj-name{color:var(--d-ink2);}
 .pp-dash .pp-pj-l1{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;}
-.pp-dash .pp-pj-name{flex:0 1 auto;min-width:0;font-size:13.5px;font-weight:700;
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pp-dash .pp-pj-name{flex:0 1 auto;min-width:0;font-size:13.5px;font-weight:700;line-height:1.3;padding:3px 0;
+    overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;}
 .pp-dash .pp-pj-name:hover{text-decoration:underline;color:var(--d-accent-d);}
 .pp-dash .pp-pj-up{flex:0 2 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     color:var(--d-mute);font-size:10.5px;}
 .pp-dash .pp-pj .ar{flex:none;background:#7f8c8d;color:#fff;border-radius:20px;padding:0 7px;font-size:10px;
     font-weight:700;line-height:1.6;white-space:nowrap;}
 /* the fixed columns - caption row and project rows share these widths */
-.pp-dash .pp-pjlist .cd{flex:none;width:170px;box-sizing:border-box;}
+/* S12: the name gets the room - the key column is narrower (the key is cut
+   with … and has its tooltip), and the name may take a second line. */
+.pp-dash .pp-pjlist .cd{flex:none;width:104px;box-sizing:border-box;}
 .pp-dash .pp-pjlist .ps{flex:none;width:56px;text-align:center;overflow:hidden;line-height:1;}
 .pp-dash .pp-pjlist .pg{flex:none;width:84px;display:flex;align-items:center;justify-content:flex-end;gap:6px;}
 .pp-dash .pp-pjlist .op{flex:none;width:46px;text-align:right;}
 .pp-dash .pp-pjlist .od{flex:none;width:52px;text-align:right;}
-.pp-dash .pp-pjlist .mi{flex:none;width:40px;text-align:right;}
+.pp-dash .pp-pjlist .mi{flex:none;width:64px;text-align:right;}
+.pp-dash .pp-pjh [title]{cursor:help;}
 .pp-dash .pp-pjlist .mo{flex:none;width:24px;}
 .pp-dash .pp-pj .cd{overflow:hidden;line-height:1;}
 .pp-dash .pp-pj .cd .k{display:inline-block;max-width:100%;box-sizing:border-box;vertical-align:middle;overflow:hidden;
@@ -318,14 +321,15 @@
                 @if(count($projects) > 0)
                 {{-- Caption row: the same cells as a project row, so each word
                      stands over its column at every width. --}}
-                <div class="pp-pjh" aria-hidden="true">
+                <div class="pp-pjh">
                     <span class="sp"></span>
                     <span class="cd"></span>
                     <span class="ps"></span>
-                    <span class="pg">{{ $t('progress') }}</span>
-                    <span class="op">{{ $colLabel('card_open') }}</span>
-                    <span class="od">{{ $colLabel('card_overdue') }}</span>
-                    <span class="mi">{{ $colLabel('card_mine') }}</span>
+                    {{-- S12: what each number counts, on hover --}}
+                    <span class="pg" title="{{ PortalDefinition::trans('dash_help_progress') }}">{{ $t('progress') }}</span>
+                    <span class="op" title="{{ PortalDefinition::trans('dash_help_open') }}">{{ $colLabel('card_open') }}</span>
+                    <span class="od" title="{{ PortalDefinition::trans('dash_help_overdue') }}">{{ $colLabel('card_overdue') }}</span>
+                    <span class="mi" title="{{ PortalDefinition::trans('dash_help_mine') }}">{{ $colLabel('card_mine') }}</span>
                     <span class="mo"></span>
                 </div>
                 @endif

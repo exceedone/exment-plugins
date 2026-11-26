@@ -259,6 +259,64 @@ test('S4, M3: the project head on one line, the name opens the project list', ()
     assert.ok(langJa.indexOf('// UX-D') > 0);
 });
 
+/* ---------------------------------------------- UX-E: list, board ------ */
+const listSrc = read('list.js');
+const embeds = read('embeds.js');
+const listView = view('list.blade.php');
+
+test('S11, M7: a pencil in each editable cell; one press opens the double-click editor', () => {
+    const f = load(listSrc, ['edPen'], 'var BULK_ON = true; var L = { ed_pen: "x" }; function esc(s) { return String(s); }');
+    assert.ok(/class="pp-ed-pen"/.test(f.edPen()));
+    const g = load(listSrc, ['edPen'], 'var BULK_ON = false; var L = {}; function esc(s) { return String(s); }');
+    assert.strictEqual(g.edPen(), '', 'none for a reader');
+    ['ty', 'st', 'pr', 'ms', 'cat', 'sd', 'dd'].forEach((k) => assert.ok(listSrc.split(String.fromCharCode(10)).some((l) => l.indexOf("edAttr('" + k + "')") >= 0 && l.indexOf('edPen()') > 0), k));
+    assert.ok(/new MouseEvent\('dblclick'/.test(listSrc), 'the pencil hands over to the existing editor');
+    assert.ok(/id="pp-ed-hint" hidden/.test(index) && /pmportal\.edhint/.test(listSrc), 'the hint is shown once');
+});
+
+test('S18: 自分が担当, with the way to every project', () => {
+    assert.strictEqual(ja('f_mine'), '自分が担当');
+    assert.ok(/'card_mine' => '自分が担当 :count'/.test(langJa));
+    const f = load(listSrc, ['mineAllLink'], 'var FILTER = { q: "mine" }; var D = { urls: { projects: "/pm" } }; var L = { mine_all: "all" }; function esc(s) { return String(s); }');
+    assert.ok(/href="\/pm"/.test(f.mineAllLink()));
+    const g = load(listSrc, ['mineAllLink'], 'var FILTER = { q: "" }; var D = { urls: { projects: "/pm" } }; var L = {}; function esc(s) { return String(s); }');
+    assert.strictEqual(g.mineAllLink(), '', 'only while 自分が担当 is on');
+});
+
+test('S9, M4: board aids - sideways buttons, the quick add on hover, a phone column at a time', () => {
+    assert.ok(/if \(kind === 'board'\) \{ kbWatch\(host\); \}/.test(embeds));
+    const f = load(embeds, ['kbCols'], 'function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined; }');
+    const col = (id, title, n) => ({ getAttribute: () => id, querySelector: (q) => (q === '.kb-col-count' ? { textContent: String(n) } : { textContent: title }) });
+    const scroll = { querySelectorAll: () => [col('1', '未対応', 2), col('2', '処理中', 0), col('1', '未対応', 3)] };
+    assert.deepStrictEqual(f.kbCols(scroll).map((c) => c.id + ':' + c.l + ':' + c.n), ['1:未対応:5', '2:処理中:0'], 'one chip per status, counted over the lanes');
+    assert.ok(/\.kb-col:not\(:hover\):not\(:focus-within\) \.kb-quickadd\{opacity:0;\}/.test(style));
+    assert.ok(/scroll-snap-type:x mandatory/.test(style) && /\.pp-kb-wrap \.kb-col\{scroll-snap-align:start/.test(style), 'only inside the portal');
+});
+
+test('S10: a phone gantt says it scrolls and offers the list by due date', () => {
+    assert.ok(/class="pp-gantt-hint"/.test(index));
+    assert.ok(/href="#issues\?st=%21done&amp;so=dd&amp;sd=asc"/.test(index));
+});
+
+test('S12: the dashboard names fit, and each number says what it counts', () => {
+    assert.ok(/\.pp-dash \.pp-pjlist \.cd\{flex:none;width:104px;/.test(listView));
+    ['progress', 'open', 'overdue', 'mine'].forEach((k) => {
+        assert.ok(listView.indexOf("trans('dash_help_" + k + "')") > 0, k);
+        assert.ok(ja('dash_help_' + k), k);
+    });
+});
+
+test('M8: the status menu offers every status and sends through the comment', () => {
+    assert.ok(/postComment\(b\.getAttribute\('data-st'\)\)/.test(functionSource(detail, 'stMenuOpen')));
+    assert.ok(/stBtn\(i, res\)/.test(functionSource(detail, 'buildDetail')));
+    assert.ok(/k === 's' && window\.ppStMenuFromKey/.test(read('boot.js')), 'key s');
+    ['ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu'].forEach((k) => {
+        assert.ok(ja(k), k);
+        assert.ok(index.indexOf("'" + k + "'") > 0, k + ' reaches the script');
+    });
+    assert.ok(langJa.indexOf('// UX-E') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);
