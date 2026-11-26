@@ -129,7 +129,7 @@ class PluginBatch extends PluginBatchBase
                 return 0;
             }
             $r = PortalDigest::run($dry);
-            $this->say($dry ? 'digest_dry' : 'digest', ['people' => $r['people'], 'count' => $r['sent'], 'empty' => $r['empty']]);
+            $this->say($dry ? 'digest_dry' : 'digest', ['people' => $r['people'], 'count' => $r['sent'], 'empty' => $r['empty'], 'failed' => $r['failed'] ?? 0]);
 
             return 0;
         }

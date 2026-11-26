@@ -1617,7 +1617,7 @@ return [
         'remind' => 'Reminders: :count sent for :issues issues (:skipped already sent, left out).',
         'remind_dry' => 'Dry run: would send :count for :issues issues (:skipped already sent, left out). Sends nothing.',
         'remind_off' => 'Reminders are turned off (Feature management, or the plugin settings).',
-        'digest' => 'Morning digest: sent to :count of :people people (nothing to say for :empty).',
+        'digest' => 'Morning digest: sent to :count of :people people (nothing to say for :empty, failed for :failed).',
         'digest_dry' => 'Dry run: would send to :count of :people people (nothing to say for :empty). Nothing is sent.',
         'digest_off' => 'The morning digest is turned off (Feature management).',
         'recur_dry' => 'Dry run: would create :count recurring issues.',

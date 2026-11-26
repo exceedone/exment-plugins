@@ -1619,7 +1619,7 @@ return [
         'remind' => 'リマインド：課題 :issues 件、:count 通を送りました（送り済みで省いたもの :skipped）。',
         'remind_dry' => 'ドライラン：課題 :issues 件、:count 通を送る予定です（送り済みで省くもの :skipped）。何も送りません。',
         'remind_off' => 'リマインドは使わない設定です（機能の管理、またはプラグインの設定）。',
-        'digest' => '朝のまとめ：:people 人のうち :count 人に送りました（何もなくて送らなかった人 :empty）。',
+        'digest' => '朝のまとめ：:people 人のうち :count 人に送りました（何もなくて送らなかった人 :empty、送れなかった人 :failed）。',
         'digest_dry' => 'ドライラン：:people 人のうち :count 人に送る予定です（何もない人 :empty）。何も送りません。',
         'digest_off' => '朝のまとめは使わない設定です（機能の管理）。',
         'recur_dry' => 'ドライラン：繰り返しの課題を :count 件作る予定です。',

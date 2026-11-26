@@ -1617,7 +1617,7 @@ return [
         'remind' => 'Nhắc nhở: đã gửi :count cho :issues vấn đề (bỏ qua :skipped đã gửi).',
         'remind_dry' => 'Chạy thử: sẽ gửi :count cho :issues vấn đề (bỏ qua :skipped đã gửi). Không gửi gì.',
         'remind_off' => 'Nhắc nhở đang tắt (quản lý chức năng hoặc cài đặt plugin).',
-        'digest' => 'Tóm tắt buổi sáng: đã gửi cho :count / :people người (:empty người không có gì).',
+        'digest' => 'Tóm tắt buổi sáng: đã gửi cho :count / :people người (:empty người không có gì, :failed người gửi không được).',
         'digest_dry' => 'Chạy thử: sẽ gửi cho :count / :people người (:empty người không có gì). Không gửi gì.',
         'digest_off' => 'Tóm tắt buổi sáng đang tắt (quản lý chức năng).',
         'recur_dry' => 'Chạy thử: sẽ tạo :count vấn đề lặp lại.',

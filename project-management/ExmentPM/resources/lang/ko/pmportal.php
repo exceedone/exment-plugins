@@ -1617,7 +1617,7 @@ return [
         'remind' => '리마인드: 과제 :issues 건, :count 통을 보냈습니다 (이미 보내서 생략 :skipped).',
         'remind_dry' => '드라이 런: 과제 :issues 건, :count 통을 보낼 예정입니다 (이미 보내서 생략 :skipped). 아무것도 보내지 않습니다.',
         'remind_off' => '리마인드를 사용하지 않는 설정입니다(기능 관리 또는 플러그인 설정).',
-        'digest' => '아침 요약: :people명 중 :count명에게 보냈습니다(내용 없음 :empty명).',
+        'digest' => '아침 요약: :people명 중 :count명에게 보냈습니다(내용 없음 :empty명, 실패 :failed명).',
         'digest_dry' => '드라이런: :people명 중 :count명에게 보낼 예정입니다(내용 없음 :empty명). 아무것도 보내지 않습니다.',
         'digest_off' => '아침 요약은 사용하지 않는 설정입니다(기능 관리).',
         'recur_dry' => '시험 실행: 반복 이슈 :count건을 만들 예정입니다.',
