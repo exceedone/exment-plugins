@@ -19,6 +19,10 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 - The comment dock's 「ほかの項目も変える」 also has 管理者 and レビュアー (the same picker as 担当者) and 難易度, beside 副担当者, each where the issue table has the column; saved with the comment, in the history like the other fields.
   コメント欄の「ほかの項目も変える」に、副担当者に加えて、管理者・レビュアー（担当者と同じ選び方）と難易度を足しました。課題のテーブルにその列があるときだけ出します。コメントといっしょに保存し、履歴に残ります。
+**Unreleased / 未リリース**
+
+- The trail above an issue names its parents too (プロジェクト管理 › project › 課題 › parent keys › this key): each a link with its key (and a short subject on a wide screen, the whole one in the tooltip), up to the issue levels; with more than two, the middle folds into 「…」, which opens them; a phone shows the direct parent only; a parent the reader may not open reads 「見られない課題」. The parents come with the issue (one query a level for all the issues of the page).
+  課題の上のパンくずに、親課題も出すようにしました（プロジェクト管理 › プロジェクト › 課題 › 親のキー › この課題）。それぞれキーのリンクで、広い画面では短い件名も、マウスを乗せると件名すべてが出ます。課題の階層の深さまで出し、3 つ以上あるときは間を「…」にまとめます（押すと出ます）。スマホではすぐ上の親だけです。見られない親は「見られない課題」と出します。親は課題といっしょに読みます（ページの課題すべてに、階層 1 つにつき 1 回のクエリ）。
 
 **Changed in 1.7.19 / 1.7.19 で変わったこと**
 

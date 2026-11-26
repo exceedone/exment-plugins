@@ -1311,8 +1311,57 @@
             (D.urls && D.urls.projects ? '<a href="' + esc(D.urls.projects) + '">' + esc(L.bc_root) + '</a><i class="fa fa-angle-right"></i>' : '') +
             '<a href="#home">' + esc(p.name || '') + '</a><i class="fa fa-angle-right"></i>' +
             '<a href="#issues">' + esc(L.tab_issues) + '</a><i class="fa fa-angle-right"></i>' +
+            crumbParents(crumbAncestors(i)) +
             '<span aria-current="page">' + esc(i.key) + '</span></nav>';
     }
+    // BC-1: the parents of the issue, root first - from the detail (the
+    // server reads them, readable or not) or, before it has come, from the
+    // list in memory.
+    function crumbAncestors(i) {
+        var det = own(DET, String(i.id));
+        if (det && Array.isArray(det.anc)) { return det.anc; }
+        var out = [];
+        var seen = {};
+        var p = i.parent;
+        while (p && !seen[p] && out.length < 5) {
+            seen[p] = true;
+            var row = issueById(p);
+            if (!row) { break; }
+            out.unshift({ id: row.id, key: row.key, s: row.subject, ok: true });
+            p = row.parent;
+        }
+        return out;
+    }
+    // Each parent a link with its key (and a short subject on a wide screen,
+    // the whole one in the tooltip); more than two fold their middle into
+    // 「…」, which opens them. A phone shows the direct parent only (CSS).
+    function crumbParents(anc) {
+        if (!anc || !anc.length) { return ''; }
+        var one = function (a, n) {
+            var last = n === anc.length - 1;
+            var cls = 'pp-crumb-anc' + (last ? ' last' : '') + (anc.length > 2 && n > 0 && !last ? ' mid' : '');
+            if (!a.ok) {
+                return '<span class="' + cls + ' no" title="' + esc(L.bc_hidden) + '">' + esc(L.bc_hidden) + '</span><i class="fa fa-angle-right ' + cls + '"></i>';
+            }
+            var sub = String(a.s || '');
+            return '<a class="' + cls + '" href="#' + esc(issueHash(a.id)) + '" title="' + esc(a.key + ' ' + sub) + '">' + esc(a.key) +
+                (sub ? '<span class="sj"> ' + esc(sub.length > 14 ? sub.slice(0, 14) + '…' : sub) + '</span>' : '') + '</a>' +
+                '<i class="fa fa-angle-right ' + cls + '"></i>';
+        };
+        var html = anc.map(one);
+        if (anc.length > 2) {
+            html.splice(1, 0, '<button type="button" class="pp-crumb-more" title="' + esc(L.bc_more) + '" aria-label="' + esc(L.bc_more) + '">…</button><i class="fa fa-angle-right pp-crumb-moresep"></i>');
+        }
+        return '<span class="pp-crumb-ancs' + (anc.length > 2 ? ' folded' : '') + '">' + html.join('') + '</span>';
+    }
+    document.addEventListener('click', function onPpCrumbMore(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpCrumbMore); return; }
+        var more = ev.target.closest && ev.target.closest('.pp-crumb-more');
+        if (!more) { return; }
+        ev.preventDefault();
+        var box = more.closest('.pp-crumb-ancs');
+        if (box) { box.classList.remove('folded'); }
+    });
     // The project's people a field may name: the assignee rule (members and
     // the manager) for a sub-assignee, everybody on the project otherwise.
     function qfOptions(key) {
