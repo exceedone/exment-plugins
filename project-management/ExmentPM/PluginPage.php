@@ -365,6 +365,32 @@ class PluginPage extends PluginPageBase
         return $this->portal()->attachTextSave(request(), $id, $issue_id, $doc);
     }
 
+    // ISS02938: the attachments of a wiki page, the same way
+    public function wikiAttachVersions($id, $page_id, $doc)
+    {
+        return $this->portal()->attachVersions(request(), $id, $page_id, $doc, 'wiki');
+    }
+
+    public function wikiAttachRestore($id, $page_id, $doc, $version)
+    {
+        return $this->portal()->attachRestore(request(), $id, $page_id, $doc, $version, 'wiki');
+    }
+
+    public function wikiAttachText($id, $page_id, $doc)
+    {
+        return $this->portal()->attachText(request(), $id, $page_id, $doc, 'wiki');
+    }
+
+    public function wikiAttachTextSave($id, $page_id, $doc)
+    {
+        return $this->portal()->attachTextSave(request(), $id, $page_id, $doc, 'wiki');
+    }
+
+    public function wikiAttachLock($id, $page_id, $doc)
+    {
+        return $this->portal()->attachLock(request(), $id, $page_id, $doc, 'wiki');
+    }
+
     public function attachLock($id, $issue_id, $doc)
     {
         return $this->portal()->attachLock(request(), $id, $issue_id, $doc);

@@ -18,9 +18,9 @@ use Illuminate\Support\Facades\Log;
  */
 trait PortalAttachTrait
 {
-    public function attachVersions(Request $request, $id, $issue_id, $doc)
+    public function attachVersions(Request $request, $id, $issue_id, $doc, string $kind = 'issue')
     {
-        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc);
+        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc, false, $kind);
         $out = [];
         $current = PortalAttachEdit::numbers([$document->id])[intval($document->id)] ?? 1;
         $out[] = [
@@ -47,9 +47,9 @@ trait PortalAttachTrait
         ]);
     }
 
-    public function attachRestore(Request $request, $id, $issue_id, $doc, $version)
+    public function attachRestore(Request $request, $id, $issue_id, $doc, $version, string $kind = 'issue')
     {
-        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc, true);
+        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc, true, $kind);
         $v = \Exceedone\Exment\Model\DocumentVersion::where('document_id', $document->id)->where('id', intval($version))->first();
         if (!isset($v)) {
             return $this->messageError(404, 'not_found');
@@ -68,12 +68,12 @@ trait PortalAttachTrait
         }
         PortalAttachEdit::note($issue, strval(PortalDefinition::trans('attach.note_restore', ['name' => strval($v->document_name), 'no' => intval($v->version_no)])));
 
-        return $this->issueDetailResponse($project, $issue->id);
+        return $this->attachDone($project, $issue, $kind);
     }
 
-    public function attachText(Request $request, $id, $issue_id, $doc)
+    public function attachText(Request $request, $id, $issue_id, $doc, string $kind = 'issue')
     {
-        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc);
+        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc, false, $kind);
         $name = strval(array_get($document->value, 'document_name', ''));
         if (PortalAttachEdit::kindOf($name) !== 'text') {
             return $this->messageError(422, 'attach_not_text');
@@ -91,9 +91,9 @@ trait PortalAttachTrait
         ]);
     }
 
-    public function attachTextSave(Request $request, $id, $issue_id, $doc)
+    public function attachTextSave(Request $request, $id, $issue_id, $doc, string $kind = 'issue')
     {
-        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc, true);
+        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc, true, $kind);
         $name = strval(array_get($document->value, 'document_name', ''));
         if (PortalAttachEdit::kindOf($name) !== 'text') {
             return $this->messageError(422, 'attach_not_text');
@@ -119,7 +119,7 @@ trait PortalAttachTrait
         if ($bytes === strval(\Illuminate\Support\Facades\Storage::disk(config('admin.upload.disk'))->get(PortalAttachEdit::fileOf($document)->path))) {
             PortalAttachEdit::unlock(intval($document->id), $me);
 
-            return $this->issueDetailResponse($project, $issue->id);
+            return $this->attachDone($project, $issue, $kind);
         }
         try {
             PortalAttachEdit::replaceWith($issue, $document, $bytes, $name);
@@ -132,12 +132,12 @@ trait PortalAttachTrait
         $no = PortalAttachEdit::numbers([$document->id])[intval($document->id)] ?? 1;
         PortalAttachEdit::note($issue, strval(PortalDefinition::trans('attach.note_edit', ['name' => $name, 'no' => $no])));
 
-        return $this->issueDetailResponse($project, $issue->id);
+        return $this->attachDone($project, $issue, $kind);
     }
 
-    public function attachLock(Request $request, $id, $issue_id, $doc)
+    public function attachLock(Request $request, $id, $issue_id, $doc, string $kind = 'issue')
     {
-        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc, true);
+        [$project, $issue, $document] = $this->attachTarget($id, $issue_id, $doc, true, $kind);
         $me = intval(\Exment::getUserId());
         if ($request->boolean('release')) {
             PortalAttachEdit::unlock(intval($document->id), $me);
@@ -156,13 +156,14 @@ trait PortalAttachTrait
      *
      * @return array{0: mixed, 1: mixed, 2: mixed}
      */
-    protected function attachTarget($id, $issue_id, $doc, bool $change = false): array
+    protected function attachTarget($id, $issue_id, $doc, bool $change = false, string $kind = 'issue'): array
     {
         if (!PortalAttachEdit::enabled()) {
             abort(404);
         }
         $project = $this->findProject($id);
-        $issue = $this->findIssue($project, $issue_id);
+        // an issue, or a page of the project's wiki (the same checks: of the project, readable)
+        $issue = $kind === 'wiki' ? $this->findWikiPage($project, $issue_id) : $this->findIssue($project, $issue_id);
         $document = PortalAttachEdit::document($issue, $doc);
         if (!isset($document)) {
             abort(404);
@@ -177,5 +178,34 @@ trait PortalAttachTrait
         }
 
         return [$project, $issue, $document];
+    }
+
+    /** A page of the project's wiki, readable by the person, or 404 / 403. */
+    protected function findWikiPage($project, $pageId)
+    {
+        $wiki = \Exceedone\Exment\Model\CustomTable::getEloquent(strval($this->def['wiki_table'] ?? ''));
+        if (!isset($wiki)) {
+            abort(404);
+        }
+        $page = $wiki->getValueModel()->find($pageId);
+        if (!isset($page) || intval($page->parent_id) !== intval($project->id)
+            || strval($page->parent_type) !== $this->project_table->table_name) {
+            abort(404);
+        }
+        if ($page->enableAccess() !== true) {
+            abort(403);
+        }
+
+        return $page;
+    }
+
+    /** After a change: the issue's detail, or the wiki page's files for the wiki to redraw. */
+    protected function attachDone($project, $row, string $kind)
+    {
+        if ($kind === 'wiki') {
+            return response()->json(['ok' => true, 'wiki' => ['id' => intval($row->id), 'files' => $this->wikiPageFiles($row)]]);
+        }
+
+        return $this->issueDetailResponse($project, $row->id);
     }
 }
