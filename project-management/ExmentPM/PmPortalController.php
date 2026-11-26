@@ -895,6 +895,8 @@ class PmPortalController extends AdminControllerBase
         // postComment), so the screen is not offered controls that can only
         // be refused.
         $archived = $this->projectIsArchived($project);
+        // the manager may hide any change of the history (ISS02924)
+        $canManage = PortalMembership::canManage($project);
 
         $out = [];
         foreach ($issues as $issue) {
@@ -924,10 +926,13 @@ class PmPortalController extends AdminControllerBase
                 }
                 $timeline[] = [
                     'tp' => 'chg',
+                    'rid' => intval($rev->id),
                     'by' => intval($rev->create_user_id),
                     'at' => $this->fmtAt($rev->created_at),
                     'ts' => strval($rev->created_at),
                     'chg' => $changes,
+                    // who made the change, or the manager, may hide it (a value put in by mistake; ISS02924)
+                    'hide' => !$archived && (intval($rev->create_user_id) === intval($me) || $canManage),
                 ];
             }
 
@@ -2163,6 +2168,38 @@ class PmPortalController extends AdminControllerBase
         if ($why !== null) {
             return $this->messageError(422, $why);
         }
+
+        return $this->issueDetailResponse($project, $issue->id);
+    }
+
+    /**
+     * Hide a change from the history of an issue (ISS02924): a value put in by mistake. POST
+     * {id}/issue/{issue_id}/history/{revision_id}/hide. The one who made the change may, and the
+     * manager of the project. The revision is kept, marked deleted (who and when), so Exment's own
+     * screen of the revisions still has it; the portal no longer shows it.
+     */
+    public function hideRevision(Request $request, $id, $issue_id, $revision_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+        $rev = \DB::table('revisions')
+            ->where('id', intval($revision_id))
+            ->where('revisionable_type', $this->issue_table->table_name)
+            ->where('revisionable_id', intval($issue->id))
+            ->whereNull('deleted_at')
+            ->first();
+        if (!isset($rev)) {
+            return $this->messageError(404, 'not_found');
+        }
+        $me = intval(\Exment::getUserId());
+        if (intval($rev->create_user_id) !== $me && !PortalMembership::canManage($project)) {
+            return $this->messageError(403, 'no_permission');
+        }
+        \DB::table('revisions')->where('id', $rev->id)->update(['deleted_at' => now(), 'delete_user_id' => $me]);
+        Log::info('pm_portal: revision ' . $rev->id . ' of issue ' . $issue->id . ' hidden by user ' . $me);
 
         return $this->issueDetailResponse($project, $issue->id);
     }

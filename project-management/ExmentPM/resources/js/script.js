@@ -4063,7 +4063,9 @@ window.PmPortalBoot = function () {
             if (e.tp === 'chg') {
                 body = '<div class="chg">' + (e.chg || []).map(function (c) {
                     return '<div><b>' + esc(c[0]) + '</b>: ' + esc(c[1]) + '<span class="arr">→</span><b>' + esc(c[2]) + '</b></div>';
-                }).join('') + '</div>';
+                }).join('') + '</div>' +
+                    // a change put in by mistake can be hidden (ISS02924)
+                    (e.hide ? '<div class="act"><a href="javascript:void(0);" class="pp-chghide" data-rid="' + esc(e.rid) + '">' + esc(L.chg_hide) + '</a></div>' : '');
             } else if (e.tp === 'add') {
                 body = '<div class="chg"><i class="fa fa-plus" style="color:var(--bl-accent);margin-right:6px;"></i>' + esc(L.added) + '</div>';
             } else if (e.tp === 'file') {
@@ -6530,6 +6532,41 @@ window.PmPortalBoot = function () {
             toast(L.alias_saved);
             renderIssues();
         }).fail(function (xhr) { toast(xhrErr(xhr, L.alias_fail), true); });
+    }
+
+    // Hide a change of the history (ISS02924): asked twice, as a delete is.
+    function chgHideRun(link) {
+        if (link.dataset.busy === '1') { return; }
+        if (link.dataset.armed !== '1') {
+            link.dataset.armed = '1';
+            link.textContent = L.chg_hide_ask;
+            setTimeout(function () {
+                if (!link.parentNode) { return; }
+                link.dataset.armed = '';
+                link.textContent = L.chg_hide;
+            }, 4000);
+            return;
+        }
+        var issueId = currentIssue, epoch = detailEpoch;
+        var seq = ++DET_SEQ;
+        link.dataset.busy = '1';
+        $.ajax({
+            url: D.urls.base + '/issue/' + issueId + '/history/' + link.dataset.rid + '/hide', type: 'POST',
+            dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            link.dataset.busy = '';
+            if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
+                if (detailCurrent(issueId, epoch)) { toast(errText(null, res, L.chg_hide_fail), true); }
+                return;
+            }
+            applyDetail(res, epoch, true, seq);
+            if (detailCurrent(issueId, epoch)) { toast(L.chg_hidden); }
+        }).fail(function (xhr) {
+            link.dataset.busy = '';
+            if (!detailCurrent(issueId, epoch)) { return; }
+            toast(xhrErr(xhr, L.chg_hide_fail), true);
+        });
     }
 
     function cmtDelete(link) {
@@ -11813,6 +11850,8 @@ window.PmPortalBoot = function () {
         if (cdel) { cmtDelete(cdel); return; }
         var alSet = ev.target.closest('.pp-al-set');
         if (alSet) { aliasSet(alSet); return; }
+        var chgHide = ev.target.closest('.pp-chghide');
+        if (chgHide) { chgHideRun(chgHide); return; }
         var addChild = ev.target.closest('.pp-addchild');
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
         var linkCopy = ev.target.closest('.pp-linkcopy');

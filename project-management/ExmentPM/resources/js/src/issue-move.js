@@ -126,6 +126,41 @@
         }).fail(function (xhr) { toast(xhrErr(xhr, L.alias_fail), true); });
     }
 
+    // Hide a change of the history (ISS02924): asked twice, as a delete is.
+    function chgHideRun(link) {
+        if (link.dataset.busy === '1') { return; }
+        if (link.dataset.armed !== '1') {
+            link.dataset.armed = '1';
+            link.textContent = L.chg_hide_ask;
+            setTimeout(function () {
+                if (!link.parentNode) { return; }
+                link.dataset.armed = '';
+                link.textContent = L.chg_hide;
+            }, 4000);
+            return;
+        }
+        var issueId = currentIssue, epoch = detailEpoch;
+        var seq = ++DET_SEQ;
+        link.dataset.busy = '1';
+        $.ajax({
+            url: D.urls.base + '/issue/' + issueId + '/history/' + link.dataset.rid + '/hide', type: 'POST',
+            dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            link.dataset.busy = '';
+            if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
+                if (detailCurrent(issueId, epoch)) { toast(errText(null, res, L.chg_hide_fail), true); }
+                return;
+            }
+            applyDetail(res, epoch, true, seq);
+            if (detailCurrent(issueId, epoch)) { toast(L.chg_hidden); }
+        }).fail(function (xhr) {
+            link.dataset.busy = '';
+            if (!detailCurrent(issueId, epoch)) { return; }
+            toast(xhrErr(xhr, L.chg_hide_fail), true);
+        });
+    }
+
     function cmtDelete(link) {
         if (link.dataset.busy === '1') { return; }
         if (link.dataset.armed !== '1') {

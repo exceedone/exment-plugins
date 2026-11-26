@@ -45,6 +45,7 @@
         'cmt_link', 'cmt_link_tip', 'cmt_not_found', 'proj_settings', 'qf_edit', 'qf_save', 'qf_stale',
         'lbl_notify', 'lbl_notified', 'f_rl', 'oc_menu',
         'cmt_del_ask', 'cmt_deleted', 'cmt_del_fail',
+        'chg_hide', 'chg_hide_ask', 'chg_hidden', 'chg_hide_fail',
         'wiki_pages', 'wiki_add', 'wiki_edit', 'wiki_hist', 'wiki_files', 'wiki_meta', 'wiki_none', 'wiki_empty',
         'board_none', 'gantt_none',
         'bd_box', 'bd_y', 'bd_plan', 'bd_actual', 'bd_forecast', 'bd_today', 'bd_left', 'bd_done',

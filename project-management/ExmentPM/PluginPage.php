@@ -217,6 +217,18 @@ class PluginPage extends PluginPageBase
         return $this->portal()->setIssueAlias(request(), $id, $issue_id);
     }
 
+    // the notices menu (bell / mail / Teams): its route had no method here
+    public function postNotifyBy()
+    {
+        return $this->portal()->postNotifyBy(request());
+    }
+
+    // ISS02924: hide a change of the history
+    public function hideRevision($id, $issue_id, $revision_id)
+    {
+        return $this->portal()->hideRevision(request(), $id, $issue_id, $revision_id);
+    }
+
     public function mailIssue($id, $issue_id)
     {
         return $this->portal()->mailIssue(request(), $id, $issue_id);
