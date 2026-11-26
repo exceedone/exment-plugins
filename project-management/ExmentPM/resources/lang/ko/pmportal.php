@@ -1927,4 +1927,15 @@ return [
     'nt_others' => '워치하는 사람과 담당자도 각자의 방법으로 받습니다',
     'nt_sent_mail' => '메일로 알림: %s',
     'nt_sent_teams' => 'Teams로 알림: %s',
+    // L2
+    'pal_title' => '명령',
+    'pal_ph' => '작업 찾기 · 과제 키나 제목으로 찾기',
+    'pal_none' => '찾을 수 없습니다',
+    'pal_issues' => '과제로 이동',
+    'pal_assign_me' => '나에게 할당',
+    'kh_palette' => '명령 창 (모든 작업과 키)',
+    // ACT-1
+    'act_edit_tip' => '제목·설명·모든 항목 변경 (키 e)',
+    'act_more_tip' => '하위 과제 추가·주목·즐겨찾기·워치·복사·이동·삭제 등',
+    'act_watch_tip' => '워치하면 이 과제가 바뀔 때 알려 줍니다',
 ];

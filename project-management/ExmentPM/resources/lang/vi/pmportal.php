@@ -1927,4 +1927,15 @@ return [
     'nt_others' => 'Người theo dõi và người phụ trách cũng nhận, theo cách của họ',
     'nt_sent_mail' => 'Đã báo qua email: %s',
     'nt_sent_teams' => 'Đã báo trên Teams: %s',
+    // L2
+    'pal_title' => 'Lệnh',
+    'pal_ph' => 'Tìm thao tác, hoặc tìm vấn đề theo khóa hay tiêu đề',
+    'pal_none' => 'Không tìm thấy',
+    'pal_issues' => 'Đến vấn đề',
+    'pal_assign_me' => 'Giao cho tôi',
+    'kh_palette' => 'Cửa sổ lệnh (mọi thao tác và phím)',
+    // ACT-1
+    'act_edit_tip' => 'Thay đổi tiêu đề, mô tả và mọi mục (phím e)',
+    'act_more_tip' => 'Thêm vấn đề con, ghim, yêu thích, theo dõi, sao chép, di chuyển, xóa...',
+    'act_watch_tip' => 'Khi theo dõi, bạn sẽ được báo khi vấn đề này thay đổi',
 ];

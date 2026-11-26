@@ -1927,4 +1927,15 @@ return [
     'nt_others' => 'Beobachter und Zuständige erhalten es auch, auf ihre eigene Weise',
     'nt_sent_mail' => 'Per E-Mail benachrichtigt: %s',
     'nt_sent_teams' => 'Über Teams benachrichtigt: %s',
+    // L2
+    'pal_title' => 'Befehle',
+    'pal_ph' => 'Aktionen suchen, oder Vorgänge nach Schlüssel oder Betreff',
+    'pal_none' => 'Nichts gefunden',
+    'pal_issues' => 'Zu einem Vorgang',
+    'pal_assign_me' => 'Mir zuweisen',
+    'kh_palette' => 'Befehlspalette (alle Aktionen und Tasten)',
+    // ACT-1
+    'act_edit_tip' => 'Titel, Beschreibung und alle Felder ändern (Taste e)',
+    'act_more_tip' => 'Untergeordneten Vorgang hinzufügen, anheften, Favorit, beobachten, kopieren, verschieben, löschen und mehr',
+    'act_watch_tip' => 'Beim Beobachten werden Sie benachrichtigt, wenn sich dieser Vorgang ändert',
 ];

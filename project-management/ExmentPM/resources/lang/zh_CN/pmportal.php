@@ -1927,4 +1927,15 @@ return [
     'nt_others' => '关注者和负责人也会按各自的接收方式收到',
     'nt_sent_mail' => '已通过邮件通知：%s',
     'nt_sent_teams' => '已通过 Teams 通知：%s',
+    // L2
+    'pal_title' => '命令',
+    'pal_ph' => '查找操作，或按问题的键、标题查找',
+    'pal_none' => '未找到',
+    'pal_issues' => '转到问题',
+    'pal_assign_me' => '分配给自己',
+    'kh_palette' => '命令窗口（所有操作和快捷键）',
+    // ACT-1
+    'act_edit_tip' => '更改标题、说明和所有项目（键 e）',
+    'act_more_tip' => '添加子问题、置顶、收藏、关注、复制、移动、删除等',
+    'act_watch_tip' => '关注后，此问题变更时会通知你',
 ];

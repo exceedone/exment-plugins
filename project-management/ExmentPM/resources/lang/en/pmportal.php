@@ -1927,4 +1927,15 @@ return [
     'nt_others' => 'Watchers and assignees get it too, in their own way',
     'nt_sent_mail' => 'Notified by mail: %s',
     'nt_sent_teams' => 'Notified on Teams: %s',
+    // L2
+    'pal_title' => 'Commands',
+    'pal_ph' => 'Search actions, or issues by key or subject',
+    'pal_none' => 'Nothing found',
+    'pal_issues' => 'Go to an issue',
+    'pal_assign_me' => 'Assign to me',
+    'kh_palette' => 'Command palette (all actions and keys)',
+    // ACT-1
+    'act_edit_tip' => 'Change the title, the description and all the fields (key e)',
+    'act_more_tip' => 'Add a child issue, pin, favorite, watch, copy, move, delete and more',
+    'act_watch_tip' => 'Watching tells you when this issue changes',
 ];

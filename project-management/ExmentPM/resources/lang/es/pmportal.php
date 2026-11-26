@@ -1927,4 +1927,15 @@ return [
     'nt_others' => 'Los seguidores y los responsables también lo reciben, a su manera',
     'nt_sent_mail' => 'Avisado por correo: %s',
     'nt_sent_teams' => 'Avisado en Teams: %s',
+    // L2
+    'pal_title' => 'Comandos',
+    'pal_ph' => 'Buscar acciones, o incidencias por clave o asunto',
+    'pal_none' => 'No se encontró nada',
+    'pal_issues' => 'Ir a una incidencia',
+    'pal_assign_me' => 'Asignarme',
+    'kh_palette' => 'Paleta de comandos (todas las acciones y teclas)',
+    // ACT-1
+    'act_edit_tip' => 'Cambiar el título, la descripción y todos los campos (tecla e)',
+    'act_more_tip' => 'Añadir una incidencia hija, destacar, favorita, seguir, copiar, mover, eliminar y más',
+    'act_watch_tip' => 'Al seguirla, se le avisa cuando cambia esta incidencia',
 ];
