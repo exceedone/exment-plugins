@@ -44,6 +44,8 @@
         { "method": "post", "uri": "settings/catalog-templates", "function": "postCatalogTemplates" },
         { "method": "get", "uri": "approval/{id}", "function": "approval" },
         { "method": "post", "uri": "approval/{id}", "function": "postApproval" },
+        { "method": "get", "uri": "boxes", "function": "boxes" },
+        { "method": "post", "uri": "boxes/{id}/web-form", "function": "postBoxWebForm" },
         { "method": "get", "uri": "problems", "function": "problems" },
         { "method": "get", "uri": "problem/{id}", "function": "problem" },
         { "method": "post", "uri": "problem/{id}", "function": "postProblem" },
