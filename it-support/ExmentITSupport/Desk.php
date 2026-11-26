@@ -735,6 +735,52 @@ class Desk
         return $this->back(Its::url('ticket', strval($into->id)), array_get($ticket->value, 'ticket_no') . ' をこのチケットにまとめました。');
     }
 
+    // ---- the request catalog (Catalog) ------------------------------------
+
+    public function postCatalogTemplates(Request $request)
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        $n = Catalog::installTemplates();
+
+        return $this->back(Its::dataUrl(Its::T_CATALOG), $n > 0
+            ? "申請メニューのひな形を {$n} 件入れました。承認がいるものは「承認する人」を選んでください（選ぶまでは承認なしで受け付けます）。"
+            : '申請メニューのひな形は、もう入っています。');
+    }
+
+    /**
+     * The approval page of a request: for its approver (and the system administrators), who
+     * need not be agents. Exment's login and the plugin's role group still apply.
+     */
+    public function approval(Request $request, $id)
+    {
+        $ticket = Its::isInstalled() && Catalog::enabled() ? Tickets::find($id) : null;
+        if (!isset($ticket) || !Catalog::mayDecide($ticket)) {
+            return response($this->view('denied')->render(), 403);
+        }
+
+        return $this->view('approval', ['ticket' => $ticket, 'states' => Catalog::APPROVAL_STATES]);
+    }
+
+    public function postApproval(Request $request, $id)
+    {
+        $ticket = Its::isInstalled() && Catalog::enabled() ? Tickets::find($id) : null;
+        if (!isset($ticket) || !Catalog::mayDecide($ticket)) {
+            return response($this->view('denied')->render(), 403);
+        }
+        $url = Its::url('approval', strval($ticket->id));
+        $approve = $request->get('decision') === 'approve';
+        if (!in_array($request->get('decision'), ['approve', 'reject'], true)) {
+            return $this->back($url, '承認か却下を選んでください。', true);
+        }
+        if (!Catalog::decide($ticket, $approve, strval($request->get('comment', '')))) {
+            return $this->back($url, 'この申請は、もう承認待ちではありません。', true);
+        }
+
+        return $this->back($url, $approve ? '承認しました。担当者が対応を始めます。' : '却下しました。依頼した人にメールで知らせました。');
+    }
+
     // ---- problems (Problems) ---------------------------------------------
 
     /** The gate of the problem pages: an agent, and problems used. */
@@ -1106,7 +1152,7 @@ class Desk
             }
             if ($request->has($key)) {
                 $values[$key] = $request->get($key);
-            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled', 'problems_enabled'], true)) {
+            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled', 'problems_enabled', 'catalog_enabled'], true)) {
                 $values[$key] = '0';
             } elseif (in_array($key, ['esc_lead_users', 'esc_manager_users', 'esc_channels'], true) && $request->has('esc_form')) {
                 // lists left empty on the page

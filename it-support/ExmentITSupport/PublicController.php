@@ -70,8 +70,13 @@ class PublicController extends Controller
     public function requestForm(Request $request)
     {
         $this->guard();
+        // the request catalog (Catalog): the menu, or the form of one item
+        $item = $request->has('item') ? Catalog::item($request->get('item')) : null;
 
         return $this->page('request', [
+            'catalog' => Catalog::publicItems(),
+            'item' => isset($item) ? ['id' => intval($item->id), 'name' => strval(array_get($item->value, 'name')), 'description' => strval(array_get($item->value, 'description')),
+                'approval' => boolval(array_get($item->value, 'needs_approval', '0')), 'fields' => Catalog::fields($item)] : null,
             'categories' => Tickets::options(Its::T_CATEGORY, 'name', function ($row) {
                 return boolval(array_get($row->value, 'public', '1'));
             }),
@@ -95,13 +100,18 @@ class PublicController extends Controller
             return $this->page('message', ['heading' => '受け付けました', 'text' => 'ありがとうございました。']);
         }
 
+        // an item of the request catalog: its own fields instead of the subject and the text
+        $item = $request->has('item') ? Catalog::item($request->get('item')) : null;
+        if ($request->has('item') && !isset($item)) {
+            return $this->notFound();
+        }
         $data = $request->validate([
             'name' => 'required|string|max:100',
             'email' => 'required|email|max:200',
             'company' => 'nullable|string|max:200',
             'category' => 'nullable|integer',
-            'subject' => 'required|string|max:200',
-            'body' => 'required|string|max:20000',
+            'subject' => isset($item) ? 'nullable|string|max:200' : 'required|string|max:200',
+            'body' => isset($item) ? 'nullable|string|max:20000' : 'required|string|max:20000',
             'urgent' => 'nullable|in:1',
             'files.*' => 'file|max:10240',
         ], [], [
@@ -115,6 +125,18 @@ class PublicController extends Controller
             }
         }
 
+        $catalogValues = [];
+        if (isset($item)) {
+            $answers = (array) $request->input('cf', []);
+            $errors = \App\Plugins\ExmentITSupport\Alerts\CatalogSpec::validate(Catalog::fields($item), $answers);
+            if (!empty($errors)) {
+                throw \Illuminate\Validation\ValidationException::withMessages($errors);
+            }
+            $catalogValues = Catalog::ticketValues($item, $answers, strval($data['body'] ?? ''));
+            $data['subject'] = $catalogValues['subject'];
+            $data['body'] = $catalogValues['description'];
+        }
+
         $categories = Tickets::options(Its::T_CATEGORY);
         $body = trim($data['body']) . (!empty($data['company']) ? "\n\n（会社名: " . $data['company'] . '）' : '');
         // Anyone can type any address here. Until its owner opens the link
@@ -123,7 +145,7 @@ class PublicController extends Controller
         // ...except a logged-in user of the portal asking from their own address
         $user = \Exment::user();
         $own = isset($user) && Its::normalizeEmail(strval(optional($user->base_user)->getValue('email'))) === Its::normalizeEmail($data['email']);
-        $ticket = Tickets::create([
+        $values = [
             'tags' => $own ? null : Tickets::TAG_UNVERIFIED,
             'subject' => $data['subject'],
             'description' => $body,
@@ -132,7 +154,16 @@ class PublicController extends Controller
             'requester_email' => $data['email'],
             'category' => isset($categories[strval($data['category'] ?? '')]) ? $data['category'] : null,
             'priority' => !empty($data['urgent']) ? 'high' : Inbox::guessPriority($data['subject'] . "\n" . $data['body']),
-        ], ['body' => $body], $files, $own);
+        ];
+        if (!empty($catalogValues)) {
+            $values = array_merge($values, array_diff_key($catalogValues, ['subject' => 1, 'description' => 1]), [
+                'tags' => implode(', ', array_filter([$values['tags'], $catalogValues['tags']])),
+                'priority' => !empty($data['urgent']) ? 'high' : $catalogValues['priority'],
+                'category' => $catalogValues['category'] ?? $values['category'],
+            ]);
+        }
+        $ticket = Tickets::create($values, ['body' => $body], $files, $own);
+        Catalog::askApproval($ticket);
 
         // The link goes only to the address, never on this page: else anyone
         // could ask in somebody else's name and read the agents' answers.
