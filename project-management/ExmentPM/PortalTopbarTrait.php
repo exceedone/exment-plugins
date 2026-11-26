@@ -359,7 +359,7 @@ trait PortalTopbarTrait
         // matches issues someone opened or was assigned before they were taken
         // off a project, and a page of those crowded out the issues they may
         // open and made "more" wrong.
-        $rows = $this->issue_table->getValueModel()->query()
+        $rows = $this->dashboardLean($this->issue_table->getValueModel()->query())
             ->where('parent_type', $this->project_table->table_name)
             ->whereIn('parent_id', array_map('intval', array_keys($cards)))
             ->where(function ($query) use ($subject_key, $like, $id_hit, $q) {
@@ -377,9 +377,10 @@ trait PortalTopbarTrait
                     $query->orWhereIn('id', $aliased);
                 }
             })
-            ->orderBy('updated_at', 'desc')
-            ->take($limit + 1)
-            ->get();
+            ->orderBy('updated_at', 'desc')->orderBy('id', 'desc');
+        // in two steps (takeSorted): a WHERE that reads value makes MySQL carry it into the sort,
+        // and a row with a body of 150,000 characters does not fit its sort buffer (1038)
+        $rows = static::takeSorted($rows, $limit + 1);
 
         $items = [];
         foreach ($rows as $issue) {

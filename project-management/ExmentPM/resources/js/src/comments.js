@@ -200,13 +200,16 @@
             if (!detailCurrent(issueId) || !wrap.isConnected) { return; }
             var next = area.value.trim();
             if (!next || save.disabled) { return; }
+            if (next.length > maxBody()) { toast(tooLongText(maxBody()), true); return; }
             save.disabled = true;
             save.textContent = L.posting;
             var seq = ++DET_SEQ;
             $.ajax({
                 url: D.urls.base + '/comment/' + cid, type: 'PATCH',
                 dataType: 'json',
-                data: { comment: next }, headers: { 'X-CSRF-TOKEN': CSRF }
+                // as JSON, as the comment is posted (writes.js)
+                contentType: 'application/json', processData: false,
+                data: JSON.stringify({ comment: next }), headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
                     if (detailCurrent(issueId)) {

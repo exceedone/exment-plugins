@@ -715,6 +715,8 @@
             Object.keys(D.categories || {}).sort(function (a, b) {
                 return cmpText(String(D.categories[a]), String(D.categories[b]));
             }).forEach(function (c) { document.getElementById('pp-f-cat').add(new Option(D.categories[c], c)); });
+            // the last option of each opens the picker of several (ISS00255)
+            MULTI_SELECTS.forEach(function (id) { document.getElementById(id).add(new Option(L.f_multi, '__multi')); });
         }
         syncFilterControls();
     }
@@ -754,11 +756,11 @@
     }
     function syncFilterControls() {
         setVal('pp-f-kw', FILTER.kw);
-        setVal('pp-f-as', FILTER.as);
-        setVal('pp-f-ty', FILTER.ty);
-        setVal('pp-f-pr', FILTER.pr);
-        setVal('pp-f-ms', FILTER.ms);
-        setVal('pp-f-cat', FILTER.cat);
+        setFilterVal('pp-f-as', FILTER.as);
+        setFilterVal('pp-f-ty', FILTER.ty);
+        setFilterVal('pp-f-pr', FILTER.pr);
+        setFilterVal('pp-f-ms', FILTER.ms);
+        setFilterVal('pp-f-cat', FILTER.cat);
         setVal('pp-f-rd', FILTER.rd);
         setVal('pp-f-rl', FILTER.rl);
         setVal('pp-f-df', FILTER.df);
@@ -782,6 +784,12 @@
     // The list exactly as the grid shows it - same sort, same filters. The
     // detail screen walks this, so "the next issue" means the next row the
     // user can see, not the next id in the table.
+    // A filter holds one value or several joined by commas (ISS00255): does a row's value, or
+    // one of its values, match one of them?
+    function fHas(filter, values) {
+        var want = String(filter).split(',');
+        return (values || []).some(function (v) { return want.indexOf(String(v)) >= 0; });
+    }
     function filteredIssues() {
         // Filtered first, sorted after. This runs on every keystroke in the
         // keyword box, and on a big project sorting three thousand rows to
@@ -793,11 +801,11 @@
             if (i.ar && !AR.show) { return false; }
             if (quick && !quick(i)) { return false; }
             if (FILTER.st && !stMatch(i.st, FILTER.st)) { return false; }
-            if (FILTER.as && i.as.map(String).indexOf(String(FILTER.as)) < 0) { return false; }
-            if (FILTER.ty && i.ty !== FILTER.ty) { return false; }
-            if (FILTER.pr && String(i.pr) !== String(FILTER.pr)) { return false; }
-            if (FILTER.ms && i.ms !== FILTER.ms) { return false; }
-            if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
+            if (FILTER.as && !fHas(FILTER.as, i.as)) { return false; }
+            if (FILTER.ty && !fHas(FILTER.ty, [i.ty])) { return false; }
+            if (FILTER.pr && !fHas(FILTER.pr, [i.pr])) { return false; }
+            if (FILTER.ms && !fHas(FILTER.ms, [i.ms])) { return false; }
+            if (FILTER.cat && !fHas(FILTER.cat, i.cat)) { return false; }
             if (FILTER.rd === 'unread' && !i.unread) { return false; }
             if (FILTER.rd === 'read' && i.unread) { return false; }
             if (FILTER.rl && !rlMatch(i, FILTER.rl)) { return false; }
