@@ -75,7 +75,9 @@ try {
 
     actAs(1);
     $org = fresh('organization', $ORG);
-    $inOrg = $org->users->pluck('id')->map('intval')->all();
+    $inOrg = $org->users->pluck('id')->map(function ($v) {
+                return intval($v);
+            })->all();
     ok(in_array($ORG_MEMBER, $inOrg, true), 'user ' . $ORG_MEMBER . ' is in organization ' . $ORG, json_encode($inOrg));
 
     $project = CustomTable::getEloquent('project')->getValueModel();

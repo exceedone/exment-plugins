@@ -156,7 +156,9 @@ class PortalFiles
         if ($access === null) {
             return [];
         }
-        $taken = DB::table(static::TABLE)->where('project_id', '<>', intval($project->id))->pluck('workspace_id')->map('intval')->all();
+        $taken = DB::table(static::TABLE)->where('project_id', '<>', intval($project->id))->pluck('workspace_id')->map(function ($v) {
+                return intval($v);
+            })->all();
         $out = [];
         foreach ($access->workspaces() as $workspace) {
             if (in_array(intval($workspace->id), $taken, true) || intval($access->level($workspace)) < static::MANAGE) {

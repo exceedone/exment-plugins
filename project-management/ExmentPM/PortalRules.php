@@ -1433,7 +1433,9 @@ class PortalRules
                         $query->orWhere('value->' . $column, strval($id));
                     }
                 })
-                ->pluck('id')->map('intval')->all();
+                ->pluck('id')->map(function ($v) {
+                return intval($v);
+            })->all();
         } catch (\Throwable $e) {
             \Log::warning('PmPortal child lookup failed: ' . $e->getMessage());
 
