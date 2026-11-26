@@ -1453,6 +1453,14 @@
             var place = function (rows, into) {
                 rows.forEach(function (pair) {
                     var first = true;
+                    // [null, name]: the field goes in the second column, under the one above it
+                    // (an empty cell first; it takes no room in one column)
+                    if (pair[0] === null && waiting(pair[1])) {
+                        var gap = document.createElement('div');
+                        gap.className = 'pp-ne-gap pp-ne-rowstart';
+                        into.appendChild(gap);
+                        first = false;
+                    }
                     pair.forEach(function (name) {
                         if (!waiting(name)) { return; }
                         built[name].classList.toggle('pp-ne-rowstart', first);

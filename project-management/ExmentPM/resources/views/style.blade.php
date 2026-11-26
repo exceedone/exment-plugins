@@ -1060,6 +1060,9 @@ body.pp-fm-open{overflow:hidden;}
    label sits level with the input, not halfway down its help. */
 .pp-nedit .bl-props.pp-ne-props{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));column-gap:32px;align-items:start;}
 .pp-nedit .bl-props.pp-ne-props > .pp-ne-rowstart{grid-column:1;}
+/* the empty first cell of a [null, name] pair: none when the card has one column */
+.pp-nedit .pp-ne-gap{min-height:1px;}
+@media (max-width: 1099px){ .pp-nedit .pp-ne-gap{display:none;} }
 .pp-nedit .pp-ne-props .pp-ne-fg{align-items:start;}
 .pp-nedit .pp-ne-props .pp-ne-fg > label{align-self:start;padding-top:8px;line-height:1.35;}
 .pp-nedit .pp-ne-props .pp-ne-fg > .help{margin-top:-2px;}
