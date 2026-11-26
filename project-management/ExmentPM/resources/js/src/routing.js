@@ -62,6 +62,7 @@
         root.querySelectorAll('.bl-tab').forEach(function (el) {
             el.classList.toggle('active', el.getAttribute('data-scr') === (scr === 'issue' ? 'issues' : scr));
         });
+        tabIntoView();
         var el = document.getElementById('pp-' + scr);
         if (!el) { scr = 'home'; el = document.getElementById('pp-home'); }
         el.classList.add('on');
@@ -147,6 +148,15 @@
         if (q >= 0 && ('edit' in parseQuery(hash.slice(q + 1)))) { return '#' + path; }
 
         return hash;
+    }
+    // S3: on a phone the tabs are one row that scrolls sideways; the open one
+    // is brought into sight (only the row scrolls, never the page).
+    function tabIntoView() {
+        var row = document.getElementById('pp-tabs');
+        var tab = row ? row.querySelector('.bl-tab.active') : null;
+        if (!tab || row.scrollWidth <= row.clientWidth + 1) { return; }
+        var want = tab.offsetLeft - (row.clientWidth - tab.offsetWidth) / 2;
+        row.scrollLeft = Math.max(0, Math.min(want, row.scrollWidth - row.clientWidth));
     }
     function parseHash() {
         var raw = (location.hash || '#home').slice(1);

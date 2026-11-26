@@ -136,12 +136,14 @@
 
     // Sub-pages of the tab, in Backlog's reading order. Git only appears on
     // an install whose schema has the switch; delete only for who may.
-    $setSections = [['basic', $st('tab_basic'), 'fa-sliders'], ['people', $st('tab_people'), 'fa-users']];
-    foreach ($setLists as $secKey => $list) {
-        $setSections[] = [$secKey, $st('tab_' . $secKey), $list['icon']];
-    }
+    // S8: 使うタブ second, where it is looked for (it was after the lists).
+    $setSections = [['basic', $st('tab_basic'), 'fa-sliders']];
     if (!empty($setData['map']['features'])) {
         $setSections[] = ['features', $st('tab_features'), 'fa-toggle-on'];
+    }
+    $setSections[] = ['people', $st('tab_people'), 'fa-users'];
+    foreach ($setLists as $secKey => $list) {
+        $setSections[] = [$secKey, $st('tab_' . $secKey), $list['icon']];
     }
     if (!empty($setOther)) {
         $setSections[] = ['other', $st('tab_other'), 'fa-list-ul'];

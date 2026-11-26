@@ -19,7 +19,8 @@
             return;
         }
         if (k === 'a') {
-            var add = root.querySelector('.bl-addissue');
+            // S5: the top bar's 課題の追加, which adds to this project.
+            var add = document.querySelector('#pp-top .pp-top-addmain');
             if (add) { ev.preventDefault(); add.click(); }
             return;
         }

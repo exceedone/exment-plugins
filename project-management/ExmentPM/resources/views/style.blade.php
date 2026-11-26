@@ -1755,4 +1755,42 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .bl-qe > .row.pp-qe-due > .v{display:flex;align-items:center;gap:6px;}
 .pmportal .bl-qe > .row.pp-qe-due .bl-qe-in{width:120px;}
 .pmportal .bl-qe > .row.pp-qe-due .bl-qe-in.pp-qe-dt{width:80px;font-size:12px;}
+/* ==== UX-D: navigation and the phone's head (S3, S4, S8, M3) ==== */
+/* M3: the project's name is a button that opens the list of projects. */
+.pmportal .bl-projttl .pp-pjswitch{display:inline-flex;align-items:center;gap:6px;min-width:0;border:0;background:none;padding:0;
+  font:inherit;font-size:17px;font-weight:700;color:var(--bl-ink);cursor:pointer;text-align:left;}
+.pmportal .bl-projttl .pp-pjswitch .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pmportal .bl-projttl .pp-pjswitch .fa-caret-down{flex:none;font-size:12px;color:var(--bl-faint);}
+.pmportal .bl-projttl .pp-pjswitch:hover .nm{text-decoration:underline;}
+.pmportal .bl-projttl .pp-pjswitch:hover .fa-caret-down{color:var(--bl-accent-d);}
+.pmportal .bl-projttl .pp-pjswitch:focus-visible{outline:2px solid var(--bl-accent);outline-offset:2px;border-radius:3px;}
+.pmportal .bl-projmore{display:none;}
+@media (max-width:760px){
+  /* S4: one line - ‹, the name, the key, ⓘ. The rest behind ⓘ. */
+  .pmportal .bl-projhead{flex-wrap:wrap;align-items:center;}
+  .pmportal .bl-projhead .bl-projicon{display:none;}
+  .pmportal .bl-projhead .bl-dback-proj{padding:4px 9px;margin-right:0;align-self:flex-start;margin-top:2px;}
+  .pmportal .bl-projhead .bl-dback-proj .tx{display:none;}
+  .pmportal .bl-projinfo{flex:1 1 calc(100% - 52px);}
+  .pmportal .bl-projttl{flex:1 1 100%;}
+  .pmportal .bl-projttl .pp-pjswitch{font-size:16px;flex:0 1 auto;}
+  .pmportal .bl-projttl .bl-projset .tx{display:none;}
+  .pmportal .bl-projmore{display:inline-flex;align-items:center;justify-content:center;flex:none;margin-left:auto;width:32px;height:32px;
+    border:0;background:none;color:var(--bl-sub);font-size:17px;cursor:pointer;border-radius:50%;}
+  .pmportal .bl-projmore[aria-expanded="true"]{color:var(--bl-accent-d);background:var(--bl-hover);}
+  .pmportal .bl-projhead:not(.info-open) .bl-projmeta,.pmportal .bl-projhead:not(.info-open) .bl-projside{display:none;}
+  .pmportal .bl-projhead.info-open .bl-projmeta{flex-basis:100%;}
+  .pmportal .bl-projhead.info-open .bl-projside{flex-basis:100%;flex-wrap:wrap;margin-left:0;}
+  /* S3: the tabs in one row that scrolls sideways, faded at the right end
+     while there is more; the row's search and the project settings tab
+     (the gear beside the name) stay off a phone. */
+  .pmportal .bl-tabs{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:0 4px;scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);
+            mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);}
+  .pmportal .bl-tabs::-webkit-scrollbar{display:none;}
+  .pmportal .bl-tabs .bl-tab{flex:none;white-space:nowrap;min-height:40px;box-sizing:border-box;display:inline-flex;align-items:center;}
+  .pmportal .bl-tabs .bl-tabsearch{display:none;}
+  .pmportal .bl-tabs .bl-tab[data-scr="settings"]{display:none;}
+}
 </style>

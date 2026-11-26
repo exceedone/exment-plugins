@@ -77,6 +77,8 @@
         'move_none', 'move_fail', 'issue_delete', 'issue_del_ask', 'issue_del_fail',
         // UX-C
         'bc_label', 'bc_root', 'qf_click', 'qf_unset', 'qf_undo', 'qf_undone', 'qf_today', 'qf_tomorrow', 'qf_next_week', 'qf_assign_me',
+        // UX-D
+        'pj_switch', 'proj_info',
     ])->mapWithKeys(function ($key) {
         return [$key => \App\Plugins\ExmentPM\PortalDefinition::trans($key)];
     })->toArray();
@@ -118,7 +120,7 @@
             <a class="bl-tab" data-scr="board"><i class="fa fa-columns"></i>{{ $lang['tab_board'] }}</a>
             <a class="bl-tab" data-scr="issues"><i class="fa fa-tasks"></i>{{ $lang['tab_issues'] }}</a>
             @if(array_get($feat, 'gantt', true))
-            <a class="bl-tab" data-scr="gantt"><i class="fa fa-sliders"></i>{{ $lang['tab_gantt'] }}</a>
+            <a class="bl-tab" data-scr="gantt"><i class="fa fa-align-left"></i>{{ $lang['tab_gantt'] }}</a>
             <a class="bl-tab" data-scr="burndown"><i class="fa fa-line-chart"></i>{{ $lang['tab_burndown'] }}</a>
             @endif
             @if(array_get($feat, 'wiki', true))
@@ -131,9 +133,7 @@
             <a class="bl-tab" data-scr="settings"><i class="fa fa-cog"></i>{{ $lang['tab_settings'] }}</a>
             @endif
             <span class="bl-tabsearch"><i class="fa fa-search"></i><input id="pp-jump" placeholder="{{ $lang['search_ph'] }}"></span>
-            @if(!empty($payload['can']['issue_create']))
-            <a class="bl-addissue pp-mlink" href="javascript:void(0);" data-url="{{ $payload['urls']['create_issue'] }}" data-mtitle="{{ $lang['m_add_issue'] }}"><i class="fa fa-plus"></i> {{ $lang['add_issue'] }}</a>
-            @endif
+            {{-- S5: 課題の追加 is the top bar's (it adds to this project at once). --}}
         </nav>
 
         {{-- ============ home ============ --}}
