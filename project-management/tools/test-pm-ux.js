@@ -434,6 +434,15 @@ test('TOP-1: 通知の受け取り方, 全体の設定 and マニュアル in on
     assert.ok(langJa.indexOf('// TOP-1') > 0);
 });
 
+test('LIST-1: the list\'s ⋯ menu holds the downloads and the bulk change', () => {
+    assert.ok(/id="pp-f-csv"[^>]*hidden>/.test(index), 'the old download link is out of sight');
+    assert.ok(/id="pp-l-more"/.test(index));
+    const items = functionSource(listSrc, 'listMoreItems');
+    ["exportIssues('xlsx', 'all')", "exportIssues('xlsx', 'screen')", "exportIssues('csv', 'all')", "exportIssues('csv', 'screen')", 'pp-chk-all'].forEach((c) => assert.ok(items.indexOf(c) > 0, c));
+    ['l_more', 'l_more_tip', 'l_bulk_pick'].forEach((k) => { assert.ok(ja(k), k); assert.ok(index.indexOf("'" + k + "'") > 0, k); });
+    assert.ok(langJa.indexOf('// LIST-1') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);
