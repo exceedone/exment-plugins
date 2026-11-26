@@ -1,0 +1,12 @@
+{
+  "event_value": "0",
+  "event_id": "4821",
+  "trigger_id": "23571",
+  "subject": "Resolved in 12m 3s: High CPU utilization (over 90% for 5m)",
+  "message": "Problem has been resolved at 10:27:05 on 2026.11.27\nProblem name: High CPU utilization (over 90% for 5m)\nProblem duration: 12m 3s\nHost: web01",
+  "host": "web01.example.co.jp",
+  "host_ip": "192.0.2.10",
+  "event_severity": "High",
+  "event_nseverity": "4",
+  "event_url": "https://zabbix.example.co.jp/tr_events.php?triggerid=23571&eventid=4821"
+}

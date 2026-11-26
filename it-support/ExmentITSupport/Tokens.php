@@ -288,6 +288,15 @@ class Tokens
         return true;
     }
 
+    /**
+     * Whether the action already reached its limit for this IP, without
+     * counting this request (allow() counts it).
+     */
+    public static function blocked(string $action, int $perMinute): bool
+    {
+        return RateLimiter::tooManyAttempts('its:' . $action . ':' . sha1(strval(optional(request())->ip())), $perMinute);
+    }
+
     protected static function random(): string
     {
         return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');

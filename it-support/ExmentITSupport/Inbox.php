@@ -2,10 +2,13 @@
 
 namespace App\Plugins\ExmentITSupport;
 
+use App\Plugins\ExmentITSupport\Alerts\Adapters;
+use App\Plugins\ExmentITSupport\Alerts\Rules;
 use App\Plugins\ExmentITSupport\Mail\ImapClient;
 use App\Plugins\ExmentITSupport\Mail\MailException;
 use App\Plugins\ExmentITSupport\Mail\MimeParser;
 use Carbon\Carbon;
+use Exceedone\Exment\Model\CustomValue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -342,65 +345,205 @@ class Inbox
     }
 
     /**
-     * An alert from a monitor or an application's error log.
-     *
-     * The same error is one ticket: a fingerprint is made from what the
-     * sender says identifies it (or from the source and the message with the
-     * numbers taken out), and a repeat adds to the count instead of opening a
-     * new ticket. A ticket made this way is internal until someone decides to
-     * tell the customer.
+     * An alert from a monitor or an application's error log, in the fields
+     * this door has always taken (the old shared key).
      *
      * @param array<string, mixed> $data
-     * @return array{ticket_id: int, ticket_no: string, created: bool, occurrences: int}
+     * @return array{ticket_id: int, ticket_no: string, created: bool, occurrences: int, action: string}
      */
     public static function receiveAlert(array $data): array
     {
-        $title = mb_substr(trim(strval($data['title'] ?? $data['message'] ?? 'アラート')), 0, 250);
-        $source = mb_substr(trim(strval($data['source'] ?? $data['host'] ?? '')), 0, 200);
-        $detail = mb_substr(strval($data['detail'] ?? $data['body'] ?? ''), 0, 20000);
-        $fingerprint = trim(strval($data['fingerprint'] ?? ''));
-        if ($fingerprint === '') {
-            $normal = preg_replace('/\d+/', '#', $source . '|' . $title) ?? '';
-            $fingerprint = substr(hash('sha256', $normal), 0, 40);
-        }
-        $fingerprint = mb_substr($fingerprint, 0, 100);
-        $now = Carbon::now()->format('Y-m-d H:i:s');
+        $events = Adapters::read('generic', $data) ?: Adapters::read('generic', ['title' => 'アラート'] + $data);
+        $event = $events[0];
+        $event['status'] = 'firing'; // the old key: no field ever resolved a ticket
+
+        return static::receiveAlertEvent($event, IntakeSources::legacy());
+    }
+
+    /**
+     * One alert, read into the one shape (Alerts\Adapters).
+     *
+     * The same problem is one ticket: a repeat adds to the count instead of
+     * opening a new ticket. Its recovery writes "recovered" on the ticket and,
+     * if the sender is set so, resolves or closes it. A problem back within
+     * the sender's minutes after its ticket ended opens that ticket again
+     * (a flapping alert stays one ticket). A ticket made this way is internal
+     * until someone decides to tell the customer.
+     *
+     * @param array<string, string> $event
+     * @param array{kind: string, on_resolved: string, flap_minutes: int, link_asset: bool, legacy: bool} $options
+     * @return array{ticket_id: int, ticket_no: string, created: bool, occurrences: int, action: string}
+     */
+    public static function receiveAlertEvent(array $event, array $options): array
+    {
+        $fingerprint = $event['fingerprint'];
+        $now = Carbon::now();
+        $stamp = $now->format('Y-m-d H:i:s');
 
         $open = Tickets::query()->where('value->fingerprint', $fingerprint)->whereIn('value->status', Its::ACTIVE_STATUSES)->orderByDesc('id')->first();
-        if (isset($open)) {
-            $count = intval(array_get($open->value, 'occurrences', 1)) + 1;
-            $open->setValue(['occurrences' => $count, 'last_occurred_at' => $now]);
-            $open->save();
-            // Not every repeat: the 2nd, 10th, 100th... keep the timeline readable.
-            if (in_array($count, [2, 10, 100, 1000], true)) {
-                Tickets::addMessage($open, ['kind' => 'system', 'body' => "同じアラートが {$count} 回目です。\n" . mb_substr($detail, 0, 2000), 'via' => 'monitor']);
-            }
+        $ended = null;
+        $endedAt = null;
+        if (!isset($open) && $event['status'] === 'firing' && $options['flap_minutes'] > 0) {
+            $ended = Tickets::query()->where('value->fingerprint', $fingerprint)->whereIn('value->status', ['resolved', 'closed'])->orderByDesc('id')->first();
+            $at = isset($ended) ? (array_get($ended->value, 'resolved_at') ?: array_get($ended->value, 'closed_at')) : null;
+            $endedAt = !empty($at) ? Carbon::parse($at)->getTimestamp() : null;
+        }
+        $action = Rules::decide(
+            $event['status'],
+            isset($open) ? strval(array_get($open->value, 'status')) : null,
+            $endedAt,
+            $options['on_resolved'],
+            $options['flap_minutes'],
+            $now->getTimestamp()
+        );
+        $result = function ($ticket, bool $created, string $action) {
+            return [
+                'ticket_id' => isset($ticket) ? intval($ticket->id) : 0,
+                'ticket_no' => isset($ticket) ? strval(array_get($ticket->value, 'ticket_no')) : '',
+                'created' => $created,
+                'occurrences' => isset($ticket) ? intval(array_get($ticket->value, 'occurrences', 1)) : 0,
+                'action' => $action,
+            ];
+        };
 
-            return ['ticket_id' => intval($open->id), 'ticket_no' => strval(array_get($open->value, 'ticket_no')), 'created' => false, 'occurrences' => $count];
+        switch ($action) {
+            case 'ignore':
+                return $result(null, false, 'ignore');
+
+            case 'note':
+            case 'resolve':
+            case 'close':
+                // One "recovered" a while per ticket: a flapping alert would write it every minute.
+                $wait = max(60, $options['flap_minutes'] * 60);
+                if (Cache::add('its_alert_recovered:' . $open->id, 1, $wait) || $action !== 'note') {
+                    Tickets::addMessage($open, ['kind' => 'system', 'body' => static::recoveredText($event, $action), 'via' => 'monitor']);
+                }
+                if ($action !== 'note') {
+                    $open->setValue(['status' => $action === 'close' ? 'closed' : 'resolved']);
+                    $open->save();
+                }
+
+                return $result($open, false, $action);
+
+            case 'count':
+                $count = intval(array_get($open->value, 'occurrences', 1)) + 1;
+                $open->setValue(['occurrences' => $count, 'last_occurred_at' => $stamp]);
+                if ($options['link_asset'] && empty(array_get($open->value, 'asset'))) {
+                    static::linkAsset($open, $event);
+                }
+                $open->save();
+                // Not every repeat: the 2nd, 10th, 100th... keep the timeline readable.
+                if (in_array($count, [2, 10, 100, 1000], true)) {
+                    Tickets::addMessage($open, ['kind' => 'system', 'body' => "同じアラートが {$count} 回目です。\n" . mb_substr($event['detail'], 0, 2000), 'via' => 'monitor']);
+                }
+
+                return $result($open, false, 'count');
+
+            case 'reopen':
+                $count = intval(array_get($ended->value, 'occurrences', 1)) + 1;
+                $ended->setValue(['status' => 'open', 'occurrences' => $count, 'last_occurred_at' => $stamp]);
+                $ended->save();
+                Tickets::addTag($ended, 'ばたつき');
+                Tickets::addMessage($ended, [
+                    'kind' => 'system',
+                    'body' => "復旧から {$options['flap_minutes']} 分以内に、また起きました（ばたつき）。このチケットを開け直しました（{$count} 回目）。\n" . mb_substr($event['detail'], 0, 2000),
+                    'via' => 'monitor',
+                ]);
+
+                return $result($ended, false, 'reopen');
         }
 
-        $severity = strtolower(strval($data['severity'] ?? $data['level'] ?? ''));
-        $priority = in_array($severity, ['critical', 'emergency', 'alert', 'fatal'], true) ? 'urgent'
-            : (in_array($severity, ['error', 'high'], true) ? 'high' : (in_array($severity, ['warning', 'warn'], true) ? 'normal' : 'normal'));
-
+        $severity = $event['severity'];
+        $priority = $severity === 'critical' ? 'urgent' : ($severity === 'error' ? 'high' : ($severity === 'info' ? 'low' : 'normal'));
+        if ($options['legacy']) {
+            // as before: only the old words, and nothing below normal
+            $priority = $priority === 'low' ? 'normal' : $priority;
+        }
+        $source = $event['source'];
+        $description = trim(($source !== '' ? "発生元: {$source}\n" : '') . $event['detail']
+            . ($event['url'] !== '' ? "\n\n監視の画面: " . $event['url'] : '')
+            . ($event['external_id'] !== '' && !$options['legacy'] ? "\nアラートの ID: " . $event['external_id'] : ''));
         $values = [
-            'subject' => $title,
-            'description' => trim(($source !== '' ? "発生元: {$source}\n" : '') . $detail),
+            'subject' => $event['title'],
+            'description' => mb_substr($description, 0, 20000),
             'channel' => 'monitor',
             'priority' => $priority,
             'customer_visible' => '0',
             'fingerprint' => $fingerprint,
             'occurrences' => 1,
-            'last_occurred_at' => $now,
+            'last_occurred_at' => $stamp,
             'tags' => 'アラート',
         ];
-        $customer = static::customerForAlert($data);
+        $customer = static::customerForAlert(['customer' => $event['customer'], 'source' => $source]);
         if (isset($customer)) {
             $values['customer'] = $customer->id;
         }
+        if ($options['link_asset']) {
+            $asset = static::assetFor($event);
+            if (isset($asset)) {
+                $values['asset'] = $asset->id;
+                if (!isset($values['customer']) && !empty(array_get($asset->value, 'customer'))) {
+                    $values['customer'] = array_get($asset->value, 'customer');
+                }
+            }
+        }
         $ticket = Tickets::create($values);
 
-        return ['ticket_id' => intval($ticket->id), 'ticket_no' => strval(array_get($ticket->value, 'ticket_no')), 'created' => true, 'occurrences' => 1];
+        return $result($ticket, true, 'create');
+    }
+
+    /**
+     * @param array<string, string> $event
+     */
+    protected static function recoveredText(array $event, string $action): string
+    {
+        $done = ['note' => '', 'resolve' => '「解決」にしました。', 'close' => '「完了」にしました。'][$action] ?? '';
+
+        return trim('監視から「復旧しました」の知らせが来ました。' . $done . "\n" . mb_substr($event['detail'], 0, 2000));
+    }
+
+    /**
+     * The IT asset the alert is about: by its name (the host, or the host's
+     * first label) or by the IP address or host in its "place / IP address".
+     *
+     * @param array<string, string> $event
+     */
+    public static function assetFor(array $event): ?CustomValue
+    {
+        $assets = Its::table(Its::T_ASSET);
+        $host = $event['host'];
+        $ip = $event['ip'];
+        if (!isset($assets) || ($host === '' && $ip === '')) {
+            return null;
+        }
+        $names = array_values(array_unique(array_filter([$host, strpos($host, '.') !== false && !Adapters::isIp($host) ? explode('.', $host)[0] : ''])));
+        $query = $assets->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
+            ->where(function ($q) use ($names, $ip, $host) {
+                foreach ($names as $name) {
+                    $q->orWhere('value->name', $name)->orWhere('value->name', strtoupper($name));
+                }
+                foreach (array_filter([$ip, $host]) as $word) {
+                    $q->orWhere('value->location', 'like', '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $word) . '%');
+                }
+            })->orderBy('id')->limit(20);
+        foreach ($query->get() as $asset) {
+            if (Rules::assetMatches(strval(array_get($asset->value, 'name')), strval(array_get($asset->value, 'location')), $host, $ip)) {
+                return $asset;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, string> $event
+     */
+    protected static function linkAsset(CustomValue $ticket, array $event): void
+    {
+        $asset = static::assetFor($event);
+        if (isset($asset)) {
+            $ticket->setValue(['asset' => $asset->id]);
+        }
     }
 
     protected static function customerForAlert(array $data)

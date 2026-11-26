@@ -107,6 +107,21 @@ class PluginPage extends PluginPageBase
         return $this->desk()->postIntakeKey(request());
     }
 
+    public function postIntakeSource()
+    {
+        return $this->desk()->postIntakeSource(request());
+    }
+
+    public function postIntakeSourceUpdate($id)
+    {
+        return $this->desk()->postIntakeSourceUpdate(request(), $id);
+    }
+
+    public function postAlertSharedKey()
+    {
+        return $this->desk()->postAlertSharedKey(request());
+    }
+
     public function dashboard()
     {
         return $this->respond($this->desk()->dashboard(request()));

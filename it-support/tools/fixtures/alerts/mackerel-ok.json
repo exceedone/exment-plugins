@@ -1,0 +1,35 @@
+{
+  "orgName": "Example",
+  "event": "alert",
+  "imageUrl": null,
+  "memo": "",
+  "type": "host",
+  "message": "",
+  "host": {
+    "id": "22D4b7L4SVc",
+    "name": "app01",
+    "url": "https://mackerel.io/orgs/Example/hosts/22D4b7L4SVc",
+    "type": "unknown",
+    "status": "working",
+    "memo": "",
+    "isRetired": false,
+    "roles": []
+  },
+  "alert": {
+    "id": "2bj7fm3kfyo",
+    "url": "https://mackerel.io/alerts/2bj7fm3kfyo",
+    "status": "ok",
+    "isOpen": false,
+    "trigger": "monitor",
+    "openedAt": 1795742400,
+    "closedAt": 1795743000,
+    "statusChangedAt": 1795743000,
+    "duration": 10,
+    "monitorName": "loadavg5",
+    "monitorOperator": ">",
+    "metricLabel": "loadavg5",
+    "metricValue": 3.1,
+    "criticalThreshold": 20,
+    "warningThreshold": 10
+  }
+}

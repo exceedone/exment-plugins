@@ -1,0 +1,14 @@
+{
+  "event_value": "1",
+  "event_id": "4821",
+  "trigger_id": "23571",
+  "subject": "Problem: High CPU utilization (over 90% for 5m)",
+  "message": "Problem started at 10:15:02 on 2026.11.27\nProblem name: High CPU utilization (over 90% for 5m)\nHost: web01\nSeverity: High\nOperational data: Current utilization: 97.1 %",
+  "host": "web01.example.co.jp",
+  "host_ip": "192.0.2.10",
+  "event_severity": "High",
+  "event_nseverity": "4",
+  "event_tags": "component:cpu, scope:performance",
+  "event_opdata": "Current utilization: 97.1 %",
+  "event_url": "https://zabbix.example.co.jp/tr_events.php?triggerid=23571&eventid=4821"
+}
