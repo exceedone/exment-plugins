@@ -43,6 +43,7 @@ class PmPortalController extends AdminControllerBase
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
     use PortalAttributesTrait;
+    use PortalChannelsTrait;
     use PortalSchedulePageTrait;
     use PortalCalendarPageTrait;
     use PortalReminderPageTrait;
@@ -1226,6 +1227,8 @@ class PmPortalController extends AdminControllerBase
             // the issue table's notifications for a comment - its assignees,
             // notified users and creator - which a portal comment never rang.
             $this->runTableNotifies($issue, NotifySavedType::COMMENT, ['comment' => $comment]);
+            // the project's chat channels that take comments (ISS02939), after the answer
+            PortalChannels::commented($issue, $comment);
         }
 
         // ---- the portal's own bell: picked people + watchers.
@@ -3184,6 +3187,8 @@ class PmPortalController extends AdminControllerBase
             'fileserver' => $features['file'] ? PortalFiles::state($project, $can['manage']) : ['on' => false],
             // the definitions of the custom attributes, for the manager (ISS02939)
             'attributes' => ($can['manage'] && !empty($features['attributes'])) ? PortalAttributes::state(intval($project->id)) : ['on' => false],
+            // the chat channels, for the manager while the feature is on (ISS02939)
+            'channels' => ($can['manage'] && PortalChannels::pageOn()) ? PortalChannels::state(intval($project->id)) : ['on' => false],
             // Whether the issue form shows the AI button, and the numbers it
             // labels the answers with. Never the key.
             'ai' => $this->aiPayload($project),
@@ -3309,6 +3314,7 @@ class PmPortalController extends AdminControllerBase
                 'git_token' => PortalDefinition::url($project->id, 'git_token'),
                 'file_workspace' => PortalDefinition::url($project->id, 'file_workspace'),
                 'attributes' => PortalDefinition::url($project->id, 'attributes'),
+                'channels' => PortalDefinition::url($project->id, 'channels'),
                 'ai_suggest' => PortalDefinition::url($project->id, 'ai', 'suggest'),
                 'ai_feedback' => PortalDefinition::url($project->id, 'ai', 'feedback'),
                 'ai_state' => PortalDefinition::url($project->id, 'ai', 'state'),

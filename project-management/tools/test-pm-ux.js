@@ -418,6 +418,11 @@ test('M12: who to tell - assignees and author first, then the recent picks, none
     assert.ok(langJa.indexOf('// UX-H') > 0);
 });
 
+test('FIX-1: phone menus of the list stay on screen, the key copy button on the row in focus', () => {
+    assert.ok(/\.pmportal \.pp-sf-menu,\.pmportal \.pp-oc-menu\{left:0;right:auto;\}/.test(style));
+    assert.ok(/@media \(hover:hover\)\{\s*\.pmportal #pp-issue-rows tr \.pp-ikcopy\{opacity:0;/.test(style));
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

@@ -23,7 +23,7 @@
         'col_ty', 'col_key', 'col_subject', 'col_as', 'col_st', 'col_pr', 'col_ms', 'col_cat',
         'col_sd', 'col_dd', 'col_dt', 'col_rc', 'rc_daily', 'rc_weekdays', 'rc_weekly', 'rc_monthly', 'rc_yearly', 'col_pg', 'col_up', 'cnt_line', 'overdue_d', 'left_d',
         'back', 'box_props', 'box_children', 'box_timeline', 'added',
-        'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments', 'issue_more', 'dm_more', 'dm_less', 'dm_more_tip', 'dm_less_tip', 'dm_hint',
+        'box_related', 'children_done', 'rel_add', 'rel_none', 'rel_add_open', 'to_comments', 'issue_more', 'dm_more', 'dm_less', 'dm_more_tip', 'dm_less_tip', 'dm_hint', 'act_edit_tip', 'act_more_tip', 'act_watch_tip',
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
         'lbl_eh', 'lbl_pg', 'rollup', 'rollup_tip', 'lbl_parent', 'lbl_watch', 'lbl_source', 'lbl_sub_assignees', 'lbl_managers', 'lbl_reviewers', 'lbl_difficulty', 'lbl_author', 'df_easy', 'df_normal', 'df_hard', 'lbl_custom_fields', 'src_created', 'src_updated', 'src_assignees', 'src_assignees_hint', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
         'notify_to', 'notify_mail', 'notify_mail_hint',
@@ -85,7 +85,7 @@
         // UX-E
         'ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu',
         // UX-F
-        'feed_more', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
+        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
         'kh_comment', 'kh_status', 'kh_prevnext', 'kh_send', 'kh_close', 'kh_help', 'empty_issues', 'empty_filtered', 'empty_wiki',
         'first_steps', 'fs_add_issue', 'fs_invite', 'fs_statuses', 'f_clear_all',
         // UX-H

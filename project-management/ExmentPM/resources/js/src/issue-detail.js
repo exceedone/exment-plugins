@@ -175,22 +175,24 @@
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
                 '<i class="fa fa-arrow-right"></i> ' + fmt(esc(L.to_next), esc(next.l)) + '</button>' : '') +
-            // What is used every day stays a button; what is used now and
-            // then waits in one menu, so the row is one line and the
-            // delete button is not a neighbour of the edit button.
-            // With no children yet the 子課題 box stays away; its one button
-            // waits up here instead of costing a box of its own.
+            // Button map: the main action (the next status) and 編集 stay
+            // buttons; everything else about the issue waits in its one ⋯
+            // menu - adding a child, 注目, お気に入り, ウォッチ first (what is on
+            // shows on the ⋯ button as a small icon), then quote, copy, link,
+            // mail, move, and delete last behind a line.
+            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '" title="' + esc(L.act_edit_tip) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
+            '<span class="pp-more"><a class="bl-btn-sub pp-morebtn" href="javascript:void(0);" role="button" aria-haspopup="true" aria-expanded="false" title="' + esc(L.act_more_tip) + '">' +
+                '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) +
+                '<span class="pp-act-on" aria-hidden="true"><i class="fa fa-star ind-s"></i><i class="fa fa-bookmark ind-f"></i><i class="fa fa-eye ind-w"></i></span></a><span class="m" hidden>' +
             (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
-                ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
-            starDetailBtn(i.id, local.star, local.my_star) +
+                ? '<a class="pp-addchild" href="javascript:void(0);"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
+            starDetailBtn(i.id, local.star, local.my_star).replace('class="bl-btn-sub ', 'class="') +
             // ISS00272: a favorite, the user's own
-            '<a class="bl-btn-sub pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
+            '<a class="pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
                 '" title="' + esc(L.fav_tip) + '"><i class="fa ' + (local.my_fav ? 'fa-bookmark' : 'fa-bookmark-o') + '"></i> <span class="lb">' + esc(local.my_fav ? L.fav_on : L.fav) + '</span></a>' +
-            '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
+            '<a class="pp-watch' + (res.watch.on ? ' on' : '') + '" href="javascript:void(0);" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '" title="' + esc(L.act_watch_tip) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
-            '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
-            '<span class="pp-more"><a class="bl-btn-sub pp-morebtn" href="javascript:void(0);" role="button" aria-haspopup="true" aria-expanded="false">' +
-                '<i class="fa fa-ellipsis-h"></i> ' + esc(L.issue_more) + '</a><span class="m" hidden>' +
+            '<span class="sep" role="separator"></span>' +
             (res.description ? '<a class="pp-quote pp-dquote" href="javascript:void(0);"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
             (CAN_ADD_ISSUE ? '<a class="pp-issuecopy" href="javascript:void(0);"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
             '<a class="pp-linkcopy" href="javascript:void(0);"><i class="fa fa-link"></i> ' + esc(L.link_copy) + '</a>' +

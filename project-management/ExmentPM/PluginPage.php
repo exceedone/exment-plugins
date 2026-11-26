@@ -37,6 +37,8 @@ class PluginPage extends PluginPageBase
         PluginEvent::registerGuards();
         // the Files tab with the file server: a feature of Feature management (ISS02825)
         PortalFiles::registerFeature();
+        // what happens to the issues, told to chat channels: a feature, off at first (ISS02939)
+        PortalChannels::registerFeature();
         // recurring schedules: a feature of Feature management, off at first (ISS00432)
         PortalSchedule::registerFeature();
         // reminders before the due date: a feature of Feature management, off at first (ISS00432)
@@ -445,6 +447,16 @@ class PluginPage extends PluginPageBase
     public function postAttributes($id)
     {
         return $this->portal()->postAttributes(request(), $id);
+    }
+
+    public function channels($id)
+    {
+        return $this->portal()->channels(request(), $id);
+    }
+
+    public function postChannels($id)
+    {
+        return $this->portal()->postChannels(request(), $id);
     }
 
     public function aiSuggest($id)

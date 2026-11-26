@@ -22,16 +22,8 @@ trait PortalReminderPageTrait
         $project = $this->reminderProject($id);
         $rule = PortalReminderRules::forProject(intval($project->id));
         $site = PortalReminder::settings();
-        $channels = [];
-        foreach (($rule['channels'] ?? []) as $i => $c) {
-            $channels[] = [
-                'index' => $i,
-                'type' => $c['type'],
-                'label' => strval($c['label'] ?? ''),
-                'masked' => $c['type'] === 'line_works' ? '' : PortalReminderRules::mask($c['url'] ?? null),
-                'channel' => $c['type'] === 'line_works' ? strval($c['channel'] ?? '') : '',
-            ];
-        }
+        // the channels are on the project's settings, 「チャットへのお知らせ」 (PortalChannels)
+        $channels = PortalChannels::forEvent(intval($project->id), 'reminder');
         $title = strval(PortalDefinition::trans('remind.page_title'));
         $this->setPageInfo($title, $title, '', 'fa-bell-o');
 
@@ -43,9 +35,8 @@ trait PortalReminderPageTrait
             'use_site' => $rule === null ? true : $rule['use_site'],
             'settings' => $rule['settings'] ?? $site,
             'site' => $site,
-            'channels' => $channels,
-            'line_works' => PortalReminderRules::lineWorksAvailable(),
-            'max_channels' => PortalReminderRules::MAX_CHANNELS,
+            'channel_count' => count($channels),
+            'channels_url' => PortalDefinition::projectUrl($project) . '#settings',
             'saved' => $request->query('saved') === '1',
             'errors_list' => (array) session('pm_reminder_errors', []),
             'topbar' => $this->topbarData(strval($project->id)),
@@ -67,7 +58,6 @@ trait PortalReminderPageTrait
                 'time' => strval($request->input('time', '09:00')),
                 'to' => (array) $request->input('to', []),
             ],
-            'channels' => (array) $request->input('channels', []),
         ];
         $errors = PortalReminderRules::save(intval($project->id), $input, intval(\Exment::getUserId()));
         if (!empty($errors)) {
