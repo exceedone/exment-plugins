@@ -523,6 +523,12 @@ test('POS-1: one 課題の追加 in a project (its header row), the project sett
     assert.ok(/プロジェクト名の行の右/.test(ja('sh_home_1')));
 });
 
+test('POS-1 fix: at 390 the name row stays one line', () => {
+    assert.ok(style.indexOf('.pmportal .bl-projhead:not(.info-open):not(.note-open){flex-wrap:nowrap;gap:6px;}') > 0);
+    assert.ok(style.indexOf('.pmportal .bl-projhead:not(.info-open):not(.note-open) .bl-projinfo{flex:1 1 0;min-width:0;}') > 0);
+    assert.ok(/\.pp-projadd,\.pmportal \.bl-projhead \.bl-dback-proj\{flex:none;\}/.test(style));
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

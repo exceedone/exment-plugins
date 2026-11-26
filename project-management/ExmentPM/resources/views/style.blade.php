@@ -2034,6 +2034,13 @@ body.pp-ib-open{overflow:hidden;}
 @media (max-width:760px){
   .pmportal .bl-projhead .pp-projadd{margin-left:auto;padding:6px 10px;min-height:36px;}
   .pmportal .bl-projhead .pp-projadd .tx{display:none;}
+  /* one line at 390: the name gives way (ellipsis), the buttons keep their size */
+  .pmportal .bl-projhead:not(.info-open):not(.note-open){flex-wrap:nowrap;gap:6px;}
+  .pmportal .bl-projhead:not(.info-open):not(.note-open) .bl-projinfo{flex:1 1 0;min-width:0;}
+  .pmportal .bl-projhead .bl-projttl{flex-wrap:nowrap;gap:5px;min-width:0;}
+  .pmportal .bl-projhead .bl-projttl .pp-pjswitch{flex:0 1 auto;min-width:0;}
+  .pmportal .bl-projhead .bl-projttl .bl-projset,.pmportal .bl-projhead .bl-projttl .bl-projmore,.pmportal .bl-projhead .pp-projadd,.pmportal .bl-projhead .bl-dback-proj{flex:none;}
+  .pmportal .bl-projhead .bl-projkey{padding:0 4px;font-size:10.5px;}
   .pmportal .bl-tabs .pp-tab-set{margin-left:0;}
 }
 </style>
