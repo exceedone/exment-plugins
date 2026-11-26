@@ -247,6 +247,10 @@ jobs:
       - name: Help desk ExmentPM link (IT Support)
         run: php it-support/tools/test-pm-link.php
 
+      # the website form of a 受付箱 and the routes of the plugin (ISS02941)
+      - name: Help desk website forms (IT Support)
+        run: php it-support/tools/test-web-forms.php
+
       # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
       # plain PHP)
       - name: kintone API check (ExmentKintone)

@@ -8,5 +8,7 @@ return [
         'portal_help' => '로그인 없이 쓰는 포털(/support), 메일에 넣는 링크, 메일과 모니터링 경고의 접수, "내 요청"입니다. 접수함이 켜져 있을 때만 동작합니다.',
         'pm_link' => 'Help desk: make an ExmentPM issue',
         'pm_link_help' => 'Make an issue of an ExmentPM project from a ticket in one press, and show the status of the issue on the ticket. Only with ExmentPM installed.',
+        'web_form' => 'Help desk: website forms',
+        'web_form_help' => 'A form to embed in a website for each box (an Exment public form). What is sent becomes a ticket of that box. Exment 7.3.0 or later.',
     ],
 ];
