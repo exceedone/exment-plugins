@@ -443,6 +443,67 @@ test('LIST-1: the list\'s ⋯ menu holds the downloads and the bulk change', () 
     assert.ok(langJa.indexOf('// LIST-1') > 0);
 });
 
+test('HELP-1: the ? box says what the buttons of this screen do', () => {
+    const bootSrc = read('boot.js');
+    const f = new Function("var L = { sh_issue_1: 'a', sh_issue_2: 'b', sh_title: 'T', sh_palette: 'P' }; function esc(s) { return String(s); } " +
+        functionSource(bootSrc, 'screenHelpLines') + functionSource(bootSrc, 'screenHelpHtml') + 'return { lines: screenHelpLines, html: screenHelpHtml };')();
+    assert.deepStrictEqual(f.lines('issue'), ['a', 'b']);
+    assert.deepStrictEqual(f.lines('nothing'), []);
+    assert.strictEqual(f.html('nothing'), '');
+    assert.ok(f.html('issue').indexOf('<li>a</li><li>b</li>') > 0);
+    assert.ok(/screenHelpHtml\(currentScreen\)/.test(functionSource(bootSrc, 'keyHelp')));
+    assert.ok(/L\.sh_title/.test(read('palette.js')), 'in the palette too');
+    ['home', 'issues', 'board', 'gantt', 'wiki', 'files', 'issue'].forEach((scr) => {
+        assert.ok(ja('sh_' + scr + '_1'), scr);
+        assert.ok(index.indexOf("'sh_" + scr + "_1'") > 0, scr + ' passed to the script');
+    });
+    assert.ok(langJa.indexOf('// HELP-1') > 0);
+});
+
+test('HELP-1 fix: the ? box and the palette start under the fixed header', () => {
+    const bootSrc = read('boot.js');
+    const safe = functionSource(bootSrc, 'ppTopSafe');
+    assert.ok(/portal\.getBoundingClientRect\(\)\.top/.test(safe) && /\.main-header/.test(safe), 'below the top of the portal, or the header');
+    const f = new Function('root', 'document', safe + 'return ppTopSafe();');
+    const portal = { getBoundingClientRect: () => ({ top: 63 }) };
+    const fakeRoot = { closest: () => portal };
+    assert.strictEqual(f(fakeRoot, { querySelector: () => ({ getBoundingClientRect: () => ({ bottom: 50 }) }) }), 63);
+    assert.strictEqual(f(fakeRoot, { querySelector: () => ({ getBoundingClientRect: () => ({ bottom: 100 }) }) }), 100);
+    assert.strictEqual(f({ closest: () => ({ getBoundingClientRect: () => ({ top: -400 }) }) }, { querySelector: () => null }), 0, 'never above 0');
+    assert.ok(/ppPlaceBox\(box\);/.test(functionSource(bootSrc, 'keyHelp')), 'the ? box');
+    assert.ok(/ppPlaceBox\(box\);/.test(functionSource(read('palette.js'), 'palOpen')), 'the palette, the same helper');
+    assert.ok(/addEventListener\('resize'/.test(functionSource(bootSrc, 'ppPlaceBox')));
+    assert.ok(style.indexOf('.pmportal .pp-keyhelp{align-items:flex-start;padding:calc(var(--pp-top-safe, 0px) + 8px) 16px 16px;z-index:1100;}') > 0);
+    assert.ok(style.indexOf('.pmportal .pp-keyhelp .in{max-height:calc(100vh - var(--pp-top-safe, 0px) - 24px);overflow:auto;}') > 0);
+});
+
+test('HINT-1: hints shown once, only where they fit', () => {
+    const homeSrc = read('home.js');
+    const f = new Function('var HINT_MANY_DUES = 10; var HINT_LONG_LIST = 50; var D = { me: 3 }; var store = {};' +
+        'var localStorage = { getItem: function (k) { return store[k] || null; }, setItem: function (k, v) { store[k] = v; } };' +
+        functionSource(homeSrc, 'hintKey') + functionSource(homeSrc, 'hintSeen') + functionSource(homeSrc, 'hintDone') + functionSource(homeSrc, 'hintWants') +
+        'return { seen: hintSeen, done: hintDone, wants: hintWants };')();
+    assert.ok(f.wants('remind', { reminderUrl: '/r', openWithDue: 10 }));
+    assert.ok(!f.wants('remind', { reminderUrl: '', openWithDue: 99 }), 'no reminders on the site, or not the manager: no hint');
+    assert.ok(!f.wants('remind', { reminderUrl: '/r', openWithDue: 9 }));
+    assert.ok(f.wants('saved', { matched: 50, saved: 0 }));
+    assert.ok(!f.wants('saved', { matched: 80, saved: 1 }), 'has a saved condition already');
+    assert.ok(!f.seen('saved'));
+    f.done('saved');
+    assert.ok(f.seen('saved'), 'once');
+    assert.ok(/hintHome\(\);/.test(functionSource(homeSrc, 'renderHome')));
+    assert.ok(/hintList\(matched\.length, savedList\(\)\.length\);/.test(functionSource(listSrc, 'renderIssues')));
+    assert.ok(/data-reminder-url="\{\{ \$reminder_url \?\? '' \}\}"/.test(index));
+    ['hint_remind', 'hint_remind_go', 'hint_saved', 'hint_saved_go'].forEach((k) => { assert.ok(ja(k), k); assert.ok(index.indexOf("'" + k + "'") > 0, k); });
+    assert.ok(langJa.indexOf('// HINT-1') > 0);
+});
+
+test('HINT-1 fix: the list hint is above the table and its link opens 保存した条件', () => {
+    assert.ok(index.indexOf('id="pp-hint-list"') < index.indexOf('id="pp-bulk"') && index.indexOf('id="pp-hint-list"') < index.indexOf('<table class="bl-list">'));
+    const show = functionSource(read('home.js'), 'hintShow');
+    assert.ok(/ev\.stopPropagation\(\);/.test(show) && /setTimeout\(go, 0\)/.test(show));
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

@@ -183,6 +183,20 @@ test('sorting: numbers as numbers, dates as strings, text collated, blanks last 
     assert.strictEqual(A.atSortValue(def(16), [9, 7], name), 'Ann', 'users by the first name');
 });
 
+// A click on the header of an attribute column (events.js applySort, bound on the head of the
+// list, so a header made later answers too): the column sorts, again the other way.
+test('the header of an attribute column sorts it, and again the other way; an unknown one does nothing', () => {
+    const H = load([at, list, read('events.js')].join(String.fromCharCode(10)), ['atDefs', 'atSortValue', 'atSortCol', 'atSortRegister', 'cmpText', 'sortBlank', 'applySort'],
+        STUBS + 'var changed = 0; function afterFilterChange() { changed++; } function state() { return { by: SORT.by, dir: SORT.dir, changed: changed }; }', ['state']);
+    H.atSortRegister();
+    H.applySort('at14');
+    assert.deepStrictEqual(H.state(), { by: 'at14', dir: 'asc', changed: 1 });
+    H.applySort('at14');
+    assert.deepStrictEqual(H.state(), { by: 'at14', dir: 'desc', changed: 2 });
+    H.applySort('at999');
+    assert.deepStrictEqual(H.state(), { by: 'at14', dir: 'desc', changed: 2 });
+});
+
 /* ---------------------------------------------------- the bulk edit - */
 test('bulk: nothing, a value, a choice as a list, or __none__ to empty it', () => {
     assert.strictEqual(A.atBulkValue(def(17), '', false), undefined);

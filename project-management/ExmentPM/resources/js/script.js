@@ -1339,6 +1339,7 @@ window.PmPortalBoot = function () {
 
     /* ------------------------------------------------ home -------------- */
     function renderHome() {
+        hintHome();
         var open = (D.issues || []).filter(function (i) { return !isDone(i.st); });
         var overdue = open.filter(function (i) { return dueOver(i); });
         var soon = open.filter(function (i) { return i.dd && !dueOver(i) && daysTo(i.dd) <= 3; });
@@ -1537,7 +1538,64 @@ window.PmPortalBoot = function () {
             renderIssues();
         }, function () { toast(L.ar_fail, true); renderIssues(); });
     }
-
+    /* ------------------------------------------------ hints (once) ------ */
+    // HINT-1: a short hint where it fits the project, each shown once per
+    // person: closed with ✕ or used, it does not come back (kept in this
+    // browser). A hint that does not fit is not shown at all.
+    var HINT_MANY_DUES = 10;
+    var HINT_LONG_LIST = 50;
+    function hintKey(id) { return 'pmportal.hint.' + id + '.u' + String(D.me || 0); }
+    function hintSeen(id) {
+        try { return localStorage.getItem(hintKey(id)) === '1'; } catch (e) { return true; }
+    }
+    function hintDone(id) {
+        try { localStorage.setItem(hintKey(id), '1'); } catch (e) { /* shown again next time */ }
+    }
+    // Whether a hint fits: plain data in, so it is tested without a page.
+    function hintWants(id, facts) {
+        if (id === 'remind') { return !!facts.reminderUrl && facts.openWithDue >= HINT_MANY_DUES; }
+        if (id === 'saved') { return facts.matched >= HINT_LONG_LIST && facts.saved === 0; }
+        return false;
+    }
+    function hintShow(box, id, text, goLabel, go) {
+        if (!box) { return; }
+        if (hintSeen(id)) { box.hidden = true; return; }
+        box.innerHTML = '<i class="fa fa-lightbulb-o"></i> <span>' + esc(text) + '</span>' +
+            (goLabel ? ' <a href="javascript:void(0);" class="go">' + esc(goLabel) + '</a>' : '') +
+            '<button type="button" class="x" aria-label="' + esc(L.m_close) + '" title="' + esc(L.m_close) + '">&times;</button>';
+        box.hidden = false;
+        box.onclick = function (ev) {
+            var x = ev.target.closest && ev.target.closest('.x');
+            var g = ev.target.closest && ev.target.closest('.go');
+            if (!x && !g) { return; }
+            ev.preventDefault();
+            // the same click must not reach a menu's close-on-outside-click
+            // (保存した条件 opens below and would close at once)
+            ev.stopPropagation();
+            hintDone(id);
+            box.hidden = true;
+            if (g && go) { setTimeout(go, 0); }
+        };
+    }
+    // The project home: many due dates and reminders there to be used - for
+    // the manager, who is the one given the reminders' page.
+    function hintHome() {
+        var box = document.getElementById('pp-hint-home');
+        if (!box) { return; }
+        var url = box.getAttribute('data-reminder-url') || '';
+        var open = (D.issues || []).filter(function (i) { return !isDone(i.st) && i.dd; }).length;
+        if (!hintWants('remind', { reminderUrl: url, openWithDue: open })) { box.hidden = true; return; }
+        hintShow(box, 'remind.p' + String((D.project && D.project.id) || 0), L.hint_remind, L.hint_remind_go, function () { location.href = url; });
+    }
+    // The issue list: a long list and no saved condition yet.
+    function hintList(matched, saved) {
+        var box = document.getElementById('pp-hint-list');
+        if (!box) { return; }
+        if (!hintWants('saved', { matched: matched, saved: saved })) { box.hidden = true; return; }
+        hintShow(box, 'saved', L.hint_saved, L.hint_saved_go, function () {
+            if (typeof sfMenu === 'function') { sfMenu(true); }
+        });
+    }
     /* ------------------------------------------------ issues ------------ */
     // rl: one of the other people of an issue (ISS02931), as "<role>:<user>"
     // - sa:12 is "12 is a sub-assignee"; df: the difficulty; at: the custom
@@ -2469,6 +2527,7 @@ window.PmPortalBoot = function () {
         document.getElementById('pp-issue-rows').innerHTML = rows;
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
+        hintList(matched.length, savedList().length);
         ppListFit();
     }
 
@@ -13885,6 +13944,9 @@ window.PmPortalBoot = function () {
             if (main && main.querySelector('.bl-inav a:first-child:not(.off)')) { out.push({ g: L.kh_issue, l: L.nav_prev, k: '[', run: palPress('#pp-d-main .bl-inav a:first-child:not(.off)') }); }
             if (main && main.querySelector('.bl-inav a:last-child:not(.off)')) { out.push({ g: L.kh_issue, l: L.nav_next, k: ']', run: palPress('#pp-d-main .bl-inav a:last-child:not(.off)') }); }
         }
+        if (screenHelpLines(currentScreen).length) {
+            out.push({ g: L.kh_other, l: L.sh_title, k: '?', run: function () { keyHelp(true); } });
+        }
         out.push({ g: L.kh_other, l: L.kh_help, k: '?', run: function () { keyHelp(true); } });
         return out;
     }
@@ -13999,6 +14061,7 @@ window.PmPortalBoot = function () {
             }
         });
         (root.closest('.pmportal') || root).appendChild(box);
+        ppPlaceBox(box);
         PAL.el = box;
         palRender();
         input.focus();
@@ -14096,6 +14159,49 @@ window.PmPortalBoot = function () {
         ['kh_issue', [['e', 'edit'], ['c', 'kh_comment'], ['s', 'kh_status'], ['[ ]', 'kh_prevnext']]],
         ['kh_other', [['Ctrl+K', 'kh_palette'], ['Ctrl+Enter', 'kh_send'], ['Esc', 'kh_close'], ['?', 'kh_help']]]
     ];
+    // HELP-1: what the buttons of this screen do, above the keys. The lines
+    // are lang keys sh_<screen>_1, _2, ... (as many as the screen has).
+    function screenHelpLines(scr) {
+        var out = [];
+        for (var n = 1; n <= 9; n++) {
+            var line = L['sh_' + String(scr || '') + '_' + n];
+            if (!line) { break; }
+            out.push(line);
+        }
+        return out;
+    }
+    function screenHelpHtml(scr) {
+        var lines = screenHelpLines(scr);
+        if (!lines.length) { return ''; }
+        return '<div class="grp pp-sh"><div class="gt">' + esc(L.sh_title) + '</div><ul>' +
+            lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
+            '<div class="pp-sh-tip">' + esc(L.sh_palette) + '</div></div>';
+    }
+    // Where a box over the page may start: below the top of the portal
+    // itself (Exment's bar is above it - in the modern design the bar is not
+    // fixed, the page scrolls inside .wrapper and the bar is drawn on top),
+    // or below Exment's header when that reaches lower. Never above 0.
+    function ppTopSafe() {
+        var out = 0;
+        var portal = root.closest('.pmportal') || root;
+        try { out = Math.max(out, Math.round(portal.getBoundingClientRect().top)); } catch (e) { /* none */ }
+        var head = document.querySelector('.main-header');
+        if (head) {
+            try { out = Math.max(out, Math.round(head.getBoundingClientRect().bottom)); } catch (e) { /* none */ }
+        }
+        return Math.max(0, out);
+    }
+    // One helper for the ? box and the palette: set on open, and again when
+    // the window changes size while the box is there.
+    function ppPlaceBox(box) {
+        var set = function () { box.style.setProperty('--pp-top-safe', ppTopSafe() + 'px'); };
+        set();
+        var onResize = function () {
+            if (!box.isConnected) { window.removeEventListener('resize', onResize); return; }
+            set();
+        };
+        window.addEventListener('resize', onResize);
+    }
     function keyHelp(show) {
         var box = document.getElementById('pp-keyhelp');
         if (!show) { if (box) { box.remove(); } return; }
@@ -14108,6 +14214,7 @@ window.PmPortalBoot = function () {
         box.setAttribute('aria-label', L.kh_title);
         box.innerHTML = '<div class="in"><div class="hd"><span>' + esc(L.kh_title) + '</span>' +
             '<button type="button" class="x" aria-label="' + esc(L.m_close) + '">&times;</button></div>' +
+            screenHelpHtml(currentScreen) +
             KEY_HELP.map(function (g) {
                 return '<div class="grp"><div class="gt">' + esc(L[g[0]]) + '</div>' + g[1].map(function (k) {
                     return '<div class="kr">' + String(k[0]).split(' ').map(function (x) { return '<kbd>' + esc(x) + '</kbd>'; }).join(' ') +
@@ -14118,6 +14225,7 @@ window.PmPortalBoot = function () {
             if (ev.target === box || (ev.target.closest && ev.target.closest('.x'))) { keyHelp(false); }
         });
         (root.closest('.pmportal') || root).appendChild(box);
+        ppPlaceBox(box);
         var x = box.querySelector('.x');
         if (x) { x.focus(); }
     }

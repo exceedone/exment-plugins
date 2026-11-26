@@ -929,6 +929,7 @@
         document.getElementById('pp-issue-rows').innerHTML = rows;
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
+        hintList(matched.length, savedList().length);
         ppListFit();
     }
 
