@@ -266,8 +266,8 @@ trait PortalDashboardTrait
         // date is not the most urgent thing on the list, which is what a plain
         // "order by due" would claim.
         $byDue = function ($query) use ($due_key) {
-            return $query->orderByRaw("CASE WHEN $due_key IS NULL OR $due_key = '' THEN 1 ELSE 0 END, $due_key asc")
-                ->take(static::$dash_list_limit)->get();
+            // sorted over the ids: a row with a body of 150,000 characters does not fit MySQL's sort buffer
+            return static::takeSorted($query->orderByRaw("CASE WHEN $due_key IS NULL OR $due_key = '' THEN 1 ELSE 0 END, $due_key asc"), static::$dash_list_limit);
         };
 
         // Both filter every open issue on columns computed from its JSON;
@@ -326,7 +326,7 @@ trait PortalDashboardTrait
         // only ever be a little generous, never short.
         $closed = [];
         if (!empty($done_ids)) {
-            $closed = $map(
+            $closed = $map(static::takeSorted(
                 $this->dashboardLean($this->issue_table->getValueModel()->query())
                     ->where('parent_type', $parent_type)
                     ->whereIn($status_key, $done_ids)
@@ -334,8 +334,7 @@ trait PortalDashboardTrait
                     ->where('updated_at', '>=', PortalTime::dayStartForQuery(
                         \Carbon\Carbon::parse(PortalTime::today())->startOfWeek()->format('Y-m-d')
                     ))
-                    ->orderBy('updated_at', 'desc')
-                    ->take(static::$dash_list_limit)->get()
+                    ->orderBy('updated_at', 'desc'), static::$dash_list_limit)
             );
         }
 
@@ -421,9 +420,9 @@ trait PortalDashboardTrait
         $issue_name = $this->issue_table->table_name;
         $limit = static::$dash_feed_limit;
 
-        $issues = $this->dashboardLean($this->issue_table->getValueModel()->query())
+        $issues = static::takeSorted($this->dashboardLean($this->issue_table->getValueModel()->query())
             ->where('parent_type', $this->project_table->table_name)
-            ->orderBy('updated_at', 'desc')->take($limit)->get();
+            ->orderBy('updated_at', 'desc'), $limit);
 
         $feed = [];
         $keys = [];
@@ -453,9 +452,9 @@ trait PortalDashboardTrait
         // the whole table: a comment on an issue this user cannot open must
         // not appear, and the issue list above is the permission filtered one.
         if (!empty($keys)) {
-            $comments = getModelName(SystemTableName::COMMENT)::whereIn('parent_id', array_keys($keys))
+            $comments = static::takeSorted(getModelName(SystemTableName::COMMENT)::whereIn('parent_id', array_keys($keys))
                 ->where('parent_type', $issue_name)
-                ->orderBy('created_at', 'desc')->take($limit)->get();
+                ->orderBy('created_at', 'desc'), $limit);
             foreach ($comments as $comment) {
                 $target = array_get($keys, intval($comment->parent_id));
                 if (!isset($target)) {

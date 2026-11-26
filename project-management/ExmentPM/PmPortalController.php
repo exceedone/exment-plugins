@@ -4771,6 +4771,54 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * The rows of a query already in its order (orderBy / orderByRaw), sorted over the ids only
+     * and then read by id - see sortedRows(). Takes $take rows after $skip; the same kind of
+     * collection as get() (an Eloquent one for an Eloquent query).
+     *
+     * @param \Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder $query
+     * @param array<int, string>|null $columns the columns of a query builder's rows (get($columns))
+     * @return \Illuminate\Support\Collection
+     */
+    public static function takeSorted($query, int $take, int $skip = 0, ?array $columns = null)
+    {
+        $eloquent = $query instanceof \Illuminate\Database\Eloquent\Builder;
+        $base = $eloquent ? $query->getQuery() : $query;
+        $table = $eloquent ? $query->getModel()->getTable() : $base->from;
+        // the ids: the order only, none of the selected columns (a lean select keeps value in the sort)
+        $keys = clone $query;
+        $keysBase = $eloquent ? $keys->getQuery() : $keys;
+        $keysBase->columns = null;
+        $keysBase->bindings['select'] = [];
+        $keys->select($table . '.id');
+        if ($skip > 0) {
+            $keys->skip($skip);
+        }
+        $keys->take($take);
+        $ids = $keys->pluck($table . '.id')->map(function ($v) {
+            return intval($v);
+        })->all();
+        $empty = $eloquent ? $query->getModel()->newCollection() : collect();
+        if (empty($ids)) {
+            return $empty;
+        }
+        $rowsQuery = (clone $query)->reorder();
+        $rowsQuery->offset = null;
+        $rowsQuery->limit = null;
+        $rows = [];
+        foreach ($rowsQuery->whereIn($table . '.id', $ids)->get($columns ?? ['*']) as $row) {
+            $rows[intval($row->id)] = $row;
+        }
+        $out = [];
+        foreach ($ids as $id) {
+            if (isset($rows[$id])) {
+                $out[] = $rows[$id];
+            }
+        }
+
+        return $eloquent ? $query->getModel()->newCollection($out) : collect($out);
+    }
+
+    /**
      * The rows of a query in an order, sorted over their ids only, then read by id: an ORDER BY
      * over whole rows sorts the rows themselves, and one with a body of 150,000 characters does
      * not fit MySQL's sort buffer (1038 Out of sort memory, 256 KB by default).

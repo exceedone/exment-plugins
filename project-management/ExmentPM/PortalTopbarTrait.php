@@ -377,9 +377,9 @@ trait PortalTopbarTrait
                     $query->orWhereIn('id', $aliased);
                 }
             })
-            ->orderBy('updated_at', 'desc')
-            ->take($limit + 1)
-            ->get();
+            ->orderBy('updated_at', 'desc');
+        // sorted over the ids: a row with a body of 150,000 characters does not fit MySQL's sort buffer
+        $rows = static::takeSorted($rows, $limit + 1);
 
         $items = [];
         foreach ($rows as $issue) {
