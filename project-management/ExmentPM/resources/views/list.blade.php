@@ -448,7 +448,11 @@
                 <div class="pp-ph"><i class="fa fa-user-circle-o"></i> {{ $t('mine') }}
                     {{-- ISS00264 --}}
                     <span class="pp-ph-right"><a href="{{ PortalDefinition::url('issues') }}"><i class="fa fa-list-ul"></i> {{ PortalDefinition::trans('all.link') }}</a>
-                        <a href="{{ PortalDefinition::url('issues') }}?fav=1" style="margin-left:12px;"><i class="fa fa-bookmark"></i> {{ PortalDefinition::trans('all.fav_link') }}</a></span>
+                        <a href="{{ PortalDefinition::url('issues') }}?fav=1" style="margin-left:12px;"><i class="fa fa-bookmark"></i> {{ PortalDefinition::trans('all.fav_link') }}</a>
+                        {{-- ISS00244: every project in one gantt (Exment 7.3, exment#2298) --}}
+                        @if(\App\Plugins\ExmentPM\PmPortalController::allGanttSupported())
+                        <a href="{{ PortalDefinition::url('issues', 'gantt') }}" style="margin-left:12px;"><i class="fa fa-align-left"></i> {{ PortalDefinition::trans('ag_link') }}</a>
+                        @endif</span>
                 </div>
                 <div class="pp-tabs" role="tablist">
                     @foreach($tabList as $key => $label)

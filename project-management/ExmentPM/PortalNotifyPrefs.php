@@ -17,14 +17,14 @@ use Exceedone\Exment\Enums\SystemTableName;
 class PortalNotifyPrefs
 {
     /** A new issue, assigned to me, a comment, a status change, a mention, a reminder. */
-    const EVENTS = ['new', 'assigned', 'comment', 'status', 'mention', 'remind'];
+    const EVENTS = ['new', 'assigned', 'comment', 'status', 'mention', 'remind', 'digest'];
 
     /**
      * The events the senders tell apart today: a new issue, a change or a comment of an issue
      * (PortalTeams 'updated'), a reminder. The page offers these; the others come when the
      * senders say them.
      */
-    const OFFERED = ['new', 'comment', 'remind'];
+    const OFFERED = ['new', 'comment', 'remind', 'digest'];
 
     /** The settings of a person (Exment's user settings): per event, per project, quiet hours. */
     const SETTING = 'pmportal.notify_prefs';
@@ -80,7 +80,8 @@ class PortalNotifyPrefs
             $mail = false;
             $teams = false;
         }
-        if (static::quietNow(array_get($prefs, 'quiet'), $nowHM)) {
+        // the morning digest comes at the time the person chose: not stopped by their quiet hours
+        if ($event !== 'digest' && static::quietNow(array_get($prefs, 'quiet'), $nowHM)) {
             $mail = false;
             $teams = false;
         }
@@ -120,7 +121,7 @@ class PortalNotifyPrefs
      */
     public static function clean(array $in): array
     {
-        $out = ['events' => [], 'projects' => [], 'quiet' => null];
+        $out = ['events' => [], 'projects' => [], 'quiet' => null, 'digest' => null];
         foreach (static::EVENTS as $e) {
             $v = $in['events'][$e] ?? null;
             if (is_array($v) && !empty($v['own'])) {
@@ -136,6 +137,10 @@ class PortalNotifyPrefs
         $to = static::hm($in['quiet']['to'] ?? null);
         if (!empty($in['quiet']['on']) && $from !== null && $to !== null && $from !== $to) {
             $out['quiet'] = ['from' => $from, 'to' => $to];
+        }
+        // the morning digest (PortalDigest): on, and the time; off unless asked for
+        if (!empty($in['digest']['on'])) {
+            $out['digest'] = ['on' => true, 'time' => static::hm($in['digest']['time'] ?? null) ?? '08:00'];
         }
 
         return $out;

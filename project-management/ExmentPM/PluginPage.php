@@ -45,6 +45,8 @@ class PluginPage extends PluginPageBase
         PortalSchedule::registerFeature();
         // reminders before the due date: a feature of Feature management, off at first (ISS00432)
         PortalReminder::registerFeature();
+        // the morning digest of each person: a feature of Feature management, off at first (ISS02939)
+        PortalDigest::registerFeature();
         // Exment's "?" of the header opens the manual of the plugin (ISS02882)
         ManualLink::register($plugin);
         // before 初期セットアップ: the entry in the left menu that leads to it (7.2.1)
@@ -212,6 +214,12 @@ class PluginPage extends PluginPageBase
     public function allIssuesExport()
     {
         return $this->portal()->allIssuesExport(request());
+    }
+
+    // ISS00244: the issues of every project in one gantt, a project per group
+    public function allGantt()
+    {
+        return $this->respond($this->portal()->allGantt(request(), new Content()));
     }
 
     public function exportIssues($id)

@@ -120,6 +120,20 @@ class PluginBatch extends PluginBatchBase
             return 0;
         }
 
+        // --param1=digest: the morning digest of each person (ISS02939), every 15 minutes
+        if ($target === 'digest') {
+            \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            if (!PortalDigest::enabled()) {
+                $this->say('digest_off');
+
+                return 0;
+            }
+            $r = PortalDigest::run($dry);
+            $this->say($dry ? 'digest_dry' : 'digest', ['people' => $r['people'], 'count' => $r['sent'], 'empty' => $r['empty'], 'failed' => $r['failed'] ?? 0]);
+
+            return 0;
+        }
+
         // --param1=remind: the reminders before the due date (ISS00432), every 15 minutes
         if ($target === 'remind') {
             \Exceedone\Exment\Middleware\Morph::defineMorphMap();

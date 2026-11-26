@@ -146,6 +146,8 @@ class PmPortalController extends AdminControllerBase
         PortalSchedule::tick();
         // reminders whose time has come, when the batch is not run (ISS00432)
         PortalReminder::tick();
+        // the morning digests whose time has come (ISS02939)
+        PortalDigest::tick();
 
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
@@ -587,6 +589,8 @@ class PmPortalController extends AdminControllerBase
         PortalSchedule::tick();
         // reminders whose time has come, when the batch is not run (ISS00432)
         PortalReminder::tick();
+        // the morning digests whose time has come (ISS02939)
+        PortalDigest::tick();
 
         $this->setPageInfo(
             PortalDefinition::trans('title'),
