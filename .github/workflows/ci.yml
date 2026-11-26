@@ -136,6 +136,12 @@ jobs:
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php
 
+      # Every locale has the keys and placeholders of ja (ExmentPM) or en (the others).
+      # A warning only: a new ja key waits for its translations in a later PR.
+      - name: Lang keys check (warning only)
+        continue-on-error: true
+        run: php project-management/tools/test-lang-keys.php
+
       # The messages of ExmentPMBacklog have no secret (plain PHP)
       - name: Messages check (ExmentPMBacklog)
         run: php project-management/tools/test-pmbl-secrets.php
