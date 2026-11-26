@@ -231,6 +231,10 @@ class PortalDefinition
     const ASSETS = [
         'script' => ['file' => 'resources/js/script.js', 'tag' => 'script', 'type' => 'application/javascript; charset=utf-8'],
         'style' => ['file' => 'resources/views/style.blade.php', 'tag' => 'style', 'type' => 'text/css; charset=utf-8'],
+        // the attachments seen in place (ISS02938), loaded only when an Excel or Word file is opened:
+        // SheetJS CE 0.20.3 (Apache-2.0, cdn.sheetjs.com) and mammoth 1.8.0 (BSD-2-Clause), as released
+        'xlsx' => ['file' => 'resources/js/vendor/xlsx.full.min.js', 'tag' => 'script', 'type' => 'application/javascript; charset=utf-8'],
+        'mammoth' => ['file' => 'resources/js/vendor/mammoth.browser.min.js', 'tag' => 'script', 'type' => 'application/javascript; charset=utf-8'],
     ];
 
     /**

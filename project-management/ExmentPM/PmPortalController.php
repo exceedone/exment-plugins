@@ -3481,6 +3481,11 @@ class PmPortalController extends AdminControllerBase
                 'office_view' => $this->officeViewBase(),
                 // ISS02938: Groupware's page that edits an Office attachment (0.4.0 or later)
                 'office_edit' => PortalAttachEdit::enabled() ? PortalAttachEdit::officeEditBase() : null,
+                // ISS02938: the attachments seen in place, and 「オンラインで編集」 by Groupware with or
+                // without the versions
+                'pv_office' => PortalAttachEdit::officeEditBase(),
+                'pv_xlsx' => PortalDefinition::assetUrl('xlsx'),
+                'pv_mammoth' => PortalDefinition::assetUrl('mammoth'),
                 'temp_image_upload' => admin_url('tmpimages'),
                 'mention' => admin_url('webapi/mention/users'),
                 'form_style' => PortalDefinition::url('form-style'),
