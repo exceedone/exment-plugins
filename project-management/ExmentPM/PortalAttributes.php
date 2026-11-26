@@ -398,6 +398,34 @@ class PortalAttributes
         return static::exists() && isset($project) && boolval(intval(array_get((array) $project->value, $column, 0)));
     }
 
+    /**
+     * Before an issue is saved: its values as kept - a number rounded to its decimals, the
+     * choices in the order of the list, the users once each - so the screen, the history and an
+     * export read the same value. Not on a move (the move made them for the new project), and
+     * not when the rules refuse the write (they have said so already).
+     */
+    public static function normalizeSaving(\Exceedone\Exment\Model\CustomValue $issue): void
+    {
+        if (!static::exists() || PortalRules::moving($issue)) {
+            return;
+        }
+        $column = static::column();
+        $value = (array) $issue->value;
+        if (!array_key_exists($column, $value) || $value[$column] === null || $value[$column] === '') {
+            return;
+        }
+        $defs = static::forProject(intval($issue->parent_id), true);
+        if (empty($defs)) {
+            return;
+        }
+        $stored = $issue->exists ? array_get((array) $issue->getOriginal('value'), $column) : '';
+        [$json, $errors] = static::check($defs, $value[$column], $stored, null);
+        $now = is_array($value[$column]) ? strval(json_encode($value[$column], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) : strval($value[$column]);
+        if (empty($errors) && $json !== $now) {
+            $issue->setValue([$column => $json]);
+        }
+    }
+
     // ---- the definitions ---------------------------------------------------
 
     /**
