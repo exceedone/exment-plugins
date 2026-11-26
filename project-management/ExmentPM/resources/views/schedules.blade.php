@@ -54,14 +54,18 @@
         @if(!empty($errors_list))<div class="ng">@foreach($errors_list as $e)<div>{{ $e }}</div>@endforeach</div>@endif
 
         @if(!$show_form)
-        <p><a class="btn btn-primary btn-sm" href="{{ $base_url }}?new=1"><i class="fa fa-plus"></i> {{ $s('add') }}</a></p>
+        <p><a class="btn btn-primary btn-sm" href="{{ $base_url }}?new=1"><i class="fa fa-plus"></i> {{ $s('add') }}</a>
+            <a href="{{ $calendar_url }}" style="margin-left:12px;"><i class="fa fa-calendar"></i> {{ $s('cal_title') }}</a>
+            @if($company_url)<a href="{{ $company_url }}" style="margin-left:12px;"><i class="fa fa-cog"></i> {{ PortalDefinition::trans('cal.page_title') }}</a>@endif</p>
         @endif
 
         @if($show_form)
         <form method="post" action="{{ $base_url }}" class="box2" id="pp-sc-form">
             <input type="hidden" name="_token" value="{{ csrf_token() }}">
             <input type="hidden" name="schedule_id" value="{{ $edit->id ?? '' }}">
-            <h4>{{ $edit ? $s('edit') : $s('add') }}</h4>
+            @if($split)<input type="hidden" name="split_from" value="{{ $split }}">@endif
+            <h4>{{ $edit ? ($split ? $s('split_title', ['date' => $split]) : $s('edit')) : $s('add') }}</h4>
+            @if($split)<p class="mute">{{ $s('split_help', ['date' => $split]) }}</p>@endif
             <div class="f"><label class="h">{{ $s('name') }}</label><input type="text" name="name" value="{{ $v('name') }}" style="width:100%;max-width:420px;"></div>
             <div class="f"><label class="h">{{ $s('template') }}</label>
                 <select name="template" style="max-width:100%;">
@@ -89,7 +93,7 @@
                 @foreach($wdays as $k => $l)<label class="ck"><input type="checkbox" name="weekdays[]" value="{{ $k }}" @if(in_array($k, (array) $v('weekdays', []), true)) checked @endif> {{ $l }}</label>@endforeach</div>
             <div class="f" data-k="custom"><label class="h">RRULE</label><input type="text" name="rrule" value="{{ $v('rrule', $edit->rrule ?? '') }}" style="width:100%;max-width:520px;" placeholder="FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"><div class="mute">{{ $s('rrule_help') }}</div></div>
             <div class="f on"><label class="h">{{ $s('rdates') }}</label><input type="text" name="rdates" value="{{ $v('rdates', $rdatesText) }}" style="width:100%;max-width:520px;" placeholder="2027-01-15, 2027-06-30"><div class="mute">{{ $s('rdates_help') }}</div></div>
-            <div class="f"><label class="h">{{ $s('start') }}</label><input type="date" name="start_date" value="{{ $v('start_date', $today) }}">
+            <div class="f"><label class="h">{{ $s('start') }}</label><input type="date" name="start_date" value="{{ $split ?: $v('start_date', $today) }}" @if($split) readonly @endif>
                 <label class="h" style="display:inline;margin-left:12px;">{{ $s('end') }}</label> <input type="date" name="end_date" value="{{ $v('end_date') }}"></div>
             <div class="f"><label class="h">{{ $s('shift') }}</label>
                 <select name="shift">@foreach(['before', 'after', 'keep', 'skip'] as $k)<option value="{{ $k }}" @if($v('shift', 'keep') === $k) selected @endif>{{ $s('shift_' . $k) }}</option>@endforeach</select></div>
@@ -121,6 +125,7 @@
                             <button class="lnk" name="do" value="skip">{{ $s('skip') }}</button>
                             @if($n['moved'])<button class="lnk" name="do" value="reset">{{ $s('reset') }}</button>@endif
                         </form>
+                        @if($n['orig'] > $row->start_date)<a class="lnk" href="{{ $base_url }}?edit={{ $row->id }}&split={{ $n['orig'] }}">{{ $s('split') }}</a>@endif
                     </td>
                 </tr>
                 @empty

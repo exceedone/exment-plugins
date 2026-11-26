@@ -43,6 +43,7 @@ class PmPortalController extends AdminControllerBase
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
     use PortalSchedulePageTrait;
+    use PortalCalendarPageTrait;
 
     /**
      * How many issues one bulk edit may touch.

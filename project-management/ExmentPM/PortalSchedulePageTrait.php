@@ -21,7 +21,7 @@ trait PortalSchedulePageTrait
     {
         $project = $this->scheduleProject($id);
         $pid = intval($project->id);
-        $cal = new BusinessCalendar();
+        $cal = PortalCalendarDays::calendar();
         $today = PortalTime::today();
         $far = (new \DateTimeImmutable($today))->modify('+2 year')->format('Y-m-d');
         $list = [];
@@ -49,6 +49,9 @@ trait PortalSchedulePageTrait
             'list' => $list,
             'edit' => $edit,
             'form' => $edit ? (json_decode(strval($edit->form ?? ''), true) ?: []) : [],
+            'split' => $edit !== null ? BusinessCalendar::normalize($request->query('split')) : null,
+            'calendar_url' => PortalDefinition::url($project->id, 'schedules', 'calendar'),
+            'company_url' => static::topbarIsAdmin() && PortalCalendarDays::exists() ? PortalDefinition::url('calendar') : null,
             'show_form' => $edit !== null || $request->query('new') === '1' || !empty(session('pm_schedule_errors')),
             'issues' => $this->scheduleTemplates($project),
             'today' => $today,
@@ -64,10 +67,16 @@ trait PortalSchedulePageTrait
         $project = $this->scheduleProject($id);
         $sid = $request->input('schedule_id');
         $f = $request->only(['name', 'template', 'kind', 'interval', 'by', 'monthday', 'nth', 'weekday', 'month', 'weekdays', 'rrule', 'start_date', 'end_date', 'rdates', 'shift', 'lead_days', 'enabled']);
-        [$saved, $errors] = PortalSchedule::save(intval($project->id), ctype_digit(strval($sid)) ? intval($sid) : null, $f, intval(\Exment::getUserId()), $this->issue_table);
+        $split = BusinessCalendar::normalize($request->input('split_from'));
+        if ($split !== null && ctype_digit(strval($sid))) {
+            // ISS00432 2b: from this date on
+            [$saved, $errors] = PortalSchedule::split(intval($project->id), intval($sid), $split, $f, intval(\Exment::getUserId()), $this->issue_table);
+        } else {
+            [$saved, $errors] = PortalSchedule::save(intval($project->id), ctype_digit(strval($sid)) ? intval($sid) : null, $f, intval(\Exment::getUserId()), $this->issue_table);
+        }
         $base = PortalDefinition::url($project->id, 'schedules');
         if (!empty($errors)) {
-            return redirect($base . (ctype_digit(strval($sid)) ? '?edit=' . intval($sid) : '?new=1'))
+            return redirect($base . (ctype_digit(strval($sid)) ? '?edit=' . intval($sid) . ($split !== null ? '&split=' . $split : '') : '?new=1'))
                 ->with('pm_schedule_errors', $errors)->with('pm_schedule_old', $f);
         }
 
