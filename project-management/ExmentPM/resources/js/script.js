@@ -6897,10 +6897,11 @@ window.PmPortalBoot = function () {
                 if (b) { a.parentNode.insertBefore(b, a.nextSibling); }
             }
         }
+        function pvAll(root) { pvDecorate(root); pvCards(root); }
         var PV_TICK = null;
         function pvSoon() {
             if (PV_TICK) { return; }
-            PV_TICK = (window.requestAnimationFrame || setTimeout)(function () { PV_TICK = null; pvDecorate(document.body); });
+            PV_TICK = (window.requestAnimationFrame || setTimeout)(function () { PV_TICK = null; pvAll(document.body); });
         }
         if (window.MutationObserver) {
             new MutationObserver(function () { pvSoon(); }).observe(document.body, { childList: true, subtree: true });
@@ -6963,10 +6964,11 @@ window.PmPortalBoot = function () {
             if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
             return rows;
         }
-        function pvTable(rows) {
+        function pvTable(rows, cap) {
+            cap = cap || PV_ROWS;
             var t = document.createElement('table');
             t.className = 'pp-pvtable';
-            rows.slice(0, PV_ROWS).forEach(function (r) {
+            rows.slice(0, cap).forEach(function (r) {
                 var tr = document.createElement('tr');
                 (r || []).slice(0, PV_COLS).forEach(function (v) { var td = document.createElement('td'); td.textContent = v == null ? '' : String(v); tr.appendChild(td); });
                 t.appendChild(tr);
@@ -6974,68 +6976,169 @@ window.PmPortalBoot = function () {
             var wrap = document.createElement('div');
             wrap.className = 'pp-pvscroll';
             wrap.appendChild(t);
-            if (rows.length >= PV_ROWS) { var more = document.createElement('p'); more.className = 'pp-pvmore'; more.textContent = P().L.pv_more; wrap.appendChild(more); }
+            if (cap === PV_ROWS && rows.length >= PV_ROWS) { var more = document.createElement('p'); more.className = 'pp-pvmore'; more.textContent = P().L.pv_more; wrap.appendChild(more); }
             return wrap;
         }
         function pvPre(text) { var pre = document.createElement('pre'); pre.className = 'pp-pvpre'; pre.textContent = text; return pre; }
 
-        function pvOpen(href, name) {
-            var bd = pvBox(name, href);
-            var kind = pvKind(name);
-            fetch(href, { credentials: 'same-origin' }).then(function (r) {
+        // the file's bytes, once per page (the card and the window share them)
+        var PV_BUF = {};
+        function pvLoad(href) {
+            if (PV_BUF[href]) { return PV_BUF[href]; }
+            PV_BUF[href] = fetch(href, { credentials: 'same-origin' }).then(function (r) {
                 if (!r.ok) { throw new Error(String(r.status)); }
                 var len = parseInt(r.headers.get('Content-Length') || '0', 10);
                 if (len > PV_MAX) { throw new Error('big'); }
                 return r.arrayBuffer();
             }).then(function (buf) {
                 if (buf.byteLength > PV_MAX) { throw new Error('big'); }
-                bd.textContent = '';
-                if (kind === 'image' || kind === 'pdf') {
-                    var type = kind === 'pdf' ? 'application/pdf' : 'image/' + (pvExt(name) === 'jpg' ? 'jpeg' : pvExt(name));
-                    var u = URL.createObjectURL(new Blob([buf], { type: type }));
-                    PV_URLS.push(u);
-                    var el = document.createElement(kind === 'pdf' ? 'iframe' : 'img');
-                    el.className = kind === 'pdf' ? 'pp-pvpdf' : 'pp-pvimg';
-                    el.src = u;
-                    el.setAttribute(kind === 'pdf' ? 'title' : 'alt', name);
-                    bd.appendChild(el);
-                } else if (kind === 'text') {
-                    var text = pvText(buf);
-                    var e = pvExt(name);
-                    bd.appendChild(e === 'csv' || e === 'tsv' ? pvTable(pvCsv(text, e === 'tsv' ? '\t' : ',')) : pvPre(text));
-                } else if (kind === 'sheet') {
-                    pvScript(window.XLSX ? null : P().D.urls.pv_xlsx, function () {
-                        if (!window.XLSX) { pvMsg(bd, P().L.pv_fail); return; }
-                        var wb = window.XLSX.read(new Uint8Array(buf), { type: 'array', cellHTML: false, cellFormula: false, sheetRows: PV_ROWS });
-                        var tabs = document.createElement('div');
-                        tabs.className = 'pp-pvtabs';
-                        var body = document.createElement('div');
-                        var show = function (n) {
-                            body.textContent = '';
-                            body.appendChild(pvTable(window.XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '' })));
-                            Array.prototype.forEach.call(tabs.children, function (b) { b.classList.toggle('on', b.getAttribute('data-n') === n); });
-                        };
-                        wb.SheetNames.forEach(function (n) {
-                            var b = document.createElement('button');
-                            b.type = 'button';
-                            b.setAttribute('data-n', n);
-                            b.textContent = n;
-                            b.addEventListener('click', function () { show(n); });
-                            tabs.appendChild(b);
-                        });
-                        bd.appendChild(tabs);
-                        bd.appendChild(body);
-                        if (wb.SheetNames.length) { show(wb.SheetNames[0]); }
-                    });
-                } else if (kind === 'word') {
-                    pvScript(window.mammoth ? null : P().D.urls.pv_mammoth, function () {
-                        if (!window.mammoth) { pvMsg(bd, P().L.pv_fail); return; }
-                        window.mammoth.extractRawText({ arrayBuffer: buf }).then(function (res) { bd.appendChild(pvPre(res.value || '')); })
-                            .catch(function () { pvMsg(bd, P().L.pv_fail); });
-                    });
-                }
-            }).catch(function (e) { pvMsg(bd, e && e.message === 'big' ? P().L.pv_big : P().L.pv_fail); });
+                return buf;
+            });
+            PV_BUF[href].catch(function () { delete PV_BUF[href]; });
+            return PV_BUF[href];
         }
+        // draw a file into a box: everything (rows 0) or its start (rows n: lines, rows of the first sheet)
+        function pvRender(bd, buf, kind, name, rows) {
+            bd.textContent = '';
+            var cap = rows || PV_ROWS;
+            if (kind === 'image' || kind === 'pdf') {
+                if (kind === 'pdf' && rows) { pvMsg(bd, 'PDF'); return; }
+                var type = kind === 'pdf' ? 'application/pdf' : 'image/' + (pvExt(name) === 'jpg' ? 'jpeg' : pvExt(name));
+                var u = URL.createObjectURL(new Blob([buf], { type: type }));
+                PV_URLS.push(u);
+                var el = document.createElement(kind === 'pdf' ? 'iframe' : 'img');
+                el.className = kind === 'pdf' ? 'pp-pvpdf' : 'pp-pvimg';
+                el.src = u;
+                el.setAttribute(kind === 'pdf' ? 'title' : 'alt', name);
+                bd.appendChild(el);
+            } else if (kind === 'text') {
+                var text = pvText(buf);
+                var e = pvExt(name);
+                bd.appendChild(e === 'csv' || e === 'tsv' ? pvTable(pvCsv(text, e === 'tsv' ? '\t' : ','), cap) : pvPre(pvLines(text, rows)));
+            } else if (kind === 'sheet') {
+                pvScript(window.XLSX ? null : P().D.urls.pv_xlsx, function () {
+                    if (!window.XLSX) { pvMsg(bd, P().L.pv_fail); return; }
+                    var wb = window.XLSX.read(new Uint8Array(buf), { type: 'array', cellHTML: false, cellFormula: false, sheetRows: cap });
+                    var tabs = document.createElement('div');
+                    tabs.className = 'pp-pvtabs';
+                    var body = document.createElement('div');
+                    var show = function (n) {
+                        body.textContent = '';
+                        body.appendChild(pvTable(window.XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '' }), cap));
+                        Array.prototype.forEach.call(tabs.children, function (b) { b.classList.toggle('on', b.getAttribute('data-n') === n); });
+                    };
+                    wb.SheetNames.forEach(function (n) {
+                        var b = document.createElement('button');
+                        b.type = 'button';
+                        b.setAttribute('data-n', n);
+                        b.textContent = n;
+                        b.addEventListener('click', function () { show(n); });
+                        tabs.appendChild(b);
+                    });
+                    if (!rows) { bd.appendChild(tabs); }
+                    bd.appendChild(body);
+                    if (wb.SheetNames.length) { show(wb.SheetNames[0]); }
+                });
+            } else if (kind === 'word') {
+                pvScript(window.mammoth ? null : P().D.urls.pv_mammoth, function () {
+                    if (!window.mammoth) { pvMsg(bd, P().L.pv_fail); return; }
+                    window.mammoth.extractRawText({ arrayBuffer: buf }).then(function (res) { bd.appendChild(pvPre(pvLines(res.value || '', rows))); })
+                        .catch(function () { pvMsg(bd, P().L.pv_fail); });
+                });
+            }
+        }
+        function pvLines(text, rows) {
+            if (!rows) { return text; }
+            var lines = String(text).split(/\r\n|\r|\n/);
+            return lines.slice(0, rows).join('\n') + (lines.length > rows ? '\n…' : '');
+        }
+        function pvFail(bd, e) { pvMsg(bd, e && e.message === 'big' ? P().L.pv_big : P().L.pv_fail); }
+        function pvOpen(href, name) {
+            var bd = pvBox(name, href);
+            pvLoad(href).then(function (buf) { pvRender(bd, buf, pvKind(name), name, 0); }).catch(function (e) { pvFail(bd, e); });
+        }
+
+        // the card under a link: its start, 「▼ 開く」 for all of it here, 「⤢ 大きく見る」 for the window.
+        // Folded (nothing read) when the file is over 1 MB or the place has more than 3 files; read
+        // only when it comes into view.
+        var PV_FOLD_BYTES = 1024 * 1024;
+        var PV_FOLD_COUNT = 3;
+        var PV_SEEN = window.IntersectionObserver ? new IntersectionObserver(function (list) {
+            list.forEach(function (en) {
+                if (!en.isIntersecting) { return; }
+                PV_SEEN.unobserve(en.target);
+                pvCardFill(en.target, false);
+            });
+        }, { rootMargin: '200px' }) : null;
+        function pvCard(href, name, folded) {
+            var card = document.createElement('div');
+            card.className = 'pp-pvcard pp-pvskip' + (folded ? ' folded' : '');
+            card.setAttribute('data-pv-url', href);
+            card.setAttribute('data-pv-name', name);
+            card.innerHTML = '<div class="pp-pvc-bd"></div><div class="pp-pvc-ft">' +
+                '<a href="javascript:void(0);" class="pp-pvc-more"></a> <a href="javascript:void(0);" class="pp-pvopen pp-pvc-big"></a></div>';
+            card.querySelector('.pp-pvc-more').textContent = folded ? P().L.pv_unfold : P().L.pv_expand;
+            var big = card.querySelector('.pp-pvc-big');
+            big.setAttribute('data-pv-url', href);
+            big.setAttribute('data-pv-name', name);
+            big.textContent = P().L.pv_big_view;
+            return card;
+        }
+        function pvCardFill(card, all) {
+            var bd = card.querySelector('.pp-pvc-bd');
+            var href = card.getAttribute('data-pv-url'), name = card.getAttribute('data-pv-name');
+            bd.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+            var go = function () {
+                pvLoad(href).then(function (buf) {
+                    if (!all && buf.byteLength > PV_FOLD_BYTES) { card.classList.add('folded'); bd.textContent = ''; card.querySelector('.pp-pvc-more').textContent = P().L.pv_unfold; return; }
+                    pvRender(bd, buf, pvKind(name), name, all ? 0 : 10);
+                }).catch(function (e) { pvFail(bd, e); });
+            };
+            // the size first when it is told, so a big file is not read for a folded card
+            if (all) { go(); return; }
+            fetch(href, { method: 'HEAD', credentials: 'same-origin' }).then(function (r) {
+                var len = parseInt(r.headers.get('Content-Length') || '0', 10);
+                if (len > PV_FOLD_BYTES) { card.classList.add('folded'); bd.textContent = ''; card.querySelector('.pp-pvc-more').textContent = P().L.pv_unfold; return; }
+                go();
+            }).catch(go);
+        }
+        function pvCards(root) {
+            if (!root || !root.querySelectorAll) { return; }
+            var links = root.querySelectorAll('a[data-pv="1"]:not([data-pvc])');
+            for (var i = 0; i < links.length; i++) {
+                var a = links[i];
+                a.setAttribute('data-pvc', '1');
+                var name = pvName(a);
+                var kind = pvKind(name);
+                // the issue's list draws pictures itself; a card for what can be shown as text, a sheet, a picture in a comment
+                if (!kind || (kind === 'image' && a.querySelector('img'))) { continue; }
+                var place = a.closest('.pp-cmt-body, .bl-cmt-body, li, p, td, div') || a.parentNode;
+                var many = place.querySelectorAll('a[data-pv="1"]').length > PV_FOLD_COUNT;
+                var card = pvCard(a.getAttribute('href'), name, many);
+                var after = a.nextSibling && a.nextSibling.classList && a.nextSibling.classList.contains('pp-pvb') ? a.nextSibling : a;
+                after.parentNode.insertBefore(card, after.nextSibling);
+                if (!many) {
+                    if (PV_SEEN) { PV_SEEN.observe(card); } else { pvCardFill(card, false); }
+                }
+            }
+        }
+        document.addEventListener('click', function (ev) {
+            var m = ev.target && ev.target.closest ? ev.target.closest('.pp-pvc-more') : null;
+            if (!m) { return; }
+            ev.preventDefault();
+            var card = m.closest('.pp-pvcard');
+            var open = card.classList.contains('open');
+            if (open) {
+                card.classList.remove('open');
+                m.textContent = P().L.pv_expand;
+                pvCardFill(card, false);
+                return;
+            }
+            card.classList.remove('folded');
+            card.classList.add('open');
+            m.textContent = P().L.pv_collapse;
+            pvCardFill(card, true);
+        });
 
         document.addEventListener('click', function (ev) {
             var t = ev.target && ev.target.closest ? ev.target.closest('.pp-pvopen') : null;

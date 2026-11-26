@@ -217,6 +217,14 @@
 .pp-pvtabs button{border:1px solid var(--bl-line,#dfe5ea);background:var(--bl-box,#fff);border-radius:4px;padding:2px 10px;font-size:12px;}
 .pp-pvtabs button.on{border-color:var(--bl-accent,#4cae93);color:var(--bl-accent,#4cae93);font-weight:700;}
 .pp-pvmore{font-size:12px;color:var(--bl-faint,#8a97a3);}
+.pp-pvcard{border:1px solid var(--bl-line,#dfe5ea);border-radius:6px;margin:4px 0 8px;max-width:760px;background:var(--bl-box,#fff);}
+.pp-pvcard .pp-pvc-bd{max-height:220px;overflow:auto;padding:6px 8px;font-size:12px;}
+.pp-pvcard.open .pp-pvc-bd{max-height:60vh;}
+.pp-pvcard.folded .pp-pvc-bd{display:none;}
+.pp-pvcard .pp-pvc-bd .pp-pvimg{max-height:200px;width:auto;margin:0;}
+.pp-pvcard.open .pp-pvc-bd .pp-pvimg{max-height:none;}
+.pp-pvcard .pp-pvc-ft{border-top:1px solid var(--bl-line,#dfe5ea);padding:3px 8px;font-size:12px;display:flex;gap:12px;}
+.pp-pvcard.folded .pp-pvc-ft{border-top:0;}
 .pp-aed textarea{width:100%;min-height:55vh;font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5;border:1px solid var(--bl-line,#dfe5ea);border-radius:4px;padding:8px;resize:vertical;}
 .pp-aed .ft{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:10px 14px;border-top:1px solid var(--bl-line,#dfe5ea);}
 .pp-aed .ft .msg{margin-right:auto;color:var(--bl-sub);font-size:12px;}
