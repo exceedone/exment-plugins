@@ -204,6 +204,41 @@ class PluginPage extends PluginPageBase
         return $this->respond($this->portal()->allIssues(request(), new Content()));
     }
 
+    public function recordLinkTables()
+    {
+        return $this->portal()->recordLinkTables(request());
+    }
+
+    public function recordLinks()
+    {
+        return $this->portal()->recordLinks(request());
+    }
+
+    public function linkTables($id)
+    {
+        return $this->portal()->linkTables(request(), $id);
+    }
+
+    public function postLinkTables($id)
+    {
+        return $this->portal()->postLinkTables(request(), $id);
+    }
+
+    public function linkSearch($id)
+    {
+        return $this->portal()->linkSearch(request(), $id);
+    }
+
+    public function issueLinks($id, $issue_id)
+    {
+        return $this->portal()->issueLinks(request(), $id, $issue_id);
+    }
+
+    public function postIssueLinks($id, $issue_id)
+    {
+        return $this->portal()->postIssueLinks(request(), $id, $issue_id);
+    }
+
     public function allIssuesData()
     {
         return $this->portal()->allIssuesData(request());
