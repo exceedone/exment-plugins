@@ -44,7 +44,9 @@ class PluginPage extends PluginPageBase
         // the classes of the data sync implement the interfaces of Exment 7.3: loaded only here
         require_once __DIR__ . '/BacklogConnector.php';
         require_once __DIR__ . '/SyncBridge.php';
-        \Exceedone\Exment\Services\Sync\SyncConnectors::register(new BacklogConnector());
+        // by name: on Exment 7.2 (and in its static analysis) these classes do not exist
+        $connector = __NAMESPACE__ . '\BacklogConnector';
+        call_user_func(['\Exceedone\Exment\Services\Sync\SyncConnectors', 'register'], new $connector());
     }
 
     /**
@@ -60,7 +62,8 @@ class PluginPage extends PluginPageBase
         }
         try {
             $user = \Exment::user();
-            $r = SyncBridge::move($user ? intval($user->getUserId()) : null);
+            /** @var array{moved: int, kept: int, lines: array<int, string>} $r */
+            $r = call_user_func([__NAMESPACE__ . '\SyncBridge', 'move'], $user ? intval($user->getUserId()) : null);
             return redirect($this->url())->with('pmbl_ok', Lang::t('sync_moved', ['moved' => strval($r['moved']), 'kept' => strval($r['kept'])]) . (empty($r['lines']) ? '' : ' ' . implode(' / ', $r['lines'])));
         } catch (\Throwable $e) {
             \Log::warning('pm_backlog move to the data sync: ' . get_class($e));

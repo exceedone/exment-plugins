@@ -239,10 +239,6 @@ class BacklogConnector implements SyncConnector, SyncWriter, SyncMappingFields, 
     protected function message(\Throwable $e, SyncConnection $connection): string
     {
         $message = $e instanceof \RuntimeException ? $e->getMessage() : get_class($e);
-        $key = strval($connection->secret('api_key'));
-        if ($key !== '') {
-            $message = str_replace([$key, rawurlencode($key)], '***', $message);
-        }
-        return mb_substr(preg_replace('/apiKey=[^&\s]+/', 'apiKey=***', $message) ?? '', 0, 500);
+        return mb_substr(Secrets::scrub($message, [strval($connection->secret('api_key'))]), 0, 500);
     }
 }
