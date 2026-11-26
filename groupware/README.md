@@ -8,7 +8,6 @@
 
 **Unreleased**
 
-- **Calendar (ISS02947, part 1)**: a shared calendar - your events, other people's side by side, by day, week, month and list; repeats (RRULE, one occurrence changed or cancelled), attendees and their replies, who can see each (everyone, the organization, the attendees only, or 「予定あり」 only: then others see only the time), and Japan's holidays plus the company days off of ExmentPM when it is there. Off at first: Feature management 「カレンダー」. Rooms, reminders, the ExmentPM layer, ICS and the outside calendars come next.
 - The manual: a link 「マニュアル」 on the top page and in the side of the mail screen opens the manual of the plugin on exment.net in the language of the user (Japanese, Vietnamese, else English), and Exment's "?" in the header opens it on the plugin's pages (Exment 7.2.4 and later).
 - A new version of this plugin may ask for a newer ibisOffice (ISS02827). Until now the site then said ibisOffice was not installed and Office stopped. Now Office keeps opening with the version already installed, and Feature management and the page of the plugin say a newer version is there, with **ibisOffice を X に更新する**. The update installs it as an install does (checked by its SHA-256) and then deletes the older folders.
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
@@ -145,7 +144,6 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 
 **未リリース**
 
-- **カレンダー（ISS02947、その 1）**：共有のカレンダー。自分の予定・ほかの人の予定を並べて、日・週・月・リストで見ます。くりかえし（RRULE、この回だけの変更・取り消し）、参加者と返事、公開の範囲（全員・部署・参加者だけ・「予定あり」だけ。ほかの人には時間だけ）、日本の祝日と ExmentPM の会社の休み（あれば）。初めは使いません（機能の管理の「カレンダー」）。会議室・知らせ・ExmentPM の重ね・ICS・外のカレンダーは、このあと足します。
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
 - 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
