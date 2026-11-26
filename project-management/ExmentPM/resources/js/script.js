@@ -11276,7 +11276,8 @@ window.PmPortalBoot = function () {
                 items.push({ l: L.ctx_add_child, i: 'fa-level-down', f: function () { openNcreate(D.issue_table, issuePrefill('child', id), 'child' + id); } });
             }
             if (row.editable !== false) {
-                items.push({ l: L.ctx_change_parent, i: 'fa-sitemap', f: function () { openNedit(D.issue_table, id); } });
+                // the editor lives in the issue's own screen: go there with ?edit, as the address of the editor does
+                items.push({ l: L.ctx_change_parent, i: 'fa-sitemap', f: function () { location.hash = '#' + issueHash(id) + '?edit'; } });
             }
             items.push({ l: L.ctx_copy_link, i: 'fa-link', f: function () { copyText(issuePageUrl(id), L.link_copied); } });
         }
