@@ -136,7 +136,15 @@ jobs:
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php
 
+      # The messages of ExmentPMBacklog have no secret (plain PHP)
+      - name: Messages check (ExmentPMBacklog)
+        run: php project-management/tools/test-pmbl-secrets.php
+
       # The alerts of Zabbix, Mackerel, Alertmanager and Azure Monitor, and
       # what they do to the tickets (ExmentITSupport, plain PHP).
       - name: Alert intake check (ExmentITSupport)
         run: php it-support/tools/test-alert-intake.php
+
+      # The steps of the SLA escalation (ExmentITSupport, plain PHP).
+      - name: SLA escalation check (ExmentITSupport)
+        run: php it-support/tools/test-sla-escalation.php

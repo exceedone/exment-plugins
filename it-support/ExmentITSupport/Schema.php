@@ -36,8 +36,9 @@ class Schema
      * 3: the menu is one entry, ITサポート, that opens the desk; the tables are
      * reached from the desk (see arrangeMenu()).
      * 4: the senders of alerts (its_intake_sources, ISS02928).
+     * 5: the step of the SLA escalation told (sla_escalation).
      */
-    const VERSION = 4;
+    const VERSION = 5;
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -162,6 +163,7 @@ class Schema
                     ['closed_at', '完了した日時', 'datetime', []],
                     ['sla_state', 'SLA', 'select_valtext', ['valtext' => Its::SLA_STATES, 'default' => 'none', 'index_enabled' => '1', 'grid_style' => 'pill', 'colors' => Its::SLA_COLORS]],
                     ['sla_paused_at', 'SLA を止めた日時', 'datetime', []],
+                    ['sla_escalation', 'SLA の知らせの段階', 'integer', ['default' => '0', 'help' => 'SLA のエスカレーションで、知らせた段階（0：まだ、1：担当者、2：リーダー、3：管理者）。']],
                     ['last_customer_at', 'お客様が最後に書いた日時', 'datetime', ['index_enabled' => '1']],
                     ['last_agent_at', '担当者が最後に返事した日時', 'datetime', []],
                     ['reminded_at', '返事のお願いを送った日時', 'datetime', []],

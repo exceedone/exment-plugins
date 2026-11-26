@@ -160,6 +160,16 @@ class Its
         'asset_notice_days' => '30',
         'auto_assign' => 'category',
         'csat_enabled' => '1',
+        // The SLA escalation in steps (Escalation): off at first.
+        'esc_enabled' => '0',
+        'esc_warn_percent' => '75',
+        'esc_manager_after' => '60',
+        'esc_lead_users' => '',
+        'esc_manager_users' => '',
+        'esc_channels' => 'bell,mail',
+        'esc_teams_url' => '',
+        'esc_webhook_url' => '',
+        'esc_lineworks_channel' => '',
         // No-login sharing.
         'public_enabled' => '1',
         'link_days_after_close' => '30',
@@ -178,7 +188,7 @@ class Its
     ];
 
     /** Settings stored encrypted. */
-    const SECRET_SETTINGS = ['imap_password', 'intake_key'];
+    const SECRET_SETTINGS = ['imap_password', 'intake_key', 'esc_teams_url', 'esc_webhook_url'];
 
     /** @var array<string, mixed>|null */
     protected static $settings;

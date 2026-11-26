@@ -539,6 +539,13 @@ class Tickets
         }
         Sla::applyDue($ticket);
         $ticket->setValue(['sla_state' => Sla::state($ticket)]);
+
+        // a new due time (another priority, the clock moved on): the escalation starts again
+        if (!$isNew && (strval($original['first_response_due'] ?? '') !== strval(array_get($ticket->value, 'first_response_due') ?? '')
+            || strval($original['resolve_due'] ?? '') !== strval(array_get($ticket->value, 'resolve_due') ?? '')
+            || (empty($original['first_responded_at']) && !empty(array_get($ticket->value, 'first_responded_at'))))) {
+            $ticket->setValue(['sla_escalation' => 0]);
+        }
     }
 
     /**

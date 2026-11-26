@@ -59,7 +59,12 @@ class Backlog
             usleep(static::PAUSE_MS * 1000);
             $this->calls++;
             // Backlog takes arrays as name[]=a&name[]=b.
-            $res = Http::timeout(60)->acceptJson()->get($url . '?' . static::query($query));
+            try {
+                $res = Http::timeout(60)->acceptJson()->get($url . '?' . static::query($query));
+            } catch (\Throwable $e) {
+                // the message of a connection error has the URL, and the URL the key
+                throw new BacklogException(Secrets::scrub('Backlog ' . $path . ': ' . $e->getMessage(), [$this->key]), 0);
+            }
             if ($res->status() === 429 && $try < static::MAX_RETRIES) {
                 $reset = intval($res->header('X-RateLimit-Reset'));
                 $wait = $reset > 0 ? max(1, min(60, $reset - time())) : 30;
@@ -69,7 +74,7 @@ class Backlog
             if (!$res->successful()) {
                 // The key is in the query; never put the URL in a message.
                 $body = mb_substr(strval($res->body()), 0, 300);
-                throw new BacklogException('Backlog ' . $res->status() . ' ' . $path . ': ' . $body, $res->status());
+                throw new BacklogException(Secrets::scrub('Backlog ' . $res->status() . ' ' . $path . ': ' . $body, [$this->key]), $res->status());
             }
 
             return $res->json();
@@ -85,7 +90,11 @@ class Backlog
         for ($try = 0; ; $try++) {
             usleep(static::PAUSE_MS * 1000);
             $this->calls++;
-            $res = Http::timeout(300)->get($url);
+            try {
+                $res = Http::timeout(300)->get($url);
+            } catch (\Throwable $e) {
+                throw new BacklogException(Secrets::scrub('Backlog ' . $path . ': ' . $e->getMessage(), [$this->key]), 0);
+            }
             if ($res->status() === 429 && $try < static::MAX_RETRIES) {
                 $reset = intval($res->header('X-RateLimit-Reset'));
                 sleep($reset > 0 ? max(1, min(60, $reset - time())) : 30);
