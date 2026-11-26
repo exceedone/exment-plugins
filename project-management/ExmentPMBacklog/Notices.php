@@ -48,7 +48,7 @@ class Notices
             }
         } catch (\Throwable $e) {
             // A notice that cannot be sent must not fail the run's bookkeeping.
-            Log::error('pm_backlog notice failed: ' . $e->getMessage());
+            Log::error('pm_backlog notice failed: ' . Secrets::scrub($e->getMessage()));
         }
     }
 }
