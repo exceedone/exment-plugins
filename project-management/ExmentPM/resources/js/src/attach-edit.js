@@ -9,7 +9,7 @@
     function attachTools(f, res) {
         if (!attachOn() || !f || !f.doc) { return ''; }
         var out = ' <button type="button" class="pp-ver" data-doc="' + esc(f.doc) + '" title="' + esc(L.attach_versions) + '">' +
-            esc(fmt2(L.attach_ver, f.ver || 1)) + '</button>';
+            esc(attachFmt(L.attach_ver, f.ver || 1)) + '</button>';
         var canEdit = !!(res && res.editable);
         if (canEdit && f.ek === 'text') {
             out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '" data-kind="text"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
@@ -20,7 +20,7 @@
         }
         return out;
     }
-    function fmt2(tpl, n) { return String(tpl || '').replace(':n', String(n)); }
+    function attachFmt(tpl, n) { return String(tpl || '').replace(':n', String(n)); }
     function attachBox(title) {
         attachClose();
         var wrap = document.createElement('div');
@@ -63,7 +63,7 @@
             $.extend(D.users, res.users || {});
             box.querySelector('.bd').innerHTML = '<table class="vl"><tr><th>' + esc(L.attach_col_ver) + '</th><th>' + esc(L.attach_col_name) + '</th><th>' + esc(L.attach_col_by) + '</th><th>' + esc(L.attach_col_at) + '</th><th></th></tr>' +
                 (res.versions || []).map(function (v) {
-                    return '<tr><td>' + esc(fmt2(L.attach_ver, v.no)) + (v.current ? ' <b>' + esc(L.attach_current) + '</b>' : '') + '</td><td>' + esc(v.name) + '</td><td>' + esc(user(v.by).n) + '</td><td>' + esc(v.at) + '</td><td>' +
+                    return '<tr><td>' + esc(attachFmt(L.attach_ver, v.no)) + (v.current ? ' <b>' + esc(L.attach_current) + '</b>' : '') + '</td><td>' + esc(v.name) + '</td><td>' + esc(user(v.by).n) + '</td><td>' + esc(v.at) + '</td><td>' +
                         '<a href="' + esc(linkUrl(v.url)) + '" target="_blank" rel="noopener"><i class="fa fa-download"></i> ' + esc(L.attach_download) + '</a>' +
                         (!v.current && res.edit ? ' <a href="javascript:void(0);" class="pp-arestore" data-id="' + esc(v.id) + '" style="margin-left:8px;">' + esc(L.attach_restore) + '</a>' : '') +
                         '</td></tr>';
@@ -99,14 +99,14 @@
         bd.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
         $.ajax({ url: attachBase(issueId, doc) + '/text', dataType: 'json' }).done(function (res) {
             if (!res || !res.ok) { bd.textContent = errText(null, res, L.attach_fail); return; }
-            box.querySelector('.t').textContent = res.name + ' — ' + fmt2(L.attach_ver, res.no);
+            box.querySelector('.t').textContent = res.name + ' — ' + attachFmt(L.attach_ver, res.no);
             var ext = String(res.name).split('.').pop().toLowerCase();
             var start = function (mine, by) {
                 var ro = readOnly || !res.edit || !mine;
                 if (!mine && by) {
                     var lk = box.querySelector('.lock');
                     lk.hidden = false;
-                    lk.textContent = fmt2(L.attach_locked_by, '').replace(':name', by);
+                    lk.textContent = attachFmt(L.attach_locked_by, '').replace(':name', by);
                 }
                 bd.innerHTML = '';
                 var ta = document.createElement('textarea');
@@ -118,7 +118,7 @@
                 view.hidden = true;
                 bd.appendChild(view);
                 var ft = box.querySelector('.ft');
-                ft.querySelector('.msg').textContent = fmt2(L.attach_encoding, '').replace(':enc', res.encoding);
+                ft.querySelector('.msg').textContent = attachFmt(L.attach_encoding, '').replace(':enc', res.encoding);
                 if (ext === 'md' || ext === 'markdown' || ext === 'csv' || ext === 'tsv') {
                     var tog = document.createElement('button');
                     tog.type = 'button';
@@ -207,7 +207,7 @@
         if (!m || !D.urls.office_edit) { return; }
         attachLock(issueId, doc, function (lk) {
             if (!lk || !lk.mine) {
-                toast(fmt2(L.attach_locked_by, '').replace(':name', lk ? lk.name : ''), true);
+                toast(attachFmt(L.attach_locked_by, '').replace(':name', lk ? lk.name : ''), true);
                 return;
             }
             // Groupware saves, keeps the older version and writes its own line; the lock is let go
