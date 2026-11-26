@@ -249,7 +249,8 @@ test('the dock and the issue-side pencils save through one function', () => {
     const post = functionSource(writes, 'postComment');
     assert.ok(/qeSaveFields\(issueId, changed, version\)/.test(post), 'the dock calls qeSaveFields');
     const detail = read('issue-detail.js');
-    assert.ok(/qeSaveFields\(issueId, changed, /.test(functionSource(detail, 'qfOpen')), 'the pencils call qeSaveFields');
+    assert.ok(/qfApply\(issueId, changed, /.test(functionSource(detail, 'qfOpen')), 'the pencils go through qfApply');
+    assert.ok(/qeSaveFields\(issueId, changed, /.test(functionSource(detail, 'qfApply')), 'which calls qeSaveFields');
     assert.ok(/fetch\(fieldsUrl/.test(functionSource(writes, 'qeSaveFields')), 'through the row API');
 });
 

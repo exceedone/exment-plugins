@@ -365,7 +365,7 @@ return [
     'back' => '課題一覧へ',
     // On every tab of a project, back to the portal's list of projects.
     'back_projects' => 'プロジェクト一覧へ',
-    'box_props' => '基本情報',
+    'box_props' => '課題の情報',
     'box_children' => '子課題',
     'box_related' => '関連課題',
     'children_done' => '%s / %s 完了',
@@ -536,7 +536,7 @@ return [
     'dock_close' => '閉じる',
     'dock_cancel' => 'キャンセル',
     'dock_cmt' => 'コメント',
-    'dock_edit' => '課題を変更',
+    'dock_edit' => 'ほかの項目も変える',
     'dock_keep' => '変更しない',
     'dock_draft' => '入力中',
     'dock_saving' => '課題を更新中…',
@@ -1674,4 +1674,15 @@ return [
         'body' => 'このプロジェクトに参加していないか、プロジェクトがありません。参加するときは、プロジェクトの管理者にメンバーに入れてもらってください。',
         'back' => 'プロジェクト管理のトップへ',
     ],
+    // UX-C: the issue screen (ExmentPM UX proposal S1, S2, S17, S19, M1)
+    'bc_label' => '現在の場所',
+    'bc_root' => 'プロジェクト管理',
+    'qf_click' => '押して変更',
+    'qf_unset' => '未設定',
+    'qf_undo' => '元に戻す',
+    'qf_undone' => '元に戻しました',
+    'qf_today' => '今日',
+    'qf_tomorrow' => '明日',
+    'qf_next_week' => '来週',
+    'qf_assign_me' => '自分にする',
 ];
