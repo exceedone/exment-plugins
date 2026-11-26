@@ -1927,4 +1927,23 @@ body.pp-ib-open{overflow:hidden;}
   border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);font-size:12.5px;}
 .pp-nedit .pp-ne-more-find:focus{border-color:var(--bl-accent);outline:none;box-shadow:var(--bl-focus);}
 .pp-nedit .pp-ne-more .pp-ne-nomatch{display:none !important;}
+/* Button map: かんたん / くわしく on an issue. Simple keeps the subject, the
+   status, the assignees, the due date, the text and the comments. */
+.pmportal .pp-dmode-wrap{margin-left:auto;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.pmportal .pp-dmode-hint{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 9px;border-radius:var(--bl-radius-s,4px);
+  background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));color:var(--bl-accent-d,var(--bl-ink));font-size:12px;}
+.pmportal .pp-dmode-hint .x{border:0;background:none;font-size:16px;line-height:1;color:inherit;cursor:pointer;min-width:24px;min-height:24px;}
+.pmportal .pp-dmode{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bl-line);background:var(--bl-box);
+  border-radius:var(--bl-radius-s,4px);padding:3px 10px;min-height:28px;font-size:12px;color:var(--bl-sub);cursor:pointer;}
+.pmportal .pp-dmode:hover{background:var(--bl-hover);color:var(--bl-ink);}
+.pmportal .bl-detail.pp-simple .bl-props .row:not([data-top="top"]),
+.pmportal .bl-detail.pp-simple .pp-qf-unset,
+.pmportal .bl-detail.pp-simple #pp-d-childbox,
+.pmportal .bl-detail.pp-simple #pp-d-filebox,
+.pmportal .bl-detail.pp-simple #pp-d-relbox,
+.pmportal .bl-detail.pp-simple .bl-dsum [data-sum="pr"],
+.pmportal .bl-detail.pp-simple .bl-dsum [data-sum="role"],
+.pmportal .bl-detail.pp-simple .bl-dsum .pp-reads{display:none !important;}
+.pmportal .bl-detail.pp-simple:not(.pp-two) #pp-d-propbox{display:none !important;}
+@media (max-width:1199px){.pmportal .bl-detail.pp-simple #pp-d-propbox{display:none !important;}}
 </style>

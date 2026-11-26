@@ -213,12 +213,14 @@
             qfSummary(i, res) +
             '<span class="it" data-sum="dd"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
-            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>' +
+            dmodeButton() + '</div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
                 : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>' +
             '<div class="pp-rxrow">' + rxBar(D.issue_table, i.id, res.reactions) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
         ppDbarFill(i);
+        dmodeApply();
         linkifyIssueRefs(document.querySelector('#pp-d-main .bl-desc'));
         // The quote button carries the description as words, not markup, and
         // the rendered block is the shortest way to those words.
@@ -382,6 +384,53 @@
             .sort(function (a, b) { return a.r - b.r || a.n - b.n; })
             .map(function (e) { return e.u; });
     }
+    /* ------------------------------------------------ simple / full ----- */
+    // The button map: an issue can show only the basics - subject, status,
+    // assignees, due date, the text and the comments (かんたん) - or
+    // everything (くわしく): the other fields, children, attachments, related
+    // issues. くわしく unless the person chose かんたん, so nobody loses what
+    // they see today; a one-time hint beside the switch says it is there.
+    // Each person's choice, kept in this browser per user.
+    function dmodeKey() { return 'pmportal.dmode.u' + String(D.me || 0); }
+    function dmodeHintKey() { return 'pmportal.dmode.hint.u' + String(D.me || 0); }
+    function dmodeSimple() {
+        try { return localStorage.getItem(dmodeKey()) === 'simple'; } catch (e) { return false; }
+    }
+    function dmodeHintShown() {
+        try { return localStorage.getItem(dmodeHintKey()) !== '1' && localStorage.getItem(dmodeKey()) === null; } catch (e) { return false; }
+    }
+    function dmodeHintDone() {
+        try { localStorage.setItem(dmodeHintKey(), '1'); } catch (e) { /* shown again next time */ }
+    }
+    function dmodeButton() {
+        var simple = dmodeSimple();
+        return '<span class="pp-dmode-wrap"><button type="button" class="pp-dmode" aria-pressed="' + (simple ? 'true' : 'false') + '" title="' + esc(simple ? L.dm_more_tip : L.dm_less_tip) + '">' +
+            '<i class="fa ' + (simple ? 'fa-plus-square-o' : 'fa-minus-square-o') + '"></i> ' + esc(simple ? L.dm_more : L.dm_less) + '</button>' +
+            (dmodeHintShown() ? '<span class="pp-dmode-hint" role="note">' + esc(L.dm_hint) +
+                ' <button type="button" class="x" aria-label="' + esc(L.m_close) + '" title="' + esc(L.m_close) + '">&times;</button></span>' : '') +
+            '</span>';
+    }
+    function dmodeApply() {
+        var box = document.querySelector('#pmportal .bl-detail') || document.querySelector('.bl-detail');
+        if (box) { box.classList.toggle('pp-simple', dmodeSimple()); }
+    }
+    function dmodeSet(simple) {
+        try { localStorage.setItem(dmodeKey(), simple ? 'simple' : 'full'); } catch (e) { /* the class still changes */ }
+        dmodeHintDone();
+        dmodeRedraw();
+    }
+    function dmodeRedraw() {
+        var wrap = document.querySelector('#pp-d-main .pp-dmode-wrap');
+        if (wrap) { wrap.outerHTML = dmodeButton(); }
+        dmodeApply();
+    }
+    document.addEventListener('click', function onPpDmode(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpDmode); return; }
+        var x = ev.target.closest && ev.target.closest('.pp-dmode-hint .x');
+        if (x) { ev.preventDefault(); dmodeHintDone(); dmodeRedraw(); return; }
+        var btn = ev.target.closest && ev.target.closest('.pp-dmode');
+        if (btn) { ev.preventDefault(); dmodeSet(!dmodeSimple()); }
+    });
     /* ------------------------------------------------ quick edit -------- */
     // Backlog changes an issue from the same form the comment is written in:
     // the fields that move day to day sit under the comment box, and one

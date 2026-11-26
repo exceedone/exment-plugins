@@ -1908,4 +1908,10 @@ return [
     ],
     // UX-H: the issue form (S6, M11, M12)
     'ned_more_find' => '項目を探す',
+    // SIMPLE-1
+    'dm_more' => 'くわしく',
+    'dm_less' => 'かんたん',
+    'dm_more_tip' => 'ほかの項目・子課題・添付・関連課題も出します',
+    'dm_less_tip' => '状態・担当者・期限・本文・コメントだけにします',
+    'dm_hint' => '表示を かんたん にできます',
 ];
