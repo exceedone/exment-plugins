@@ -4779,17 +4779,34 @@ class PmPortalController extends AdminControllerBase
      * @param array<int, string>|null $columns the columns of a query builder's rows (get($columns))
      * @return \Illuminate\Support\Collection
      */
+    /** The ids takeSorted() sorts at most (the first step reads them unsorted). */
+    const SORT_MATCH_CAP = 20000;
+
     public static function takeSorted($query, int $take, int $skip = 0, ?array $columns = null)
     {
         $eloquent = $query instanceof \Illuminate\Database\Eloquent\Builder;
         $base = $eloquent ? $query->getQuery() : $query;
         $table = $eloquent ? $query->getModel()->getTable() : $base->from;
-        // the ids: the order only, none of the selected columns (a lean select keeps value in the sort)
+        // 1. the ids that match, not sorted: a WHERE that reads value (a LIKE over a field of the
+        // JSON) makes MySQL carry value into the sort, whatever is selected
+        $match = (clone $query)->reorder();
+        $matchBase = $eloquent ? $match->getQuery() : $match;
+        $matchBase->columns = null;
+        $matchBase->bindings['select'] = [];
+        $matchBase->offset = null;
+        $matchBase->limit = null;
+        $matched = $match->select($table . '.id')->take(static::SORT_MATCH_CAP)->pluck($table . '.id')->all();
+        if (empty($matched)) {
+            return $eloquent ? $query->getModel()->newCollection() : collect();
+        }
+        // 2. those ids in the order: the WHERE reads nothing but the id now
         $keys = clone $query;
         $keysBase = $eloquent ? $keys->getQuery() : $keys;
+        $keysBase->wheres = [];
+        $keysBase->bindings['where'] = [];
         $keysBase->columns = null;
         $keysBase->bindings['select'] = [];
-        $keys->select($table . '.id');
+        $keys->select($table . '.id')->whereIn($table . '.id', $matched);
         if ($skip > 0) {
             $keys->skip($skip);
         }
