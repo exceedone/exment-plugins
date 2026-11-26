@@ -22,6 +22,7 @@ class FeatureGate
 {
     const MAIL = 'exment_groupware.mail';
     const OFFICE = 'exment_groupware.office';
+    const CALENDAR = 'exment_groupware.calendar';
     const FILE_SERVER = 'file_server';
 
     // a string, not ::class: an Exment without Feature management does not have the class
@@ -140,5 +141,24 @@ class FeatureGate
     {
         $name = 'exment_exment_groupware::groupware.' . $key;
         return class_exists('Illuminate\Support\Facades\Lang') && \Illuminate\Support\Facades\Lang::has($name) ? $name : $default;
+    }
+
+    /**
+     * The calendar (ISS02947): a row of its own in Feature management, off at first (a new
+     * feature of the plugin: not "existing").
+     *
+     * @param \Exceedone\Exment\Model\Plugin $plugin
+     */
+    public static function registerCalendar($plugin): void
+    {
+        if (!static::available()) {
+            return;
+        }
+        call_user_func([static::FEATURES, 'register'], static::CALENDAR, [
+            'label' => static::text('feature_calendar', 'カレンダー'),
+            'description' => static::text('feature_calendar_help', '共有のカレンダー：自分・ほかの人・部署の予定を日・週・月・リストで見る、繰り返し、参加者と返事、公開の範囲（Exment Plugin Groupware）。'),
+            'endpoints' => [$plugin->getRouteUri('cal')],
+            'plugin' => $plugin->plugin_name,
+        ]);
     }
 }

@@ -41,6 +41,8 @@ class Plugin extends PluginPageBase
         // Exment's "?" of the header opens the manual of the plugin (ISS02882)
         ManualLink::register($plugin);
         FeatureGate::registerOffice($plugin);
+        // the calendar (ISS02947): a feature of Feature management, off at first
+        FeatureGate::registerCalendar($plugin);
     }
 
     /**
@@ -600,5 +602,65 @@ class Plugin extends PluginPageBase
     public function mailDraft($account)
     {
         return $this->mailDenied() ?? $this->webMail()->apiDraft(request(), $account);
+    }
+
+    // ---- the calendar (ISS02947) -----------------------------------------------
+
+    protected function calendar(): Calendar\CalendarPage
+    {
+        foreach (['Rrule', 'Occurrences', 'Visibility', 'JapaneseHolidays', 'Holidays', 'Events', 'CalendarPage'] as $c) {
+            require_once __DIR__ . '/Calendar/' . $c . '.php';
+        }
+        return new Calendar\CalendarPage($this->plugin);
+    }
+
+    protected function calDenied()
+    {
+        return FeatureGate::deny(FeatureGate::CALENDAR);
+    }
+
+    public function cal()
+    {
+        return $this->calDenied() ?? $this->calendar()->page();
+    }
+
+    public function calEvents()
+    {
+        return $this->calDenied() ?? $this->calendar()->events(request());
+    }
+
+    public function calEvent($id)
+    {
+        return $this->calDenied() ?? $this->calendar()->event($id);
+    }
+
+    public function calCreate()
+    {
+        return $this->calDenied() ?? $this->calendar()->create(request());
+    }
+
+    public function calSave($id)
+    {
+        return $this->calDenied() ?? $this->calendar()->save(request(), $id);
+    }
+
+    public function calDelete($id)
+    {
+        return $this->calDenied() ?? $this->calendar()->delete(request(), $id);
+    }
+
+    public function calReply($id)
+    {
+        return $this->calDenied() ?? $this->calendar()->reply(request(), $id);
+    }
+
+    public function calHolidays()
+    {
+        return $this->calDenied() ?? $this->calendar()->holidays(request());
+    }
+
+    public function calPeople()
+    {
+        return $this->calDenied() ?? $this->calendar()->people(request());
     }
 }
