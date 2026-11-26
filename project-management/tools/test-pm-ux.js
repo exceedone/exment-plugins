@@ -182,6 +182,18 @@ test('M1: a value saves through qeSaveFields, with an undo in the toast', () => 
     delete global.document;
 });
 
+test('a cold landing on an unread issue marks the newest comment of somebody else', () => {
+    const f = load(detail, ['landingComment'], 'var D = { me: 1 }; var currentIssue = 7; var ppLandOn = "7";');
+    const res = { timeline: [{ tp: 'cmt', cid: 3, by: 2 }, { tp: 'cmt', cid: 9, by: 1 }, { tp: 'chg', by: 2 }, { tp: 'cmt', cid: 5, by: 4 }] };
+    assert.strictEqual(f.landingComment(res), 5, 'the newest not written by the reader');
+    assert.strictEqual(f.landingComment(res), null, 'asked once');
+    const g = load(detail, ['landingComment'], 'var D = { me: 1 }; var currentIssue = 7; var ppLandOn = "7";');
+    assert.strictEqual(g.landingComment({ timeline: null }), null, 'not while the timeline is still loading');
+    assert.strictEqual(g.landingComment(res), 5, '...which keeps it for the full answer');
+    assert.ok(/bootRow && bootRow\.unread/.test(detail), 'only for an issue that was unread');
+    assert.ok(/!\/\[\?&\]c=\/\.test\(PP_BOOT_HASH\)/.test(detail), 'not when a comment is named');
+});
+
 test('UX-C: every new ja key is defined', () => {
     ['bc_label', 'bc_root', 'qf_click', 'qf_unset', 'qf_undo', 'qf_undone', 'qf_today', 'qf_tomorrow', 'qf_next_week', 'qf_assign_me']
         .forEach((k) => {

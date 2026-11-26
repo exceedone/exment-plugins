@@ -2391,7 +2391,19 @@ window.PmPortalBoot = function () {
         if (!i.rc) { return ''; }
         return '<i class="fa fa-repeat pp-rc" title="' + esc(L.col_rc + ': ' + (L['rc_' + i.rc] || i.rc)) + '"></i> ';
     }
+    // The page opened straight on an issue (a bell, a mail, a link from
+    // outside) with no comment named: if that issue was unread, the newest
+    // comment by somebody else is what brought the reader here, so it is
+    // shown and marked the way #issue-KEY?c=<id> does (highlightLinkedComment).
+    // Exment's own comment notice links to the issue only. null: not decided
+    // yet; '' nothing to do; else the issue's id.
+    var PP_BOOT_HASH = String(location.hash || '');
+    var ppLandOn = null;
     function renderDetail(id) {
+        if (ppLandOn === null) {
+            var bootRow = issueById(id);
+            ppLandOn = /^#issue-/.test(PP_BOOT_HASH) && !/[?&]c=/.test(PP_BOOT_HASH) && bootRow && bootRow.unread ? String(id) : '';
+        }
         var epoch = ++detailEpoch;
         cmtSetBusy(false);
         ppDockMsg('', false);
@@ -3843,7 +3855,7 @@ window.PmPortalBoot = function () {
                 '<div class="body"><div class="head"><span class="who">' + esc(user(e.by).n) + '</span><span class="tm">' + esc(e.at) + '</span></div>' + body + '</div></div>';
         }).join('') || ('<div style="color:var(--bl-faint);font-size:12px;">' + esc(L.empty) + '</div>');
         clipLongComments();
-        highlightLinkedComment();
+        highlightLinkedComment(landingComment(res));
         editing.forEach(function (open) { cmtEditStart(open.cid, open.value, open); });
     }
     // The inline comment editors that are open: which comment, what is typed
@@ -3901,8 +3913,20 @@ window.PmPortalBoot = function () {
     // A copied comment address opens the issue and says which comment it
     // meant. show() restores the screen's own scroll one frame from now, so
     // the jump waits for that to be over rather than fighting it.
-    function highlightLinkedComment() {
-        var want = parseQuery(parseHash().query).c;
+    // The comment to land on when the page was opened cold on an unread
+    // issue (ppLandOn): the newest one somebody else wrote. Asked once.
+    function landingComment(res) {
+        if (!ppLandOn || String(currentIssue) !== ppLandOn || !res || !res.timeline) { return null; }
+        ppLandOn = '';
+        var best = null;
+        res.timeline.forEach(function (e) {
+            if (e.tp !== 'cmt' || String(e.by) === String(D.me)) { return; }
+            if (best === null || Number(e.cid) > Number(best)) { best = e.cid; }
+        });
+        return best;
+    }
+    function highlightLinkedComment(fallback) {
+        var want = parseQuery(parseHash().query).c || fallback;
         if (!want) { return; }
         var ent = document.getElementById('pp-c' + want);
         if (!ent) { return; }
