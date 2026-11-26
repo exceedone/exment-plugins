@@ -2207,7 +2207,7 @@ class LightApiController
         if ($e instanceof \League\Flysystem\PathTraversalDetected
             || stripos($e->getMessage(), 'Path traversal detected') !== false) {
             Log::warning('pm_portal lightapi ' . $key . ': markdown image with an invalid location: ' . $e->getMessage());
-            $message = '本文の画像 ![…](…) の ( ) の中が、画像の場所になっていません。画像の URL にするか、先頭の ! を消して保存してください。';
+            $message = strval(PortalDefinition::trans('message.image_location'));
 
             return response()->json([
                 'ok' => false,
