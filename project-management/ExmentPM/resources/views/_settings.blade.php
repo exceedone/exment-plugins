@@ -818,9 +818,9 @@
                 var nm = el('span', 'pp-set-lab', f.label);
                 nm.style.margin = '0';
                 row.appendChild(nm);
-                row.appendChild(el('span', 'pp-set-note', f.on ? L.feat_site_on : L.feat_site_off));
+                row.appendChild(el('span', 'pp-set-note', f.on ? LANG.feat_site_on : LANG.feat_site_off));
                 if (f.on && f.url) {
-                    var a = el('a', '', L.feat_site_open);
+                    var a = el('a', '', LANG.feat_site_open);
                     a.href = f.url;
                     row.appendChild(a);
                 }
