@@ -4056,14 +4056,23 @@ window.PmPortalBoot = function () {
             var u = own(D.users, v);
             return u ? String(u.n) : qeUnlisted(v);
         }, true), 'w-full'));
-        // QE-SA: the sub-assignees, the same picker as the assignees, where
-        // the issue table has the column (schema 27). Saved with the comment
-        // through the same partial write (QE_COLS.sa), so the history says it.
-        if (qeCol(QE_COLS.sa)) {
-            box.appendChild(qeRow(L.lbl_sub_assignees, qeChips('sa', people, QE.base.sa, function (v) {
-                var u = own(D.users, v);
-                return u ? String(u.n) : qeUnlisted(v);
-            }, true), 'w-full'));
+        // QE-SA / QE-ROLES: the other people of the issue - 副担当者, 管理者,
+        // レビュアー - with the same picker as the assignees, and
+        // the difficulty, each where the issue table has the column (schema
+        // 27). Saved with the comment through the same partial write
+        // (QE_COLS), so the history says it.
+        var named = function (v) {
+            var u = own(D.users, v);
+            return u ? String(u.n) : qeUnlisted(v);
+        };
+        QF_ROLES.forEach(function (r) {
+            if (!qeCol(QE_COLS[r[0]])) { return; }
+            box.appendChild(qeRow(L[r[2]], qeChips(r[0], people, QE.base[r[0]], named, true), 'w-full'));
+        });
+        if (qeCol(QE_COLS.df)) {
+            box.appendChild(qeRow(L.lbl_difficulty, qeSelect('df', (D.difficulties || ['easy', 'normal', 'hard']).map(function (d) {
+                return [d, L['df_' + d] || d];
+            }), QE.base.df, L.empty), 'w-sel'));
         }
         box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat), 'w-full'));
         box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd), 'w-date'));

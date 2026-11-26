@@ -521,6 +521,7 @@ class Tickets
         return [
             'id' => isset($row) ? intval($row->id) : null,
             'name' => strval($v['name'] ?? ''),
+            'default_assignee' => $v['default_assignee'] ?? null,
             'kind' => $kind,
             'group' => Queue::groupOf($kind),
             'stages' => Queue::stages($kind, $v['flow'] ?? ''),
