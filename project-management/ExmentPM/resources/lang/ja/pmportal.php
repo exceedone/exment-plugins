@@ -684,13 +684,10 @@ return [
     'message' => [
         'comment_empty' => 'コメントを入力するか、状態を選択してください。',
         'mail_no_target' => 'メールを送れる相手がいません（この課題を見る権限がある人を選んでください）。',
-<<<<<<< HEAD
         'alias_not_valid' => 'キー別名は、英字を 1 つ以上ふくむ、英字・数字と「- . _ ~」だけの 60 文字までにしてください。',
         'alias_taken' => 'このキー別名は、ほかの課題のキーかキー別名です。',
         'alias_keylike' => 'キー別名は「-数字」で終われません（課題キーとまぎれるため）。',
-=======
         'too_long' => '長すぎます。:max 文字までにしてください。',
->>>>>>> 05c5364 (ExmentPM: issue bodies, comments and wiki pages up to 200,000 characters, said before sending; a firewall's 403 said as one)
         'mail_too_many' => 'メールは 1 時間に :n 回までです。しばらくしてから送ってください。',
         'export_empty' => 'ダウンロードできる課題がありません。',
         'export_failed' => 'ダウンロードのファイルを作れませんでした。',
