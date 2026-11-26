@@ -39,6 +39,8 @@ class PluginPage extends PluginPageBase
         PortalFiles::registerFeature();
         // recurring schedules: a feature of Feature management, off at first (ISS00432)
         PortalSchedule::registerFeature();
+        // reminders before the due date: a feature of Feature management, off at first (ISS00432)
+        PortalReminder::registerFeature();
         // Exment's "?" of the header opens the manual of the plugin (ISS02882)
         ManualLink::register($plugin);
         // before 初期セットアップ: the entry in the left menu that leads to it (7.2.1)

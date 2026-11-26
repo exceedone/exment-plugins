@@ -139,6 +139,8 @@ class PmPortalController extends AdminControllerBase
         PortalRecurrence::tick();
         // the issues of the recurring schedules (ISS00432)
         PortalSchedule::tick();
+        // reminders whose time has come, when the batch is not run (ISS00432)
+        PortalReminder::tick();
 
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
@@ -578,6 +580,8 @@ class PmPortalController extends AdminControllerBase
         PortalRecurrence::tick();
         // the issues of the recurring schedules (ISS00432)
         PortalSchedule::tick();
+        // reminders whose time has come, when the batch is not run (ISS00432)
+        PortalReminder::tick();
 
         $this->setPageInfo(
             PortalDefinition::trans('title'),

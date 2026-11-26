@@ -178,7 +178,7 @@ class PortalTeams
      * @param array<int, int> $targets
      * @param array<int, string> $lines
      */
-    protected static function sendTo(array $targets, string $issue_table, int $issue_id, string $kind, string $key, string $subject, array $lines, string $url, bool $mailAll): void
+    public static function sendTo(array $targets, string $issue_table, int $issue_id, string $kind, string $key, string $subject, array $lines, string $url, bool $mailAll, ?string $title = null): void
     {
         if (empty($targets)) {
             return;
@@ -193,7 +193,8 @@ class PortalTeams
             if (!$byMail && !$byTeams) {
                 continue;
             }
-            $title = static::title($kind, $key);
+            // a title of its own: a reminder (PortalReminder)
+            $title = $title ?? static::title($kind, $key);
             if ($byMail && !is_nullorempty($user->getValue('email'))) {
                 try {
                     MailSender::make(null, $user)
