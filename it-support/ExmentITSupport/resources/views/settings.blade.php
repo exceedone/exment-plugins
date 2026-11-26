@@ -88,11 +88,28 @@
             <select id="s-esc-mgr" name="esc_manager_users[]" multiple size="4">@foreach($agentOptions as $id => $name)<option value="{{ $id }}" @selected(in_array((string) $id, explode(',', $s['esc_manager_users']), true))>{{ $name }}</option>@endforeach</select>
             <span class="lbl">知らせ方</span>
             <span class="its-days" role="group" aria-label="知らせ方">@foreach($escChannels as $k => $l)<label><input type="checkbox" name="esc_channels[]" value="{{ $k }}" @checked(in_array($k, explode(',', $s['esc_channels']), true))> {{ $l }}</label>@endforeach</span>
-            <label for="s-esc-teams">Teams のワークフローの URL</label><input type="url" id="s-esc-teams" name="esc_teams_url" value="" placeholder="{{ $s['esc_teams_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
-            <label for="s-esc-hook">Webhook の URL</label><input type="url" id="s-esc-hook" name="esc_webhook_url" value="" placeholder="{{ $s['esc_webhook_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
+            <label for="s-esc-teams">Teams のワークフローの URL</label><input type="text" inputmode="url" id="s-esc-teams" name="esc_teams_url" value="" placeholder="{{ $s['esc_teams_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
+            <label for="s-esc-hook">Webhook の URL</label><input type="text" inputmode="url" id="s-esc-hook" name="esc_webhook_url" value="" placeholder="{{ $s['esc_webhook_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
             <label for="s-esc-lw">LINE WORKS のチャンネル ID</label><input type="text" id="s-esc-lw" name="esc_lineworks_channel" value="{{ $s['esc_lineworks_channel'] }}" placeholder="空なら、知らせる人の LINE WORKS へ">
         </div>
         <div class="its-sub its-foot">リーダー・管理者を選ばないときは、ひとつ前の段階の人に知らせます。LINE WORKS は Exment の「LINE WORKS」の設定を使います（Exment 7.3 以降）。Webhook には JSON（event・step・ticket_no・subject・priority・due・url）を送ります。</div>
+    </div>
+
+    <div class="its-card">
+        <h2><i class="fa fa-comments" aria-hidden="true"></i>チャットへの知らせ</h2>
+        <div class="its-sub its-lead">新しいチケット・お客様からの返事・段階の動きを、Teams・Slack・Webhook に知らせます。受付箱を選ばないときは、すべての受付箱です。</div>
+        <input type="hidden" name="chat_form" value="1">
+        <div class="its-form-grid">
+            <label for="s-chat-on">使う</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-chat-on" name="chat_enabled" value="1" @checked($s['chat_enabled'] === '1')> チャットに知らせる</label>
+            <span class="lbl">知らせること</span>
+            <span class="its-days" role="group" aria-label="知らせること">@foreach($chatEvents as $k => $l)<label><input type="checkbox" name="chat_events[]" value="{{ $k }}" @checked(in_array($k, explode(',', $s['chat_events']), true))> {{ $l }}</label>@endforeach</span>
+            <span class="lbl">受付箱</span>
+            <span class="its-days" role="group" aria-label="知らせる受付箱">@foreach($chatBoxes as $bid => $bx)<label><input type="checkbox" name="chat_boxes[]" value="{{ $bid }}" @checked(in_array((string) $bid, explode(',', $s['chat_boxes']), true))> {{ $bx['name'] }}</label>@endforeach</span>
+            <label for="s-chat-teams">Teams のワークフローの URL</label><input type="text" inputmode="url" id="s-chat-teams" name="chat_teams_url" value="" placeholder="{{ $s['chat_teams_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
+            <label for="s-chat-slack">Slack の Incoming Webhook の URL</label><input type="text" inputmode="url" id="s-chat-slack" name="chat_slack_url" value="" placeholder="{{ $s['chat_slack_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://hooks.slack.com/...' }}" autocomplete="off">
+            <label for="s-chat-hook">Webhook の URL</label><input type="text" inputmode="url" id="s-chat-hook" name="chat_webhook_url" value="" placeholder="{{ $s['chat_webhook_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
+        </div>
+        <div class="its-sub its-foot">URL は暗号化して保存します。保存したあと <button type="submit" class="its-btn small" formaction="{{ $Its::url('settings', 'chat-test') }}"><i class="fa fa-paper-plane" aria-hidden="true"></i>試しに送る</button> で届くか確かめられます。Webhook には JSON（event・ticket_no・subject・box・title・lines・url）を送ります。</div>
     </div>
 
     <div class="its-card">
@@ -208,8 +225,8 @@
 
     <div class="its-card">
         <h3><i class="fa fa-table" aria-hidden="true"></i>テーブル・権限</h3>
-        <div class="its-sub">項目・画面・ワークフローは Exment の画面で自由に変えられます。担当者は役割グループ「ITサポート 担当者」に、ログインするお客様は「ITサポート お客様」に入れてください。</div>
-        <ul class="its-tables" aria-label="ITサポートのテーブル">
+        <div class="its-sub">項目・画面・ワークフローは Exment の画面で自由に変えられます。担当者は役割グループ「サポート窓口 担当者」に、ログインするお客様は「サポート窓口 お客様」に入れてください。</div>
+        <ul class="its-tables" aria-label="サポート窓口のテーブル">
             @foreach([[$Its::T_TICKET, 'チケット'], [$Its::T_CUSTOMER, 'お客様（会社）'], [$Its::T_CONTACT, 'お客様の担当者'], [$Its::T_ASSET, 'IT 資産'], [$Its::T_KNOWLEDGE, 'ナレッジ（FAQ）'], [$Its::T_TEMPLATE, '定型文'], [$Its::T_CATEGORY, 'チケットの種類'], [$Its::T_SLA, 'SLA']] as [$tn, $label])
             <li><a href="{{ $Its::dataUrl($tn) }}">{{ $label }}</a></li>
             @endforeach

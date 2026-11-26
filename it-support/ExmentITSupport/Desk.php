@@ -124,6 +124,11 @@ class Desk
                 'open' => $openId !== null ? intval($openId) : null,
                 'queue' => isset(static::QUEUES[$request->get('queue')]) ? strval($request->get('queue')) : 'todo',
                 'queues' => static::QUEUES,
+                // a link of the report (?category= / ?customer=): the list opens filtered
+                'filter' => [
+                    'category' => ctype_digit(strval($request->get('category'))) ? strval($request->get('category')) : '',
+                    'customer' => ctype_digit(strval($request->get('customer'))) ? strval($request->get('customer')) : '',
+                ],
                 'statuses' => Its::STATUSES,
                 'statusColors' => Its::STATUS_COLORS,
                 'priorities' => Its::PRIORITIES,
@@ -1103,7 +1108,9 @@ class Desk
         }
         $month = preg_match('/^\d{4}-\d{2}$/', strval($request->get('month'))) ? strval($request->get('month')) : Carbon::now()->format('Y-m');
 
-        return $this->view('dashboard', array_merge(Report::build($month), ['month' => $month]));
+        $group = isset(Queue::GROUPS[$request->get('group')]) ? strval($request->get('group')) : '';
+
+        return $this->view('dashboard', array_merge(Report::build($month, $group), ['month' => $month, 'group' => $group, 'groups' => Queue::GROUPS, 'kinds' => Queue::kindLabels()]));
     }
 
     public function reportCsv(Request $request)
@@ -1153,6 +1160,8 @@ class Desk
             'featureUrl' => Feature::manageUrl(),
             'agentOptions' => Tickets::agentOptions(),
             'escChannels' => Escalation::CHANNELS,
+            'chatEvents' => ChatNotices::EVENTS,
+            'chatBoxes' => Tickets::boxes(),
         ]);
     }
 
@@ -1175,14 +1184,22 @@ class Desk
             }
             if ($request->has($key)) {
                 $values[$key] = $request->get($key);
-            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled', 'problems_enabled', 'catalog_enabled'], true)) {
+            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled', 'problems_enabled', 'catalog_enabled', 'chat_enabled'], true)) {
                 $values[$key] = '0';
+            } elseif (in_array($key, ['chat_events', 'chat_boxes'], true) && $request->has('chat_form')) {
+                $values[$key] = '';
             } elseif (in_array($key, ['esc_lead_users', 'esc_manager_users', 'esc_channels'], true) && $request->has('esc_form')) {
                 // lists left empty on the page
                 $values[$key] = '';
             }
         }
-        foreach (['esc_teams_url', 'esc_webhook_url'] as $key) {
+        foreach (['chat_events' => array_keys(ChatNotices::EVENTS), 'chat_boxes' => null] as $key => $allowed) {
+            if (isset($values[$key]) && is_array($request->get($key))) {
+                $list = array_map('strval', (array) $request->get($key));
+                $values[$key] = implode(',', $allowed === null ? array_filter($list, 'ctype_digit') : array_intersect($list, $allowed));
+            }
+        }
+        foreach (['esc_teams_url', 'esc_webhook_url', 'chat_teams_url', 'chat_slack_url', 'chat_webhook_url'] as $key) {
             // empty means "keep the one saved"; "-" removes it
             if (array_key_exists($key, $values) && strval($values[$key]) === '') {
                 unset($values[$key]);
@@ -1209,6 +1226,24 @@ class Desk
         Its::saveSettings($values);
 
         return $this->back(Its::url('settings'), '設定を保存しました。');
+    }
+
+    public function postChatTest(Request $request)
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        $result = ChatNotices::test();
+        if (empty($result)) {
+            return $this->back(Its::url('settings'), 'チャットの送り先がまだありません。URL を入れて保存してから試してください。', true);
+        }
+        $names = ['teams' => 'Teams', 'slack' => 'Slack', 'webhook' => 'Webhook'];
+        $parts = [];
+        foreach ($result as $k => $ok) {
+            $parts[] = $names[$k] . '：' . ($ok ? '届きました' : '届きませんでした');
+        }
+
+        return $this->back(Its::url('settings'), '試しの知らせ … ' . implode('、', $parts), in_array(false, $result, true));
     }
 
     public function postMailTest(Request $request)

@@ -85,7 +85,7 @@
         // UX-E
         'ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu',
         // UX-F
-        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'sh_title', 'sh_palette', 'sh_home_1', 'sh_home_2', 'sh_home_3', 'sh_issues_1', 'sh_issues_2', 'sh_issues_3', 'sh_issues_4', 'sh_board_1', 'sh_board_2', 'sh_gantt_1', 'sh_gantt_2', 'sh_burndown_1', 'sh_wiki_1', 'sh_wiki_2', 'sh_files_1', 'sh_issue_1', 'sh_issue_2', 'sh_issue_3', 'sh_issue_4', 'sh_issue_5', 'hint_remind', 'hint_remind_go', 'hint_saved', 'hint_saved_go', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
+        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'sh_title', 'sh_palette', 'sh_home_1', 'sh_home_2', 'sh_home_3', 'sh_issues_1', 'sh_issues_2', 'sh_issues_3', 'sh_issues_4', 'sh_board_1', 'sh_board_2', 'sh_gantt_1', 'sh_gantt_2', 'sh_burndown_1', 'sh_wiki_1', 'sh_wiki_2', 'sh_files_1', 'sh_issue_1', 'sh_issue_2', 'sh_issue_3', 'sh_issue_4', 'sh_issue_5', 'hint_remind', 'hint_remind_go', 'hint_saved', 'hint_saved_go', 'pos_add_tip', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
         'kh_comment', 'kh_status', 'kh_prevnext', 'kh_send', 'kh_close', 'kh_help', 'empty_issues', 'empty_filtered', 'empty_wiki',
         'first_steps', 'fs_add_issue', 'fs_invite', 'fs_statuses', 'f_clear_all',
         // UX-H
@@ -98,6 +98,8 @@
     // The custom attributes of the project's issues (ISS02939): the form, the detail, the list
     // and its filters read their strings as one block (L.attributes.*).
     $lang['attributes'] = \App\Plugins\ExmentPM\PortalDefinition::trans('attributes');
+    // The records of other tables the issues link to (ISS02939): the detail's box (L.links.*).
+    $lang['links'] = \App\Plugins\ExmentPM\PortalDefinition::trans('links');
     // Wording for a failure the portal did not word itself - an expired
     // session, a proxy's error page, a dropped line - picked in the client
     // by the HTTP status (errText). Embedded once so no English transport
@@ -156,10 +158,11 @@
             @if(array_get($feat, 'file', true))
             <a class="bl-tab" data-scr="files"><i class="fa fa-paperclip"></i>{{ $lang['tab_files'] }}</a>
             @endif
-            @if($canManage)
-            <a class="bl-tab" data-scr="settings"><i class="fa fa-cog"></i>{{ $lang['tab_settings'] }}</a>
-            @endif
             <span class="bl-tabsearch"><i class="fa fa-search"></i><input id="pp-jump" placeholder="{{ $lang['search_ph'] }}"></span>
+            {{-- POS-1: the project's settings at the right end; the gear beside its name opens the same --}}
+            @if($canManage)
+            <a class="bl-tab pp-tab-set" data-scr="settings"><i class="fa fa-cog"></i>{{ $lang['tab_settings'] }}</a>
+            @endif
             {{-- S5: 課題の追加 is the top bar's (it adds to this project at once). --}}
         </nav>
 
@@ -409,6 +412,11 @@
                     <div class="bl-card-box" id="pp-d-relbox" style="display:none;">
                         <div class="bl-boxhead" data-collapse="1"><i class="fa fa-link"></i>{{ $lang['box_related'] }}<span class="bl-childsum" id="pp-d-relsum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
                         <div class="bl-boxbody bl-rows bl-related" id="pp-d-related"></div>
+                    </div>
+                    {{-- ISS02939: the records of other tables the issue links to (issue-record-links.js) --}}
+                    <div class="bl-card-box" id="pp-d-reclinkbox" style="display:none;">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-database"></i>{{ $lang['links']['section'] ?? '' }}<span class="bl-childsum" id="pp-d-reclinksum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-related" id="pp-d-reclinks"></div>
                     </div>
                 </div>
                 <div class="bl-card-box" id="pp-d-tlbox">

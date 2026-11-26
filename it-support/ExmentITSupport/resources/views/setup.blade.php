@@ -9,9 +9,9 @@
     @endif
     <div class="its-card its-hero">
         <span class="its-logo l" aria-hidden="true"><i class="fa fa-life-ring"></i></span>
-        <h2>ITサポートのセットアップ</h2>
+        <h2>サポート窓口のセットアップ</h2>
         @if(!$installed)
-        <p>ボタンを 1 回押すと、ITサポートに使うテーブル・メニュー・役割グループを作ります。最初からすぐに使えるよう、SLA・チケットの種類・定型文・FAQ の例も入れます（あとで自由に変えられます）。</p>
+        <p>ボタンを 1 回押すと、サポート窓口に使うテーブル・メニュー・役割グループを作ります。最初からすぐに使えるよう、SLA・チケットの種類・定型文・FAQ の例も入れます（あとで自由に変えられます）。</p>
         <ul class="its-list">
             <li><i class="fa fa-ticket" aria-hidden="true"></i><span>チケット・チケットのやりとり</span></li>
             <li><i class="fa fa-building-o" aria-hidden="true"></i><span>お客様（会社）・お客様の担当者</span></li>

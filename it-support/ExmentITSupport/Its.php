@@ -155,9 +155,9 @@ class Its
         'imap_folder' => 'INBOX',
         // Mail out: the address customers see and reply to.
         'support_address' => '',
-        'support_name' => 'ITサポート',
+        'support_name' => 'サポート窓口',
         'subject_prefix' => '',
-        'signature' => "--\nITサポート窓口",
+        'signature' => "--\nサポート窓口",
         // Business hours for the SLA clock.
         'business_days' => '1,2,3,4,5',
         'business_start' => '09:00',
@@ -184,6 +184,13 @@ class Its
         'esc_teams_url' => '',
         'esc_webhook_url' => '',
         'esc_lineworks_channel' => '',
+        // what happens to the tickets, told to a chat (ISS02941): off at first
+        'chat_enabled' => '0',
+        'chat_events' => 'new,customer,stage',
+        'chat_boxes' => '',
+        'chat_teams_url' => '',
+        'chat_slack_url' => '',
+        'chat_webhook_url' => '',
         // No-login sharing.
         'public_enabled' => '1',
         'link_days_after_close' => '30',
@@ -197,12 +204,12 @@ class Its
         // senders of ISS02928 keep it; a new setup turns it off (Schema::install).
         'alert_shared_key' => '1',
         // Text shown on the public pages.
-        'portal_title' => 'ITサポート窓口',
+        'portal_title' => 'サポート窓口',
         'portal_message' => 'パソコン・Webサイト・システムのご依頼やお困りごとをお送りください。担当者から返事をお送りします。',
     ];
 
     /** Settings stored encrypted. */
-    const SECRET_SETTINGS = ['imap_password', 'intake_key', 'esc_teams_url', 'esc_webhook_url'];
+    const SECRET_SETTINGS = ['imap_password', 'intake_key', 'esc_teams_url', 'esc_webhook_url', 'chat_teams_url', 'chat_slack_url', 'chat_webhook_url'];
 
     /** @var array<string, mixed>|null */
     protected static $settings;

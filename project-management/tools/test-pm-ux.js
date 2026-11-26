@@ -504,6 +504,31 @@ test('HINT-1 fix: the list hint is above the table and its link opens 保存し�
     assert.ok(/ev\.stopPropagation\(\);/.test(show) && /setTimeout\(go, 0\)/.test(show));
 });
 
+test('QE-SA: the dock changes the sub-assignees too, where the table has them', () => {
+    const qe = functionSource(detail, 'renderQuickEdit');
+    assert.ok(/if \(qeCol\(QE_COLS\.sa\)\) \{\s*box\.appendChild\(qeRow\(L\.lbl_sub_assignees, qeChips\('sa', people, QE\.base\.sa/.test(qe));
+    assert.ok(qe.indexOf("qeChips('as'") < qe.indexOf("qeChips('sa'") && qe.indexOf("qeChips('sa'") < qe.indexOf("qeChips('cat'"), 'right under the assignees');
+    assert.ok(/sa: 'sub_assignees'/.test(detail), 'saved by the same column map');
+    assert.ok(index.indexOf("'lbl_sub_assignees'") > 0);
+});
+
+test('POS-1: one 課題の追加 in a project (its header row), the project settings at the right of the tabs', () => {
+    const homeSrc = read('home.js');
+    assert.ok(/pp-projadd" href="#new"/.test(homeSrc) && /CAN_ADD_ISSUE && !p\.archived/.test(homeSrc));
+    assert.ok(/@if\(\(\$addable \|\| !\$open\) && \$topbarCur === null\)/.test(topbar), 'the top bar has none inside a project');
+    assert.ok(/#pp-projhead \.pp-projadd/.test(read('boot.js')) && /#pp-projhead \.pp-projadd/.test(read('palette.js')), 'the a key and Ctrl+K');
+    assert.ok(index.indexOf('class="bl-tabsearch"') < index.indexOf('pp-tab-set'), 'settings after the search, at the right end');
+    assert.strictEqual(ja('top_gear'), '全体の設定');
+    assert.ok(ja('pos_add_tip') && langJa.indexOf('// POS-1') > 0);
+    assert.ok(/プロジェクト名の行の右/.test(ja('sh_home_1')));
+});
+
+test('POS-1 fix: at 390 the name row stays one line', () => {
+    assert.ok(style.indexOf('.pmportal .bl-projhead:not(.info-open):not(.note-open){flex-wrap:nowrap;gap:6px;}') > 0);
+    assert.ok(style.indexOf('.pmportal .bl-projhead:not(.info-open):not(.note-open) .bl-projinfo{flex:1 1 0;min-width:0;}') > 0);
+    assert.ok(/\.pp-projadd,\.pmportal \.bl-projhead \.bl-dback-proj\{flex:none;\}/.test(style));
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

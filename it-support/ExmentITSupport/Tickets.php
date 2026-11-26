@@ -29,7 +29,7 @@ class Tickets
     {
         $table = Its::table(Its::T_TICKET);
         if (!isset($table)) {
-            throw new \RuntimeException('ITサポートのセットアップがまだです。');
+            throw new \RuntimeException('サポート窓口のセットアップがまだです。');
         }
 
         return $table;
@@ -453,7 +453,14 @@ class Tickets
             $values['status'] = 'open';
         }
         $ticket->setValue($values);
-        $ticket->save();
+        // one chat notice for the reply, not one more for the stage it moves (ISS02941)
+        ChatNotices::customerWriting(true);
+        try {
+            $ticket->save();
+        } finally {
+            ChatNotices::customerWriting(false);
+        }
+        ChatNotices::note($ticket, 'customer', ['excerpt' => $body]);
 
         return $ticket;
     }

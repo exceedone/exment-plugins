@@ -43,8 +43,10 @@ class Schema
      *    ip_addresses, sync_state).
      * 9: the 受付箱 of the help desk (ISS02941): its_category gets kind, flow, fields, sla;
      *    the ticket gets stage and progress; the inquiry boxes are added.
+     * 10: the names of 9 on a site that had the tables: 「チケットの種類」 → 「受付箱」 (the
+     *    table and its first column), and the menu's group 「ITサポート」 → 「サポート窓口」.
      */
-    const VERSION = 9;
+    const VERSION = 10;
 
     /** The menu's name (ISS02941: the IT support became the help desk). */
     const MENU_TITLE = 'サポート窓口';
@@ -166,7 +168,7 @@ class Schema
                     ['priority', '優先度', 'select_valtext', ['valtext' => Its::PRIORITIES, 'default' => 'normal']],
                     ['fields', '項目', 'textarea', ['help' => '1 行に 1 つ、「項目名|種類|必須|選択肢」。種類は text・textarea・date・select・yesno・email・number。例：権限|select|必須|見るだけ,変える']],
                     ['needs_approval', '承認がいる', 'yesno', ['default' => '0']],
-                    ['approver', '承認する人', 'user', ['help' => '承認がいるとき。ITサポートの担当者でなくてかまいません（メールのリンクから、Exment にログインして承認します）。']],
+                    ['approver', '承認する人', 'user', ['help' => '承認がいるとき。サポート窓口の担当者でなくてかまいません（メールのリンクから、Exment にログインして承認します）。']],
                     ['public', '窓口に出す', 'yesno', ['default' => '1']],
                     ['display_order', '並び順', 'integer', ['default' => '0']],
                 ],
@@ -359,6 +361,35 @@ class Schema
         return $n;
     }
 
+    /**
+     * The old names an install kept (the importer leaves the names of a table it has): only
+     * where they are still the old ones, not ones an administrator gave.
+     */
+    protected static function renameBoxTable(): bool
+    {
+        $table = \Exceedone\Exment\Model\CustomTable::getEloquent(Its::T_CATEGORY);
+        if (!isset($table)) {
+            return false;
+        }
+        $done = false;
+        if ($table->table_view_name === 'チケットの種類') {
+            $table->table_view_name = '受付箱';
+            $table->save();
+            $done = true;
+        }
+        $column = \Exceedone\Exment\Model\CustomColumn::getEloquent('name', $table);
+        if (isset($column) && $column->column_view_name === '種類') {
+            $column->column_view_name = '受付箱';
+            $column->save();
+            $done = true;
+        }
+        if ($done) {
+            System::clearCache();
+        }
+
+        return $done;
+    }
+
     /** Role groups the setup makes, with the table permissions they get. */
     public static function roleGroups(): array
     {
@@ -367,7 +398,7 @@ class Schema
 
         return [
             Its::ROLE_AGENT => [
-                'label' => 'ITサポート 担当者',
+                'label' => 'サポート窓口 担当者',
                 'description' => 'チケットに返事をし、お客様・資産・ナレッジを編集できる人。',
                 'tables' => [
                     Its::T_TICKET => $edit, Its::T_MESSAGE => $edit, Its::T_CUSTOMER => $edit,
@@ -376,7 +407,7 @@ class Schema
                 ],
             ],
             Its::ROLE_CUSTOMER => [
-                'label' => 'ITサポート お客様',
+                'label' => 'サポート窓口 お客様',
                 'description' => '顧客ポータルにログインするお客様。チケットは、ポータルから自分（お客様の管理者は会社）のものだけが見えます。テーブルの権限は付けません。',
                 'tables' => [],
             ],
@@ -422,6 +453,9 @@ class Schema
                 if ($n > 0) {
                     $steps[] = "問い合わせの受付箱を {$n} 件足しました（製品・見積・試用キー・一般・IT サポート（社外））。";
                 }
+            }
+            if (!$fresh && $before < 10 && static::renameBoxTable()) {
+                $steps[] = 'テーブル「チケットの種類」を「受付箱」にしました。';
             }
             $granted = static::grantRoles();
             if ($granted > 0) {
@@ -704,6 +738,11 @@ class Schema
         // the group "ITサポート" of the feature map, when the core has the groups (7.2.1)
         $group = method_exists(\Exceedone\Exment\Model\Menu::class, 'groupParentId')
             ? \Exceedone\Exment\Model\Menu::groupParentId('it_support') : null;
+        // the group made with the core's old name: the new one (an administrator's name stays)
+        if (isset($group)) {
+            \DB::table('admin_menu')->where('id', $group)->whereIn('title', ['ITサポート', 'IT support', 'IT-Support', 'Soporte de TI', 'IT 지원', 'Hỗ trợ IT', 'IT 支持'])
+                ->update(['title' => static::MENU_TITLE, 'updated_at' => now()]);
+        }
 
         $values = ['menu_target' => $plugin->id];
         if (isset($root)) {
@@ -858,6 +897,10 @@ class Schema
                 $group->role_group_view_name = $meta['label'];
                 $group->role_group_order = $order++;
                 $group->description = $meta['description'];
+                $group->save();
+            } elseif (strpos(strval($group->role_group_view_name), 'ITサポート ') === 0) {
+                // the old name (schema 10), not one an administrator gave
+                $group->role_group_view_name = $meta['label'];
                 $group->save();
             }
 

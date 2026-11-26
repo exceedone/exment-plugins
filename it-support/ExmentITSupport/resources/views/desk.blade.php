@@ -305,7 +305,7 @@ root.dataset.ready = '1';
 
 var B = @json($boot);
 var CSRF = @json(csrf_token());
-var S = { group: B.group || '', queue: B.queue, page: 1, items: [], counts: {}, sel: null, ticket: null, f: { status: [], priority: [], assignee: '', customer: '', category: '', tags: '', tag_mode: 'and', kw: '', sort: 'due' }, checked: {}, kind: 'reply', side: true, loading: false };
+var S = { group: B.group || '', queue: B.queue, page: 1, items: [], counts: {}, sel: null, ticket: null, f: { status: [], priority: [], assignee: '', customer: (B.filter || {}).customer || '', category: (B.filter || {}).category || '', tags: '', tag_mode: 'and', kw: '', sort: 'due' }, checked: {}, kind: 'reply', side: true, loading: false };
 try { S.side = localStorage.getItem('its_side') !== '0'; } catch (e) {}
 
 var $ = function (id) { return document.getElementById(id); };
@@ -382,7 +382,7 @@ function renderFilters() {
     $('d-fprio').innerHTML = chips(B.priorities, B.priorityColors, 'priority');
     $('d-fassignee').innerHTML = '<option value="">担当者: すべて</option><option value="none"' + (S.f.assignee === 'none' ? ' selected' : '') + '>担当者なし</option>' + opts(B.agents, S.f.assignee);
     $('d-fcustomer').innerHTML = opts(B.customers, S.f.customer, 'お客様: すべて');
-    $('d-fcategory').innerHTML = opts(B.categories, S.f.category, '種類: すべて');
+    $('d-fcategory').innerHTML = opts(B.categories, S.f.category, '受付箱: すべて');
     $('d-ftags').value = S.f.tags; $('d-ftagmode').value = S.f.tag_mode;
     var n = S.f.status.length + S.f.priority.length + (S.f.assignee ? 1 : 0) + (S.f.customer ? 1 : 0) + (S.f.category ? 1 : 0) + (S.f.tags ? 1 : 0);
     $('d-ftoggle').innerHTML = '<i class="fa fa-sliders" aria-hidden="true"></i>' + (n ? ' <b>' + n + '</b>' : '');

@@ -17,6 +17,7 @@
         { "method": "get", "uri": "settings", "function": "settings" },
         { "method": "post", "uri": "settings", "function": "postSettings" },
         { "method": "post", "uri": "settings/mail-test", "function": "postMailTest" },
+        { "method": "post", "uri": "settings/chat-test", "function": "postChatTest" },
         { "method": "post", "uri": "settings/fetch-now", "function": "postFetchNow" },
         { "method": "post", "uri": "settings/intake-key", "function": "postIntakeKey" },
         { "method": "post", "uri": "settings/intake-source", "function": "postIntakeSource" },
