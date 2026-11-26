@@ -32,14 +32,39 @@ class PortalNotifyPrefs
             return [];
         }
         $teams = PortalTeams::teamsAvailable();
+        $choices = static::choicesOf($ids);
         $out = [];
-        foreach (getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereIn('id', $ids)->get() as $user) {
-            $choice = PortalTeams::choiceOf($user);
-            $out[intval($user->id)] = [
+        foreach (getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereIn('id', $ids)->pluck('id') as $id) {
+            $choice = $choices[intval($id)] ?? PortalTeams::siteDefault();
+            $out[intval($id)] = [
                 'bell' => true,
                 'mail' => in_array($choice, ['mail', 'both'], true),
                 'teams' => $teams && in_array($choice, ['teams', 'both'], true),
             ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The choice of the 「通知」 menu of some people, read in one query (PortalTeams::choiceOf for
+     * each would read user_settings once per person: a project of 30 members, 30 reads).
+     *
+     * @param array<int, int> $ids
+     * @return array<int, string> user id => bell / mail / teams / both
+     */
+    public static function choicesOf(array $ids): array
+    {
+        $out = array_fill_keys($ids, PortalTeams::siteDefault());
+        try {
+            foreach (\Exceedone\Exment\Model\UserSetting::whereIn('base_user_id', $ids)->get(['base_user_id', 'settings']) as $row) {
+                $value = strval(array_get((array) ($row->settings ?? []), PortalTeams::USER_SETTING));
+                if (in_array($value, PortalTeams::CHOICES, true)) {
+                    $out[intval($row->base_user_id)] = $value;
+                }
+            }
+        } catch (\Throwable $e) {
+            // the site's default for everyone
         }
 
         return $out;
