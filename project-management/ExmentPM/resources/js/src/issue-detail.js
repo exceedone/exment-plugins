@@ -156,6 +156,9 @@
         // its own above the issue (the same button closes the page too).
         var head = '<div class="bl-dhead"><a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' + tag(i.ty) +
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' + ikCopyButton(i) +
+            // ISS00248: the alias, and a way to set it
+            (local.al ? '<span class="pp-al-d" title="' + esc(L.alias) + '">' + esc(local.al) + '</span>' : '') +
+            (local.al_edit ? '<a href="javascript:void(0);" class="pp-al-set" data-issue="' + esc(i.id) + '" data-al="' + esc(local.al || '') + '" title="' + esc(L.alias_set) + '"><i class="fa fa-tag"></i></a>' : '') +
             issueNav(i) +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +

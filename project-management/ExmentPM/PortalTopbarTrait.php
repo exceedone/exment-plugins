@@ -371,6 +371,11 @@ trait PortalTopbarTrait
                 if ($id_hit !== null) {
                     $query->orWhere('id', $id_hit);
                 }
+                // ISS00248: the aliases
+                $aliased = PortalIssueAliases::search($q);
+                if (!empty($aliased)) {
+                    $query->orWhereIn('id', $aliased);
+                }
             })
             ->orderBy('updated_at', 'desc')
             ->take($limit + 1)

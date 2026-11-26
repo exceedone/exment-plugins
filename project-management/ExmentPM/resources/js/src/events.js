@@ -491,6 +491,8 @@
         if (ccopy) { cmtCopyLink(ccopy.dataset.cid); return; }
         var cdel = ev.target.closest('.pp-cdel');
         if (cdel) { cmtDelete(cdel); return; }
+        var alSet = ev.target.closest('.pp-al-set');
+        if (alSet) { aliasSet(alSet); return; }
         var addChild = ev.target.closest('.pp-addchild');
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
         var linkCopy = ev.target.closest('.pp-linkcopy');

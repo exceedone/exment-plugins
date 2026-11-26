@@ -453,6 +453,15 @@ class PmPortalController extends AdminControllerBase
             }
         }
 
+        // ISS00248: an alias, or a key the issue had before it was moved
+        $aliasOf = PortalIssueAliases::issueOf($key);
+        if ($aliasOf !== null) {
+            $found = $mine($model->find($aliasOf));
+            if (isset($found)) {
+                return $found;
+            }
+        }
+
         // A moved issue: its old project's key still names a project.
         return isset($byId) && isset($m[1]) && $this->projectByCode($m[1]) !== null ? $byId : null;
     }
@@ -1393,6 +1402,7 @@ class PmPortalController extends AdminControllerBase
             }
         }
 
+        $oldKey = $this->issueKey($project, $issue->id);
         try {
             \DB::transaction(function () use ($issue, $target, $changes) {
                 $issue->setValue($changes);
@@ -1400,6 +1410,8 @@ class PmPortalController extends AdminControllerBase
                 $issue->parent_type = $this->project_table->table_name;
                 $issue->save();
             });
+            // ISS00248: the key it had still finds it
+            PortalIssueAliases::addOld(intval($issue->id), $oldKey);
         } catch (ValidationException $e) {
             return $this->validationError($e);
         } catch (\Throwable $e) {
@@ -1938,6 +1950,9 @@ class PmPortalController extends AdminControllerBase
         $detail['issue']['my_star'] = in_array(strval($issue->id), $my_stars);
         // ISS00272: the user's own favorite
         $detail['issue']['my_fav'] = !empty(Star::mine(Star::TYPE_FAV, $issue_name, [$issue->id], $me));
+        // ISS00248
+        $detail['issue']['al'] = PortalIssueAliases::names([$issue->id])[intval($issue->id)] ?? '';
+        $detail['issue']['al_edit'] = PortalIssueAliases::exists() && !$this->projectIsArchived($project) && PortalDefinition::enableEdit($issue, true) === true;
 
         return array_merge($detail, [
             'users' => $this->usersFor($this->detailUserIds($detail)),
@@ -2107,6 +2122,49 @@ class PmPortalController extends AdminControllerBase
         Star::purge('comment', $comment->id);
 
         return $this->issueDetailResponse($project, $issue_id);
+    }
+
+    /**
+     * Set the alias of an issue, or take it off (ISS00248): POST {id}/issue/{issue_id}/alias
+     * alias=... Whoever may edit the issue. Not one that names another issue already, nor one
+     * shaped like a key (ends in -<number>) or that is an issue key of the table.
+     */
+    public function setIssueAlias(Request $request, $id, $issue_id)
+    {
+        $project = $this->findProject($id);
+        $issue = $this->findIssue($project, $issue_id);
+        if (!PortalIssueAliases::exists()) {
+            abort(404);
+        }
+        if ($this->projectIsArchived($project)) {
+            return $this->messageError(403, 'archived');
+        }
+        if (PortalDefinition::enableEdit($issue, true) !== true) {
+            return $this->messageError(403, 'no_permission');
+        }
+        $alias = trim(strval($request->input('alias', '')));
+        if ($alias !== '') {
+            if (preg_match('/-\d+$/', $alias)) {
+                return $this->messageError(422, 'alias_keylike');
+            }
+            foreach ([PortalSchema::ISSUE_COLUMNS['source_key'], array_get($this->def['issue'], 'key', 'issue_key')] as $column) {
+                if (is_nullorempty($column) || CustomColumn::getEloquent($column, $this->issue_table) === null) {
+                    continue;
+                }
+                $hit = $this->issue_table->getValueModel()->query()->withoutGlobalScopes()
+                    ->whereIn('value->' . $column, array_unique([$alias, strtoupper($alias), strtolower($alias)]))
+                    ->where('id', '<>', $issue->id)->exists();
+                if ($hit) {
+                    return $this->messageError(422, 'alias_taken');
+                }
+            }
+        }
+        $why = PortalIssueAliases::setName(intval($issue->id), $alias, intval(\Exment::getUserId()));
+        if ($why !== null) {
+            return $this->messageError(422, $why);
+        }
+
+        return $this->issueDetailResponse($project, $issue->id);
     }
 
     /**
@@ -3357,6 +3415,8 @@ class PmPortalController extends AdminControllerBase
         $my_watches = array_flip(array_map('strval', (array) $my_watches));
         // ISS00272: the reader's own favorites, one indexed read
         $my_favs = array_flip(array_map('strval', Star::mine(Star::TYPE_FAV, $this->issue_table->table_name, $issues->pluck('id')->all(), \Exment::getUserId())));
+        // ISS00248: the alias of each, one read
+        $aliases = PortalIssueAliases::names($issues->pluck('id')->all());
         foreach ($issues as $issue) {
             $row = $this->buildIssueRow($project, $issue, $lean);
             $row['my_rv'] = isset($review[intval($issue->id)]);
@@ -3364,6 +3424,7 @@ class PmPortalController extends AdminControllerBase
             $row['my_star'] = isset($my_stars[strval($issue->id)]);
             $row['my_watch'] = isset($my_watches[strval($issue->id)]);
             $row['my_fav'] = isset($my_favs[strval($issue->id)]);
+            $row['al'] = $aliases[intval($issue->id)] ?? '';
             $row['unread'] = isset($unread[intval($issue->id)]);
             $rows[] = $row;
         }
@@ -3521,7 +3582,7 @@ class PmPortalController extends AdminControllerBase
         'sub' => '', 'rc' => '', 'ms' => '', 'dt' => '', 'df' => '',
         'sd' => null, 'dd' => null, 'pg' => null, 'eh' => null, 'ah' => null, 'parent' => null, 'by' => null,
         'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [], 'nu' => [],
-        'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'my_fav' => false, 'unread' => false,
+        'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'my_fav' => false, 'al' => '', 'unread' => false,
     ];
 
     /**

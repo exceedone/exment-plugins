@@ -105,6 +105,27 @@
 
     // Delete asks by arming itself rather than by opening a dialog: the
     // second click within a few seconds is the confirmation.
+    // ISS00248: set or take off the alias of an issue
+    function aliasSet(link) {
+        var now = link.getAttribute('data-al') || '';
+        var typed = window.prompt(L.alias_ask, now);
+        if (typed === null || typed.trim() === now) { return; }
+        var issueId = link.getAttribute('data-issue'), epoch = detailEpoch;
+        var seq = ++DET_SEQ;
+        $.ajax({
+            url: D.urls.base + '/issue/' + issueId + '/alias', type: 'POST',
+            data: { alias: typed.trim() }, dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!res || !res.ok || !res.issue) { toast(errText(null, res, L.alias_fail), true); return; }
+            var row = issueById(issueId);
+            if (row) { row.al = res.issue.al || ''; }
+            applyDetail(res, epoch, true, seq);
+            toast(L.alias_saved);
+            renderIssues();
+        }).fail(function (xhr) { toast(xhrErr(xhr, L.alias_fail), true); });
+    }
+
     function cmtDelete(link) {
         if (link.dataset.busy === '1') { return; }
         if (link.dataset.armed !== '1') {
