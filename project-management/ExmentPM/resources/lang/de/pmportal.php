@@ -1617,7 +1617,7 @@ return [
         'remind' => 'Erinnerungen: :count für :issues Vorgänge gesendet (:skipped bereits gesendet, ausgelassen).',
         'remind_dry' => 'Probelauf: würde :count für :issues Vorgänge senden (:skipped bereits gesendet, ausgelassen). Sendet nichts.',
         'remind_off' => 'Erinnerungen sind ausgeschaltet (Funktionsverwaltung oder Plugin-Einstellungen).',
-        'digest' => 'Morgenübersicht: an :count von :people Personen gesendet (nichts zu melden für :empty).',
+        'digest' => 'Morgenübersicht: an :count von :people Personen gesendet (nichts zu melden für :empty, fehlgeschlagen für :failed).',
         'digest_dry' => 'Probelauf: würde an :count von :people Personen senden (nichts zu melden für :empty). Es wird nichts gesendet.',
         'digest_off' => 'Die Morgenübersicht ist ausgeschaltet (Funktionsverwaltung).',
         'recur_dry' => 'Probelauf: Es würden :count wiederkehrende Tickets erstellt.',

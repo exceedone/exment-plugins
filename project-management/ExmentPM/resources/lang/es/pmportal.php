@@ -1617,7 +1617,7 @@ return [
         'remind' => 'Recordatorios: se enviaron :count para :issues incidencias (:skipped ya enviados, omitidos).',
         'remind_dry' => 'Prueba: se enviarían :count para :issues incidencias (:skipped ya enviados, omitidos). No envía nada.',
         'remind_off' => 'Los recordatorios están desactivados (gestión de funciones o configuración del plugin).',
-        'digest' => 'Resumen de la mañana: enviado a :count de :people personas (nada que decir para :empty).',
+        'digest' => 'Resumen de la mañana: enviado a :count de :people personas (nada que decir para :empty, falló para :failed).',
         'digest_dry' => 'Simulación: se enviaría a :count de :people personas (nada que decir para :empty). No se envía nada.',
         'digest_off' => 'El resumen de la mañana está desactivado (gestión de funciones).',
         'recur_dry' => 'Simulación: se crearían :count incidencias repetitivas.',

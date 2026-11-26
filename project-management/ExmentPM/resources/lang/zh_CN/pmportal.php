@@ -1617,7 +1617,7 @@ return [
         'remind' => '提醒：为 :issues 个问题发送了 :count 封（已发送而跳过 :skipped）。',
         'remind_dry' => '试运行：将为 :issues 个问题发送 :count 封（已发送而跳过 :skipped）。不发送任何内容。',
         'remind_off' => '未使用提醒（功能管理或插件设置）。',
-        'digest' => '早间摘要：已发送给 :people 人中的 :count 人（无内容 :empty 人）。',
+        'digest' => '早间摘要：已发送给 :people 人中的 :count 人（无内容 :empty 人，发送失败 :failed 人）。',
         'digest_dry' => '试运行：将发送给 :people 人中的 :count 人（无内容 :empty 人）。不发送任何内容。',
         'digest_off' => '早间摘要未启用（功能管理）。',
         'recur_dry' => '试运行：将创建 :count 个重复任务。',
