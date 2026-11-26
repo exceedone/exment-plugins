@@ -317,6 +317,75 @@ test('M8: the status menu offers every status and sends through the comment', ()
     assert.ok(langJa.indexOf('// UX-E') > 0);
 });
 
+/* ---------------------------------------------- UX-F: labels, colors -- */
+const boot = read('boot.js');
+const home = read('home.js');
+
+test('S13: one word for one thing (ja)', () => {
+    const want = { add_issue: '課題を追加', col_dd: '期限', lbl_author: '作成者', submit: '送信', rf_button: '最新にする', col_up: '更新日時',
+        cmt_save: '保存', tab_settings: 'プロジェクトの設定', issue_more: 'ほかの操作', ned_more: 'ほかの項目', box_timeline: 'コメントと履歴',
+        to_comments: 'コメント', notify_to: '知らせる人', reads: '読んだ人', lbl_eh: '予定時間 / 実績時間',
+        stat_overdue: '期限切れ' };
+    Object.keys(want).forEach((k) => assert.strictEqual(ja(k), want[k], k));
+    const listView2 = view('list.blade.php');
+    ['ドラッグで並べ替え', 'メニューを開く', '>すべて開く<', "'開く' : '閉じる'"].forEach((w) => assert.ok(listView2.indexOf(w) < 0 && topbar.indexOf(w) < 0, w + ' is in lang now'));
+});
+
+test('S14, M9: the colours are variables, Exment Modern first, the green after', () => {
+    assert.ok(/--bl-accent:var\(--exm-ui-accent,#4caf93\)/.test(style));
+    assert.ok(/--bl-accent-d:var\(--exm-ui-accent-strong,#3d9a80\)/.test(style));
+    ['style.blade.php', '_topbar.blade.php', 'list.blade.php', 'ranking.blade.php', 'settings.blade.php'].forEach((f) => {
+        const src = view(f).replace(/var\(--[a-z-]+,#[0-9a-fA-F]{6}\)/g, '');
+        assert.ok(!/#4ca[ef]93|#3d9a80|#2c6e5b|#bfe3d6|#f2f8f5/i.test(src), f + ' has no green of its own left');
+    });
+    assert.ok(/\.pmportal \.bl-dback\{[^}]*background:var\(--bl-box\)/.test(style), 'a way back is a grey button');
+});
+
+test('S16: ? lists the keys; j k o move and open in the list; [ ] e c on an issue', () => {
+    assert.ok(/ev\.key !== '\?'/.test(boot) && /function keyHelp\(show\)/.test(boot));
+    const f = load(boot, ['kbdRow'], `
+        var hashes = []; var location = { set hash(v) { hashes.push(v); } };
+        function issueHash(id) { return 'issue-' + id; }
+        function row(id) { return { id: id, cls: {}, classList: { contains: function (c) { return !!this.o[c]; }, add: function (c) { this.o[c] = 1; }, remove: function (c) { delete this.o[c]; }, o: {} },
+            getAttribute: function () { return id; }, scrollIntoView: function () {} }; }
+        var rows = [row('1'), row('2'), row('3')];
+        var document = { querySelectorAll: function () { return rows; } };
+        globalThis.__rows = rows; globalThis.__hashes = hashes;`);
+    assert.strictEqual(f.kbdRow(0), false, 'nothing marked: o does nothing');
+    f.kbdRow(1); f.kbdRow(1);
+    assert.ok(globalThis.__rows[1].classList.contains('pp-kbd-cur'));
+    f.kbdRow(-1);
+    assert.ok(globalThis.__rows[0].classList.contains('pp-kbd-cur'));
+    f.kbdRow(-1);
+    assert.ok(globalThis.__rows[0].classList.contains('pp-kbd-cur'), 'stays on the first');
+    f.kbdRow(0);
+    assert.deepStrictEqual(globalThis.__hashes, ['issue-1']);
+    assert.ok(/'\[': '\.bl-inav a:first-child:not\(\.off\)'/.test(boot) && /k === 'c'/.test(boot));
+    ['kh_title', 'kh_move', 'kh_updown', 'kh_open', 'kh_comment', 'kh_status', 'kh_prevnext'].forEach((k) => assert.ok(ja(k), k));
+    delete globalThis.__rows; delete globalThis.__hashes;
+});
+
+test('S15, M5: 「最近の更新」 is read after the page, ten at a time', () => {
+    assert.ok(/\$feed = null;/.test(fs.readFileSync(path.join(PM, 'PmPortalController.php'), 'utf8')), 'not built with the page');
+    assert.ok(fs.readFileSync(path.join(PM, 'PmPortalController.php'), 'utf8').indexOf('function buildFeed(') < 0);
+    assert.ok(/"uri": "\{id\}\/feed", "function": "projectFeed"/.test(fs.readFileSync(path.join(PM, 'config.json'), 'utf8')));
+    assert.ok(/public function projectFeed\(\$id\)/.test(fs.readFileSync(path.join(PM, 'PluginPage.php'), 'utf8')));
+    const trait = fs.readFileSync(path.join(PM, 'PortalFeedTrait.php'), 'utf8');
+    assert.ok(trait.indexOf("whereIn('revisionable_id'") === trait.lastIndexOf("whereIn('revisionable_id'"), 'issues are not named one by one (only the wiki / project read does)');
+    assert.ok(/pmCached\('feed'/.test(trait));
+    assert.ok(/params\.before = FEED\.next/.test(functionSource(home, 'feedLoad')));
+    assert.ok(/Array\.isArray\(D\.feed\)/.test(functionSource(home, 'renderFeed')), 'an old payload with the feed still shows');
+    assert.ok(/<details class="pp-fmore">/.test(listView), 'the dashboard shows ten, the rest behind もっと見る');
+});
+
+test('M10: empty project, empty filter result, first steps', () => {
+    assert.ok(/id="pp-home-empty"/.test(index) && /function renderFirstSteps/.test(home));
+    assert.ok(/pp-empty-clear/.test(listSrc) && /anyFilter\(\)/.test(listSrc));
+    assert.ok(/id="pp-first"/.test(listView) && /pmportal\.firststeps/.test(listView));
+    ['empty_issues', 'empty_filtered', 'first_steps', 'fs_add_issue', 'fs_invite', 'fs_new_project', 'empty_projects', 'f_clear_all'].forEach((k) => assert.ok(ja(k), k));
+    assert.ok(langJa.indexOf('// UX-F') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

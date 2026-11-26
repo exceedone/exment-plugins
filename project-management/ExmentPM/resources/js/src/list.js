@@ -628,6 +628,13 @@
         if (!rows) { return; }
         // Capture: before the row's own click opens the issue.
         rows.addEventListener('click', function (ev) {
+            if (ev.target.closest && ev.target.closest('.pp-empty-clear')) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                var clear = document.getElementById('pp-f-clear');
+                if (clear) { clear.click(); }
+                return;
+            }
             var pen = ev.target.closest && ev.target.closest('.pp-ed-pen');
             if (!pen) { return; }
             ev.preventDefault();
@@ -892,6 +899,11 @@
                 '<td>' + pbar(i.pg) + rollupBadge(ru, i.id) + '</td>' +
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });
+        // M10: a list emptied by its filters says so, with the way out.
+        if (!rows && D.issues.length && anyFilter()) {
+            rows = '<tr class="pp-empty-row"><td colspan="40"><i class="fa fa-filter"></i> ' + esc(L.empty_filtered) +
+                ' <button type="button" class="bl-btn-sub pp-empty-clear">' + esc(L.f_clear_all) + '</button></td></tr>';
+        }
         document.getElementById('pp-issue-rows').innerHTML = rows;
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();

@@ -81,6 +81,10 @@
         'pj_switch', 'proj_info',
         // UX-E
         'ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu',
+        // UX-F
+        'feed_more', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
+        'kh_comment', 'kh_status', 'kh_prevnext', 'kh_send', 'kh_close', 'kh_help', 'empty_issues', 'empty_filtered', 'empty_wiki',
+        'first_steps', 'fs_add_issue', 'fs_invite', 'fs_statuses', 'f_clear_all',
     ])->mapWithKeys(function ($key) {
         return [$key => \App\Plugins\ExmentPM\PortalDefinition::trans($key)];
     })->toArray();
@@ -140,6 +144,8 @@
 
         {{-- ============ home ============ --}}
         <section class="bl-screen" id="pp-home">
+            {{-- M10: filled by the script while the project has no issue --}}
+            <div class="pp-home-empty" id="pp-home-empty" hidden></div>
             <div class="bl-stats" id="pp-stats"></div>
             <div class="bl-home">
                 <div>

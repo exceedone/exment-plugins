@@ -769,26 +769,119 @@ window.PmPortalBoot = function () {
         });
         document.getElementById('pp-members').innerHTML = members;
 
-        document.getElementById('pp-feed').innerHTML = (D.feed || []).map(function (f) {
-            var ic = own(FEED_IC, f.tp) || FEED_IC.chg;
-            var link;
-            if (f.kind === 'issue') {
-                link = '<a class="bl-issuelink" href="#' + esc(issueHash(f.id)) + '">' + esc(f.key) + ' ' + esc(f.label) + '</a>';
-            } else if (f.kind === 'wiki') {
-                link = '<a class="bl-issuelink pp-wikilink" href="#wiki" data-wiki="' + esc(f.id) + '">' + esc(f.label) + '</a>';
-            } else if (f.kind === 'file') {
-                link = '<a class="bl-issuelink" href="#files">' + esc(f.label) + '</a>';
-            } else {
-                link = esc(f.label);
-            }
-            var verb = own({ add: L.feed_add, chg: L.feed_chg, cmt: L.feed_cmt, file: L.feed_file, wiki: L.feed_wiki, wiki_add: L.feed_wiki_add }, f.tp) || L.feed_chg;
-            if (f.kind === 'project') { verb = L.feed_project; }
-            return '<div class="item"><span class="ic" style="background:' + ppColor(ic.c) + '"><i class="fa ' + ic.i + '"></i></span>' +
-                '<div><div class="tx"><span class="who">' + esc(user(f.by).n) + '</span> ' + fmt(esc(verb), link) +
-                (f.extra ? '<span class="ex">' + esc(f.extra) + '</span>' : '') + '</div>' +
-                '<div class="tm"><i class="fa fa-clock-o"></i> ' + esc(f.at) + '</div></div></div>';
-        }).join('') || ('<div style="color:var(--bl-faint);">' + esc(L.empty) + '</div>');
+        renderFeed(true);
+        renderFirstSteps();
     }
+    // M10: a project with no issue yet says what to do first.
+    function renderFirstSteps() {
+        var box = document.getElementById('pp-home-empty');
+        if (!box) { return; }
+        var none = !(D.issues || []).length && !arCount();
+        box.hidden = !none;
+        if (!none) { box.innerHTML = ''; return; }
+        var steps = [];
+        if (CAN_ADD_ISSUE) { steps.push(['#new', 'fa-plus', L.fs_add_issue]); }
+        if (D.can && D.can.manage) {
+            steps.push(['#settings', 'fa-user-plus', L.fs_invite]);
+            steps.push(['#settings', 'fa-list-ol', L.fs_statuses]);
+        }
+        box.innerHTML = '<div class="t"><i class="fa fa-lightbulb-o"></i> ' + esc(L.empty_issues) + '</div>' +
+            (steps.length ? '<ol>' + steps.map(function (st) {
+                return '<li><a class="bl-btn-sub" href="' + esc(st[0]) + '"><i class="fa ' + st[1] + '"></i> ' + esc(st[2]) + '</a></li>';
+            }).join('') + '</ol>' : '');
+    }
+
+    /* ------------------------------------------------ recent updates ---- */
+    // S15, M5: 「最近の更新」 is not in the page; it is read after it, ten at a
+    // time, and もっと見る reads the next ten (?before=). A server that still
+    // sends it with the page (D.feed an array) is shown ten at a time too.
+    var FEED = { rows: [], next: '', more: false, busy: false, seq: 0, shown: 10, local: false, loaded: false };
+    function feedRowHtml(f) {
+        var ic = own(FEED_IC, f.tp) || FEED_IC.chg;
+        var link;
+        if (f.kind === 'issue') {
+            link = '<a class="bl-issuelink" href="#' + esc(issueHash(f.id)) + '">' + esc(f.key) + ' ' + esc(f.label) + '</a>';
+        } else if (f.kind === 'wiki') {
+            link = '<a class="bl-issuelink pp-wikilink" href="#wiki" data-wiki="' + esc(f.id) + '">' + esc(f.label) + '</a>';
+        } else if (f.kind === 'file') {
+            link = '<a class="bl-issuelink" href="#files">' + esc(f.label) + '</a>';
+        } else {
+            link = esc(f.label);
+        }
+        var verb = own({ add: L.feed_add, chg: L.feed_chg, cmt: L.feed_cmt, file: L.feed_file, wiki: L.feed_wiki, wiki_add: L.feed_wiki_add }, f.tp) || L.feed_chg;
+        if (f.kind === 'project') { verb = L.feed_project; }
+        return '<div class="item"><span class="ic" style="background:' + ppColor(ic.c) + '"><i class="fa ' + ic.i + '"></i></span>' +
+            '<div><div class="tx"><span class="who">' + esc(user(f.by).n) + '</span> ' + fmt(esc(verb), link) +
+            (f.extra ? '<span class="ex">' + esc(f.extra) + '</span>' : '') + '</div>' +
+            '<div class="tm"><i class="fa fa-clock-o"></i> ' + esc(f.at) + '</div></div></div>';
+    }
+    function paintFeed() {
+        var box = document.getElementById('pp-feed');
+        if (!box) { return; }
+        var rows = FEED.local ? FEED.rows.slice(0, FEED.shown) : FEED.rows;
+        var more = FEED.local ? FEED.rows.length > FEED.shown : FEED.more;
+        box.innerHTML = (rows.map(feedRowHtml).join('') || ('<div style="color:var(--bl-faint);">' + esc(L.empty) + '</div>')) +
+            (more ? '<button type="button" class="bl-btn-sub pp-feed-more"' + (FEED.busy ? ' disabled' : '') + '>' +
+                (FEED.busy ? '<i class="fa fa-spinner fa-spin"></i> ' : '') + esc(L.feed_more) + '</button>' : '');
+    }
+    // fresh: the page's data was (re)read - the first page is asked again
+    // (the server keeps it until something changes, so this is cheap).
+    function renderFeed(fresh) {
+        var box = document.getElementById('pp-feed');
+        if (!box) { return; }
+        if (Array.isArray(D.feed)) {
+            FEED.local = true;
+            FEED.rows = D.feed;
+            FEED.loaded = true;
+            paintFeed();
+            return;
+        }
+        FEED.local = false;
+        if (!FEED.loaded) { box.innerHTML = skel(3); }
+        if (fresh || !FEED.loaded) { feedLoad(false); }
+    }
+    function feedLoad(older) {
+        if (!(D.urls && D.urls.base)) { return; }
+        if (older && (FEED.busy || !FEED.next)) { return; }
+        var seq = ++FEED.seq;
+        var params = { limit: 10 };
+        if (older) { params.before = FEED.next; }
+        FEED.busy = !!older;
+        if (older) { paintFeed(); }
+        // In the normal lane: it is on the screen (the slow lane is dropped
+        // when the page boots, and this is asked for while it does).
+        ppQueue(function () {
+            return $.getJSON(D.urls.base + '/feed', params);
+        }).then(function (res) {
+            if (!alive() || seq !== FEED.seq) { return; }
+            FEED.busy = false;
+            if (!res || !res.ok || !Array.isArray(res.feed)) { if (!FEED.loaded) { feedFailed(); } else { paintFeed(); } return; }
+            FEED.rows = older ? FEED.rows.concat(res.feed) : res.feed;
+            FEED.next = String(res.next || '');
+            FEED.more = !!res.more;
+            FEED.loaded = true;
+            paintFeed();
+        }).catch(function (e) {
+            if (window.console && e && e.message) { window.console.warn('pmportal feed:', e.message); }
+            if (!alive() || seq !== FEED.seq) { return; }
+            FEED.busy = false;
+            if (!FEED.loaded) { feedFailed(); } else { paintFeed(); }
+        });
+    }
+    function feedFailed() {
+        var box = document.getElementById('pp-feed');
+        if (box) { box.innerHTML = '<div style="color:var(--bl-faint);">' + esc(L.hc_fail) + '</div>'; }
+    }
+    (function () {
+        var box = document.getElementById('pp-feed');
+        if (!box) { return; }
+        box.addEventListener('click', function (ev) {
+            if (!(ev.target.closest && ev.target.closest('.pp-feed-more'))) { return; }
+            ev.preventDefault();
+            if (FEED.local) { FEED.shown += 10; paintFeed(); return; }
+            feedLoad(true);
+        });
+    }());
 
     /* ------------------------------------------------ archive ----------- */
     // ISS00332: issues finished more than D.archive.days days ago are not in
@@ -1457,6 +1550,13 @@ window.PmPortalBoot = function () {
         if (!rows) { return; }
         // Capture: before the row's own click opens the issue.
         rows.addEventListener('click', function (ev) {
+            if (ev.target.closest && ev.target.closest('.pp-empty-clear')) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                var clear = document.getElementById('pp-f-clear');
+                if (clear) { clear.click(); }
+                return;
+            }
             var pen = ev.target.closest && ev.target.closest('.pp-ed-pen');
             if (!pen) { return; }
             ev.preventDefault();
@@ -1721,6 +1821,11 @@ window.PmPortalBoot = function () {
                 '<td>' + pbar(i.pg) + rollupBadge(ru, i.id) + '</td>' +
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });
+        // M10: a list emptied by its filters says so, with the way out.
+        if (!rows && D.issues.length && anyFilter()) {
+            rows = '<tr class="pp-empty-row"><td colspan="40"><i class="fa fa-filter"></i> ' + esc(L.empty_filtered) +
+                ' <button type="button" class="bl-btn-sub pp-empty-clear">' + esc(L.f_clear_all) + '</button></td></tr>';
+        }
         document.getElementById('pp-issue-rows').innerHTML = rows;
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
@@ -3960,7 +4065,7 @@ window.PmPortalBoot = function () {
                     return '<div><b>' + esc(c[0]) + '</b>: ' + esc(c[1]) + '<span class="arr">→</span><b>' + esc(c[2]) + '</b></div>';
                 }).join('') + '</div>';
             } else if (e.tp === 'add') {
-                body = '<div class="chg"><i class="fa fa-plus" style="color:#4caf93;margin-right:6px;"></i>' + esc(L.added) + '</div>';
+                body = '<div class="chg"><i class="fa fa-plus" style="color:var(--bl-accent);margin-right:6px;"></i>' + esc(L.added) + '</div>';
             } else if (e.tp === 'file') {
                 body = '<div class="chg"><i class="fa fa-paperclip" style="margin-right:6px;"></i>' + esc(L.file_added) +
                     ' <a class="bl-file" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a>' + officeViewBtn(e) + '</div>';
@@ -10669,8 +10774,10 @@ window.PmPortalBoot = function () {
             return $.ajax({ url: slot.url, cache: false, dataType: 'text' })
             .done(function (html) {
                 if (typeof html !== 'string' || !html.length) {
+                    // M10: with the way to the same issues as a list.
                     host.innerHTML = '<div class="bl-card-box"><div class="bl-boxbody"><i class="fa fa-info-circle"></i> ' +
-                        esc(kind === 'gantt' ? L.gantt_none : L.board_none) + '</div></div>';
+                        esc(kind === 'gantt' ? L.gantt_none : L.board_none) +
+                        ' <a class="pp-none-list" href="#issues">' + esc(L.tab_issues) + ' <i class="fa fa-angle-right"></i></a></div></div>';
                 } else {
                     host.innerHTML = html;
                     execEmbeddedScripts(host);
@@ -12453,10 +12560,92 @@ window.PmPortalBoot = function () {
             if (window.ppStMenuFromKey()) { ev.preventDefault(); }
             return;
         }
+        // S16: the list - j / k move, o or Enter opens.
+        if (String(currentScreen) === 'issues' && (k === 'j' || k === 'k' || k === 'o' || (ev.key === 'Enter' && document.activeElement === document.body))) {
+            if (kbdRow(k === 'j' ? 1 : (k === 'k' ? -1 : 0))) { ev.preventDefault(); }
+            return;
+        }
+        // S16: the issue - [ ] the one before / after in the list, e edit,
+        // c write a comment.
+        if (String(currentScreen) === 'issue') {
+            var issueKey = { '[': '.bl-inav a:first-child:not(.off)', ']': '.bl-inav a:last-child:not(.off)', e: '.bl-dhead .pp-mlink' };
+            if (own(issueKey, k)) {
+                var hit = document.querySelector('#pp-d-main ' + issueKey[k]);
+                if (hit) { ev.preventDefault(); hit.click(); }
+                return;
+            }
+            if (k === 'c' && typeof ppDockOpen === 'function') {
+                var dock = document.getElementById('pp-cmtdock');
+                if (dock && !dock.hidden) { ev.preventDefault(); ppDockOpen(true); }
+                return;
+            }
+        }
         if (ev.key === '/') {
             var jump = document.getElementById('pp-jump');
             if (jump) { ev.preventDefault(); jump.focus(); }
         }
+    });
+
+    // S16: j / k move a mark down and up the rows of the list (step 0: open
+    // the marked row). Answers whether it did anything.
+    function kbdRow(step) {
+        var rows = Array.prototype.slice.call(document.querySelectorAll('#pp-issue-rows tr[data-issue]'));
+        if (!rows.length) { return false; }
+        var at = -1;
+        rows.forEach(function (r, n) { if (r.classList.contains('pp-kbd-cur')) { at = n; } });
+        if (step === 0) {
+            if (at < 0) { return false; }
+            location.hash = issueHash(rows[at].getAttribute('data-issue'));
+            return true;
+        }
+        var next = at < 0 ? (step > 0 ? 0 : rows.length - 1) : Math.max(0, Math.min(rows.length - 1, at + step));
+        if (at >= 0) { rows[at].classList.remove('pp-kbd-cur'); }
+        rows[next].classList.add('pp-kbd-cur');
+        try { rows[next].scrollIntoView({ block: 'nearest' }); } catch (e) { rows[next].scrollIntoView(false); }
+        return true;
+    }
+    // S16: ? shows the keys (Shift is part of typing ?, so it has its own
+    // listener; the same rules about fields and open forms apply).
+    var KEY_HELP = [
+        ['kh_move', [['h', 'tab_home'], ['b', 'tab_board'], ['f', 'tab_issues'], ['g', 'tab_gantt'], ['u', 'tab_burndown'], ['w', 'tab_wiki']]],
+        ['kh_list', [['a', 'add_issue'], ['/', 'kh_search'], ['j k', 'kh_updown'], ['o', 'kh_open']]],
+        ['kh_issue', [['e', 'edit'], ['c', 'kh_comment'], ['s', 'kh_status'], ['[ ]', 'kh_prevnext']]],
+        ['kh_other', [['Ctrl+Enter', 'kh_send'], ['Esc', 'kh_close'], ['?', 'kh_help']]]
+    ];
+    function keyHelp(show) {
+        var box = document.getElementById('pp-keyhelp');
+        if (!show) { if (box) { box.remove(); } return; }
+        if (box) { return; }
+        box = document.createElement('div');
+        box.id = 'pp-keyhelp';
+        box.className = 'pp-keyhelp';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-label', L.kh_title);
+        box.innerHTML = '<div class="in"><div class="hd"><span>' + esc(L.kh_title) + '</span>' +
+            '<button type="button" class="x" aria-label="' + esc(L.m_close) + '">&times;</button></div>' +
+            KEY_HELP.map(function (g) {
+                return '<div class="grp"><div class="gt">' + esc(L[g[0]]) + '</div>' + g[1].map(function (k) {
+                    return '<div class="kr">' + String(k[0]).split(' ').map(function (x) { return '<kbd>' + esc(x) + '</kbd>'; }).join(' ') +
+                        '<span>' + esc(L[k[1]] || k[1]) + '</span></div>';
+                }).join('') + '</div>';
+            }).join('') + '</div>';
+        box.addEventListener('click', function (ev) {
+            if (ev.target === box || (ev.target.closest && ev.target.closest('.x'))) { keyHelp(false); }
+        });
+        (root.closest('.pmportal') || root).appendChild(box);
+        var x = box.querySelector('.x');
+        if (x) { x.focus(); }
+    }
+    document.addEventListener('keydown', function onPpKeyHelp(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onPpKeyHelp); return; }
+        if (ev.key === 'Escape' && document.getElementById('pp-keyhelp')) { ev.preventDefault(); keyHelp(false); return; }
+        if (ev.key !== '?' || ev.ctrlKey || ev.metaKey || ev.altKey || ev.defaultPrevented) { return; }
+        var t = ev.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) { return; }
+        if ((FM.el && !FM.el.hidden) || (NED.el && !NED.el.hidden)) { return; }
+        ev.preventDefault();
+        keyHelp(!document.getElementById('pp-keyhelp'));
     });
 
     // Escape closes the dock. Bound on its own rather than added to the

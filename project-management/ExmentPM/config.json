@@ -55,6 +55,7 @@
         { "method": "post", "uri": "{id}/reads", "function": "issueReadMany", "middleware_except": ["admin.morph", "admin.bootstrap"] },
         { "method": "post", "uri": "{id}/read-all", "function": "projectReadAll" },
         { "method": "get", "uri": "{id}/archived", "function": "archivedIssues" },
+        { "method": "get", "uri": "{id}/feed", "function": "projectFeed", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
         { "method": "post", "uri": "{id}/issue/{issue_id}/mail", "function": "mailIssue" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/alias", "function": "setIssueAlias" },
         { "method": "post", "uri": "{id}/export", "function": "exportIssues" },
