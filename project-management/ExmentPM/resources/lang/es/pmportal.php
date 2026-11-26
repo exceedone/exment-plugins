@@ -2107,6 +2107,10 @@ return [
         'ai_option' => 'Añadir una sugerencia de la IA al resumen de la mañana',
         'ai_option_help' => 'Envía los asuntos de las incidencias de cada persona (con los datos personales ocultos) a la IA del autocompletado (TypeSafe), que elige por cuál empezar. Sin clave de IA, el resumen se envía sin esta línea.',
     ],
+    // AG-1
+    'ag_title' => 'Gantt de todos los proyectos',
+    'ag_help' => 'Muestra las incidencias de los proyectos que puede ver, agrupadas por proyecto. ◆ es la fecha límite de un proyecto.',
+    'ag_link' => 'Gantt de todos los proyectos',
     // how the notices reach a person (ISS02863, ISS02931)
     'nset' => [
         'menu' => 'Ajustes detallados…',
@@ -2124,6 +2128,11 @@ return [
         'ev_new' => 'Se añadió una incidencia',
         'ev_comment' => 'Una incidencia cambió o recibió un comentario',
         'ev_remind' => 'Recordatorios de vencimiento',
+        'ev_digest' => 'Resumen de la mañana',
+        'digest' => 'Resumen de la mañana',
+        'digest_help' => 'Cada mañana se envían en un solo mensaje sus incidencias de hoy, las incidencias recién asignadas, las menciones y los cambios de estado de las incidencias que sigue (en «Ajustar en detalle», la fila «Resumen de la mañana» elige correo o Teams; si no elige ninguno, se envía por correo). Un día sin nada no se envía.',
+        'digest_on' => 'Recibir el resumen de la mañana',
+        'digest_time' => 'Hora de envío',
         'ev_assigned' => 'Me asignaron como responsable',
         'ev_status' => 'Cambió el estado',
         'ev_mention' => 'Se mencionó mi nombre',

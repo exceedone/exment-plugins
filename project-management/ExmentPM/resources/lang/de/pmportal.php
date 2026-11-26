@@ -2107,6 +2107,10 @@ return [
         'ai_option' => 'KI-Vorschlag in die Morgenübersicht aufnehmen',
         'ai_option_help' => 'Sendet die Betreffs der Aufgaben jeder Person (persönliche Daten maskiert) an die KI der automatischen Eingabe (TypeSafe), die die erste Aufgabe auswählt. Ohne KI-Schlüssel wird die Übersicht ohne diese Zeile gesendet.',
     ],
+    // AG-1
+    'ag_title' => 'Gantt aller Projekte',
+    'ag_help' => 'Zeigt die Vorgänge der Projekte, die Sie sehen dürfen, nach Projekt gruppiert. ◆ ist die Fälligkeit eines Projekts.',
+    'ag_link' => 'Gantt aller Projekte',
     // how the notices reach a person (ISS02863, ISS02931)
     'nset' => [
         'menu' => 'Ausführliche Einstellungen…',
@@ -2124,6 +2128,11 @@ return [
         'ev_new' => 'Ein Vorgang wurde angelegt',
         'ev_comment' => 'Ein Vorgang wurde geändert oder kommentiert',
         'ev_remind' => 'Fälligkeitserinnerungen',
+        'ev_digest' => 'Morgenübersicht',
+        'digest' => 'Morgenübersicht',
+        'digest_help' => 'Jeden Morgen werden Ihre heutigen Vorgänge, neu zugewiesene Vorgänge, Erwähnungen und Statusänderungen beobachteter Vorgänge in einer Nachricht gesendet (unter „Ausführlich festlegen“ wählt die Zeile „Morgenübersicht“ E-Mail oder Teams; ohne Auswahl per E-Mail). An einem Tag ohne Inhalt wird nichts gesendet.',
+        'digest_on' => 'Morgenübersicht erhalten',
+        'digest_time' => 'Sendezeit',
         'ev_assigned' => 'Ich wurde zuständig',
         'ev_status' => 'Der Status wurde geändert',
         'ev_mention' => 'Mein Name wurde erwähnt',

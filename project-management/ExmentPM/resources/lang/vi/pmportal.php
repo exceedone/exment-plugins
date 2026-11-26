@@ -2107,6 +2107,10 @@ return [
         'ai_option' => 'Thêm gợi ý của AI vào tóm tắt buổi sáng',
         'ai_option_help' => 'Gửi tiêu đề vấn đề của từng người (đã che thông tin cá nhân) tới AI của tính năng tự điền (TypeSafe) để chọn việc nên làm trước. Không có khóa AI thì gửi không có dòng này.',
     ],
+    // AG-1
+    'ag_title' => 'Gantt của tất cả dự án',
+    'ag_help' => 'Hiển thị vấn đề của các dự án bạn xem được, gom theo từng dự án. ◆ là hạn của dự án.',
+    'ag_link' => 'Gantt của tất cả dự án',
     // how the notices reach a person (ISS02863, ISS02931)
     'nset' => [
         'menu' => 'Cách nhận chi tiết…',
@@ -2124,6 +2128,11 @@ return [
         'ev_new' => 'Vấn đề được thêm',
         'ev_comment' => 'Vấn đề thay đổi hoặc có bình luận',
         'ev_remind' => 'Nhắc hạn',
+        'ev_digest' => 'Tổng hợp buổi sáng',
+        'digest' => 'Tổng hợp buổi sáng',
+        'digest_help' => 'Mỗi sáng, các vấn đề hôm nay của bạn, vấn đề mới được giao, lượt nhắc đến và thay đổi trạng thái của vấn đề bạn theo dõi được gửi gộp trong một thư (ở "Đặt chi tiết", dòng "Tổng hợp buổi sáng" chọn email hay Teams; không chọn gì thì gửi bằng email). Ngày không có gì thì không gửi.',
+        'digest_on' => 'Nhận tổng hợp buổi sáng',
+        'digest_time' => 'Giờ gửi',
         'ev_assigned' => 'Tôi được giao phụ trách',
         'ev_status' => 'Trạng thái thay đổi',
         'ev_mention' => 'Tên tôi được nhắc đến',

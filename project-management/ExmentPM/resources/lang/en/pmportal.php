@@ -2107,6 +2107,10 @@ return [
         'ai_option' => 'Add an AI suggestion to the morning digest',
         'ai_option_help' => 'Sends the subjects of each person\'s issues (personal data masked) to the AI of the AI auto-fill (TypeSafe), which picks the one to start with. Without an AI key, the digest goes out without this line.',
     ],
+    // AG-1
+    'ag_title' => 'Gantt of all projects',
+    'ag_help' => 'Shows the issues of the projects you can see, grouped by project. ◆ is the due date of a project.',
+    'ag_link' => 'Gantt of all projects',
     // how the notices reach a person (ISS02863, ISS02931)
     'nset' => [
         'menu' => 'Detailed settings…',
@@ -2124,6 +2128,11 @@ return [
         'ev_new' => 'An issue was added',
         'ev_comment' => 'An issue changed or got a comment',
         'ev_remind' => 'Due date reminders',
+        'ev_digest' => 'Morning digest',
+        'digest' => 'Morning digest',
+        'digest_help' => 'Every morning, your issues for today, issues newly assigned to you, mentions and status changes of the issues you watch are sent in one message (in "Set in detail", the "Morning digest" row chooses mail or Teams; with neither chosen it goes by mail). Nothing is sent on a day with nothing.',
+        'digest_on' => 'Get the morning digest',
+        'digest_time' => 'Time to send',
         'ev_assigned' => 'I was made an assignee',
         'ev_status' => 'The status changed',
         'ev_mention' => 'My name was written',
