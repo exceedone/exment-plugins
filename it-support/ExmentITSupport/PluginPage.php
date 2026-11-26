@@ -122,6 +122,26 @@ class PluginPage extends PluginPageBase
         return $this->desk()->postAlertSharedKey(request());
     }
 
+    public function problems()
+    {
+        return $this->desk()->problems(request());
+    }
+
+    public function problem($id)
+    {
+        return $this->desk()->problem(request(), $id);
+    }
+
+    public function postProblem($id)
+    {
+        return $this->desk()->postProblem(request(), $id);
+    }
+
+    public function postTicketProblem($id)
+    {
+        return $this->desk()->postTicketProblem(request(), $id);
+    }
+
     public function dashboard()
     {
         return $this->respond($this->desk()->dashboard(request()));
