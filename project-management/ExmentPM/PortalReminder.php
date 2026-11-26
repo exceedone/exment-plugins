@@ -202,18 +202,34 @@ class PortalReminder
         if (!isset($issueTable, $projectTable) || is_nullorempty(array_get($is, 'due'))) {
             return $result;
         }
-        $s = static::settings();
-        $today = $today ?? PortalTime::today();
-        $nowHM = $nowHM ?? now()->format('H:i');
-        if (strcmp($nowHM, $s['time']) < 0 || (empty($s['days']) && !$s['today'] && !$s['overdue'])) {
+        // the site's rule, and the projects' own (stage 1b): a project without a row has the site's
+        $site = static::settings();
+        $rules = PortalReminderRules::exists() ? PortalReminderRules::all() : [];
+        $used = [$site];
+        foreach ($rules as $rule) {
+            if ($rule['enabled'] && !$rule['use_site']) {
+                $used[] = $rule['settings'];
+            }
+        }
+        $used = array_values(array_filter($used, function ($u) {
+            return !empty($u['days']) || $u['today'] || $u['overdue'];
+        }));
+        if (empty($used)) {
             return $result;
         }
+        $today = $today ?? PortalTime::today();
+        $nowHM = $nowHM ?? now()->format('H:i');
         $cal = new BusinessCalendar();
 
         // the due dates that can have a reminder today: from the oldest overdue one to the
         // furthest "n days before" (a few days more for the days off it may step over)
-        $maxDays = empty($s['days']) ? 0 : max($s['days']);
-        $from = (new \DateTimeImmutable($today))->modify('-' . ($s['overdue'] ? $s['overdue_max'] : 0) . ' day')->format('Y-m-d');
+        $maxDays = 0;
+        $maxOver = 0;
+        foreach ($used as $u) {
+            $maxDays = max($maxDays, empty($u['days']) ? 0 : max($u['days']));
+            $maxOver = max($maxOver, $u['overdue'] ? $u['overdue_max'] : 0);
+        }
+        $from = (new \DateTimeImmutable($today))->modify('-' . $maxOver . ' day')->format('Y-m-d');
         $to = (new \DateTimeImmutable($today))->modify('+' . ($maxDays * 2 + 10) . ' day')->format('Y-m-d');
 
         $dueColumn = CustomColumn::getEloquent(array_get($is, 'due'), $issueTable);
@@ -242,11 +258,16 @@ class PortalReminder
             if ($due === null) {
                 continue;
             }
+            $pid = intval($issue->parent_id);
+            $rule = $rules[$pid] ?? null;
+            if (isset($rule) && !$rule['enabled']) {
+                continue;
+            }
+            $s = (isset($rule) && !$rule['use_site']) ? $rule['settings'] : $site;
             $slots = static::slots($due, $today, $nowHM, $s, $cal);
             if (empty($slots)) {
                 continue;
             }
-            $pid = intval($issue->parent_id);
             if (!array_key_exists($pid, $projects)) {
                 $p = $projectTable->getValueModel()->query()->withoutGlobalScopes()->find($pid);
                 $projects[$pid] = (isset($p) && !boolval(array_get($p->value, 'archived'))) ? $p : null;
@@ -256,25 +277,33 @@ class PortalReminder
                 continue;
             }
             $people = PortalMembership::filterReaders($issue, static::targets($issue, $s['to'], $def, $issueTable));
-            if (empty($people)) {
+            $channels = $rule['channels'] ?? [];
+            if (empty($people) && empty($channels)) {
                 continue;
             }
             $result['issues']++;
             foreach ($slots as $slot => [$kind, $n]) {
                 $sent = static::alreadySent(intval($issue->id), $slot);
                 $fresh = array_values(array_diff($people, $sent));
-                $result['skipped'] += count($people) - count($fresh);
-                if (empty($fresh)) {
+                // a channel is "user 0" of the slot ch<n>:<slot>
+                $freshChannels = [];
+                foreach ($channels as $ci => $c) {
+                    if (empty(static::alreadySent(intval($issue->id), 'ch' . $ci . ':' . $slot))) {
+                        $freshChannels[$ci] = $c;
+                    }
+                }
+                $result['skipped'] += count($people) - count($fresh) + count($channels) - count($freshChannels);
+                if (empty($fresh) && empty($freshChannels)) {
                     continue;
                 }
-                $fresh = array_slice($fresh, 0, max(0, $budget));
-                if (empty($fresh)) {
+                if ($budget <= 0) {
                     return $result;
                 }
-                $budget -= count($fresh);
-                $result['sent'] += count($fresh);
+                $fresh = array_slice($fresh, 0, $budget);
+                $budget -= count($fresh) + count($freshChannels);
+                $result['sent'] += count($fresh) + count($freshChannels);
                 if (!$dry) {
-                    static::send($project, $issue, $fresh, $slot, $kind, $n, $due, $def, $issueTable);
+                    static::send($project, $issue, $fresh, $slot, $kind, $n, $due, $def, $issueTable, $freshChannels);
                 }
             }
             if ($budget <= 0) {
@@ -353,12 +382,15 @@ class PortalReminder
      *
      * @param array<int, int> $people
      */
-    protected static function send($project, $issue, array $people, string $slot, string $kind, int $n, string $due, array $def, CustomTable $issueTable): void
+    protected static function send($project, $issue, array $people, string $slot, string $kind, int $n, string $due, array $def, CustomTable $issueTable, array $channels = []): void
     {
         $now = now();
         $rows = [];
         foreach ($people as $uid) {
             $rows[] = ['issue_id' => intval($issue->id), 'user_id' => $uid, 'slot' => $slot, 'created_at' => $now, 'updated_at' => $now];
+        }
+        foreach (array_keys($channels) as $ci) {
+            $rows[] = ['issue_id' => intval($issue->id), 'user_id' => 0, 'slot' => 'ch' . $ci . ':' . $slot, 'created_at' => $now, 'updated_at' => $now];
         }
         DB::table(static::LOG_TABLE)->insertOrIgnore($rows);
 
@@ -388,6 +420,12 @@ class PortalReminder
             }
         }
         // the mail or the Teams chat each one chose (PortalTeams)
-        PortalTeams::sendTo($people, $issueTable->table_name, intval($issue->id), 'remind', $key, $subject, [$line], $url, false, $title);
+        if (!empty($people)) {
+            PortalTeams::sendTo($people, $issueTable->table_name, intval($issue->id), 'remind', $key, $subject, [$line], $url, false, $title);
+        }
+        // the channels of the project (stage 1b)
+        if (!empty($channels)) {
+            PortalReminderRules::post(array_values($channels), $issue, $title, $subject, $line, $url);
+        }
     }
 }

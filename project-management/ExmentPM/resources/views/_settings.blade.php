@@ -334,6 +334,9 @@
             @if(!empty($schedule_url))
             <a href="{{ $schedule_url }}"><i class="fa fa-repeat"></i>{{ PortalDefinition::trans('sched.page_title') }}</a>
             @endif
+            @if(!empty($reminder_url))
+            <a href="{{ $reminder_url }}"><i class="fa fa-bell-o"></i>{{ PortalDefinition::trans('remind.page_title') }}</a>
+            @endif
         </nav>
 
         <div class="pp-set-pane">
