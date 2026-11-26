@@ -23,6 +23,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   チェックを強めました：新しい課題の種別のテンプレートは、見られるプロジェクトの分だけ。選ぶ画面の絞り込みは、ほかのテーブルを指す列だけ。「この課題をメールで送る」は 1 人 1 時間に 30 回まで。本文の「//」で始まるリンクは、このサイトのページとして扱わない。
 - The download of the issue list makes CSV or Excel (.xlsx), with every column of an issue (people by name, the creator and the updater, the description, the related issues …) or the columns of the list, in the list's filters and order. The file is made by the server, with the caller's permissions; in Excel the dates are dates, the head row is frozen and has a filter.
   課題の一覧のダウンロードで、CSV と Excel（.xlsx）を選べるようにしました。すべての項目（担当者などは名前、作成者・更新者・詳細・関連課題も）か、一覧と同じ項目を、今の絞り込みと並び順で出します。ファイルはサーバーで、使う人の権限で作ります。Excel では日付を日付として出し、見出しの行を固定してフィルターを付けます。
+- Opening a project you are not a member of (or one that is not there) shows a page that says so, with the way back to the top, instead of Exment's error page. The message of the migration that asks to replace the masters now names the option as the screen does.
+  参加していないプロジェクト（またはないプロジェクト）を開いたときは、Exment のエラーの画面でなく、そのことと、トップへ戻るボタンを出すようにしました。移行で「置き換え」を選ぶように出るメッセージを、画面の選択肢と同じ言葉にしました。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 

@@ -370,7 +370,7 @@ class Importer
             return;
         }
 
-        $this->errors[] = "「{$name}」の既存の行 {$conflict} 件が移行元と一致しません。置き換えてよければ「マスターを置き換える」を選んでください。";
+        $this->errors[] = "「{$name}」の既存の行 {$conflict} 件が移行元と一致しません。置き換えてよければ「" . \App\Plugins\ExmentPM\PortalDefinition::trans('migrate.master_replace') . "」を選んでください。";
     }
 
     /**
