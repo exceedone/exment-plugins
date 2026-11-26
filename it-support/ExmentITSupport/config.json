@@ -40,6 +40,7 @@
         { "method": "post", "uri": "ticket/{id}/merge", "function": "postMerge" },
         { "method": "post", "uri": "ticket/{id}/problem", "function": "postTicketProblem" },
         { "method": "post", "uri": "ticket/{id}/pm-issue", "function": "postPmIssue" },
+        { "method": "post", "uri": "ticket/{id}/quote", "function": "postQuote" },
         { "method": "get", "uri": "api/pm-projects", "function": "apiPmProjects", "middleware_except": ["admin.bootstrap", "admin.pjax"] },
         { "method": "post", "uri": "settings/catalog-templates", "function": "postCatalogTemplates" },
         { "method": "get", "uri": "approval/{id}", "function": "approval" },

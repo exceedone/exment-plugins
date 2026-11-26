@@ -46,8 +46,9 @@ class Schema
      * 10: the names of 9 on a site that had the tables: 「チケットの種類」 → 「受付箱」 (the
      *    table and its first column), and the menu's group 「ITサポート」 → 「サポート窓口」.
      * 11: the ticket's ExmentPM issue (pm_issue, "<project id>:<issue id>").
+     * 12: the ticket's quote of the sales pack (sales_quote) and trial key (trial_key, trial_until).
      */
-    const VERSION = 11;
+    const VERSION = 12;
 
     /** The menu's name (ISS02941: the IT support became the help desk). */
     const MENU_TITLE = 'サポート窓口';
@@ -238,6 +239,9 @@ class Schema
                     ['approval_state', '承認', 'select_valtext', ['valtext' => Catalog::APPROVAL_STATES, 'default' => 'none', 'index_enabled' => '1']],
                     ['approver', '承認する人', 'user', []],
                     ['pm_issue', 'ExmentPM の課題', 'text', ['help' => 'このチケットからできた ExmentPM の課題（プロジェクトの ID:課題の ID）。']],
+                    ['sales_quote', '見積', 'text', ['help' => 'このチケットからできた見積（営業のパックの「見積」の ID）。']],
+                    ['trial_key', '試用キー', 'text', ['help' => 'お客様に出した試用キー。返事の {trial_key} に入ります。']],
+                    ['trial_until', '試用の期限', 'date', ['help' => '返事の {trial_until} に入ります。']],
                 ],
             ],
             Its::T_MESSAGE => [

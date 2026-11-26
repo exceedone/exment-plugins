@@ -108,6 +108,11 @@ class PluginPage extends PluginPageBase
         return $this->desk()->postPmIssue(request(), $id);
     }
 
+    public function postQuote($id)
+    {
+        return $this->desk()->postQuote(request(), $id);
+    }
+
     public function apiPmProjects()
     {
         return $this->desk()->apiPmProjects();
