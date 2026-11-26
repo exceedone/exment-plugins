@@ -103,6 +103,16 @@ class PluginPage extends PluginPageBase
         return $this->desk()->postChatTest(request());
     }
 
+    public function postPmIssue($id)
+    {
+        return $this->desk()->postPmIssue(request(), $id);
+    }
+
+    public function apiPmProjects()
+    {
+        return $this->desk()->apiPmProjects();
+    }
+
     public function postMailTest()
     {
         return $this->desk()->postMailTest(request());

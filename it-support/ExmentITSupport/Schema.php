@@ -45,8 +45,9 @@ class Schema
      *    the ticket gets stage and progress; the inquiry boxes are added.
      * 10: the names of 9 on a site that had the tables: 「チケットの種類」 → 「受付箱」 (the
      *    table and its first column), and the menu's group 「ITサポート」 → 「サポート窓口」.
+     * 11: the ticket's ExmentPM issue (pm_issue, "<project id>:<issue id>").
      */
-    const VERSION = 10;
+    const VERSION = 11;
 
     /** The menu's name (ISS02941: the IT support became the help desk). */
     const MENU_TITLE = 'サポート窓口';
@@ -236,6 +237,7 @@ class Schema
                     ['catalog', '申請メニュー', 'select_table', ['select_target_table_name' => Its::T_CATALOG]],
                     ['approval_state', '承認', 'select_valtext', ['valtext' => Catalog::APPROVAL_STATES, 'default' => 'none', 'index_enabled' => '1']],
                     ['approver', '承認する人', 'user', []],
+                    ['pm_issue', 'ExmentPM の課題', 'text', ['help' => 'このチケットからできた ExmentPM の課題（プロジェクトの ID:課題の ID）。']],
                 ],
             ],
             Its::T_MESSAGE => [
