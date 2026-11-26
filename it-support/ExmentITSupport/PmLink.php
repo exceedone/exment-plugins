@@ -29,6 +29,14 @@ class PmLink
         return Feature::on(Feature::PM_LINK) && CustomTable::getEloquent(static::ISSUE_TABLE) !== null && CustomTable::getEloquent(static::PROJECT_TABLE) !== null;
     }
 
+    /** Whether the person may make an issue (the button shows only then; the server asks again). */
+    public static function canCreate(): bool
+    {
+        $table = CustomTable::getEloquent(static::ISSUE_TABLE);
+
+        return isset($table) && boolval($table->hasPermission(\Exceedone\Exment\Enums\Permission::AVAILABLE_EDIT_CUSTOM_VALUE));
+    }
+
     /** "12:345" → [12, 345], or null. */
     public static function parse($value): ?array
     {

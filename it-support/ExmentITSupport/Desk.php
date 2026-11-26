@@ -318,11 +318,13 @@ class Desk
             // 「ExmentPM の課題にする」 (ISS02941): the issue it became, or the projects to choose
             'pm_on' => PmLink::available(),
             'pm' => PmLink::available() ? PmLink::issueOf($ticket) : null,
+            'pm_can' => PmLink::available() && PmLink::canCreate(),
             // the quote and the trial key (ISS02941): by the kind of the ticket's box
             'box_kind' => Tickets::boxOf($v['category'] ?? null)['kind'],
             'sales_on' => SalesLink::on(),
             'quotes_on' => SalesLink::quotesAvailable(),
             'quote' => SalesLink::quotesAvailable() ? SalesLink::quoteOf($ticket) : null,
+            'quote_can' => SalesLink::quotesAvailable() && SalesLink::canCreateQuote(),
             'trial_key' => SalesLink::on() ? strval($v['trial_key'] ?? '') : '',
             'trial_until' => SalesLink::on() ? strval($v['trial_until'] ?? '') : '',
             'customer_visible' => boolval($v['customer_visible'] ?? '1'),
