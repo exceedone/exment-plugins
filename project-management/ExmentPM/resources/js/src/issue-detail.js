@@ -1838,7 +1838,7 @@
                 (f.img && imgSrcOk(f.url) ? '<img src="' + esc(f.url) + '" alt="' + esc(f.name) + '">'
                        : '<span class="ic"><i class="fa fa-file-o"></i></span>') +
                 '</a></div>' +
-                '<div class="v"><a class="n" href="' + href + '" target="_blank" rel="noopener">' + esc(f.name) + '</a>' + officeViewBtn(f) +
+                '<div class="v"><a class="n" href="' + href + '" target="_blank" rel="noopener">' + esc(f.name) + '</a>' + officeViewBtn(f) + attachTools(f, res) +
                 '<span class="mt">' + esc(user(f.by).n) + ' · ' + esc(f.at) + '</span></div></div>';
         }).join('');
     }
