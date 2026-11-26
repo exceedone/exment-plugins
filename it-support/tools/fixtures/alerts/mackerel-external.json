@@ -1,0 +1,20 @@
+{
+  "orgName": "Example",
+  "event": "alert",
+  "imageUrl": null,
+  "memo": "",
+  "type": "external",
+  "message": "",
+  "alert": {
+    "id": "3Qfa8xXmx9N",
+    "url": "https://mackerel.io/alerts/3Qfa8xXmx9N",
+    "status": "critical",
+    "isOpen": true,
+    "trigger": "monitor",
+    "openedAt": 1795742400,
+    "closedAt": null,
+    "statusChangedAt": 1795742400,
+    "duration": 1,
+    "monitorName": "https://www.example.co.jp/"
+  }
+}

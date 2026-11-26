@@ -946,6 +946,11 @@ class Desk
             'publicHome' => Its::publicUrl(),
             'intakeAlert' => Its::publicUrl('intake', 'alert'),
             'intakeMail' => Its::publicUrl('intake', 'mail'),
+            'sources' => IntakeSources::all(),
+            'sourcesReady' => IntakeSources::ready(),
+            'sourceKinds' => \App\Plugins\ExmentITSupport\Alerts\Adapters::KINDS,
+            'onResolvedOptions' => \App\Plugins\ExmentITSupport\Alerts\Rules::ON_RESOLVED,
+            'newSource' => session('its_new_source'),
             'mailFrom' => Mailer::fromAddress(),
             'portalDoorShut' => !Feature::on(Feature::PORTAL),
             'featureUrl' => Feature::manageUrl(),
@@ -959,8 +964,8 @@ class Desk
         }
         $values = [];
         foreach (array_keys(Its::DEFAULTS) as $key) {
-            if ($key === 'intake_key') {
-                continue;
+            if (in_array($key, ['intake_key', 'alert_shared_key'], true)) {
+                continue; // their own buttons
             }
             if ($key === 'imap_password') {
                 // Empty means "keep the one saved".
@@ -1024,6 +1029,76 @@ class Desk
         Its::saveSettings(['intake_key' => bin2hex(random_bytes(24))]);
 
         return $this->back(Its::url('settings'), '新しいキーを作りました。監視の道具の設定も変えてください。');
+    }
+
+    // ---- the senders of alerts (ISS02928) --------------------------------
+
+    public function postIntakeSource(Request $request)
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        if (!IntakeSources::ready()) {
+            return $this->back(Its::url('settings'), 'セットアップの「テーブルを更新」を押してから作ってください。', true);
+        }
+        $kind = strval($request->get('kind', 'generic'));
+        if (!array_key_exists($kind, \App\Plugins\ExmentITSupport\Alerts\Adapters::KINDS)) {
+            return $this->back(Its::url('settings'), '監視の道具を選んでください。', true);
+        }
+        $made = IntakeSources::create(strval($request->get('name', '')), $kind);
+        // Shown once, on the next page only: the database keeps the hash.
+        session()->flash('its_new_source', ['id' => $made['id'], 'key' => $made['key'], 'secret' => $made['secret']]);
+
+        return $this->back(Its::url('settings') . '#its-sources', '送り元を作りました。キーは今だけ表示します。設定を確かめて「使う」にしてください。');
+    }
+
+    public function postIntakeSourceUpdate(Request $request, $id)
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        $source = IntakeSources::find(intval($id));
+        if (!isset($source)) {
+            return $this->back(Its::url('settings'), '送り元が見つかりません。', true);
+        }
+        $action = strval($request->get('do', 'save'));
+        if ($action === 'delete') {
+            IntakeSources::delete(intval($source->id));
+
+            return $this->back(Its::url('settings') . '#its-sources', '送り元「' . $source->name . '」を消しました。そのキーは、もう使えません。');
+        }
+        if ($action === 'renew') {
+            $made = IntakeSources::renew(intval($source->id));
+            session()->flash('its_new_source', ['id' => intval($source->id), 'key' => $made['key'], 'secret' => $made['secret']]);
+
+            return $this->back(Its::url('settings') . '#its-sources', '新しいキーを作りました。前のキーは、もう使えません。監視の道具の設定も変えてください。');
+        }
+        $ips = strval($request->get('allowed_ips', ''));
+        if (!IntakeSources::validIpList($ips)) {
+            return $this->back(Its::url('settings') . '#its-sources', '送り元の IP アドレスは、1 行に 1 つ（192.0.2.10 や 192.0.2.0/24 の形）で書いてください。', true);
+        }
+        IntakeSources::update(intval($source->id), [
+            'name' => $request->get('name', $source->name),
+            'enabled' => $request->get('enabled') === '1',
+            'require_signature' => $request->get('require_signature') === '1',
+            'link_asset' => $request->get('link_asset') === '1',
+            'on_resolved' => $request->get('on_resolved', 'note'),
+            'flap_minutes' => $request->get('flap_minutes', 0),
+            'allowed_ips' => $ips,
+        ]);
+
+        return $this->back(Its::url('settings') . '#its-sources', '送り元「' . $source->name . '」を保存しました。');
+    }
+
+    public function postAlertSharedKey(Request $request)
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        $on = $request->get('alert_shared_key') === '1';
+        Its::saveSettings(['alert_shared_key' => $on ? '1' : '0']);
+
+        return $this->back(Its::url('settings') . '#its-sources', $on ? '共有のキーでも、アラートを受けます。' : '共有のキーでは、アラートを受けません（メールの受け口は今までどおり）。');
     }
 
     public function setup()

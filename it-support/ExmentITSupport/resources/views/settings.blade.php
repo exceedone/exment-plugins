@@ -99,20 +99,76 @@
         </div>
     </div>
 
-    <div class="its-card">
+    <div class="its-card" id="its-sources">
         <h3><i class="fa fa-bell" aria-hidden="true"></i>監視・エラーログから起票</h3>
         @include($Its::view('_feature_note'))
-        <div class="its-sub">監視の道具（Zabbix・Mackerel・Uptime Kuma・アプリのログなど）から次の URL に送ると、チケットになります。同じエラーは 1 件にまとめ、回数を数えます。できたチケットは、最初はお客様に見せません。</div>
+        <div class="its-sub">監視の道具（Zabbix・Mackerel・Prometheus Alertmanager・Azure Monitor・アプリのログなど）から次の URL に送ると、チケットになります。同じ問題は 1 件にまとめ、回数を数えます。できたチケットは、最初はお客様に見せません。</div>
         <dl class="its-props">
             <dt>URL</dt><dd><code class="its-codeline">{{ $intakeAlert }}</code></dd>
+        </dl>
+
+        <h4 style="margin-top:14px">送り元（監視の道具ごとのキー）</h4>
+        <div class="its-sub">送り元ごとにキーを作ります。キーは作ったときに 1 回だけ出ます（保存するのはハッシュだけ）。作った送り元は「使わない」なので、設定を確かめてから「使う」にしてください。キーは、ヘッダー <code>X-ITS-Key</code>・<code>Authorization: Bearer</code>・URL の Basic 認証（<code>https://its:キー@…</code>）・URL の <code>?key=</code> のどれでも送れます。道具ごとの設定は、README の「監視の道具とつなぐ」を見てください。</div>
+
+        @if(!empty($newSource))
+        <div class="its-flash" role="status"><i class="fa fa-key" aria-hidden="true"></i><div>
+            <b>新しいキー（この画面を離れると、もう出ません）</b>
+            <dl class="its-props">
+                <dt>キー</dt><dd><code class="its-codeline">{{ $newSource['key'] }}</code></dd>
+                <dt>署名の秘密（署名を使うときだけ）</dt><dd><code class="its-codeline">{{ $newSource['secret'] }}</code></dd>
+            </dl>
+        </div></div>
+        @endif
+
+        @if(!$sourcesReady)
+        <div class="its-sub">送り元のテーブルがまだありません。セットアップの画面で「テーブルを更新」を押してください。</div>
+        @else
+        @foreach($sources as $src)
+        <form method="post" action="{{ $Its::url('settings', 'intake-source', $src->id) }}" class="its-card" style="margin:10px 0;padding:10px">@csrf
+            <div class="its-row" style="justify-content:space-between">
+                <b>{{ $src->name }}</b>
+                <span class="its-sub">{{ $sourceKinds[$src->kind] ?? $src->kind }}・キー {{ $src->key_hint }}…・{{ $src->enabled ? '使う' : '使わない' }}・受けた数 {{ $src->use_count }}@if($src->last_used_at)（最後 {{ $src->last_used_at }}）@endif</span>
+            </div>
+            <div class="its-form-grid">
+                <label for="src{{ $src->id }}-name">名前</label><input type="text" id="src{{ $src->id }}-name" name="name" value="{{ $src->name }}" maxlength="100">
+                <label for="src{{ $src->id }}-on">使う</label><label class="its-check"><input type="checkbox" class="its-sw" id="src{{ $src->id }}-on" name="enabled" value="1" @checked($src->enabled)> このキーで受ける</label>
+                <label for="src{{ $src->id }}-res">復旧の知らせ</label><select id="src{{ $src->id }}-res" name="on_resolved">@foreach($onResolvedOptions as $k => $l)<option value="{{ $k }}" @selected($src->on_resolved === $k)>{{ $l }}</option>@endforeach</select>
+                <label for="src{{ $src->id }}-flap">ばたつき</label><span class="its-row"><input type="number" id="src{{ $src->id }}-flap" name="flap_minutes" value="{{ $src->flap_minutes }}" min="0" max="1440" style="width:90px"> 分以内にまた起きたら、同じチケットを開け直す（0：しない）</span>
+                <label for="src{{ $src->id }}-asset">IT 資産</label><label class="its-check"><input type="checkbox" class="its-sw" id="src{{ $src->id }}-asset" name="link_asset" value="1" @checked($src->link_asset)> ホスト名・IP アドレスで IT 資産を探してつなぐ</label>
+                <label for="src{{ $src->id }}-sig">署名</label><label class="its-check"><input type="checkbox" class="its-sw" id="src{{ $src->id }}-sig" name="require_signature" value="1" @checked($src->require_signature)> 署名のない知らせは受けない（汎用・Zabbix。<code>X-ITS-Timestamp</code>・<code>X-ITS-Signature</code>）</label>
+                <label for="src{{ $src->id }}-ips">送り元の IP</label><textarea id="src{{ $src->id }}-ips" name="allowed_ips" rows="2" placeholder="空：どこからでも。1 行に 1 つ（192.0.2.10、192.0.2.0/24）">{{ $src->allowed_ips }}</textarea>
+            </div>
+            <div class="its-row" style="margin-top:8px">
+                <button class="its-btn small" type="submit" name="do" value="save"><i class="fa fa-save" aria-hidden="true"></i>保存</button>
+                <button class="its-btn small" type="submit" name="do" value="renew" onclick="return confirm('今のキーは使えなくなります。よろしいですか？')"><i class="fa fa-refresh" aria-hidden="true"></i>キーを作り直す</button>
+                <button class="its-btn small danger" type="submit" name="do" value="delete" onclick="return confirm('この送り元を消します。キーは使えなくなります（できたチケットは残ります）。よろしいですか？')"><i class="fa fa-trash" aria-hidden="true"></i>消す</button>
+            </div>
+        </form>
+        @endforeach
+        <form method="post" action="{{ $Its::url('settings', 'intake-source') }}" class="its-row" style="margin-top:10px">@csrf
+            <select name="kind" aria-label="監視の道具">@foreach($sourceKinds as $k => $l)<option value="{{ $k }}">{{ $l }}</option>@endforeach</select>
+            <input type="text" name="name" placeholder="名前（例：本社の Zabbix）" maxlength="100" aria-label="名前">
+            <button class="its-btn small" type="submit"><i class="fa fa-plus" aria-hidden="true"></i>送り元を作る</button>
+        </form>
+        @endif
+
+        <h4 style="margin-top:16px">共有のキー（前からの送り方）</h4>
+        <div class="its-sub">1.0.9 までの、1 つのキーです。メールの受け口 <code>{{ $intakeMail }}</code>（Postfix のパイプなど、元のメールをそのまま POST）は、このキーを使います。アラートは、上の送り元のキーに切りかえてください。</div>
+        <dl class="its-props">
             <dt>キー（ヘッダー <code>X-ITS-Key</code>）</dt><dd><code class="its-codeline">{{ $s['intake_key'] }}</code></dd>
         </dl>
 <pre class="its-code">curl -X POST {{ $intakeAlert }} \
- -H "X-ITS-Key: {{ $s['intake_key'] }}" \
+ -H "X-ITS-Key: （キー）" \
  -H "Content-Type: application/json" \
  -d '{"title":"Disk full on web01","source":"web01.example.co.jp","severity":"error","detail":"/var 98%"}'</pre>
-        <div class="its-sub">ほかの項目: <code>fingerprint</code>（まとめる印）・<code>customer</code>（お客様コード）。メールを直接送る仕組み（Postfix のパイプなど）は <code>{{ $intakeMail }}</code> に元のメールをそのまま POST します。</div>
-        <form method="post" action="{{ $Its::url('settings', 'intake-key') }}" style="margin-top:12px" onsubmit="return confirm('今のキーは使えなくなります。よろしいですか？')">@csrf<button class="its-btn small danger" type="submit"><i class="fa fa-refresh" aria-hidden="true"></i>キーを作り直す</button></form>
+        <div class="its-row" style="margin-top:12px">
+            <form method="post" action="{{ $Its::url('settings', 'alert-shared-key') }}">@csrf
+                <input type="hidden" name="alert_shared_key" value="{{ $s['alert_shared_key'] === '1' ? '0' : '1' }}">
+                <button class="its-btn small" type="submit">{{ $s['alert_shared_key'] === '1' ? '共有のキーではアラートを受けない' : '共有のキーでもアラートを受ける' }}</button>
+            </form>
+            <form method="post" action="{{ $Its::url('settings', 'intake-key') }}" onsubmit="return confirm('今のキーは使えなくなります。よろしいですか？')">@csrf<button class="its-btn small danger" type="submit"><i class="fa fa-refresh" aria-hidden="true"></i>共有のキーを作り直す</button></form>
+        </div>
+        <div class="its-sub">今：共有のキーで{{ $s['alert_shared_key'] === '1' ? 'もアラートを受けます' : 'は、アラートを受けません' }}。</div>
     </div>
 
     <div class="its-card">

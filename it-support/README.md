@@ -83,11 +83,68 @@ Exment の **管理者設定 → 機能の管理** に、ITサポートの入口
 
 受付箱を「使わない」にすると、メニューの「ITサポート」も消えます。チケットなどのテーブルはデータとして残り、Exment のふつうのテーブルとして URL（`/admin/data/its_ticket` など）や **管理者設定 → カスタムテーブル** から開けます。メニューに出したいときは、**管理者設定 → メニュー** でテーブルを足してください。見せたくないときは、役割グループでテーブルの権限を外してください。
 
-### 監視・エラーログから起票する
+### 監視の道具とつなぐ（監視・エラーログから起票する）
 
+**Unreleased / 未リリース**（ISS02928）: Zabbix・Mackerel・Prometheus Alertmanager・Azure Monitor の知らせを、そのまま受けられるようにしました。送り元ごとのキー、復旧の知らせで閉じる、IT 資産につなぐ、ばたつきをまとめる、も足しました。
+
+送り先の URL は 1 つです：`https://あなたの Exment/support/intake/alert`。受付箱と「お客様の窓口」の機能がオンのときだけ動きます。
+
+#### 1. 送り元を作る
+1. ITサポートの **設定** →「監視・エラーログから起票」の **送り元** で、監視の道具を選び、名前を入れて **送り元を作る** を押します。
+2. **キー** と **署名の秘密** が 1 回だけ出ます。控えてください（IT Support にはハッシュだけが残ります。なくしたら **キーを作り直す**）。
+3. 送り元の設定を決めて、**使う** にして **保存** します。作ったばかりの送り元は「使わない」です。
+
+| 設定 | 中身 | はじめ |
+|---|---|---|
+| 使う | このキーで受けるか | 使わない |
+| 復旧の知らせ | 「復旧しました」を書くだけ／書いて「解決」にする／書いて「完了」にする | 書くだけ |
+| ばたつき | 復旧（解決・完了）のあと、この分のうちにまた起きたら、新しいチケットにせず同じチケットを開け直す（タグ「ばたつき」）。0 でしない | 30 分 |
+| IT 資産 | ホスト名・IP アドレスで IT 資産を探して、チケットにつなぐ。資産にお客様があれば、チケットのお客様にもする | つなぐ |
+| 署名 | 署名のない知らせを受けない（汎用と Zabbix だけ。下の 7） | 署名なしも受ける |
+| 送り元の IP | ここに書いたアドレス・範囲（`192.0.2.0/24`）からだけ受ける。空はどこからでも | 空 |
+
+- キーの送り方は 4 つです。道具に合うものを使います：ヘッダー `X-ITS-Key: キー`、`Authorization: Bearer キー`、URL の Basic 認証（`https://its:キー@あなたの Exment/support/intake/alert`）、URL の `?key=キー`。URL に入れるときは、アクセスログに残ることがあるので、送り元の IP もしぼってください。
+- 送り元を **消す** と、そのキーはすぐ使えなくなります。できたチケットは残ります。
+- 同じ問題（下の「同じ問題とみなすもの」）は 1 件にまとめ、回数を数えます（2・10・100・1000 回目にメモ）。できたチケットは、はじめはお客様に見せません。
+- 「復旧しました」のメモは、ばたつきの分（1 分より短いときは 1 分）に 1 回だけ書きます。開いているチケットがない復旧の知らせは、何もしません。
+
+#### 2. Zabbix（6.0 以降）
+1. Zabbix の **通知 → メディアタイプ → 作成**：タイプ **Webhook**。スクリプトに `it-support/tools/zabbix/exment-it-support-webhook.js` の中身を貼ります。
+2. パラメーター（名前 = 値）：`its_url` = 上の URL、`its_key` = キー、`its_secret` = 署名の秘密（署名を使わないときは空）、`event_value` = `{EVENT.VALUE}`、`event_id` = `{EVENT.ID}`、`trigger_id` = `{TRIGGER.ID}`、`subject` = `{ALERT.SUBJECT}`、`message` = `{ALERT.MESSAGE}`、`host` = `{HOST.HOST}`、`host_ip` = `{HOST.IP}`、`event_severity` = `{EVENT.SEVERITY}`、`event_nseverity` = `{EVENT.NSEVERITY}`、`event_tags` = `{EVENT.TAGS}`、`event_opdata` = `{EVENT.OPDATA}`、`event_url` = `{$ZABBIX.URL}/tr_events.php?triggerid={TRIGGER.ID}&eventid={EVENT.ID}`（`{$ZABBIX.URL}` はグローバルマクロで作ります）。お客様が決まっているときは `customer` = お客様コード。
+3. **タグの処理**（Process tags）をオンにすると、問題にタグ `its_ticket` = チケット番号が付きます。
+4. メッセージのテンプレートに「問題」と「問題の復旧」を作ります。ユーザーのメディアにこのメディアタイプを足し、アクションの「実行内容」と「復旧時の実行内容」で送ります。
+- 同じ問題とみなすもの：トリガーの ID。
+
+#### 3. Mackerel
+1. Mackerel の **チャンネル → 通知グループ** で **Webhook** のチャンネルを作ります。
+2. URL に `https://its:キー@あなたの Exment/support/intake/alert`（Basic 認証）か `…/support/intake/alert?key=キー` を入れます。Mackerel の Webhook には署名がありません。送り元の IP に Mackerel の送信元のアドレスを書くと安全です。
+3. 通知する内容は「アラート」です。ほかの知らせ（テストなど）は受けても何もしません。
+- 同じ問題とみなすもの：ホスト（外形監視などホストがないときはアラートの種類）と、監視の名前。`status` が `ok`、または `isOpen` が `false` の知らせを復旧とみなします。
+
+#### 4. Prometheus Alertmanager
+```yaml
+receivers:
+  - name: exment-its
+    webhook_configs:
+      - url: https://あなたの Exment/support/intake/alert
+        send_resolved: true
+        http_config:
+          authorization:
+            type: Bearer
+            credentials: キー
+```
+- 1 回の知らせに入っている、いくつかのアラート（50 まで）を 1 つずつ扱います。
+- 同じ問題とみなすもの：アラートの `fingerprint`（ラベルから作られる印）。ホストは `instance`（ポートを除く）、`host`・`hostname`・`nodename` のラベル。件名は注釈の `summary`、なければ `alertname`。重要度はラベルの `severity`、お客様はラベルの `customer`。
+
+#### 5. Azure Monitor
+1. **アクショングループ** に **Webhook** のアクションを足します。URI は `https://あなたの Exment/support/intake/alert?key=キー`。**共通アラートスキーマを有効にする** を「はい」にします。
+2. アラートルールで、そのアクショングループを使います。
+- 同じ問題とみなすもの：アラートルールと対象のリソース。`monitorCondition` が `Resolved` の知らせを復旧とみなします。重要度は Sev0 → 緊急、Sev1 → 高、Sev2 → 中、Sev3・Sev4 → 低。ホストは `configurationItems` の 1 つめ。
+
+#### 6. 汎用（JSON）・アプリのログ
 ```sh
 curl -X POST https://あなたの Exment/support/intake/alert \
-  -H "X-ITS-Key: （設定画面のキー）" \
+  -H "X-ITS-Key: キー" \
   -H "Content-Type: application/json" \
   -d '{"title":"Disk full on web01","source":"web01.example.co.jp","severity":"error","detail":"/var 98%"}'
 ```
@@ -95,12 +152,26 @@ curl -X POST https://あなたの Exment/support/intake/alert \
 | 項目 | 意味 |
 |---|---|
 | `title`（必須） | 件名 |
-| `source` | 発生元。ドメインがお客様の「メールのドメイン」と合えば、そのお客様のチケットになる |
-| `severity` | critical / error / warning … → 優先度 |
-| `fingerprint` | 同じエラーをまとめる印（なければ発生元と件名の数字を除いたものから作る） |
+| `source` | 発生元（ホスト名・URL）。ドメインがお客様の「メールのドメイン」と合えば、そのお客様のチケットになる。IT 資産を探すのにも使う |
+| `ip` | IP アドレス（IT 資産を探す） |
+| `severity` | critical / error / warning / info … → 優先度 |
+| `status` | `resolved`・`ok`・`recovered` などで復旧 |
+| `fingerprint` | 同じ問題をまとめる印（なければ、発生元と件名の数字を除いたものから作る） |
 | `customer` | お客様コード |
+| `url` | 監視の画面への URL（http・https だけ） |
 
-Postfix のパイプなど、元のメールをそのまま送れる仕組みからは `/support/intake/mail` に POST できます（同じキー）。
+#### 7. 署名（汎用・Zabbix）
+送り元の「署名」をオンにすると、次の 2 つのヘッダーがない知らせ、合わない知らせ、5 分より前・後の知らせを受けません。
+- `X-ITS-Timestamp`: 送る時刻（UNIX 時間の秒）
+- `X-ITS-Signature`: `sha256=` と、「時刻 + `.` + 本文」を署名の秘密で HMAC-SHA256 した 16 進数
+
+#### 8. IT 資産につなぐ
+IT 資産の「名前」がホスト名か、ホスト名の最初の部分（`web01.example.co.jp` の `web01`）と同じとき、または「場所・IP アドレス」に IP アドレスかホスト名が 1 語として書いてあるとき、その資産をチケットにつなぎます。
+
+#### 前からの共有のキー
+1.0.9 までの 1 つのキー（設定の「共有のキー」）は、メールの受け口 `/support/intake/mail` に使います。前から使っているサイトでは、アラートも今までどおり受けます（復旧などの新しい動きはしません）。**共有のキーではアラートを受けない** で止められます。新しくセットアップしたサイトでは、はじめから受けません。
+
+Postfix のパイプなど、元のメールをそのまま送れる仕組みからは `/support/intake/mail` に POST できます（共有のキー）。
 
 ## 安全のための決まり
 
@@ -144,6 +215,8 @@ An IT support / help desk plugin for Exment. Requests from customers (mail, a pu
 **Install**: upload the zip in **Admin settings → Plugins**, open **ITサポート** and press **セットアップする**, then fill in the mailbox in **設定**. Agents go in the role group **ITサポート 担当者**, logged-in customers in **ITサポート お客様**. Customers use `https://your-exment/support`. The left menu has one entry, **ITサポート**, which opens the desk; the tables are opened from the desk's top bar and from **設定** (1.0.7 folds the folder of 1.0.6 into that one entry the first time the desk is opened, keeping any menu an administrator added). The automation runs every five minutes through Exment's scheduler.
 
 **Feature management** (Exment versions that have it): IT Support adds two features, *desk* and *customer portal* (the portal needs the desk). New installs start with both off; sites that had the plugin before keep them on. Turning the desk off stops the desk, the portal and the batch, and its menu entry, but the tables (tickets and so on) stay as data and can still be opened as ordinary Exment tables (by URL such as `/admin/data/its_ticket`, from the custom table list, or from a menu an administrator adds); to hide them, remove the table permissions in the role groups.
+
+**Monitoring tools** (Unreleased, ISS02928): `/support/intake/alert` reads what Zabbix (the media type in `it-support/tools/zabbix/`), Mackerel, Prometheus Alertmanager and Azure Monitor (common alert schema) send, as well as the generic JSON. Each sender has its own key (shown once, kept as a hash, turned off or deleted alone), sent as `X-ITS-Key`, a bearer token, the password of basic auth or `?key=`, and may be limited to its addresses and, for the generic JSON and Zabbix, an HMAC-SHA256 signature (`X-ITS-Timestamp`, `X-ITS-Signature: sha256=hex(hmac(secret, timestamp + "." + body))`). A new sender is off until an administrator turns it on. A recovery writes "recovered" on the ticket of the same problem and, if the sender is set so, resolves or closes it; a problem back within the sender's minutes after its ticket ended opens the same ticket again (flapping); the IT asset is found by host name or IP address. The old shared key keeps working for `/support/intake/mail` and, on sites that had it, for alerts as before. `php it-support/tools/test-alert-intake.php` checks the tools' sample bodies.
 
 **No-login pages**: Exment does not let a plugin's `config.json` open a route without login, on purpose. A help desk needs a door for people without an account, so this plugin registers `/support/...` itself while Exment boots (`PublicRoutes.php`), the same idea as Exment's public form: the secret in the URL opens one thing and nothing else.
 

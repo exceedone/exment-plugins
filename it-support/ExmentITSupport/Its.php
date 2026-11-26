@@ -167,8 +167,11 @@ class Its
         // Mail whose From is not shown to be the sender's (see Inbox::senderUnproven).
         'mail_auth' => 'require',
         'mail_authserv_id' => '',
-        // Error-log intake.
+        // Error-log intake: the old shared key (also the key of /support/intake/mail).
         'intake_key' => '',
+        // Whether the shared key still takes alerts. Sites from before the
+        // senders of ISS02928 keep it; a new setup turns it off (Schema::install).
+        'alert_shared_key' => '1',
         // Text shown on the public pages.
         'portal_title' => 'ITサポート窓口',
         'portal_message' => 'パソコン・Webサイト・システムのご依頼やお困りごとをお送りください。担当者から返事をお送りします。',
