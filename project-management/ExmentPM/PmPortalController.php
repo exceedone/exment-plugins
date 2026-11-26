@@ -1287,10 +1287,59 @@ class PmPortalController extends AdminControllerBase
             $notice_url,
             $this->wantsMail($request)
         );
+        // ISS02931: "also by Teams" - to the people of these bells who would not get it anyway.
+        if ($this->wantsTeams($request)) {
+            PortalNotifyTo::teamsAfterResponse(
+                $issue_name,
+                $issue,
+                $bell_mark,
+                \Exment::getUserId(),
+                'updated',
+                $this->issueKey($project, $issue->id),
+                strval(array_get($issue->value, array_get($this->def['issue'], 'subject'), '')),
+                $lines,
+                $notice_url,
+                intval($project->id)
+            );
+        }
 
         // Answer with the refreshed detail so the screen patches itself -
         // a reload would cost another framework boot for data we already have.
-        return $this->issueDetailResponse($project, $issue->id);
+        // ISS02931: with who got a mail and who a Teams message, which the
+        // writer is told (「メールで知らせた: 山田」).
+        return response()->json(array_merge(
+            ['ok' => true, 'notice_to' => $this->noticeTo($issue_name, $issue, $bell_mark, $request, intval($project->id))],
+            $this->issueDetailBody($project, $issue->id)
+        ));
+    }
+
+    /**
+     * Who of the people the bells of this write went to gets it by mail and
+     * who by Teams, by name. Empty lists when nobody does, or when it cannot
+     * be told (the write is saved either way).
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $issue
+     * @return array{mail: array<int, string>, teams: array<int, string>}
+     */
+    protected function noticeTo(string $issue_name, $issue, int $bell_mark, Request $request, int $project_id): array
+    {
+        try {
+            $targets = PortalMail::bellTargets($issue_name, intval($issue->id), $bell_mark, \Exment::getUserId());
+            $plan = PortalNotifyTo::plan($targets, $this->wantsMail($request), $this->wantsTeams($request), $project_id);
+            $names = $this->usersFor(array_merge($plan['mail'], $plan['teams']));
+            $name = function ($id) use ($names) {
+                return strval(array_get($names, strval($id) . '.n', ''));
+            };
+
+            return [
+                'mail' => array_values(array_filter(array_map($name, $plan['mail']))),
+                'teams' => array_values(array_filter(array_map($name, $plan['teams']))),
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('pm_portal notice list for issue ' . $issue->id . ' failed: ' . $e->getMessage());
+
+            return ['mail' => [], 'teams' => []];
+        }
     }
 
     /**
@@ -1772,6 +1821,16 @@ class PmPortalController extends AdminControllerBase
         $flag = $request->input('notify_mail');
 
         return is_scalar($flag) && in_array(strval($flag), ['1', 'true', 'on'], true);
+    }
+
+    /**
+     * Whether the writer ticked "also send by Teams" (ISS02931).
+     */
+    public function wantsTeams(Request $request): bool
+    {
+        $flag = $request->input('notify_teams');
+
+        return PortalTeams::teamsAvailable() && is_scalar($flag) && in_array(strval($flag), ['1', 'true', 'on'], true);
     }
 
     /**
@@ -3094,6 +3153,15 @@ class PmPortalController extends AdminControllerBase
             // anything moved while it was sitting open.
             'stamp' => $this->projectStampValue($project),
             'users' => $this->usersFor($user_ids),
+            // ISS02931: where each person of the project gets a notice besides
+            // the bell (user id => {mail, teams}), shown on the chips of the
+            // comment dock; one query for all of them.
+            'notify_by' => (object) PortalNotifyTo::channels(array_merge(
+                [intval(array_get($project->value, array_get($pj, 'manager')))],
+                collect($member_ids)->all(),
+                collect($viewer_ids)->all()
+            ), intval($project->id)),
+            'notify_teams' => PortalTeams::teamsAvailable(),
             'statuses' => $statuses,
             'types' => $type_meta,
             'priorities' => $priority_meta,

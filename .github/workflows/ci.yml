@@ -124,12 +124,22 @@ jobs:
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
 
+      - name: Simple or full issue screen (ExmentPM)
+        run: node project-management/tools/test-pm-simple.js
+      # Where each person's notice arrives (ISS02931): the chips, and the rule of the server.
+      - name: Notice channels (ExmentPM)
+        run: |
+          node project-management/tools/test-pm-notify-to.js
+          php project-management/tools/test-pm-notify-to.php
+
       - name: Recent updates pages (ExmentPM)
         run: php project-management/tools/test-pm-feed.php
 
       # The messages of the chat channels of a project (ExmentPM, plain PHP)
       - name: Chat channels (ExmentPM)
         run: php project-management/tools/test-pm-channels.php
+      - name: Simple by default (ExmentPM schema 30)
+        run: php project-management/tools/test-pm-features.php
 
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)

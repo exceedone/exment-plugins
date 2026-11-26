@@ -2744,12 +2744,14 @@ window.PmPortalBoot = function () {
             qfSummary(i, res) +
             '<span class="it" data-sum="dd"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
-            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>' +
+            dmodeButton() + '</div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
                 : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>' +
             '<div class="pp-rxrow">' + rxBar(D.issue_table, i.id, res.reactions) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
         ppDbarFill(i);
+        dmodeApply();
         linkifyIssueRefs(document.querySelector('#pp-d-main .bl-desc'));
         // The quote button carries the description as words, not markup, and
         // the rendered block is the shortest way to those words.
@@ -2870,9 +2872,9 @@ window.PmPortalBoot = function () {
         }
 
         var p = D.project;
-        var people = [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
+        var people = notifyOrder(i, [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
             return v && a.indexOf(v) === x && String(v) !== String(D.me);
-        });
+        }), notifyRecent());
         document.getElementById('pp-notify-chips').innerHTML = people.map(function (u) {
             var on = keepNotify && keepNotify.indexOf(String(u)) >= 0;
             return '<span class="bl-chip has-av' + (on ? '' : ' off') + ' pp-notify" role="button" tabindex="0" data-user="' + esc(u) + '">' + av(u) + esc(user(u).n) + '</span>';
@@ -2883,6 +2885,83 @@ window.PmPortalBoot = function () {
         cmtSetBusy(cmtBusy);
         ppDockFit();
     }
+    // M12: who is told is picked from the people most likely meant: the
+    // assignees and the author of the issue first, then the people picked
+    // before in this project (newest first), then the rest. Nobody is
+    // switched on for the reader - telling stays a choice.
+    function notifyRecentKey() {
+        return 'pmportal.notify.u' + String(D.me || 0) + '.p' + String((D.project && D.project.id) || 0);
+    }
+    function notifyRecent() {
+        try {
+            var v = JSON.parse(localStorage.getItem(notifyRecentKey()) || '[]');
+            return Array.isArray(v) ? v.map(String) : [];
+        } catch (e) { return []; }
+    }
+    function notifyRecentSave(ids) {
+        if (!ids || !ids.length) { return; }
+        var list = ids.map(String).concat(notifyRecent()).filter(function (v, x, a) { return v && a.indexOf(v) === x; }).slice(0, 12);
+        try { localStorage.setItem(notifyRecentKey(), JSON.stringify(list)); } catch (e) { /* ignore */ }
+    }
+    function notifyOrder(issue, people, recent) {
+        var first = [].concat((issue && issue.as) || [], issue && issue.by ? [issue.by] : []).map(String);
+        var rank = function (u) {
+            var s = String(u);
+            if (first.indexOf(s) >= 0) { return first.indexOf(s); }
+            if (recent.indexOf(s) >= 0) { return 100 + recent.indexOf(s); }
+            return 1000;
+        };
+        return people.map(function (u, n) { return { u: u, r: rank(u), n: n }; })
+            .sort(function (a, b) { return a.r - b.r || a.n - b.n; })
+            .map(function (e) { return e.u; });
+    }
+    /* ------------------------------------------------ simple / full ----- */
+    // The button map: an issue can show only the basics - subject, status,
+    // assignees, due date, the text and the comments (かんたん) - or
+    // everything (くわしく): the other fields, children, attachments, related
+    // issues. くわしく unless the person chose かんたん, so nobody loses what
+    // they see today; a one-time hint beside the switch says it is there.
+    // Each person's choice, kept in this browser per user.
+    function dmodeKey() { return 'pmportal.dmode.u' + String(D.me || 0); }
+    function dmodeHintKey() { return 'pmportal.dmode.hint.u' + String(D.me || 0); }
+    function dmodeSimple() {
+        try { return localStorage.getItem(dmodeKey()) === 'simple'; } catch (e) { return false; }
+    }
+    function dmodeHintShown() {
+        try { return localStorage.getItem(dmodeHintKey()) !== '1' && localStorage.getItem(dmodeKey()) === null; } catch (e) { return false; }
+    }
+    function dmodeHintDone() {
+        try { localStorage.setItem(dmodeHintKey(), '1'); } catch (e) { /* shown again next time */ }
+    }
+    function dmodeButton() {
+        var simple = dmodeSimple();
+        return '<span class="pp-dmode-wrap"><button type="button" class="pp-dmode" aria-pressed="' + (simple ? 'true' : 'false') + '" title="' + esc(simple ? L.dm_more_tip : L.dm_less_tip) + '">' +
+            '<i class="fa ' + (simple ? 'fa-plus-square-o' : 'fa-minus-square-o') + '"></i> ' + esc(simple ? L.dm_more : L.dm_less) + '</button>' +
+            (dmodeHintShown() ? '<span class="pp-dmode-hint" role="note">' + esc(L.dm_hint) +
+                ' <button type="button" class="x" aria-label="' + esc(L.m_close) + '" title="' + esc(L.m_close) + '">&times;</button></span>' : '') +
+            '</span>';
+    }
+    function dmodeApply() {
+        var box = document.querySelector('#pmportal .bl-detail') || document.querySelector('.bl-detail');
+        if (box) { box.classList.toggle('pp-simple', dmodeSimple()); }
+    }
+    function dmodeSet(simple) {
+        try { localStorage.setItem(dmodeKey(), simple ? 'simple' : 'full'); } catch (e) { /* the class still changes */ }
+        dmodeHintDone();
+        dmodeRedraw();
+    }
+    function dmodeRedraw() {
+        var wrap = document.querySelector('#pp-d-main .pp-dmode-wrap');
+        if (wrap) { wrap.outerHTML = dmodeButton(); }
+        dmodeApply();
+    }
+    document.addEventListener('click', function onPpDmode(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpDmode); return; }
+        var x = ev.target.closest && ev.target.closest('.pp-dmode-hint .x');
+        if (x) { ev.preventDefault(); dmodeHintDone(); dmodeRedraw(); return; }
+        var btn = ev.target.closest && ev.target.closest('.pp-dmode');
+        if (btn) { ev.preventDefault(); dmodeSet(!dmodeSimple()); }
+    });
     /* ------------------------------------------------ quick edit -------- */
     // Backlog changes an issue from the same form the comment is written in:
     // the fields that move day to day sit under the comment box, and one
@@ -2966,7 +3045,79 @@ window.PmPortalBoot = function () {
         var c = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
         n.textContent = c ? String(c) : '';
         n.hidden = !c;
+        ntRoutes();
     }
+    /* ------------------------------------------------ where it arrives -- */
+    // ISS02931: where each person's notice arrives besides the bell, which
+    // always rings: their own channels (D.notify_by: {mail, teams}) plus what
+    // the writer ticked for this one notice ("also by mail", "also by
+    // Teams"). Small icons on each chip with the words in its title, and one
+    // line under the chips for the people switched on. A payload without the
+    // channels (an older server) shows nothing.
+    function ntRoute(own, mailAll, teamsAll, teamsOn) {
+        if (!own || typeof own !== 'object') { return null; }
+        return {
+            mail: !!mailAll || !!own.mail,
+            teams: !!teamsOn && (!!teamsAll || !!own.teams)
+        };
+    }
+    function ntWords(r) {
+        return [L.nt_bell].concat(r.mail ? [L.nt_mail] : [], r.teams ? [L.nt_by_teams] : []).join('・');
+    }
+    function ntTicked(id) {
+        var box = document.getElementById(id);
+        return !!(box && box.checked);
+    }
+    function ntRoutes() {
+        var chips = document.querySelectorAll('#pp-notify-chips .pp-notify');
+        var line = document.getElementById('pp-notify-route');
+        var mailAll = ntTicked('pp-notify-mail');
+        var teamsAll = ntTicked('pp-notify-teams');
+        var byMail = [];
+        var byTeams = [];
+        var any = false;
+        Array.prototype.forEach.call(chips, function (c) {
+            var u = c.getAttribute('data-user');
+            var r = ntRoute(own(D.notify_by || {}, String(u)), mailAll, teamsAll, D.notify_teams);
+            var old = c.querySelector('.pp-nb');
+            if (old) { old.parentNode.removeChild(old); }
+            if (!r) { c.removeAttribute('title'); return; }
+            any = true;
+            c.setAttribute('title', fmt(L.nt_tip, user(u).n, ntWords(r)));
+            if (r.mail || r.teams) {
+                var s = document.createElement('span');
+                s.className = 'pp-nb';
+                s.setAttribute('aria-hidden', 'true');
+                s.innerHTML = (r.mail ? '<i class="fa fa-envelope-o"></i>' : '') + (r.teams ? '<i class="fa fa-commenting-o"></i>' : '');
+                c.appendChild(s);
+            }
+            if (!c.classList.contains('off')) {
+                if (r.mail) { byMail.push(user(u).n); }
+                if (r.teams) { byTeams.push(user(u).n); }
+            }
+        });
+        if (!line) { return; }
+        var on = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
+        line.hidden = !any || !on;
+        if (line.hidden) { line.textContent = ''; return; }
+        var parts = [];
+        if (byMail.length) { parts.push(fmt(L.nt_line_mail, byMail.join('、'))); }
+        if (byTeams.length) { parts.push(fmt(L.nt_line_teams, byTeams.join('、'))); }
+        line.textContent = parts.length ? parts.join(' ／ ') : L.nt_line_bell;
+        line.setAttribute('title', L.nt_others);
+    }
+    // What the server says it sent, for the toast after a post.
+    function ntSentText(to) {
+        if (!to) { return ''; }
+        var parts = [];
+        if (to.mail && to.mail.length) { parts.push(fmt(L.nt_sent_mail, to.mail.join('、'))); }
+        if (to.teams && to.teams.length) { parts.push(fmt(L.nt_sent_teams, to.teams.join('、'))); }
+        return parts.join(' ／ ');
+    }
+    document.addEventListener('change', function (ev) {
+        var id = ev.target && ev.target.id;
+        if (id === 'pp-notify-mail' || id === 'pp-notify-teams') { ntRoutes(); }
+    });
     function qeSelect(name, options, value, blank) {
         var sel = document.createElement('select');
         sel.className = 'bl-qe-in';
@@ -5612,6 +5763,7 @@ window.PmPortalBoot = function () {
         var notifyUsers = $('#pp-notify-chips .pp-notify:not(.off)').map(function () { return $(this).data('user'); }).get();
         var mailBox = document.getElementById('pp-notify-mail');
         var notifyMail = !!(mailBox && mailBox.checked);
+        var notifyTeams = ntTicked('pp-notify-teams');
         var current = function () { return detailCurrent(issueId, epoch); };
         var settled = function () {
             if (cmtPending[issueId] === sequence) { delete cmtPending[issueId]; }
@@ -5654,6 +5806,7 @@ window.PmPortalBoot = function () {
             var seq = ++DET_SEQ;
             var data = { comment: text, status_to: statusTo || '', notify_users: notifyUsers };
             if (notifyMail) { data.notify_mail = 1; }
+            if (notifyTeams) { data.notify_teams = 1; }
             if (review) { data.review = 1; }
             if (statusTo && statusFrom !== null) { data.status_from = statusFrom; }
             $.ajax({
@@ -5672,6 +5825,7 @@ window.PmPortalBoot = function () {
                 }
                 settled();
                 dockDraftClear(issueId, text);
+                notifyRecentSave(notifyUsers);
                 applyDetail(res, epoch, false, seq);
                 if (!statusOnly && alive() && String(currentIssue) === String(issueId)
                     && submittedBox === document.getElementById('pp-cmt-text')
@@ -5680,7 +5834,8 @@ window.PmPortalBoot = function () {
                     submittedBox._ppCmtOwner = null;
                 }
                 if (!current()) { return; }
-                toast(L.posted);
+                var sentTo = ntSentText(res.notice_to);
+                toast(L.posted + (sentTo ? ' ' + sentTo : ''));
                 ppDockMsg('', false);
                 var box = document.getElementById('pp-cmt-text');
                 if (!box.value) { cmtPreviewOff(); }
@@ -5692,6 +5847,8 @@ window.PmPortalBoot = function () {
                 document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
                 var mailNow = document.getElementById('pp-notify-mail');
                 if (mailNow) { mailNow.checked = false; }
+                var teamsNow = document.getElementById('pp-notify-teams');
+                if (teamsNow) { teamsNow.checked = false; }
                 if (!statusOnly) { rvAskSync(true); }
                 buildDetail(own(DET, String(issueId)) || res);
                 if (!box.value.trim()) { ppDockOpen(false); }
@@ -7717,6 +7874,23 @@ window.PmPortalBoot = function () {
             // issue was added (ISS02923)
             [null, x.due_time || null]
         ].filter(keep);
+        // M11: a new issue asks first for what one is filed with - who,
+        // by when, how urgent (and the title and text above). The rest -
+        // the status (it starts at the first one), milestone, category,
+        // start - folds under ほかの項目, which can be searched. A required
+        // field is never folded (nedRenderForm).
+        var newRows = null;
+        if (NED.mode === 'create') {
+            newRows = [
+                [c.assignees || null, c.due || null],
+                [c.priority || null, x.due_time || null]
+            ].filter(keep);
+        }
+        var newMore = NED.mode === 'create' ? [
+            [c.status || null, c.milestone || null],
+            [c.category || null, x.versions || null],
+            [c.start || null, null]
+        ].filter(keep) : [];
         var more = [
             // Schema 27: the other people, beside the assignees.
             [x.sub_assignees || null, x.managers || null],
@@ -7729,8 +7903,8 @@ window.PmPortalBoot = function () {
 
         return {
             top: [c.parent || null, c.type || null].filter(Boolean),
-            rows: rows,
-            more: more
+            rows: newRows || rows,
+            more: newMore.concat(more)
         };
     }
     // A column with nothing to say until the row exists. A resolution is how
@@ -9401,6 +9575,24 @@ window.PmPortalBoot = function () {
             nedMoreRemember(open);
         });
         grid.appendChild(btn);
+        // M11: a long fold is searched by the name of the field.
+        if (names.length > 6) {
+            var find = document.createElement('input');
+            find.type = 'search';
+            find.className = 'pp-ne-more-find';
+            find.placeholder = nedGetLangKey('ned_more_find', '項目を探す');
+            find.setAttribute('aria-label', find.placeholder);
+            find.addEventListener('input', function () {
+                var q = String(find.value || '').trim().toLowerCase();
+                Array.prototype.forEach.call(box.querySelectorAll('[data-fname]'), function (fg) {
+                    var lb = fg.querySelector('label');
+                    var text = String((lb ? lb.textContent : '') + ' ' + fg.dataset.fname).toLowerCase();
+                    fg.classList.toggle('pp-ne-nomatch', q !== '' && text.indexOf(q) < 0);
+                });
+            });
+            find.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); } });
+            box.insertBefore(find, box.firstChild);
+        }
         grid.appendChild(box);
         nedMoreSetOpen(box, btn, filled > 0 || nedMoreRemembered());
     }
@@ -9535,6 +9727,11 @@ window.PmPortalBoot = function () {
             metaOrder.filter(function (name) { return !taken[name]; }).forEach(function (name) {
                 moreBox.appendChild(built[name]);
                 taken[name] = true;
+            });
+            // A field that must be filled is never folded away (M11).
+            Array.prototype.slice.call(moreBox.children).forEach(function (fg) {
+                var col = NED.columns.filter(function (cc) { return cc && cc.name === fg.dataset.fname; })[0];
+                if (col && col.required && !col.readonly) { slots.grid.appendChild(fg); }
             });
             if (moreBox.children.length) { nedMountMore(slots.grid, moreBox); }
             metaOrder = metaOrder.filter(function (name) { return !taken[name]; });
@@ -12447,7 +12644,7 @@ window.PmPortalBoot = function () {
     // server checks apply (permission per row, values of this project);
     // Esc or clicking away cancels, a refused save flashes red.
     var ED_NAV_TIMER = null;
-    function edAttr(f) { return BULK_ON ? ' data-ed="' + f + '" title="ダブルクリックで編集"' : ''; }
+    function edAttr(f) { return BULK_ON ? ' data-ed="' + f + '" title="' + esc(L.ed_hint) + '"' : ''; }
     var ED_SRC = { st: 'pp-bk-st', ty: 'pp-bk-ty', pr: 'pp-bk-pr', ms: 'pp-bk-ms', cat: 'pp-f-cat' };
     function edOptions(field) {
         var src = document.getElementById(ED_SRC[field]), out = [];
@@ -12526,7 +12723,7 @@ window.PmPortalBoot = function () {
         var sel = document.createElement('select');
         sel.className = 'pp-ed-in';
         var opts = edOptions(f);
-        if (f === 'ms' || f === 'cat') { opts.unshift(['', '（なし）']); }
+        if (f === 'ms' || f === 'cat') { opts.unshift(['', L.bk_none]); }
         if (cur !== '' && !opts.some(function (o) { return o[0] === cur; })) { opts.unshift([cur, cur]); }
         opts.forEach(function (o) {
             var op = document.createElement('option');

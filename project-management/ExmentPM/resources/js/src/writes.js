@@ -66,6 +66,7 @@
         var notifyUsers = $('#pp-notify-chips .pp-notify:not(.off)').map(function () { return $(this).data('user'); }).get();
         var mailBox = document.getElementById('pp-notify-mail');
         var notifyMail = !!(mailBox && mailBox.checked);
+        var notifyTeams = ntTicked('pp-notify-teams');
         var current = function () { return detailCurrent(issueId, epoch); };
         var settled = function () {
             if (cmtPending[issueId] === sequence) { delete cmtPending[issueId]; }
@@ -108,6 +109,7 @@
             var seq = ++DET_SEQ;
             var data = { comment: text, status_to: statusTo || '', notify_users: notifyUsers };
             if (notifyMail) { data.notify_mail = 1; }
+            if (notifyTeams) { data.notify_teams = 1; }
             if (review) { data.review = 1; }
             if (statusTo && statusFrom !== null) { data.status_from = statusFrom; }
             $.ajax({
@@ -126,6 +128,7 @@
                 }
                 settled();
                 dockDraftClear(issueId, text);
+                notifyRecentSave(notifyUsers);
                 applyDetail(res, epoch, false, seq);
                 if (!statusOnly && alive() && String(currentIssue) === String(issueId)
                     && submittedBox === document.getElementById('pp-cmt-text')
@@ -134,7 +137,8 @@
                     submittedBox._ppCmtOwner = null;
                 }
                 if (!current()) { return; }
-                toast(L.posted);
+                var sentTo = ntSentText(res.notice_to);
+                toast(L.posted + (sentTo ? ' ' + sentTo : ''));
                 ppDockMsg('', false);
                 var box = document.getElementById('pp-cmt-text');
                 if (!box.value) { cmtPreviewOff(); }
@@ -146,6 +150,8 @@
                 document.querySelectorAll('#pp-notify-chips .pp-notify').forEach(function (c) { c.classList.add('off'); });
                 var mailNow = document.getElementById('pp-notify-mail');
                 if (mailNow) { mailNow.checked = false; }
+                var teamsNow = document.getElementById('pp-notify-teams');
+                if (teamsNow) { teamsNow.checked = false; }
                 if (!statusOnly) { rvAskSync(true); }
                 buildDetail(own(DET, String(issueId)) || res);
                 if (!box.value.trim()) { ppDockOpen(false); }

@@ -92,6 +92,8 @@ return [
         'you_rank' => 'あなたは :all 人中 :rank 位（:n）',
         'you_none' => 'あなたはこの期間、まだランキングに入っていません。',
         'empty' => 'この期間のデータはまだありません。',
+        // the label of a month (PortalRankingTrait::rankLabel)
+        'month_label' => ':year年:month月',
     ],
     'top' => [
         'dashboard' => 'ダッシュボード',
@@ -718,6 +720,8 @@ return [
         'upload_failed' => 'ファイルを保存できませんでした。時間をおいて再度お試しください。',
         'attachment_off' => 'この課題にはファイルを添付できない設定になっています。',
         'setup_required' => 'プロジェクト管理の初期セットアップが完了していません。システム管理者に依頼してください。',
+        // an image ![..](..) in the body whose ( ) is not a place of an image (LightApiController::failed)
+        'image_location' => '本文の画像 ![…](…) の ( ) の中が、画像の場所になっていません。画像の URL にするか、先頭の ! を消して保存してください。',
     ],
     // What a person reads when a JSON call is refused. The keys are the codes
     // the endpoints put in `error` (PortalDefinition::errorMessage()); the
@@ -1962,4 +1966,27 @@ return [
         'err_url_empty' => 'Webhook の URL を入れてください。',
         'err_channel_id' => 'LINE WORKS のチャンネル ID は、英数字・「_」「-」で入れてください。',
     ],
+    // UX-H: the issue form (S6, M11, M12)
+    'ned_more_find' => '項目を探す',
+    // SIMPLE-1
+    'dm_more' => 'くわしく',
+    'dm_less' => 'かんたん',
+    'dm_more_tip' => 'ほかの項目・子課題・添付・関連課題も出します',
+    'dm_less_tip' => '状態・担当者・期限・本文・コメントだけにします',
+    'dm_hint' => '表示を かんたん にできます',
+    // FEAT-1
+    'feat_upgrade_step' => '新しいプロジェクトは Wiki とガントなしで始まるようにしました（今あるプロジェクトはそのまま。:count 件の空の設定を ON で保存しました）。',
+    // NOTIFY-TO
+    'nt_teams' => 'Teams でも知らせる',
+    'nt_teams_hint' => 'この登録で通知（ベル）を受け取る人に、同じ内容を Teams でも送ります',
+    'nt_bell' => 'ベル',
+    'nt_mail' => 'メール',
+    'nt_by_teams' => 'Teams',
+    'nt_tip' => '%s に届く所：%s',
+    'nt_line_mail' => 'メールでも届く人：%s',
+    'nt_line_teams' => 'Teams でも届く人：%s',
+    'nt_line_bell' => '選んだ人にはベルだけで届きます',
+    'nt_others' => 'ウォッチしている人と担当者にも、その人の受け取り方で届きます',
+    'nt_sent_mail' => 'メールで知らせた: %s',
+    'nt_sent_teams' => 'Teams で知らせた: %s',
 ];
