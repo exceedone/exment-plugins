@@ -1952,7 +1952,6 @@ class PmPortalController extends AdminControllerBase
         $detail['issue']['my_fav'] = !empty(Star::mine(Star::TYPE_FAV, $issue_name, [$issue->id], $me));
         // ISS00248
         $detail['issue']['al'] = PortalIssueAliases::names([$issue->id])[intval($issue->id)] ?? '';
-        $detail['issue']['al_edit'] = PortalIssueAliases::exists() && !$this->projectIsArchived($project) && PortalDefinition::enableEdit($issue, true) === true;
 
         return array_merge($detail, [
             'users' => $this->usersFor($this->detailUserIds($detail)),
@@ -2999,7 +2998,7 @@ class PmPortalController extends AdminControllerBase
                 // routes refuse, so the screen can say so before anyone types.
                 'archived' => $archived,
             ],
-            'can' => $can,
+            'can' => array_merge((array) $can, ['alias' => PortalIssueAliases::exists()]),
             // The settings tab's server-known bits; withheld from people the
             // tab is hidden from anyway.
             'git' => $can['manage'] ? $this->gitState($project) : null,

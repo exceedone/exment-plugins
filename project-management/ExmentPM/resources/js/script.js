@@ -1111,7 +1111,7 @@ window.PmPortalBoot = function () {
         // is the same order without the string parsing.
         key: { t: false, v: function (i) { return Number(i.id); } },
         // ISS00248: by alias, natural order (P1.2 before P1.10); none last
-        al: { t: true, v: function (i) { return i.al ? String(i.al) : '\uffff'; } },
+        al: { t: true, nat: true, v: function (i) { return i.al ? String(i.al) : ''; } },
         subject: { t: true, v: function (i) { return String(i.subject || ''); } },
         as: { t: true, v: function (i) { return (i.as && i.as.length) ? String(user(i.as[0]).n) : ''; } },
         st: { t: false, v: function (i) { var r = own(ST_RANK, i.st); return r == null ? Infinity : r; } },
@@ -1219,7 +1219,11 @@ window.PmPortalBoot = function () {
             var ex = sortBlank(x), ey = sortBlank(y);
             if (ex !== ey) { return ex ? 1 : -1; }
             if (!ex) {
-                if (col.t) {
+                if (col.nat) {
+                    // natural: P1.2 before P1.10 (ISS00248)
+                    var cn = String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: 'base' });
+                    if (cn !== 0) { return cn * sign; }
+                } else if (col.t) {
                     var c = cmpText(String(x), String(y));
                     if (c !== 0) { return c * sign; }
                 } else if (typeof x === 'number' || typeof y === 'number') {
@@ -2480,7 +2484,7 @@ window.PmPortalBoot = function () {
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' + ikCopyButton(i) +
             // ISS00248: the alias, and a way to set it
             (local.al ? '<span class="pp-al-d" title="' + esc(L.alias) + '">' + esc(local.al) + '</span>' : '') +
-            (local.al_edit ? '<a href="javascript:void(0);" class="pp-al-set" data-issue="' + esc(i.id) + '" data-al="' + esc(local.al || '') + '" title="' + esc(L.alias_set) + '"><i class="fa fa-tag"></i></a>' : '') +
+            (res.editable && D.can && D.can.alias ? '<a href="javascript:void(0);" class="pp-al-set" data-issue="' + esc(i.id) + '" data-al="' + esc(local.al || '') + '" title="' + esc(L.alias_set) + '"><i class="fa fa-tag"></i></a>' : '') +
             issueNav(i) +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
