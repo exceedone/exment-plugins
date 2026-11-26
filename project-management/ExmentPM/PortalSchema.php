@@ -135,12 +135,12 @@ class PortalSchema
      * name and set the assignee once that person has a user, or is mapped
      * to one. Empty for anything not imported.
      *
-     * 30: the custom attributes of a project's issues (ISS02939): the values on
+     * 31: the custom attributes of a project's issues (ISS02939): the values on
      * the issue (pm_attributes, a JSON object keyed by the id of a row of
      * pm_portal_attributes), and the project's switch use_attributes, off at
      * first.
      */
-    const VERSION = 30;
+    const VERSION = 31;
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -197,7 +197,7 @@ class PortalSchema
         'managers' => 'managers',
         'reviewers' => 'reviewers',
         'difficulty' => 'difficulty',
-        // Schema 30: the values of the project's custom attributes (PortalAttributes).
+        // Schema 31: the values of the project's custom attributes (PortalAttributes).
         'attributes' => 'pm_attributes',
     ];
 
@@ -252,7 +252,7 @@ class PortalSchema
         // Schema 23: organizations on the project (ISS00333).
         'member_orgs' => 'member_orgs',
         'viewer_orgs' => 'viewer_orgs',
-        // Schema 30: the project uses custom attributes (ISS02939).
+        // Schema 31: the project uses custom attributes (ISS02939).
         'use_attributes' => 'use_attributes',
     ];
 
@@ -851,7 +851,7 @@ class PortalSchema
             'freeword_search' => '1',
             'help' => PortalDefinition::trans('schema.help.source_assignees'),
         ], 67);
-        // Schema 30: the custom attributes, kept as JSON; the portal shows them one by one.
+        // Schema 31: the custom attributes, kept as JSON; the portal shows them one by one.
         $columns[] = static::column($ic['attributes'], 'issue.attributes', 'textarea', [
             'help' => PortalDefinition::trans('schema.help.attributes'),
         ], 68);
@@ -897,7 +897,7 @@ class PortalSchema
             // Schema 14. Off: the issue text goes to a third party's server
             // when it is on, which is a decision for the project.
             [$pc['ai_enabled'], 'project.ai_enabled', '0', 37],
-            // Schema 30. Off: 「最初はシンプル」 (ISS02939).
+            // Schema 31. Off: 「最初はシンプル」 (ISS02939).
             [$pc['use_attributes'], 'project.use_attributes', '0', 41],
         ];
 
