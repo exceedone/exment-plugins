@@ -3153,8 +3153,8 @@ class PmPortalController extends AdminControllerBase
             // comment dock; one query for all of them.
             'notify_by' => (object) PortalNotifyTo::channels(array_merge(
                 [intval(array_get($project->value, array_get($pj, 'manager')))],
-                (array) $member_ids,
-                (array) $viewer_ids
+                collect($member_ids)->all(),
+                collect($viewer_ids)->all()
             ), intval($project->id)),
             'notify_teams' => PortalTeams::teamsAvailable(),
             'statuses' => $statuses,
