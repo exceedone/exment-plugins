@@ -66,5 +66,10 @@ try { $all->addBusinessDays('2026-01-01', 1); $check('all days off throws', fals
 try { $c->isBusinessDay('2026-02-30'); $check('bad date throws', false); } catch (InvalidArgumentException $e) { $check('bad date throws', true); }
 try { $c->shift('2026-08-13', 'sideways'); $check('bad shift throws', false); } catch (InvalidArgumentException $e) { $check('bad shift throws', true); }
 
+// a company day off on a holiday says both names (2027-08-11 山の日)
+$both = new C(['2027-08-11' => ['kind' => 'off', 'name' => '夏季休暇'], '2027-08-12' => ['kind' => 'off', 'name' => '夏季休暇']]);
+$check('company day on a holiday: both names', $both->dayOffLabel('2027-08-11') === '夏季休暇・山の日', strval($both->dayOffLabel('2027-08-11')));
+$check('company day on a weekday: its name', $both->dayOffLabel('2027-08-12') === '夏季休暇');
+
 echo "passed $ok, failed $bad\n";
 exit($bad ? 1 : 0);
