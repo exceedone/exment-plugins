@@ -2182,7 +2182,7 @@ class PmPortalController extends AdminControllerBase
             try {
                 $file = ExmentFile::storeAs(FileType::CUSTOM_VALUE_DOCUMENT, $httpfile, $this->issue_table->table_name, $filename)
                     ->saveCustomValue($issue->id, null, $this->issue_table);
-                $file->saveDocumentModel($issue, $filename);
+                $document = $file->saveDocumentModel($issue, $filename);
             } catch (\Throwable $e) {
                 Log::error('pm_portal upload to issue ' . $issue->id . ' failed: ' . $e->getMessage(), ['exception' => $e]);
                 $failed++;
@@ -2192,10 +2192,15 @@ class PmPortalController extends AdminControllerBase
             // the bell Exment's detail screen rings for a dropped file has to be
             // rung here, file by file, the way that screen does it.
             $this->runTableNotifies($issue, NotifySavedType::ATTACHMENT, ['attachment' => $filename]);
+            // ISS02938: a file dropped or pasted (the comment dock too) can be edited at once
+            $attachOn = $attachOn ?? PortalAttachEdit::enabled();
             $out[] = [
                 'name' => $filename,
                 'url' => admin_url('files', [$file->uuid]),
                 'img' => static::isImageName($filename),
+                'doc' => $attachOn && isset($document->id) ? intval($document->id) : null,
+                'ver' => $attachOn && isset($document->id) ? 1 : null,
+                'ek' => $attachOn ? PortalAttachEdit::kindOf($filename) : null,
             ];
         }
 

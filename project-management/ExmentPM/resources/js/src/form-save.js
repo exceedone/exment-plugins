@@ -371,7 +371,7 @@
             var det = own(DET, String(NED.rowId));
             if (det) {
                 det.files = (det.files || []).concat(res.files.map(function (f) {
-                    return { name: f.name, url: f.url, img: f.img, by: D.me, at: '' };
+                    return { name: f.name, url: f.url, img: f.img, by: D.me, at: '', doc: f.doc, ver: f.ver, ek: f.ek };
                 }));
             }
             // The name is the text of the link, escaped (mdFileLink): a file named
