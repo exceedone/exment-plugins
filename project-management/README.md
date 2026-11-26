@@ -17,6 +17,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 **Unreleased / 未リリース**
 
+- The icons on the chips of 「知らせる人」 are read again when the comment dock opens (at most once a minute), so a person's quiet hours and muted projects show as they are now, not as they were when the page was opened (ISS02931). A small read (`GET {id}/notify-channels`, a new route); no issue is read.
+  コメント欄を開いたときに、「知らせる人」のチップのアイコンを読み直すようにしました（1 分に 1 回まで）。ひとりひとりの「通知しない時間」やミュートしたプロジェクトが、ページを開いたときではなく今のとおりに出ます（ISS02931）。小さな読み出し（新しいルート `GET {id}/notify-channels`）で、課題は読みません。
 - The top bar has one ⚙ 設定 menu (the button map): 通知の受け取り方, 全体の設定 (administrators) and the manual are in it instead of three items of their own. 「アップグレードが必要」 stays on the bar.
   上のバーに「⚙ 設定」のメニューを 1 つだけ置きました（ボタンの地図）。「通知の受け取り方」「全体の設定」（管理者だけ）「マニュアル」は、それぞれのボタンでなく、このメニューの中にあります。「アップグレードが必要」は今までどおりバーに出します。
 - Small fixes from the screen review: on a phone, the menus 「保存した条件」 and 「列」 of the issue list open at the left of their row instead of running off the left edge; the copy button under each key shows on the row the pointer is on (touch screens keep it on every row).

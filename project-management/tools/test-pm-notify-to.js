@@ -99,6 +99,15 @@ test('under a comment: who it was also sent to', () => {
     assert.ok(/rvBar\(e\) \+ ntLine\(e\)/.test(detail));
 });
 
+test('the chips are read again when the dock opens, at most once a minute', () => {
+    const g = new Function(functionSource(detail, 'ntRefreshDue') + 'return ntRefreshDue;')();
+    assert.ok(g(60000, 0, false));
+    assert.ok(!g(59999, 0, false));
+    assert.ok(!g(120000, 0, true), 'not while a read is on its way');
+    assert.ok(/if \(on\) \{ ntRefresh\(\); \}/.test(functionSource(detail, 'ppDockOpen')));
+    assert.ok(/'\/notify-channels'/.test(functionSource(detail, 'ntRefresh')));
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);
