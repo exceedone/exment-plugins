@@ -85,7 +85,7 @@
         // UX-E
         'ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu',
         // UX-F
-        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'sh_title', 'sh_palette', 'sh_home_1', 'sh_home_2', 'sh_home_3', 'sh_issues_1', 'sh_issues_2', 'sh_issues_3', 'sh_issues_4', 'sh_board_1', 'sh_board_2', 'sh_gantt_1', 'sh_gantt_2', 'sh_burndown_1', 'sh_wiki_1', 'sh_wiki_2', 'sh_files_1', 'sh_issue_1', 'sh_issue_2', 'sh_issue_3', 'sh_issue_4', 'sh_issue_5', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
+        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'sh_title', 'sh_palette', 'sh_home_1', 'sh_home_2', 'sh_home_3', 'sh_issues_1', 'sh_issues_2', 'sh_issues_3', 'sh_issues_4', 'sh_board_1', 'sh_board_2', 'sh_gantt_1', 'sh_gantt_2', 'sh_burndown_1', 'sh_wiki_1', 'sh_wiki_2', 'sh_files_1', 'sh_issue_1', 'sh_issue_2', 'sh_issue_3', 'sh_issue_4', 'sh_issue_5', 'hint_remind', 'hint_remind_go', 'hint_saved', 'hint_saved_go', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
         'kh_comment', 'kh_status', 'kh_prevnext', 'kh_send', 'kh_close', 'kh_help', 'empty_issues', 'empty_filtered', 'empty_wiki',
         'first_steps', 'fs_add_issue', 'fs_invite', 'fs_statuses', 'f_clear_all',
         // UX-H
@@ -168,6 +168,8 @@
             {{-- M10: filled by the script while the project has no issue --}}
             <div class="pp-home-empty" id="pp-home-empty" hidden></div>
             <div class="bl-stats" id="pp-stats"></div>
+            {{-- HINT-1: shown once, when it fits the project (hintShow) --}}
+            <div class="pp-ed-hint pp-hint" id="pp-hint-home" hidden data-reminder-url="{{ $reminder_url ?? '' }}"></div>
             <div class="bl-home">
                 <div>
                     <div class="bl-card-box">
@@ -324,6 +326,7 @@
                     <tbody id="pp-issue-rows"></tbody>
                 </table>
                 {{-- S11: said once, to whoever may change the cells. --}}
+                <div class="pp-ed-hint pp-hint" id="pp-hint-list" hidden></div>
                 <div class="pp-ed-hint" id="pp-ed-hint" hidden><i class="fa fa-pencil"></i> {{ $lang['ed_hint'] }} <button type="button" class="x" aria-label="{{ $lang['m_close'] }}">&times;</button></div>
                 <div class="bl-pager">
                     <span class="rg" id="pp-issue-count"></span>

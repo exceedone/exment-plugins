@@ -1339,6 +1339,7 @@ window.PmPortalBoot = function () {
 
     /* ------------------------------------------------ home -------------- */
     function renderHome() {
+        hintHome();
         var open = (D.issues || []).filter(function (i) { return !isDone(i.st); });
         var overdue = open.filter(function (i) { return dueOver(i); });
         var soon = open.filter(function (i) { return i.dd && !dueOver(i) && daysTo(i.dd) <= 3; });
@@ -1537,7 +1538,61 @@ window.PmPortalBoot = function () {
             renderIssues();
         }, function () { toast(L.ar_fail, true); renderIssues(); });
     }
-
+    /* ------------------------------------------------ hints (once) ------ */
+    // HINT-1: a short hint where it fits the project, each shown once per
+    // person: closed with ✕ or used, it does not come back (kept in this
+    // browser). A hint that does not fit is not shown at all.
+    var HINT_MANY_DUES = 10;
+    var HINT_LONG_LIST = 50;
+    function hintKey(id) { return 'pmportal.hint.' + id + '.u' + String(D.me || 0); }
+    function hintSeen(id) {
+        try { return localStorage.getItem(hintKey(id)) === '1'; } catch (e) { return true; }
+    }
+    function hintDone(id) {
+        try { localStorage.setItem(hintKey(id), '1'); } catch (e) { /* shown again next time */ }
+    }
+    // Whether a hint fits: plain data in, so it is tested without a page.
+    function hintWants(id, facts) {
+        if (id === 'remind') { return !!facts.reminderUrl && facts.openWithDue >= HINT_MANY_DUES; }
+        if (id === 'saved') { return facts.matched >= HINT_LONG_LIST && facts.saved === 0; }
+        return false;
+    }
+    function hintShow(box, id, text, goLabel, go) {
+        if (!box) { return; }
+        if (hintSeen(id)) { box.hidden = true; return; }
+        box.innerHTML = '<i class="fa fa-lightbulb-o"></i> <span>' + esc(text) + '</span>' +
+            (goLabel ? ' <a href="javascript:void(0);" class="go">' + esc(goLabel) + '</a>' : '') +
+            '<button type="button" class="x" aria-label="' + esc(L.m_close) + '" title="' + esc(L.m_close) + '">&times;</button>';
+        box.hidden = false;
+        box.onclick = function (ev) {
+            var x = ev.target.closest && ev.target.closest('.x');
+            var g = ev.target.closest && ev.target.closest('.go');
+            if (!x && !g) { return; }
+            ev.preventDefault();
+            hintDone(id);
+            box.hidden = true;
+            if (g && go) { go(); }
+        };
+    }
+    // The project home: many due dates and reminders there to be used - for
+    // the manager, who is the one given the reminders' page.
+    function hintHome() {
+        var box = document.getElementById('pp-hint-home');
+        if (!box) { return; }
+        var url = box.getAttribute('data-reminder-url') || '';
+        var open = (D.issues || []).filter(function (i) { return !isDone(i.st) && i.dd; }).length;
+        if (!hintWants('remind', { reminderUrl: url, openWithDue: open })) { box.hidden = true; return; }
+        hintShow(box, 'remind.p' + String((D.project && D.project.id) || 0), L.hint_remind, L.hint_remind_go, function () { location.href = url; });
+    }
+    // The issue list: a long list and no saved condition yet.
+    function hintList(matched, saved) {
+        var box = document.getElementById('pp-hint-list');
+        if (!box) { return; }
+        if (!hintWants('saved', { matched: matched, saved: saved })) { box.hidden = true; return; }
+        hintShow(box, 'saved', L.hint_saved, L.hint_saved_go, function () {
+            if (typeof sfMenu === 'function') { sfMenu(true); }
+        });
+    }
     /* ------------------------------------------------ issues ------------ */
     // rl: one of the other people of an issue (ISS02931), as "<role>:<user>"
     // - sa:12 is "12 is a sub-assignee"; df: the difficulty; at: the custom
@@ -2469,6 +2524,7 @@ window.PmPortalBoot = function () {
         document.getElementById('pp-issue-rows').innerHTML = rows;
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
+        hintList(matched.length, savedList().length);
         ppListFit();
     }
 

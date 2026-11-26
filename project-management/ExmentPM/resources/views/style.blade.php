@@ -2022,4 +2022,9 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .pp-pal{padding-top:calc(var(--pp-top-safe, 0px) + 8px);}
   .pmportal .pp-pal .in{max-height:calc(100vh - var(--pp-top-safe, 0px) - 16px);}
 }
+/* HINT-1: a hint shown once */
+.pmportal .pp-hint{background:color-mix(in srgb, var(--bl-accent) 10%, var(--bl-box));color:var(--bl-ink);}
+.pmportal .pp-hint .fa-lightbulb-o{color:var(--bl-accent-d,var(--bl-accent));}
+.pmportal .pp-hint .go{white-space:nowrap;font-weight:600;color:var(--bl-accent-d,var(--bl-accent));}
+.pmportal #pp-hint-home{margin:0 0 10px;}
 </style>

@@ -19,6 +19,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 - The icons on the chips of 「知らせる人」 are read again when the comment dock opens (at most once a minute), so a person's quiet hours and muted projects show as they are now, not as they were when the page was opened (ISS02931). A small read (`GET {id}/notify-channels`, a new route); no issue is read.
   コメント欄を開いたときに、「知らせる人」のチップのアイコンを読み直すようにしました（1 分に 1 回まで）。ひとりひとりの「通知しない時間」やミュートしたプロジェクトが、ページを開いたときではなく今のとおりに出ます（ISS02931）。小さな読み出し（新しいルート `GET {id}/notify-channels`）で、課題は読みません。
+- Hints shown once, where they fit (the button map): on the project home, for its manager, when the site's reminders are on and 10 or more open issues have a due date - 「リマインドを使うと、期限の前に担当者に知らせます」 with the way to the reminders; on the issue list, when 50 or more issues are listed and there is no saved condition yet - 「保存した条件」. Each closes with ✕ (or when used) and does not come back.
+  場面に合うときだけ、1 回だけ出すヒントを足しました（ボタンの地図）：プロジェクトのホームで、マネージャーに、サイトのリマインドが使えて、期限のある未完了の課題が 10 件以上あるとき「リマインドを使うと…」と設定へのリンク。課題の一覧で、50 件以上並んでいて、保存した条件がまだないとき「保存した条件」。✕ で閉じるか使うと、もう出ません。
 - The top bar has one ⚙ 設定 menu (the button map): 通知の受け取り方, 全体の設定 (administrators) and the manual are in it instead of three items of their own. 「アップグレードが必要」 stays on the bar.
   上のバーに「⚙ 設定」のメニューを 1 つだけ置きました（ボタンの地図）。「通知の受け取り方」「全体の設定」（管理者だけ）「マニュアル」は、それぞれのボタンでなく、このメニューの中にあります。「アップグレードが必要」は今までどおりバーに出します。
 - The issue list's own actions are in one 「⋯ ほかの操作」 menu (the button map): the four downloads (Excel / CSV, every column or the list's) and 「まとめて変更（表示中の課題を選ぶ）」, which ticks every issue on screen and opens the bulk change bar. The separate download link is gone from the toolbar.

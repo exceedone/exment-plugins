@@ -477,6 +477,27 @@ test('HELP-1 fix: the ? box and the palette start under the fixed header', () =>
     assert.ok(style.indexOf('.pmportal .pp-keyhelp .in{max-height:calc(100vh - var(--pp-top-safe, 0px) - 24px);overflow:auto;}') > 0);
 });
 
+test('HINT-1: hints shown once, only where they fit', () => {
+    const homeSrc = read('home.js');
+    const f = new Function('var HINT_MANY_DUES = 10; var HINT_LONG_LIST = 50; var D = { me: 3 }; var store = {};' +
+        'var localStorage = { getItem: function (k) { return store[k] || null; }, setItem: function (k, v) { store[k] = v; } };' +
+        functionSource(homeSrc, 'hintKey') + functionSource(homeSrc, 'hintSeen') + functionSource(homeSrc, 'hintDone') + functionSource(homeSrc, 'hintWants') +
+        'return { seen: hintSeen, done: hintDone, wants: hintWants };')();
+    assert.ok(f.wants('remind', { reminderUrl: '/r', openWithDue: 10 }));
+    assert.ok(!f.wants('remind', { reminderUrl: '', openWithDue: 99 }), 'no reminders on the site, or not the manager: no hint');
+    assert.ok(!f.wants('remind', { reminderUrl: '/r', openWithDue: 9 }));
+    assert.ok(f.wants('saved', { matched: 50, saved: 0 }));
+    assert.ok(!f.wants('saved', { matched: 80, saved: 1 }), 'has a saved condition already');
+    assert.ok(!f.seen('saved'));
+    f.done('saved');
+    assert.ok(f.seen('saved'), 'once');
+    assert.ok(/hintHome\(\);/.test(functionSource(homeSrc, 'renderHome')));
+    assert.ok(/hintList\(matched\.length, savedList\(\)\.length\);/.test(functionSource(listSrc, 'renderIssues')));
+    assert.ok(/data-reminder-url="\{\{ \$reminder_url \?\? '' \}\}"/.test(index));
+    ['hint_remind', 'hint_remind_go', 'hint_saved', 'hint_saved_go'].forEach((k) => { assert.ok(ja(k), k); assert.ok(index.indexOf("'" + k + "'") > 0, k); });
+    assert.ok(langJa.indexOf('// HINT-1') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);
