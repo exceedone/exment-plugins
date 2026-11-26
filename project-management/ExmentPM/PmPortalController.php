@@ -44,6 +44,7 @@ class PmPortalController extends AdminControllerBase
     use PortalExportTrait;
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
+    use PortalRecordLinksTrait;
     use PortalAttributesTrait;
     use PortalChannelsTrait;
     use PortalSchedulePageTrait;
@@ -1610,6 +1611,8 @@ class PmPortalController extends AdminControllerBase
                     }
                 }
                 Star::purge($this->issue_table->table_name, $issue->id);
+                // its links to the records of Exment (ISS02939)
+                PortalRecordLinks::forgetIssue(intval($issue->id));
                 $issue->delete();
             });
         } catch (\Throwable $e) {
@@ -3258,6 +3261,14 @@ class PmPortalController extends AdminControllerBase
             'git' => $can['manage'] ? $this->gitState($project) : null,
             // the Files tab with the file server (ISS02825): off unless the feature is on
             'fileserver' => $features['file'] ? PortalFiles::state($project, $can['manage']) : ['on' => false],
+            // the tables of Exment the issues link to (ISS02939): none, nothing shows
+            'record_links' => PortalRecordLinks::exists() ? [
+                'tables' => array_values(array_filter(array_map(function ($name) {
+                    $t = \Exceedone\Exment\Model\CustomTable::getEloquent($name);
+                    return isset($t) ? ['name' => $name, 'label' => strval($t->table_view_name)] : null;
+                }, PortalRecordLinks::tablesOf(intval($project->id))))),
+                'settings' => $can['manage'] ? ['on' => true] : ['on' => false],
+            ] : ['tables' => [], 'settings' => ['on' => false]],
             // the definitions of the custom attributes, for the manager (ISS02939)
             'attributes' => ($can['manage'] && !empty($features['attributes'])) ? PortalAttributes::state(intval($project->id)) : ['on' => false],
             // the chat channels, for the manager while the feature is on (ISS02939)
@@ -3384,6 +3395,8 @@ class PmPortalController extends AdminControllerBase
                 'git_key_remove' => PortalDefinition::url($project->id, 'git_key_remove'),
                 'git_token' => PortalDefinition::url($project->id, 'git_token'),
                 'file_workspace' => PortalDefinition::url($project->id, 'file_workspace'),
+                'link_tables' => PortalDefinition::url($project->id, 'link_tables'),
+                'link_search' => PortalDefinition::url($project->id, 'links', 'search'),
                 'attributes' => PortalDefinition::url($project->id, 'attributes'),
                 'channels' => PortalDefinition::url($project->id, 'channels'),
                 'ai_suggest' => PortalDefinition::url($project->id, 'ai', 'suggest'),

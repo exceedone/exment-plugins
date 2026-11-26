@@ -73,6 +73,8 @@
             // of the tab: the box holds this issue's, not the last one's.
             document.getElementById('pp-cmt-text').value = dockDraftRead(id);
             cmtPreviewOff();
+            // the linked records are read again for an issue opened afresh (ISS02939)
+            rlForget(id);
         }
         currentIssue = id;
         markRead(id, true);
@@ -326,6 +328,7 @@
         }
 
         renderRelated(i, res);
+        rlRender(i, res);   // the linked records of other tables (ISS02939)
         renderIssueFiles(res);
         renderTimeline(res);
         renderQuickEdit(i, res);
