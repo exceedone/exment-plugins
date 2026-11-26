@@ -163,7 +163,9 @@ class PortalDigest
         if (empty($ids)) {
             return [];
         }
-        $sent = DB::table(static::LOG_TABLE)->where('day', $today)->whereIn('user_id', $ids)->pluck('user_id')->map('intval')->all();
+        $sent = DB::table(static::LOG_TABLE)->where('day', $today)->whereIn('user_id', $ids)->pluck('user_id')->map(function ($v) {
+                return intval($v);
+            })->all();
         $ids = array_values(array_diff($ids, $sent));
         $out = [];
         foreach (getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereIn('id', $ids)->get() as $user) {
