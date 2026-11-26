@@ -221,6 +221,10 @@ jobs:
       - name: Asset sync check (ExmentITSupport)
         run: php it-support/tools/test-asset-sync.php
 
+      # the 受付箱 of the help desk: kinds, flows, progress (ISS02941)
+      - name: Help desk boxes (IT Support)
+        run: php it-support/tools/test-queue.php
+
       # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
       # plain PHP)
       - name: kintone API check (ExmentKintone)

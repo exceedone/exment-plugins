@@ -133,6 +133,10 @@ class Desk
                 'slaColors' => Its::SLA_COLORS,
                 'agents' => (object) Tickets::agentOptions(),
                 'categories' => (object) Tickets::options(Its::T_CATEGORY),
+                // the 受付箱 (ISS02941): kind, group and stages of each, and the groups
+                'boxes' => (object) Tickets::boxes(),
+                'groups' => Queue::GROUPS,
+                'group' => isset(Queue::GROUPS[$request->get('group')]) ? strval($request->get('group')) : '',
                 'customers' => (object) Tickets::options(Its::T_CUSTOMER),
                 'templates' => $this->templates(),
                 'state' => [
@@ -173,6 +177,8 @@ class Desk
             return response()->json(['error' => 'forbidden'], 403);
         }
         $queue = isset(static::QUEUES[$request->get('queue')]) ? strval($request->get('queue')) : 'todo';
+        // IT support or the inquiries (ISS02941): the list and the counts
+        $this->group = isset(Queue::GROUPS[$request->get('group')]) ? strval($request->get('group')) : '';
         $f = $this->filters($request);
         $query = $this->queueQuery($queue);
         $this->applyFilters($query, $f);
@@ -294,6 +300,9 @@ class Desk
             'priority' => strval($v['priority'] ?? 'normal'),
             'channel' => strval($v['channel'] ?? ''),
             'category' => strval($v['category'] ?? ''),
+            'stage' => strval($v['stage'] ?? ''),
+            'progress' => intval($v['progress'] ?? 0),
+            'stages' => array_column(Tickets::boxOf($v['category'] ?? null)['stages'], 'name'),
             'customer' => strval($customerId ?? ''),
             'assignee' => strval($v['assignee'] ?? ''),
             'asset' => strval($assetId ?? ''),
@@ -408,9 +417,28 @@ class Desk
         ];
     }
 
+    /** The group of boxes the list shows: '' for all (ISS02941). */
+    protected $group = '';
+
     public function queueQuery(string $queue)
     {
         $q = Tickets::query();
+        if ($this->group !== '') {
+            $ids = [];
+            foreach (Tickets::boxes() as $id => $box) {
+                if ($box['group'] === $this->group) {
+                    $ids[] = strval($id);
+                }
+            }
+            $group = $this->group;
+            $q->where(function ($w) use ($ids, $group) {
+                $w->whereIn('value->category', $ids ?: ['-1']);
+                if ($group === 'it') {
+                    // a ticket of no box is IT inside
+                    $w->orWhereNull('value->category')->orWhere('value->category', '');
+                }
+            });
+        }
         $me = strval(optional(\Exment::user())->getUserId());
         switch ($queue) {
             case 'todo':
@@ -557,7 +585,7 @@ class Desk
         }
 
         return $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->orderBy('id')->limit(200)->get()->map(function ($t) {
-            return ['id' => intval($t->id), 'name' => strval(array_get($t->value, 'name')), 'body' => strval(array_get($t->value, 'body')), 'status' => strval(array_get($t->value, 'set_status'))];
+            return ['id' => intval($t->id), 'name' => strval(array_get($t->value, 'name')), 'body' => strval(array_get($t->value, 'body')), 'status' => strval(array_get($t->value, 'set_status')), 'category' => strval(array_get($t->value, 'category') ?? '')];
         })->all();
     }
 
@@ -628,6 +656,15 @@ class Desk
             if ($request->has($col)) {
                 $v = strval($request->get($col));
                 $values[$col] = ctype_digit($v) ? $v : null;
+            }
+        }
+        // a stage of the ticket's box (its status follows, Tickets::applyStage)
+        if ($request->has('stage')) {
+            $box = Tickets::boxOf($values['category'] ?? array_get($ticket->value, 'category'));
+            $stage = strval($request->get('stage'));
+            if (Queue::statusOf($box['stages'], $stage) !== null) {
+                $values['stage'] = $stage;
+                unset($values['status']);
             }
         }
         foreach (['tags' => 200, 'cc' => 500, 'subject' => 250] as $col => $max) {

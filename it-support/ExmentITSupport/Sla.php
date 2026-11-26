@@ -149,6 +149,14 @@ class Sla
         if (!isset($slas)) {
             return null;
         }
+        // the box's own SLA (ISS02941), before the default
+        $boxSla = Tickets::boxOf(array_get($ticket->value, 'category'))['sla'];
+        if (!empty($boxSla) && ctype_digit(strval($boxSla))) {
+            $sla = $slas->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find(intval($boxSla));
+            if (isset($sla)) {
+                return $sla;
+            }
+        }
 
         return $slas->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->where('value->is_default', '1')->first();
     }
