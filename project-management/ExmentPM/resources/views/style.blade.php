@@ -202,6 +202,10 @@
 .pmportal .bl-list td.pp-ed-fail{background:#fde8e6 !important;box-shadow:inset 0 0 0 2px #e74c3c;}
 /* the tree slot at the indent: ▼/▶ + count for a parent, └ for a leaf child */
 .pmportal .bl-list .pp-tind .pp-tgl,.pmportal .bl-list .pp-tind .pp-tbr{display:inline-block;min-width:26px;margin-right:4px;}
+/* ISS00361: the ▼/▶ is a 28px target (36px on a touch screen), so a near miss does not open the issue */
+.pmportal .bl-list .pp-tind .pp-tgl{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;margin:-6px 4px -6px -4px;padding:0 4px;}
+.pmportal .bl-list .pp-tgl:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
+@media (pointer: coarse){.pmportal .bl-list .pp-tind .pp-tgl{min-width:36px;min-height:36px;margin:-10px 4px -10px -6px;}}
 .pmportal .bl-list .pp-tind .pp-tgl .n{font-size:10px;margin-left:2px;}
 /* tree view: make children obvious - branch mark, tinted row, accent edge; parents bold */
 /* └ branch mark: dark accent, bold and a bit larger so it reads at a glance (snoro 2026-11-18) */
