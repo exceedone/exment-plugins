@@ -57,6 +57,7 @@
         { "method": "post", "uri": "{id}/issue/{issue_id}/move", "function": "moveIssue" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/delete", "function": "deleteIssue" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/upload", "function": "uploadIssueFile" },
+        { "method": "get", "uri": "{id}/comment/{comment_id}", "function": "commentIssue" },
         { "method": "patch", "uri": "{id}/comment/{comment_id}", "function": "updateComment" },
         { "method": "delete", "uri": "{id}/comment/{comment_id}", "function": "deleteComment" },
         { "method": "post", "uri": "{id}/comment/{comment_id}/review", "function": "reviewComment" },

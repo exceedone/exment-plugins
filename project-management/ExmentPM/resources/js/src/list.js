@@ -1,6 +1,8 @@
     /* ------------------------------------------------ issues ------------ */
-    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', rd: '', q: '' };
-    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'rd', 'kw'];
+    // rl: one of the other people of an issue (ISS02931), as "<role>:<user>"
+    // - sa:12 is "12 is a sub-assignee"; df: the difficulty.
+    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', rd: '', q: '', rl: '', df: '' };
+    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'rd', 'rl', 'df', 'kw'];
     // These were per browser, so a shared machine handed the next person the
     // last one's filters and saved conditions. They are per person now. What
     // is still under the old key is taken over once, by whoever opens the
@@ -243,6 +245,7 @@
         if (k === 'cat') { return own(D.categories, v) ? v : ''; }
         if (k === 'pr') { return own(D.priorities, v) ? v : ''; }
         if (k === 'rd') { return (v === 'unread' || v === 'read') ? v : ''; }
+        if (k === 'df') { return difficulties().indexOf(v) >= 0 ? v : ''; }
         return v;
     }
     try {
@@ -324,8 +327,89 @@
         sd: { t: false, v: function (i) { return i.sd || ''; } },
         dd: { t: false, v: function (i) { return i.dd ? i.dd + ' ' + (i.dt || '99:99') : ''; } },
         pg: { t: false, v: function (i) { return (i.pg === null || i.pg === undefined) ? null : Number(i.pg); } },
-        up: { t: false, v: function (i) { return String(i.up || ''); } }
+        up: { t: false, v: function (i) { return String(i.up || ''); } },
+        // The optional columns (ISS02931)
+        sa: { t: true, v: function (i) { return (i.sa && i.sa.length) ? String(user(i.sa[0]).n) : ''; } },
+        mg: { t: true, v: function (i) { return (i.mg && i.mg.length) ? String(user(i.mg[0]).n) : ''; } },
+        rv: { t: true, v: function (i) { return (i.rv && i.rv.length) ? String(user(i.rv[0]).n) : ''; } },
+        df: { t: false, v: function (i) { var r = difficulties().indexOf(String(i.df || '')); return r < 0 ? null : r; } }
     };
+    /* ---- optional columns (ISS02931) ---- */
+    // The other people of an issue and its difficulty, as columns of the list
+    // the reader turns on (off at first: the list is wide already), kept per
+    // browser. Offered only where the issue table has the column.
+    var OCOLS = [
+        { k: 'sa', role: 'sub_assignees', l: 'lbl_sub_assignees' },
+        { k: 'mg', role: 'managers', l: 'lbl_managers' },
+        { k: 'rv', role: 'reviewers', l: 'lbl_reviewers' },
+        { k: 'df', role: 'difficulty', l: 'lbl_difficulty' }
+    ];
+    var OCOL_KEY = 'pmportal.listcols';
+    var OCOL_ON = {};
+    try {
+        (JSON.parse(localStorage.getItem(OCOL_KEY) || '[]') || []).forEach(function (k) {
+            if (typeof k === 'string') { OCOL_ON[k] = true; }
+        });
+    } catch (e) { /* ignore */ }
+    function difficulties() { return (D.difficulties || ['easy', 'normal', 'hard']).map(String); }
+    function ocolsOffered() { return OCOLS.filter(function (c) { return xOn(c.role); }); }
+    function ocolsShown() { return ocolsOffered().filter(function (c) { return own(OCOL_ON, c.k); }); }
+    function ocolSave() {
+        try { localStorage.setItem(OCOL_KEY, JSON.stringify(Object.keys(OCOL_ON))); } catch (e) { /* ignore */ }
+    }
+    function ocolCell(i, c) {
+        if (c.k === 'df') { return '<td style="white-space:nowrap;">' + (i.df ? esc(L['df_' + i.df] || i.df) : '') + '</td>'; }
+        return '<td>' + avlist(i[c.k]) + '</td>';
+    }
+    // The headers, the columns menu and the two filters, drawn from what the
+    // table has.
+    function renderOcols() {
+        var offered = ocolsOffered();
+        var head = document.getElementById('pp-issue-head');
+        if (head) {
+            head.querySelectorAll('th[data-ocol]').forEach(function (th) {
+                var k = th.getAttribute('data-ocol');
+                th.hidden = !offered.some(function (c) { return c.k === k && own(OCOL_ON, k); });
+            });
+        }
+        var wrap = document.getElementById('pp-oc-wrap');
+        if (wrap) { wrap.hidden = !offered.length; }
+        var menu = document.getElementById('pp-oc-menu');
+        if (menu && !menu._ppBuilt && offered.length) {
+            menu._ppBuilt = true;
+            menu.innerHTML = offered.map(function (c) {
+                return '<label><input type="checkbox" data-ocol="' + esc(c.k) + '"' + (own(OCOL_ON, c.k) ? ' checked' : '') + '> ' + esc(L[c.l]) + '</label>';
+            }).join('');
+        }
+        var rl = document.getElementById('pp-f-rl');
+        if (rl) {
+            var roles = offered.filter(function (c) { return c.k !== 'df'; });
+            rl.hidden = !roles.length;
+            if (roles.length && rl.options.length <= 1) {
+                var people = Object.keys(D.users || {}).sort(function (a, b) { return cmpText(user(a).n, user(b).n); });
+                roles.forEach(function (c) {
+                    var g = document.createElement('optgroup');
+                    g.label = L[c.l];
+                    people.forEach(function (u) { g.appendChild(new Option(L[c.l] + ': ' + user(u).n, c.k + ':' + u)); });
+                    rl.appendChild(g);
+                });
+            }
+        }
+        var df = document.getElementById('pp-f-df');
+        if (df) {
+            df.hidden = !xOn('difficulty');
+            if (!df.hidden && df.options.length <= 1) {
+                difficulties().forEach(function (d) { df.add(new Option(L.lbl_difficulty + ': ' + (L['df_' + d] || d), d)); });
+            }
+        }
+    }
+    function rlMatch(i, v) {
+        var at = String(v).indexOf(':');
+        if (at < 0) { return true; }
+        var k = String(v).slice(0, at), u = String(v).slice(at + 1);
+        if (['sa', 'mg', 'rv'].indexOf(k) < 0) { return true; }
+        return (i[k] || []).map(String).indexOf(u) >= 0;
+    }
     function sortBlank(v) {
         if (v === '' || v === null || v === undefined) { return true; }
         return typeof v === 'number' && !isFinite(v);
@@ -612,6 +696,8 @@
         setVal('pp-f-ms', FILTER.ms);
         setVal('pp-f-cat', FILTER.cat);
         setVal('pp-f-rd', FILTER.rd);
+        setVal('pp-f-rl', FILTER.rl);
+        setVal('pp-f-df', FILTER.df);
         setVal('pp-jump', FILTER.kw);
         setVal('pp-pg-size', String(PAGE.size));
         // Offered only when there is something to clear, so the row does not
@@ -650,6 +736,8 @@
             if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
             if (FILTER.rd === 'unread' && !i.unread) { return false; }
             if (FILTER.rd === 'read' && i.unread) { return false; }
+            if (FILTER.rl && !rlMatch(i, FILTER.rl)) { return false; }
+            if (FILTER.df && String(i.df || '') !== String(FILTER.df)) { return false; }
             if (kw && (i.key + ' ' + i.subject + ' ' + (i.sub || '')).toLowerCase().indexOf(kw) < 0) { return false; }
 
             return true;
@@ -657,8 +745,10 @@
     }
     function renderIssues() {
         dropCarriedFilterIfEmpty();
+        renderOcols();
         renderIssueFilters();
         renderSortHead();
+        var ocols = ocolsShown();
 
         var matched = filteredIssues();
         // Tree mode pages over the rows that are actually listed (folded
@@ -732,6 +822,7 @@
                 '<td class="sub">' + parent + rcMark(i) + esc(i.subject) +
                     (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
+                ocols.map(function (c) { return ocolCell(i, c); }).join('') +
                 '<td' + edAttr('st') + '>' + pill(i.st) + '</td>' +
                 '<td' + edAttr('pr') + '>' + prio(i.pr) + '</td>' +
                 '<td style="white-space:nowrap;"' + edAttr('ms') + '>' + esc(ms ? ms.l : '') + '</td>' +
@@ -1306,9 +1397,11 @@
         // Emptied so the next render fills them from the data that just
         // arrived; leaving them would keep offering a milestone that has been
         // deleted and hide the member who joined this morning.
-        ['pp-f-as', 'pp-f-ty', 'pp-f-pr', 'pp-f-ms', 'pp-f-cat'].forEach(function (id) {
+        ['pp-f-as', 'pp-f-ty', 'pp-f-pr', 'pp-f-ms', 'pp-f-cat', 'pp-f-rl', 'pp-f-df'].forEach(function (id) {
             var sel = document.getElementById(id);
             while (sel && sel.options.length > 1) { sel.remove(1); }
+            // the people of the role filter come in groups
+            if (sel) { sel.querySelectorAll('optgroup').forEach(function (g) { g.remove(); }); }
         });
         ['pp-bk-st', 'pp-bk-as', 'pp-bk-ty', 'pp-bk-pr', 'pp-bk-ms'].forEach(function (id) {
             var sel = document.getElementById(id);
