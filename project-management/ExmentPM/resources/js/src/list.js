@@ -318,6 +318,8 @@
         // The key is <project>-<row id> everywhere in this project, so the id
         // is the same order without the string parsing.
         key: { t: false, v: function (i) { return Number(i.id); } },
+        // ISS00248: by alias, natural order (P1.2 before P1.10); none last
+        al: { t: true, nat: true, v: function (i) { return i.al ? String(i.al) : ''; } },
         subject: { t: true, v: function (i) { return String(i.subject || ''); } },
         as: { t: true, v: function (i) { return (i.as && i.as.length) ? String(user(i.as[0]).n) : ''; } },
         st: { t: false, v: function (i) { var r = own(ST_RANK, i.st); return r == null ? Infinity : r; } },
@@ -425,7 +427,11 @@
             var ex = sortBlank(x), ey = sortBlank(y);
             if (ex !== ey) { return ex ? 1 : -1; }
             if (!ex) {
-                if (col.t) {
+                if (col.nat) {
+                    // natural: P1.2 before P1.10 (ISS00248)
+                    var cn = String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: 'base' });
+                    if (cn !== 0) { return cn * sign; }
+                } else if (col.t) {
                     var c = cmpText(String(x), String(y));
                     if (c !== 0) { return c * sign; }
                 } else if (typeof x === 'number' || typeof y === 'number') {
@@ -529,6 +535,15 @@
     // ISS00440: the address uses the issue key (#issue-ISS00239), which does
     // not change when the project is renamed. PROJECTKEY-id and the bare id
     // still resolve (resolveIssueRef), and route() rewrites them to this.
+    // ISS00248: the list shows the number of the key ("156" of "EXMENT_AI-156")
+    function keyNum(i) {
+        var m = String((i && i.key) || '').match(/-(\d+)$/);
+        return m ? m[1] : String((i && i.key) || '');
+    }
+    // the alias column, when an issue of the project has one
+    function aliasOn() {
+        return (D.issues || []).some(function (i) { return !!i.al; });
+    }
     function keyRef(i) {
         var ik = i && i.ik ? String(i.ik) : '';
         if (/^[A-Za-z0-9_-]+$/.test(ik)) { return ik; }
@@ -546,7 +561,7 @@
         var want = String(ref).toUpperCase();
         var found = null;
         (D.issues || []).forEach(function (i) {
-            if (String(i.ik || '').toUpperCase() === want || String(i.key).toUpperCase() === want) { found = i; }
+            if (String(i.ik || '').toUpperCase() === want || String(i.key).toUpperCase() === want || (i.al && String(i.al).toUpperCase() === want)) { found = i; }
         });
         // OLDKEY-239 after the project was renamed: the number is the row id,
         // and the row is one this project is carrying.
@@ -745,6 +760,8 @@
     }
     function renderIssues() {
         dropCarriedFilterIfEmpty();
+        var alHead = document.getElementById('pp-al-head');
+        if (alHead) { alHead.hidden = !aliasOn(); }
         renderOcols();
         renderIssueFilters();
         renderSortHead();
@@ -815,7 +832,8 @@
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
                 '<td' + edAttr('ty') + '>' + tag(i.ty) + '</td>' +
-                '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a>' + ikCopyButton(i) + '</td>' +
+                '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '" title="' + esc(i.key) + '">' + esc(keyNum(i)) + '</a>' + ikCopyButton(i) + '</td>' +
+                (aliasOn() ? '<td class="pp-al">' + (i.al ? '<a href="#issue-' + esc(i.al) + '">' + esc(i.al) + '</a>' : '') + '</td>' : '') +
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
                 // stacked to its right so both lines start at the same place
                 (TREE_ON ? '<td class="pp-tcol">' + ind + '</td>' : '') +

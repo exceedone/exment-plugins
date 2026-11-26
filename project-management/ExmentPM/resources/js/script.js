@@ -1110,6 +1110,8 @@ window.PmPortalBoot = function () {
         // The key is <project>-<row id> everywhere in this project, so the id
         // is the same order without the string parsing.
         key: { t: false, v: function (i) { return Number(i.id); } },
+        // ISS00248: by alias, natural order (P1.2 before P1.10); none last
+        al: { t: true, nat: true, v: function (i) { return i.al ? String(i.al) : ''; } },
         subject: { t: true, v: function (i) { return String(i.subject || ''); } },
         as: { t: true, v: function (i) { return (i.as && i.as.length) ? String(user(i.as[0]).n) : ''; } },
         st: { t: false, v: function (i) { var r = own(ST_RANK, i.st); return r == null ? Infinity : r; } },
@@ -1217,7 +1219,11 @@ window.PmPortalBoot = function () {
             var ex = sortBlank(x), ey = sortBlank(y);
             if (ex !== ey) { return ex ? 1 : -1; }
             if (!ex) {
-                if (col.t) {
+                if (col.nat) {
+                    // natural: P1.2 before P1.10 (ISS00248)
+                    var cn = String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: 'base' });
+                    if (cn !== 0) { return cn * sign; }
+                } else if (col.t) {
                     var c = cmpText(String(x), String(y));
                     if (c !== 0) { return c * sign; }
                 } else if (typeof x === 'number' || typeof y === 'number') {
@@ -1321,6 +1327,15 @@ window.PmPortalBoot = function () {
     // ISS00440: the address uses the issue key (#issue-ISS00239), which does
     // not change when the project is renamed. PROJECTKEY-id and the bare id
     // still resolve (resolveIssueRef), and route() rewrites them to this.
+    // ISS00248: the list shows the number of the key ("156" of "EXMENT_AI-156")
+    function keyNum(i) {
+        var m = String((i && i.key) || '').match(/-(\d+)$/);
+        return m ? m[1] : String((i && i.key) || '');
+    }
+    // the alias column, when an issue of the project has one
+    function aliasOn() {
+        return (D.issues || []).some(function (i) { return !!i.al; });
+    }
     function keyRef(i) {
         var ik = i && i.ik ? String(i.ik) : '';
         if (/^[A-Za-z0-9_-]+$/.test(ik)) { return ik; }
@@ -1338,7 +1353,7 @@ window.PmPortalBoot = function () {
         var want = String(ref).toUpperCase();
         var found = null;
         (D.issues || []).forEach(function (i) {
-            if (String(i.ik || '').toUpperCase() === want || String(i.key).toUpperCase() === want) { found = i; }
+            if (String(i.ik || '').toUpperCase() === want || String(i.key).toUpperCase() === want || (i.al && String(i.al).toUpperCase() === want)) { found = i; }
         });
         // OLDKEY-239 after the project was renamed: the number is the row id,
         // and the row is one this project is carrying.
@@ -1537,6 +1552,8 @@ window.PmPortalBoot = function () {
     }
     function renderIssues() {
         dropCarriedFilterIfEmpty();
+        var alHead = document.getElementById('pp-al-head');
+        if (alHead) { alHead.hidden = !aliasOn(); }
         renderOcols();
         renderIssueFilters();
         renderSortHead();
@@ -1607,7 +1624,8 @@ window.PmPortalBoot = function () {
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
                 '<td' + edAttr('ty') + '>' + tag(i.ty) + '</td>' +
-                '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '">' + esc(i.key) + '</a>' + ikCopyButton(i) + '</td>' +
+                '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '" title="' + esc(i.key) + '">' + esc(keyNum(i)) + '</a>' + ikCopyButton(i) + '</td>' +
+                (aliasOn() ? '<td class="pp-al">' + (i.al ? '<a href="#issue-' + esc(i.al) + '">' + esc(i.al) + '</a>' : '') + '</td>' : '') +
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
                 // stacked to its right so both lines start at the same place
                 (TREE_ON ? '<td class="pp-tcol">' + ind + '</td>' : '') +
@@ -2464,6 +2482,9 @@ window.PmPortalBoot = function () {
         // its own above the issue (the same button closes the page too).
         var head = '<div class="bl-dhead"><a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' + tag(i.ty) +
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' + ikCopyButton(i) +
+            // ISS00248: the alias, and a way to set it
+            (local.al ? '<span class="pp-al-d" title="' + esc(L.alias) + '">' + esc(local.al) + '</span>' : '') +
+            (res.editable && D.can && D.can.alias ? '<a href="javascript:void(0);" class="pp-al-set" data-issue="' + esc(i.id) + '" data-al="' + esc(local.al || '') + '" title="' + esc(L.alias_set) + '"><i class="fa fa-tag"></i></a>' : '') +
             issueNav(i) +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             (res.editable && next ? '<button class="bl-btn-main pp-next-status" data-next="' + esc(next.k) + '" style="padding:5px 12px;font-size:12px;">' +
@@ -5950,6 +5971,27 @@ window.PmPortalBoot = function () {
 
     // Delete asks by arming itself rather than by opening a dialog: the
     // second click within a few seconds is the confirmation.
+    // ISS00248: set or take off the alias of an issue
+    function aliasSet(link) {
+        var now = link.getAttribute('data-al') || '';
+        var typed = window.prompt(L.alias_ask, now);
+        if (typed === null || typed.trim() === now) { return; }
+        var issueId = link.getAttribute('data-issue'), epoch = detailEpoch;
+        var seq = ++DET_SEQ;
+        $.ajax({
+            url: D.urls.base + '/issue/' + issueId + '/alias', type: 'POST',
+            data: { alias: typed.trim() }, dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            if (!res || !res.ok || !res.issue) { toast(errText(null, res, L.alias_fail), true); return; }
+            var row = issueById(issueId);
+            if (row) { row.al = res.issue.al || ''; }
+            applyDetail(res, epoch, true, seq);
+            toast(L.alias_saved);
+            renderIssues();
+        }).fail(function (xhr) { toast(xhrErr(xhr, L.alias_fail), true); });
+    }
+
     function cmtDelete(link) {
         if (link.dataset.busy === '1') { return; }
         if (link.dataset.armed !== '1') {
@@ -11107,6 +11149,8 @@ window.PmPortalBoot = function () {
         if (ccopy) { cmtCopyLink(ccopy.dataset.cid); return; }
         var cdel = ev.target.closest('.pp-cdel');
         if (cdel) { cmtDelete(cdel); return; }
+        var alSet = ev.target.closest('.pp-al-set');
+        if (alSet) { aliasSet(alSet); return; }
         var addChild = ev.target.closest('.pp-addchild');
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
         var linkCopy = ev.target.closest('.pp-linkcopy');

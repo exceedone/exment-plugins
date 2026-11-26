@@ -362,7 +362,7 @@ trait PortalTopbarTrait
         $rows = $this->issue_table->getValueModel()->query()
             ->where('parent_type', $this->project_table->table_name)
             ->whereIn('parent_id', array_map('intval', array_keys($cards)))
-            ->where(function ($query) use ($subject_key, $like, $id_hit) {
+            ->where(function ($query) use ($subject_key, $like, $id_hit, $q) {
                 $query->where($subject_key, 'LIKE', $like);
                 // schema 19: the second subject line is searched too
                 if (CustomColumn::getEloquent('subject_sub', $this->issue_table) !== null) {
@@ -370,6 +370,11 @@ trait PortalTopbarTrait
                 }
                 if ($id_hit !== null) {
                     $query->orWhere('id', $id_hit);
+                }
+                // ISS00248: the aliases
+                $aliased = PortalIssueAliases::search($q);
+                if (!empty($aliased)) {
+                    $query->orWhereIn('id', $aliased);
                 }
             })
             ->orderBy('updated_at', 'desc')

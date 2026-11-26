@@ -211,6 +211,12 @@ class PluginPage extends PluginPageBase
         return $this->portal()->exportIssues(request(), $id);
     }
 
+    // ISS00248
+    public function setIssueAlias($id, $issue_id)
+    {
+        return $this->portal()->setIssueAlias(request(), $id, $issue_id);
+    }
+
     public function mailIssue($id, $issue_id)
     {
         return $this->portal()->mailIssue(request(), $id, $issue_id);

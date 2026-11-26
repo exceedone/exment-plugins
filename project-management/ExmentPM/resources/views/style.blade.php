@@ -187,6 +187,10 @@
   border-radius:var(--bl-radius-s,4px);}
 .pmportal .bl-list .pp-tgl:hover{color:var(--bl-accent-d);background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));}
 .pmportal .bl-list .pp-tgl .n{font-weight:700;}
+/* ISS00248: the alias */
+.pmportal .bl-list td.pp-al{white-space:nowrap;font-family:Menlo,Consolas,monospace;font-size:12px;}
+.pmportal .pp-al-d{margin-left:8px;padding:1px 7px;border-radius:9px;background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));font-family:Menlo,Consolas,monospace;font-size:12px;}
+.pmportal .pp-al-set{margin-left:6px;color:var(--bl-sub);}
 .pmportal .bl-list .pp-tcol{width:1%;white-space:nowrap;padding-left:4px;padding-right:0;}
 /* 件名サブ (schema 19): second subject line, smaller and muted */
 .pmportal .bl-list td.sub .pp-subsub{font-size:12px;font-weight:400;color:var(--bl-sub);margin-top:2px;line-height:1.35;}
