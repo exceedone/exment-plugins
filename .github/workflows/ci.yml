@@ -132,6 +132,11 @@ jobs:
           node project-management/tools/test-issue-levels.js
           php project-management/tools/test-issue-levels.php
 
+      # The Markdown of issue bodies, comments and wiki pages (ISS00245): what each rule
+      # makes, and that nothing typed becomes markup.
+      - name: Markdown check (ExmentPM)
+        run: node project-management/tools/test-pm-markdown.js
+
       # The links to the manuals of ExmentPM, ExmentITSupport and ExmentGroupware.
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php

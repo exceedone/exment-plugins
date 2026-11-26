@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- More of Markdown in issue bodies, comments and wiki pages: lists inside list items (by indent), `+` bullets, numbered lists that start at another number (`3.`, `1)`), quotes of several lines and quotes inside quotes, `__bold__` / `_italic_` / `***both***` (not inside words such as snake_case), link titles (`[text](url "title")`), `<https://...>`, table column alignment (`:---:`), backslash escapes (`\*`, `\#` ...), and the language of a code fence (```` ```js ````) is no longer shown as its first line. Everything typed is still escaped first: HTML and scripts stay text, and every link opens in a new tab with `rel="noopener"`.
+  課題の本文・コメント・Wiki の Markdown で書けることを増やしました：項目の中のリスト（字下げ）、`+` の箇条書き、ほかの番号から始まる番号つきリスト（`3.`・`1)`）、何行もの引用と引用の中の引用、`__太字__`・`_斜体_`・`***両方***`（snake_case のような語の中ではそのまま）、リンクのタイトル（`[文字](URL "タイトル")`）、`<https://...>`、表の列のそろえ（`:---:`）、バックスラッシュでの打ち消し（`\*`・`\#` など）。コードの囲み（```` ```js ````）の言語名は、コードの 1 行目に出なくなりました。書いたものは今までどおり先にエスケープします（HTML・スクリプトは文字のまま、リンクは新しいタブで `rel="noopener"`）。
+
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
 - A viewer of a project (somebody who may not add an issue there) no longer gets an error in the browser console each time the project page opens: the form to add an issue was fetched ahead to open faster, and refused. It is no longer fetched for somebody who may not add an issue. The label 「子の進捗」 of the second progress number of a parent issue (list and issue detail) was missing; it is shown again. The Files tab of a project with no workspace of the file server yet (or one the user may not open) showed only a folder icon; it shows its message again ("no workspace yet" and who makes one, or "no permission").
