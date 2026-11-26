@@ -549,6 +549,11 @@ function renderTicket(draft) {
         '<label class="d-switch"><span>開くときに確認のコード</span><span class="d-tg"><input type="checkbox" data-p="require_otp"' + (t.require_otp ? ' checked' : '') + '><span></span></span></label>' +
         '<div class="d-time"><span><i class="fa fa-clock-o" aria-hidden="true"></i> 作業時間 合計</span><b>' + t.time_spent + ' 分</b></div></div>';
     h += '<div class="d-sec"><h4><i class="fa fa-clock-o" aria-hidden="true"></i>SLA</h4>' + slaBlock(t) + '</div>';
+    if (t.pm_on) {
+        h += '<div class="d-sec"><h4><i class="fa fa-tasks" aria-hidden="true"></i>ExmentPM</h4>' + (t.pm
+            ? (t.pm.url ? '<a href="' + esc(t.pm.url) + '" target="_blank" rel="noopener"><b>' + esc(t.pm.subject) + '</b></a>' : '<b>' + esc(t.pm.subject) + '</b>') + (t.pm.status ? ' ' + soft(t.pm.status, '#3b82f6', 'fa-flag-o', '課題の状態') : '')
+            : '<div class="its-row" style="gap:6px;flex-wrap:wrap"><select id="d-pm-project" aria-label="課題にするプロジェクト"><option value="">プロジェクトを選ぶ…</option></select><button type="button" class="its-btn small" id="d-pm-make" disabled><i class="fa fa-tasks" aria-hidden="true"></i>ExmentPM の課題にする</button></div>') + '</div>';
+    }
     if (t.customer_info) {
         var c = t.customer_info, pct = c.contract_hours ? Math.min(100, Math.round(c.month_minutes * 100 / (parseFloat(c.contract_hours) * 60))) : null;
         h += '<div class="d-sec"><h4><i class="fa fa-building-o" aria-hidden="true"></i>お客様</h4><div class="d-cust">' + av(c.name, 'l') + '<div><a href="' + esc(u('customer', c.id)) + '"><b>' + esc(c.name) + '</b></a>' + (c.phone ? '<div class="its-sub"><i class="fa fa-phone" aria-hidden="true"></i> ' + esc(c.phone) + '</div>' : '') + '</div></div>' +
@@ -594,6 +599,18 @@ function update(data, msg) { return api(u('update', S.sel), data).then(function 
 
 function bindTicket() {
     var t = S.ticket;
+    var pmSel = $('d-pm-project');
+    if (pmSel) {
+        api(B.url.pm_projects).then(function (d) {
+            Object.keys(d.projects || {}).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = d.projects[k]; pmSel.appendChild(o); });
+        });
+        pmSel.onchange = function () { $('d-pm-make').disabled = !pmSel.value; };
+        $('d-pm-make').onclick = function () {
+            var b = this; b.disabled = true;
+            var fd = new FormData(); fd.append('project', pmSel.value);
+            api(u('pm_issue', t.id), fd).then(function (r) { toast(r.message || (r.ok === false ? 'できませんでした' : '課題にしました'), r.ok === false); openTicket(t.id, true); });
+        };
+    }
     $('d-comp').querySelectorAll('.d-ctab').forEach(function (x) { x.onclick = function () { setKind(x.dataset.kind); $('d-body').focus(); }; });
     $('d-body').addEventListener('input', function () { hold(); this.style.height = 'auto'; this.style.height = Math.min(320, Math.max(92, this.scrollHeight)) + 'px'; });
     $('d-tpl').onchange = function () { var id = parseInt(this.value, 10), x = B.templates.filter(function (y) { return y.id === id; })[0]; this.value = ''; if (!x) { return; }

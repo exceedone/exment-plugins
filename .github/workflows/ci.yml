@@ -243,6 +243,10 @@ jobs:
       - name: Help desk chat notices (IT Support)
         run: php it-support/tools/test-chat-notices.php
 
+      # 「ExmentPM の課題にする」 and every route with its method (ISS02941)
+      - name: Help desk ExmentPM link (IT Support)
+        run: php it-support/tools/test-pm-link.php
+
       # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
       # plain PHP)
       - name: kintone API check (ExmentKintone)

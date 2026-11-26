@@ -26,6 +26,8 @@ class Feature
 {
     const DESK = 'exment_it_support.desk';
     const PORTAL = 'exment_it_support.portal';
+    /** 「ExmentPM の課題にする」 (ISS02941): new, off at first. */
+    const PM_LINK = 'exment_it_support.pm_link';
 
     const CORE = '\\Exceedone\\Exment\\Services\\Features';
 
@@ -58,6 +60,14 @@ class Feature
             'who' => false,
             'existing' => true,
         ]);
+        $core::register(static::PM_LINK, [
+            'label' => $lang . 'pm_link',
+            'description' => $lang . 'pm_link_help',
+            'endpoints' => [],
+            'plugin' => $plugin->plugin_name,
+            'requires' => static::DESK,
+            'existing' => false,
+        ]);
         $core::register(static::DESK, [
             'label' => $lang . 'desk',
             'description' => $lang . 'desk_help',
@@ -74,6 +84,9 @@ class Feature
             return true;
         }
         $core = static::CORE;
+        if ($key === static::PM_LINK && !$core::enabled(static::DESK)) {
+            return false;
+        }
         if ($key === static::PORTAL && !$core::enabled(static::DESK)) {
             return false;
         }

@@ -162,6 +162,8 @@ class Desk
                     'knowledge' => Its::url('ticket', '__ID__', 'to-knowledge'),
                     'problem_link' => Its::url('ticket', '__ID__', 'problem'),
                     'problem' => Its::url('problem', '__ID__'),
+                    'pm_issue' => Its::url('ticket', '__ID__', 'pm-issue'),
+                    'pm_projects' => Its::url('api', 'pm-projects'),
                     'ksearch' => Its::url('knowledge', 'search'),
                     'bulk' => Its::url('bulk'),
                     'edit' => Its::dataUrl(Its::T_TICKET, '__ID__', 'edit'),
@@ -312,6 +314,9 @@ class Desk
             'assignee' => strval($v['assignee'] ?? ''),
             'asset' => strval($assetId ?? ''),
             'tags' => strval($v['tags'] ?? ''),
+            // 「ExmentPM の課題にする」 (ISS02941): the issue it became, or the projects to choose
+            'pm_on' => PmLink::available(),
+            'pm' => PmLink::available() ? PmLink::issueOf($ticket) : null,
             'customer_visible' => boolval($v['customer_visible'] ?? '1'),
             'require_otp' => boolval($v['require_otp'] ?? '0'),
             'time_spent' => intval($v['time_spent'] ?? 0),
@@ -640,6 +645,29 @@ class Desk
             : ($result['mailed'] === true ? 'お客様にメールで送りました。' : ($result['mailed'] === false ? '保存しましたが、メールを送れませんでした（メールの設定を確かめてください）。' : '保存しました（お客様のメールアドレスがないので、メールは送っていません）。'));
 
         return $this->back(Its::url('ticket', strval($ticket->id)), $message, $result['mailed'] === false);
+    }
+
+    public function postPmIssue(Request $request, $id)
+    {
+        if ($r = $this->gate()) {
+            return $r;
+        }
+        $ticket = Tickets::find($id);
+        if (!isset($ticket)) {
+            return $this->back(Its::url(), 'チケットが見つかりません。', true);
+        }
+        $result = PmLink::create($ticket, intval($request->get('project')));
+
+        return $this->back(Its::url() . '?open=' . intval($ticket->id), $result['message'], !$result['ok']);
+    }
+
+    public function apiPmProjects()
+    {
+        if (!Its::isInstalled() || !static::isAgent()) {
+            return response()->json(['error' => 'forbidden'], 403);
+        }
+
+        return response()->json(['projects' => PmLink::available() ? PmLink::projects() : []]);
     }
 
     public function postUpdate(Request $request, $id)
