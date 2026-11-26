@@ -69,7 +69,11 @@ trait PortalDashboardTrait
                 'closed' => count($tabs['closed']),
             ],
             'tabs' => $tabs,
-            'feed' => $this->dashboardFeed($cards),
+            // Kept until an issue, a comment, a file or a history line is
+            // added (UX S15): it was read again on every visit.
+            'feed' => $this->pmCached('dashfeed', [$this->issueStamp(), $this->feedChangeStamp(), array_keys($cards)], function () use ($cards) {
+                return $this->dashboardFeed($cards);
+            }),
             // So the view can say "there are more of these" rather than
             // quietly showing the first forty as if they were all of them.
             'limit' => static::$dash_list_limit,

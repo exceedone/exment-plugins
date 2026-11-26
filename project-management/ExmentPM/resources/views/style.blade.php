@@ -3,11 +3,17 @@
 /* The palette sits on .pmportal rather than on .bl-app: the hover card is
    appended to <body> wearing that class with no .bl-app above it, so this is
    the only level both of them share. */
-.pmportal{--bl-accent:#4caf93;--bl-accent-d:#3d9a80;--bl-ink:#24323f;--bl-sub:#6b7a88;
-  --bl-line:#dfe5ea;--bl-bg:#f5f7f9;--bl-faint:#8b99a5;--bl-box:#ffffff;--bl-box2:#f5f7f9;--bl-chip:#eef3f6;--bl-hover:#f2f8f5;--bl-red:#d9534f;--bl-amber:#eda62a;
+/* S14: with Exment's modern design on (modern.css defines --exm-ui-*), the
+   portal takes its accent, text, lines and radius from it - the site's skin
+   colour instead of the portal's own green. With the classic design those
+   are not defined and the values after the comma are the ones it always had. */
+.pmportal{--bl-accent:var(--exm-ui-accent,#4caf93);--bl-accent-d:var(--exm-ui-accent-strong,#3d9a80);
+  --bl-accent-ink:var(--exm-ui-accent-strong,#2c6e5b);--bl-accent-line:var(--exm-ui-accent-ring,#bfe3d6);
+  --bl-ink:var(--exm-ui-text,#24323f);--bl-sub:var(--exm-ui-text-sub,#6b7a88);
+  --bl-line:var(--exm-ui-line,#dfe5ea);--bl-bg:var(--exm-ui-bg-sub,#f5f7f9);--bl-faint:var(--exm-ui-text-faint,#8b99a5);--bl-box:#ffffff;--bl-box2:#f5f7f9;--bl-chip:#eef3f6;--bl-hover:var(--exm-ui-accent-soft,#f2f8f5);--bl-red:var(--exm-ui-danger,#d9534f);--bl-amber:#eda62a;
   /* design tokens (ISS00287): soft separator, muted text, radius, shadow, type scale, spacing, focus ring */
-  --bl-line2:#e9eef2;--bl-muted:var(--bl-faint);
-  --bl-radius:6px;--bl-radius-s:4px;--bl-radius-pill:999px;
+  --bl-line2:var(--exm-ui-line-soft,#e9eef2);--bl-muted:var(--bl-faint);
+  --bl-radius:var(--exm-ui-radius-sm,6px);--bl-radius-s:4px;--bl-radius-pill:999px;
   --bl-shadow-s:0 1px 2px rgba(15,42,60,.06);--bl-shadow-m:0 8px 24px rgba(15,42,60,.14);
   --bl-fs-xs:11px;--bl-fs-s:12px;--bl-fs:13px;--bl-fs-l:14px;--bl-fs-xl:20px;
   --bl-sp-1:4px;--bl-sp-2:8px;--bl-sp-3:12px;--bl-sp-4:16px;
@@ -226,7 +232,7 @@
 .pmportal .bl-list tr.pp-tkid.pp-td4 td{background:color-mix(in srgb, var(--bl-accent) 17%, var(--bl-box));}
 .pmportal .pp-rollup{line-height:1.2;margin-top:2px;white-space:nowrap;}
 .pmportal .bl-list tr.pp-tkid td:first-child{box-shadow:inset 3px 0 0 color-mix(in srgb, var(--bl-accent) 55%, transparent);}
-.pmportal .bl-list tr.pp-tkid:hover td{background:var(--bl-hover,#f2f8f5);}
+.pmportal .bl-list tr.pp-tkid:hover td{background:var(--bl-hover,var(--exm-ui-accent-soft,#f2f8f5));}
 .pmportal .bl-list tr.pp-tpar td.sub{font-weight:700;}
 .pmportal .bl-fmine{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);background:var(--bl-box);
   color:var(--bl-sub);font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;white-space:nowrap;}
@@ -560,7 +566,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 .pmportal .bl-dockbody .bl-chip:hover{background:var(--bl-hover);border-color:color-mix(in srgb, var(--bl-accent) 55%, var(--bl-line));color:var(--bl-ink);}
 .pmportal .bl-dockbody .bl-chip:hover .bl-av{opacity:1;filter:none;}
 .pmportal .bl-dockbody .bl-chip:not(.off){background:color-mix(in srgb, var(--bl-accent) 14%, var(--bl-box));
-  border-color:var(--bl-accent);color:var(--bl-accent-d,#2c6e5b);}
+  border-color:var(--bl-accent);color:var(--bl-accent-d,var(--bl-accent-ink,#2c6e5b));}
 .pmportal .bl-dockbody .bl-chip:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
 .pmportal #pp-notify-chips{display:flex;flex-wrap:wrap;gap:5px;}
 /* ---- dock cards: quieter heads, the room goes to the fields ---- */
@@ -602,7 +608,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 /* Mounted on <body> so it is never clipped by the box the editor sits in,
    which means it needs its own copy of the palette. */
 .pp-ta{--bl-box:#fff;--bl-line:#dfe5ea;--bl-ink:#2a3b47;--bl-sub:#6b7f8e;--bl-faint:#93a4b1;
-  --bl-hover:#f2f6f8;--bl-accent:#4caf93;--bl-accent-d:#2c6e5b;
+  --bl-hover:#f2f6f8;--bl-accent:var(--exm-ui-accent,#4caf93);--bl-accent-d:var(--bl-accent-ink,#2c6e5b);
   position:absolute;z-index:11000;min-width:240px;max-width:420px;background:var(--bl-box);
   border:1px solid var(--bl-line);border-radius:var(--bl-radius,6px);box-shadow:0 8px 24px rgba(15,42,60,.18);overflow:hidden;
   font-size:12px;color:var(--bl-ink);}
@@ -677,7 +683,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 .pp-officebox-in{display:flex;flex-direction:column;width:min(1280px,100%);height:100%;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.35);}
 .pp-officebox-hd{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #dfe5ea;font-size:13px;color:#24323f;}
 .pp-officebox-hd .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.pp-officebox-tab{font-size:12px;color:#3d9a80;text-decoration:none;white-space:nowrap;}
+.pp-officebox-tab{font-size:12px;color:var(--bl-accent-d,var(--exm-ui-accent-strong,#3d9a80));text-decoration:none;white-space:nowrap;}
 .pp-officebox-x{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:#6b7a88;padding:0 4px;}
 .pp-officebox iframe{flex:1;width:100%;border:0;display:block;background:#fff;}
 @media (prefers-color-scheme: dark){
@@ -690,8 +696,8 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
   border-radius:8px 8px 0 0;font-size:13px;box-shadow:none;}
 .pmportal .bl-notifyrow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--bl-line2,#eef2f5);
   font-size:12px;color:var(--bl-sub);flex-wrap:wrap;}
-.pmportal .bl-chip{display:inline-flex;align-items:center;gap:5px;background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));border:1px solid #bfe3d6;
-  color:#2c6e5b;border-radius:14px;padding:1px 9px;font-weight:600;cursor:pointer;}
+.pmportal .bl-chip{display:inline-flex;align-items:center;gap:5px;background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));border:1px solid var(--bl-accent-line,#bfe3d6);
+  color:var(--bl-accent-ink,#2c6e5b);border-radius:14px;padding:1px 9px;font-weight:600;cursor:pointer;}
 .pmportal .bl-chip.off{background:#f4f6f8;border-color:#dfe5ea;color:var(--bl-faint);}
 .pmportal .bl-notifyrow select{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:4px 6px;font-size:12px;}
 .pmportal .bl-btn-main{background:var(--bl-accent);color:#fff;border:0;border-radius:var(--bl-radius-s,4px);padding:7px 18px;
@@ -699,7 +705,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 .pmportal .bl-btn-main[disabled]{opacity:.6;}
 .pmportal .bl-btn-sub{background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:6px 12px;
   color:var(--bl-sub);cursor:pointer;text-decoration:none;display:inline-block;}
-.pmportal .bl-btn-sub.on{color:#2c6e5b;border-color:#bfe3d6;background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));}
+.pmportal .bl-btn-sub.on{color:var(--bl-accent-ink,#2c6e5b);border-color:var(--bl-accent-line,#bfe3d6);background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));}
 
 /* ---- wiki / files ---- */
 .pmportal .bl-wiki{display:grid;grid-template-columns:260px 1fr;gap:12px;align-items:start;}
@@ -847,10 +853,10 @@ body.pp-fm-open{overflow:hidden;}
 .pp-nedit{
   display:flex;flex-direction:column;background:var(--bl-box);
   border:1px solid var(--bl-line);border-radius:var(--bl-radius,6px);overflow:hidden;
-  --bl-accent:#4caf93;--bl-accent-d:#3d9a80;
+  --bl-accent:var(--exm-ui-accent,#4caf93);--bl-accent-d:var(--exm-ui-accent-strong,#3d9a80);
   --bl-ink:#24323f;--bl-sub:#6b7a88;--bl-faint:#8b99a5;
   --bl-line:#dfe5ea;--bl-box:#ffffff;--bl-box2:#f5f7f9;
-  --bl-chip:#eef3f6;--bl-hover:#f2f8f5;
+  --bl-chip:#eef3f6;--bl-hover:var(--exm-ui-accent-soft,#f2f8f5);
   color-scheme:light;color:var(--bl-ink);}
 .pp-nedit[hidden],.pp-nedit [hidden]{display:none !important;}
 @keyframes pp-fm-fade{from{opacity:0;}to{opacity:1;}}
@@ -1198,10 +1204,10 @@ body.pp-fm-open{overflow:hidden;}
    way .pp-nedit does. */
 .pp-ib{position:fixed;inset:0;z-index:2200;display:flex;align-items:flex-start;
   justify-content:center;padding:6vh 16px 16px;
-  --bl-accent:#4caf93;--bl-accent-d:#3d9a80;
+  --bl-accent:var(--exm-ui-accent,#4caf93);--bl-accent-d:var(--exm-ui-accent-strong,#3d9a80);
   --bl-ink:#24323f;--bl-sub:#6b7a88;--bl-faint:#8b99a5;
   --bl-line:#dfe5ea;--bl-box:#ffffff;--bl-box2:#f5f7f9;
-  --bl-chip:#eef3f6;--bl-hover:#f2f8f5;--bl-red:#d9534f;
+  --bl-chip:#eef3f6;--bl-hover:var(--exm-ui-accent-soft,#f2f8f5);--bl-red:#d9534f;
   color-scheme:light;color:var(--bl-ink);
   font-family:inherit;}
 .pp-ib [hidden]{display:none !important;}
@@ -1382,9 +1388,11 @@ body.pp-ib-open{overflow:hidden;}
 
 /* ---- issue detail: back button, summary strip under the subject ---- */
 /* 課題一覧へ: filled accent button so it stands out (snoro 2026-11-18) */
-.pmportal .bl-dback{display:inline-flex;align-items:center;gap:6px;background:var(--bl-accent);border:1px solid var(--bl-accent);
-  border-radius:var(--bl-radius-s);padding:7px 16px;color:#fff;font-weight:700;box-shadow:var(--bl-shadow-s);}
-.pmportal .bl-dback:hover,.pmportal .bl-dback:focus{border-color:var(--bl-accent-d);color:#fff;background:var(--bl-accent-d);text-decoration:none;}
+/* S14: a way back is a quiet grey button; the accent colour is kept for the
+   one action that matters on a screen (次の状態にする, 送信, 保存, 課題を追加). */
+.pmportal .bl-dback{display:inline-flex;align-items:center;gap:6px;background:var(--bl-box);border:1px solid var(--bl-line);
+  border-radius:var(--bl-radius-s);padding:7px 16px;color:var(--bl-sub);font-weight:600;}
+.pmportal .bl-dback:hover,.pmportal .bl-dback:focus{border-color:var(--bl-faint);color:var(--bl-ink);background:var(--bl-hover);text-decoration:none;}
 .pmportal .bl-dhead > span:last-child{flex-wrap:wrap;justify-content:flex-end;}
 .pmportal .pp-ar-note { font-size: 12px; color: var(--bl-sub); margin-left: 10px; }
 .pmportal .pp-ar-note a { color: var(--bl-accent-d); font-weight: 700; }
@@ -1467,7 +1475,7 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .bl-btn-main:focus-visible,.pmportal .bl-btn-sub:focus-visible,.pmportal .bl-sttab:focus-visible,
 .pmportal .bl-qchip:focus-visible,.pmportal .bl-fmine:focus-visible,.pmportal .bl-tab:focus-visible,
 .pmportal .bl-addissue:focus-visible,.pmportal .bl-dback:focus-visible,.pmportal .bl-pager .nav button:focus-visible,
-.pp-top .pp-top-home:focus-visible,.pp-top .pp-top-dd>button:focus-visible{outline:2px solid var(--bl-accent,#4caf93);outline-offset:1px;}
+.pp-top .pp-top-home:focus-visible,.pp-top .pp-top-dd>button:focus-visible{outline:2px solid var(--bl-accent,var(--exm-ui-accent,#4caf93));outline-offset:1px;}
 .pmportal .bl-filters select:hover,.pmportal .bl-filters input:hover,.pmportal .bl-tabsearch input:hover,
 .pmportal .bl-bulk select:hover,.pmportal .bl-pager .sz select:hover,.pmportal .pp-sf-add input:hover{border-color:var(--bl-faint);}
 .pmportal .bl-filters select:focus,.pmportal .bl-filters input:focus,.pmportal .bl-tabsearch input:focus,
@@ -1869,4 +1877,33 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-st-menu button[disabled]{color:var(--bl-sub);cursor:default;font-weight:700;}
 .pmportal .pp-st-menu .dot{width:9px;height:9px;border-radius:50%;flex:none;}
 .pmportal .pp-st-menu .fa-check{margin-left:auto;color:var(--bl-accent-d);}
+/* ==== UX-F: keys, empty states, recent updates (S15, S16, M5, M10) ==== */
+/* S16: the row j / k are on */
+.pmportal #pp-issue-rows tr.pp-kbd-cur > td{background:var(--bl-hover);}
+.pmportal #pp-issue-rows tr.pp-kbd-cur > td:first-child{box-shadow:inset 3px 0 0 var(--bl-accent);}
+/* S16: the list of keys (?) */
+.pmportal .pp-keyhelp{position:fixed;inset:0;z-index:1090;display:flex;align-items:center;justify-content:center;
+  background:rgba(15,23,32,.35);padding:16px;}
+.pmportal .pp-keyhelp .in{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--bl-box);
+  border-radius:var(--bl-radius);border:1px solid var(--bl-line);box-shadow:var(--bl-shadow-m);padding:0 0 12px;}
+.pmportal .pp-keyhelp .hd{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bl-line2);font-weight:700;font-size:14px;}
+.pmportal .pp-keyhelp .hd .x{margin-left:auto;border:0;background:none;font-size:20px;line-height:1;color:var(--bl-sub);cursor:pointer;}
+.pmportal .pp-keyhelp .grp{padding:8px 16px 0;}
+.pmportal .pp-keyhelp .gt{font-size:11.5px;font-weight:700;color:var(--bl-sub);margin-bottom:4px;}
+.pmportal .pp-keyhelp .kr{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px;}
+.pmportal .pp-keyhelp .kr span{margin-left:8px;color:var(--bl-ink);}
+.pmportal .pp-keyhelp kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid var(--bl-line);border-bottom-width:2px;
+  border-radius:4px;background:var(--bl-box2);color:var(--bl-ink);font:600 12px/1.5 Menlo,Consolas,monospace;text-align:center;box-shadow:none;}
+/* S15: もっと見る under the recent updates */
+.pmportal .pp-feed-more{display:block;width:100%;margin-top:8px;}
+/* M10: what to do when there is nothing yet */
+.pmportal .pp-home-empty{margin-bottom:12px;padding:14px 16px;background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius);}
+.pmportal .pp-home-empty[hidden]{display:none;}
+.pmportal .pp-home-empty .t{font-weight:700;margin-bottom:8px;}
+.pmportal .pp-home-empty .t .fa{color:var(--bl-amber);margin-right:4px;}
+.pmportal .pp-home-empty ol{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0 0 0 18px;}
+.pmportal .pp-home-empty li{padding-left:2px;}
+.pmportal .pp-empty-row td{padding:18px 12px;text-align:center;color:var(--bl-sub);}
+.pmportal .pp-empty-row .bl-btn-sub{margin-left:8px;}
+.pmportal .pp-none-list{margin-left:8px;font-weight:700;color:var(--bl-accent-d);}
 </style>

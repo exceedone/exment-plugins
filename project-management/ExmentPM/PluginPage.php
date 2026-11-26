@@ -252,6 +252,12 @@ class PluginPage extends PluginPageBase
         return $this->portal()->archivedIssues(request(), $id);
     }
 
+    // UX S15/M5: 「最近の更新」, read after the page.
+    public function projectFeed($id)
+    {
+        return $this->portal()->projectFeed(request(), $id);
+    }
+
     public function issueRead($id, $issue_id)
     {
         return $this->portal()->issueRead(request(), $id, $issue_id);

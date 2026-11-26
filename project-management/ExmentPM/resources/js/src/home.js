@@ -109,26 +109,119 @@
         });
         document.getElementById('pp-members').innerHTML = members;
 
-        document.getElementById('pp-feed').innerHTML = (D.feed || []).map(function (f) {
-            var ic = own(FEED_IC, f.tp) || FEED_IC.chg;
-            var link;
-            if (f.kind === 'issue') {
-                link = '<a class="bl-issuelink" href="#' + esc(issueHash(f.id)) + '">' + esc(f.key) + ' ' + esc(f.label) + '</a>';
-            } else if (f.kind === 'wiki') {
-                link = '<a class="bl-issuelink pp-wikilink" href="#wiki" data-wiki="' + esc(f.id) + '">' + esc(f.label) + '</a>';
-            } else if (f.kind === 'file') {
-                link = '<a class="bl-issuelink" href="#files">' + esc(f.label) + '</a>';
-            } else {
-                link = esc(f.label);
-            }
-            var verb = own({ add: L.feed_add, chg: L.feed_chg, cmt: L.feed_cmt, file: L.feed_file, wiki: L.feed_wiki, wiki_add: L.feed_wiki_add }, f.tp) || L.feed_chg;
-            if (f.kind === 'project') { verb = L.feed_project; }
-            return '<div class="item"><span class="ic" style="background:' + ppColor(ic.c) + '"><i class="fa ' + ic.i + '"></i></span>' +
-                '<div><div class="tx"><span class="who">' + esc(user(f.by).n) + '</span> ' + fmt(esc(verb), link) +
-                (f.extra ? '<span class="ex">' + esc(f.extra) + '</span>' : '') + '</div>' +
-                '<div class="tm"><i class="fa fa-clock-o"></i> ' + esc(f.at) + '</div></div></div>';
-        }).join('') || ('<div style="color:var(--bl-faint);">' + esc(L.empty) + '</div>');
+        renderFeed(true);
+        renderFirstSteps();
     }
+    // M10: a project with no issue yet says what to do first.
+    function renderFirstSteps() {
+        var box = document.getElementById('pp-home-empty');
+        if (!box) { return; }
+        var none = !(D.issues || []).length && !arCount();
+        box.hidden = !none;
+        if (!none) { box.innerHTML = ''; return; }
+        var steps = [];
+        if (CAN_ADD_ISSUE) { steps.push(['#new', 'fa-plus', L.fs_add_issue]); }
+        if (D.can && D.can.manage) {
+            steps.push(['#settings', 'fa-user-plus', L.fs_invite]);
+            steps.push(['#settings', 'fa-list-ol', L.fs_statuses]);
+        }
+        box.innerHTML = '<div class="t"><i class="fa fa-lightbulb-o"></i> ' + esc(L.empty_issues) + '</div>' +
+            (steps.length ? '<ol>' + steps.map(function (st) {
+                return '<li><a class="bl-btn-sub" href="' + esc(st[0]) + '"><i class="fa ' + st[1] + '"></i> ' + esc(st[2]) + '</a></li>';
+            }).join('') + '</ol>' : '');
+    }
+
+    /* ------------------------------------------------ recent updates ---- */
+    // S15, M5: 「最近の更新」 is not in the page; it is read after it, ten at a
+    // time, and もっと見る reads the next ten (?before=). A server that still
+    // sends it with the page (D.feed an array) is shown ten at a time too.
+    var FEED = { rows: [], next: '', more: false, busy: false, seq: 0, shown: 10, local: false, loaded: false };
+    function feedRowHtml(f) {
+        var ic = own(FEED_IC, f.tp) || FEED_IC.chg;
+        var link;
+        if (f.kind === 'issue') {
+            link = '<a class="bl-issuelink" href="#' + esc(issueHash(f.id)) + '">' + esc(f.key) + ' ' + esc(f.label) + '</a>';
+        } else if (f.kind === 'wiki') {
+            link = '<a class="bl-issuelink pp-wikilink" href="#wiki" data-wiki="' + esc(f.id) + '">' + esc(f.label) + '</a>';
+        } else if (f.kind === 'file') {
+            link = '<a class="bl-issuelink" href="#files">' + esc(f.label) + '</a>';
+        } else {
+            link = esc(f.label);
+        }
+        var verb = own({ add: L.feed_add, chg: L.feed_chg, cmt: L.feed_cmt, file: L.feed_file, wiki: L.feed_wiki, wiki_add: L.feed_wiki_add }, f.tp) || L.feed_chg;
+        if (f.kind === 'project') { verb = L.feed_project; }
+        return '<div class="item"><span class="ic" style="background:' + ppColor(ic.c) + '"><i class="fa ' + ic.i + '"></i></span>' +
+            '<div><div class="tx"><span class="who">' + esc(user(f.by).n) + '</span> ' + fmt(esc(verb), link) +
+            (f.extra ? '<span class="ex">' + esc(f.extra) + '</span>' : '') + '</div>' +
+            '<div class="tm"><i class="fa fa-clock-o"></i> ' + esc(f.at) + '</div></div></div>';
+    }
+    function paintFeed() {
+        var box = document.getElementById('pp-feed');
+        if (!box) { return; }
+        var rows = FEED.local ? FEED.rows.slice(0, FEED.shown) : FEED.rows;
+        var more = FEED.local ? FEED.rows.length > FEED.shown : FEED.more;
+        box.innerHTML = (rows.map(feedRowHtml).join('') || ('<div style="color:var(--bl-faint);">' + esc(L.empty) + '</div>')) +
+            (more ? '<button type="button" class="bl-btn-sub pp-feed-more"' + (FEED.busy ? ' disabled' : '') + '>' +
+                (FEED.busy ? '<i class="fa fa-spinner fa-spin"></i> ' : '') + esc(L.feed_more) + '</button>' : '');
+    }
+    // fresh: the page's data was (re)read - the first page is asked again
+    // (the server keeps it until something changes, so this is cheap).
+    function renderFeed(fresh) {
+        var box = document.getElementById('pp-feed');
+        if (!box) { return; }
+        if (Array.isArray(D.feed)) {
+            FEED.local = true;
+            FEED.rows = D.feed;
+            FEED.loaded = true;
+            paintFeed();
+            return;
+        }
+        FEED.local = false;
+        if (!FEED.loaded) { box.innerHTML = skel(3); }
+        if (fresh || !FEED.loaded) { feedLoad(false); }
+    }
+    function feedLoad(older) {
+        if (!(D.urls && D.urls.base)) { return; }
+        if (older && (FEED.busy || !FEED.next)) { return; }
+        var seq = ++FEED.seq;
+        var params = { limit: 10 };
+        if (older) { params.before = FEED.next; }
+        FEED.busy = !!older;
+        if (older) { paintFeed(); }
+        // In the normal lane: it is on the screen (the slow lane is dropped
+        // when the page boots, and this is asked for while it does).
+        ppQueue(function () {
+            return $.getJSON(D.urls.base + '/feed', params);
+        }).then(function (res) {
+            if (!alive() || seq !== FEED.seq) { return; }
+            FEED.busy = false;
+            if (!res || !res.ok || !Array.isArray(res.feed)) { if (!FEED.loaded) { feedFailed(); } else { paintFeed(); } return; }
+            FEED.rows = older ? FEED.rows.concat(res.feed) : res.feed;
+            FEED.next = String(res.next || '');
+            FEED.more = !!res.more;
+            FEED.loaded = true;
+            paintFeed();
+        }).catch(function (e) {
+            if (window.console && e && e.message) { window.console.warn('pmportal feed:', e.message); }
+            if (!alive() || seq !== FEED.seq) { return; }
+            FEED.busy = false;
+            if (!FEED.loaded) { feedFailed(); } else { paintFeed(); }
+        });
+    }
+    function feedFailed() {
+        var box = document.getElementById('pp-feed');
+        if (box) { box.innerHTML = '<div style="color:var(--bl-faint);">' + esc(L.hc_fail) + '</div>'; }
+    }
+    (function () {
+        var box = document.getElementById('pp-feed');
+        if (!box) { return; }
+        box.addEventListener('click', function (ev) {
+            if (!(ev.target.closest && ev.target.closest('.pp-feed-more'))) { return; }
+            ev.preventDefault();
+            if (FEED.local) { FEED.shown += 10; paintFeed(); return; }
+            feedLoad(true);
+        });
+    }());
 
     /* ------------------------------------------------ archive ----------- */
     // ISS00332: issues finished more than D.archive.days days ago are not in

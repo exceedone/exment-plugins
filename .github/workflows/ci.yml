@@ -124,6 +124,9 @@ jobs:
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
 
+      - name: Recent updates pages (ExmentPM)
+        run: php project-management/tools/test-pm-feed.php
+
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
         run: node project-management/tools/test-user-timezone.js

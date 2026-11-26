@@ -29,10 +29,92 @@
             if (window.ppStMenuFromKey()) { ev.preventDefault(); }
             return;
         }
+        // S16: the list - j / k move, o or Enter opens.
+        if (String(currentScreen) === 'issues' && (k === 'j' || k === 'k' || k === 'o' || (ev.key === 'Enter' && document.activeElement === document.body))) {
+            if (kbdRow(k === 'j' ? 1 : (k === 'k' ? -1 : 0))) { ev.preventDefault(); }
+            return;
+        }
+        // S16: the issue - [ ] the one before / after in the list, e edit,
+        // c write a comment.
+        if (String(currentScreen) === 'issue') {
+            var issueKey = { '[': '.bl-inav a:first-child:not(.off)', ']': '.bl-inav a:last-child:not(.off)', e: '.bl-dhead .pp-mlink' };
+            if (own(issueKey, k)) {
+                var hit = document.querySelector('#pp-d-main ' + issueKey[k]);
+                if (hit) { ev.preventDefault(); hit.click(); }
+                return;
+            }
+            if (k === 'c' && typeof ppDockOpen === 'function') {
+                var dock = document.getElementById('pp-cmtdock');
+                if (dock && !dock.hidden) { ev.preventDefault(); ppDockOpen(true); }
+                return;
+            }
+        }
         if (ev.key === '/') {
             var jump = document.getElementById('pp-jump');
             if (jump) { ev.preventDefault(); jump.focus(); }
         }
+    });
+
+    // S16: j / k move a mark down and up the rows of the list (step 0: open
+    // the marked row). Answers whether it did anything.
+    function kbdRow(step) {
+        var rows = Array.prototype.slice.call(document.querySelectorAll('#pp-issue-rows tr[data-issue]'));
+        if (!rows.length) { return false; }
+        var at = -1;
+        rows.forEach(function (r, n) { if (r.classList.contains('pp-kbd-cur')) { at = n; } });
+        if (step === 0) {
+            if (at < 0) { return false; }
+            location.hash = issueHash(rows[at].getAttribute('data-issue'));
+            return true;
+        }
+        var next = at < 0 ? (step > 0 ? 0 : rows.length - 1) : Math.max(0, Math.min(rows.length - 1, at + step));
+        if (at >= 0) { rows[at].classList.remove('pp-kbd-cur'); }
+        rows[next].classList.add('pp-kbd-cur');
+        try { rows[next].scrollIntoView({ block: 'nearest' }); } catch (e) { rows[next].scrollIntoView(false); }
+        return true;
+    }
+    // S16: ? shows the keys (Shift is part of typing ?, so it has its own
+    // listener; the same rules about fields and open forms apply).
+    var KEY_HELP = [
+        ['kh_move', [['h', 'tab_home'], ['b', 'tab_board'], ['f', 'tab_issues'], ['g', 'tab_gantt'], ['u', 'tab_burndown'], ['w', 'tab_wiki']]],
+        ['kh_list', [['a', 'add_issue'], ['/', 'kh_search'], ['j k', 'kh_updown'], ['o', 'kh_open']]],
+        ['kh_issue', [['e', 'edit'], ['c', 'kh_comment'], ['s', 'kh_status'], ['[ ]', 'kh_prevnext']]],
+        ['kh_other', [['Ctrl+Enter', 'kh_send'], ['Esc', 'kh_close'], ['?', 'kh_help']]]
+    ];
+    function keyHelp(show) {
+        var box = document.getElementById('pp-keyhelp');
+        if (!show) { if (box) { box.remove(); } return; }
+        if (box) { return; }
+        box = document.createElement('div');
+        box.id = 'pp-keyhelp';
+        box.className = 'pp-keyhelp';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-label', L.kh_title);
+        box.innerHTML = '<div class="in"><div class="hd"><span>' + esc(L.kh_title) + '</span>' +
+            '<button type="button" class="x" aria-label="' + esc(L.m_close) + '">&times;</button></div>' +
+            KEY_HELP.map(function (g) {
+                return '<div class="grp"><div class="gt">' + esc(L[g[0]]) + '</div>' + g[1].map(function (k) {
+                    return '<div class="kr">' + String(k[0]).split(' ').map(function (x) { return '<kbd>' + esc(x) + '</kbd>'; }).join(' ') +
+                        '<span>' + esc(L[k[1]] || k[1]) + '</span></div>';
+                }).join('') + '</div>';
+            }).join('') + '</div>';
+        box.addEventListener('click', function (ev) {
+            if (ev.target === box || (ev.target.closest && ev.target.closest('.x'))) { keyHelp(false); }
+        });
+        (root.closest('.pmportal') || root).appendChild(box);
+        var x = box.querySelector('.x');
+        if (x) { x.focus(); }
+    }
+    document.addEventListener('keydown', function onPpKeyHelp(ev) {
+        if (!alive()) { document.removeEventListener('keydown', onPpKeyHelp); return; }
+        if (ev.key === 'Escape' && document.getElementById('pp-keyhelp')) { ev.preventDefault(); keyHelp(false); return; }
+        if (ev.key !== '?' || ev.ctrlKey || ev.metaKey || ev.altKey || ev.defaultPrevented) { return; }
+        var t = ev.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) { return; }
+        if ((FM.el && !FM.el.hidden) || (NED.el && !NED.el.hidden)) { return; }
+        ev.preventDefault();
+        keyHelp(!document.getElementById('pp-keyhelp'));
     });
 
     // Escape closes the dock. Bound on its own rather than added to the

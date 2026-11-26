@@ -41,6 +41,7 @@ class PmPortalController extends AdminControllerBase
     use PortalRankingTrait;
     use PortalExportTrait;
     use PortalAllIssuesTrait;
+    use PortalFeedTrait;
 
     /**
      * How many issues one bulk edit may touch.
@@ -2923,7 +2924,8 @@ class PmPortalController extends AdminControllerBase
         $files = $features['file']
             ? $this->buildFiles($project, $issues, $rows, $wiki)
             : ['rows' => [], 'partial' => false];
-        $feed = $this->buildFeed($project, $issues, $rows, $wiki);
+        // 「最近の更新」 is read after the page, ten at a time (projectFeed).
+        $feed = null;
         $archived = $this->projectIsArchived($project);
 
         // The issue screens come with the page: opening one then costs no
@@ -3639,142 +3641,6 @@ class PmPortalController extends AdminControllerBase
         $column = array_get($this->def, 'issue_extra.' . $role, $role);
 
         return array_values(array_filter(array_map('intval', (array) array_get((array) $value, $column, []))));
-    }
-
-    /**
-     * The activity feed: revisions, comments, wiki edits, files and member
-     * changes of one project, newest first.
-     *
-     * @param \Exceedone\Exment\Model\CustomValue $project
-     * @param \Illuminate\Support\Collection $issues
-     * @param array<int, array<string, mixed>> $rows
-     * @param array<string, mixed> $wiki
-     * @return array<int, array<string, mixed>>
-     */
-    protected function buildFeed($project, $issues, array $rows, array $wiki)
-    {
-        $issue_name = $this->issue_table->table_name;
-        $keys = collect($rows)->keyBy('id');
-        $feed = [];
-
-        $issue_revisions = $this->revisionsOf($issue_name, $issues->pluck('id')->toArray(), 60);
-        $this->primeLabels($this->issue_table, $issue_revisions);
-        foreach ($issue_revisions as $rev) {
-            $row = $keys->get(intval($rev->revisionable_id));
-            if (!$row) {
-                continue;
-            }
-            $is_add = intval($rev->revision_no) <= 1;
-            $changes = $is_add ? [] : $this->diffRevision($this->issue_table, $rev);
-            if (!$is_add && empty($changes)) {
-                continue;
-            }
-            $feed[] = [
-                'tp' => $is_add ? 'add' : 'chg',
-                'by' => intval($rev->create_user_id),
-                'ts' => strval($rev->created_at),
-                'kind' => 'issue',
-                'id' => $row['id'],
-                'key' => $this->issueKey($project, $row['id']),
-                'label' => $row['subject'],
-                'extra' => collect($changes)->take(2)->map(function ($c) {
-                    return $c[0] . ': ' . $c[1] . ' → ' . $c[2];
-                })->implode(' / '),
-            ];
-        }
-
-        $comment_parents = [$issue_name => $keys];
-        $comments = getModelName(SystemTableName::COMMENT)::whereIn('parent_id', $issues->pluck('id'))
-            ->where('parent_type', $issue_name)
-            ->orderBy('created_at', 'desc')->take(30)->get();
-        foreach ($comments as $comment) {
-            $row = $keys->get(intval($comment->parent_id));
-            if (!$row) {
-                continue;
-            }
-            $feed[] = [
-                'tp' => 'cmt',
-                'by' => intval($comment->created_user_id),
-                'ts' => strval($comment->created_at),
-                'kind' => 'issue',
-                'id' => $row['id'],
-                'key' => $this->issueKey($project, $row['id']),
-                'label' => $row['subject'],
-                'extra' => mb_strimwidth(strval(array_get($comment->value, 'comment_detail', '')), 0, 60, '…'),
-            ];
-        }
-
-        if ($wiki['enabled']) {
-            $pages = collect($wiki['pages'])->keyBy('id');
-            foreach ($this->revisionsOf($this->def['wiki_table'], $pages->keys()->toArray(), 20) as $rev) {
-                $page = $pages->get(intval($rev->revisionable_id));
-                if (!$page) {
-                    continue;
-                }
-                $feed[] = [
-                    'tp' => intval($rev->revision_no) <= 1 ? 'wiki_add' : 'wiki',
-                    'by' => intval($rev->create_user_id),
-                    'ts' => strval($rev->created_at),
-                    'kind' => 'wiki',
-                    'id' => $page['id'],
-                    'key' => '',
-                    'label' => $page['title'],
-                    'extra' => '',
-                ];
-            }
-        }
-
-        foreach ($this->documentsOf($project, $issues) as $doc) {
-            $feed[] = [
-                'tp' => 'file',
-                'by' => intval($doc['by']),
-                'ts' => $doc['ts'],
-                'kind' => 'file',
-                'id' => 0,
-                'key' => '',
-                'label' => $doc['name'],
-                'extra' => $doc['src'],
-            ];
-        }
-
-        // Project changes come from the project record's own history. Who was
-        // added to or taken off the project is the manager's business, the
-        // way the 参加ユーザー settings are: everyone else's feed shows the
-        // other changes (name, dates, status...) but not the people columns.
-        // Issue history is shown to every reader; see detailsFor.
-        $hide = PortalMembership::canManage($project) ? [] : $this->peopleColumns();
-        $project_revisions = $this->revisionsOf($this->project_table->table_name, [$project->id], 10);
-        $this->primeLabels($this->project_table, $project_revisions, $hide);
-        foreach ($project_revisions as $rev) {
-            if (intval($rev->revision_no) <= 1) {
-                continue;
-            }
-            $changes = $this->diffRevision($this->project_table, $rev, $hide);
-            if (empty($changes)) {
-                continue;
-            }
-            $feed[] = [
-                'tp' => 'chg',
-                'by' => intval($rev->create_user_id),
-                'ts' => strval($rev->created_at),
-                'kind' => 'project',
-                'id' => $project->id,
-                'key' => '',
-                'label' => strval($project->getLabel()),
-                'extra' => collect($changes)->take(2)->map(function ($c) {
-                    return $c[0] . ': ' . $c[1] . ' → ' . $c[2];
-                })->implode(' / '),
-            ];
-        }
-
-        usort($feed, function ($a, $b) {
-            return strcmp($b['ts'], $a['ts']);
-        });
-        return collect($feed)->take(30)->map(function ($row) {
-            $row['at'] = $this->fmtAt($row['ts']);
-            unset($row['ts']);
-            return $row;
-        })->values()->toArray();
     }
 
     /**

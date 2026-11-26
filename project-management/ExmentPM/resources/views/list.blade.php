@@ -45,8 +45,8 @@
 {{-- Scoped to .pp-dash: this page renders inside the Exment admin layout,
      which has no portal stylesheet of its own. --}}
 <style>
-.pp-dash{--d-line:#dfe5ea;--d-text:#33434f;--d-mute:#8a97a3;--d-accent:#4cae93;--d-red:#e5544b;--d-amber:#eda62a;
-    --d-line2:#eef2f5;--d-sub:#8a97a3;--d-accent-d:#3d9a80;--d-hover:#f2f8f5;--d-chip:#eef3f6;--d-ink2:#51616f;
+.pp-dash{--d-line:#dfe5ea;--d-text:#33434f;--d-mute:#8a97a3;--d-accent:var(--exm-ui-accent,#4cae93);--d-red:#e5544b;--d-amber:#eda62a;
+    --d-line2:#eef2f5;--d-sub:#8a97a3;--d-accent-d:var(--exm-ui-accent-strong,#3d9a80);--d-hover:var(--exm-ui-accent-soft,#f2f8f5);--d-chip:#eef3f6;--d-ink2:#51616f;
     color:var(--d-text);font-size:13px;}
 .pp-dash a{color:inherit;text-decoration:none;}
 .pp-dash .pp-panel{background:#fff;border:1px solid var(--d-line);border-radius:8px;margin-bottom:16px;overflow:hidden;}
@@ -259,6 +259,18 @@
 /* Capped and scrolled inside itself, so a long feed cannot push everything
    below it off the screen. */
 .pp-dash .pp-feedbody{max-height:760px;overflow-y:auto;overscroll-behavior:contain;}
+.pp-dash .pp-first .pp-first-steps{margin:0;padding:10px 16px 12px 36px;display:flex;flex-direction:column;gap:6px;font-size:13px;}
+.pp-dash .pp-first .pp-first-steps li .fa{margin-right:6px;color:var(--d-mute);}
+.pp-dash .pp-first .pp-first-steps li.done{color:var(--d-mute);text-decoration:line-through;}
+.pp-dash .pp-first .pp-first-steps li.done .fa{color:var(--d-accent);}
+.pp-dash .pp-first .pp-first-steps a{color:var(--d-accent-d);font-weight:700;}
+.pp-dash .pp-empty-acts{display:flex;justify-content:center;gap:16px;margin-top:8px;}
+.pp-dash .pp-empty-acts a{color:var(--d-accent-d);font-weight:700;}
+.pp-dash .pp-fmore > summary{list-style:none;cursor:pointer;margin:8px 12px;padding:6px 0;text-align:center;border:1px solid var(--d-line);
+    border-radius:6px;font-size:12.5px;font-weight:600;color:var(--d-ink2);}
+.pp-dash .pp-fmore > summary::-webkit-details-marker{display:none;}
+.pp-dash .pp-fmore > summary:hover{background:var(--d-hover);}
+.pp-dash .pp-fmore[open] > summary{display:none;}
 .pp-dash .pp-fday{position:sticky;top:0;background:#f4f7f9;border-bottom:1px solid var(--d-line);
     padding:5px 16px;font-size:11.5px;font-weight:700;color:var(--d-ink2);z-index:1;}
 .pp-dash .pp-fd{display:flex;gap:10px;padding:8px 16px;border-bottom:1px solid var(--d-line2);align-items:flex-start;}
@@ -285,6 +297,28 @@
     @include(PortalDefinition::view('_topbar'))
     <div class="pp-wrap">
         <div class="pp-left">
+            {{-- M10: the first three steps, for someone who may make projects
+                 and has not got far yet. Closed for good with もう出さない
+                 (kept per browser). --}}
+            @php
+                $fsProject = count($projects) > 0;
+                $fsIssue = collect($projects)->contains(function ($p) { return intval($p['open'] ?? 0) + intval($p['done'] ?? 0) > 0; });
+                $fsFirst = $fsProject ? $projects[array_key_first($projects)] : null;
+            @endphp
+            @if(!empty($create['can']) && !($fsProject && $fsIssue))
+            <section class="pp-panel pp-first" id="pp-first" hidden>
+                <div class="pp-ph"><i class="fa fa-flag-o"></i> {{ PortalDefinition::trans('first_steps') }}
+                    <span class="pp-ph-right"><a href="javascript:void(0);" id="pp-first-hide">{{ PortalDefinition::trans('fs_hide') }}</a></span></div>
+                <ol class="pp-first-steps">
+                    <li class="{{ $fsProject ? 'done' : '' }}"><i class="fa {{ $fsProject ? 'fa-check-circle' : 'fa-circle-o' }}"></i>
+                        @if($fsProject){{ PortalDefinition::trans('fs_new_project') }}@else<a href="javascript:void(0);" class="pp-first-newpj">{{ PortalDefinition::trans('fs_new_project') }}</a>@endif</li>
+                    <li><i class="fa fa-circle-o"></i>
+                        @if($fsFirst)<a href="{{ $fsFirst['url'] }}#settings">{{ PortalDefinition::trans('fs_invite') }}</a>@else{{ PortalDefinition::trans('fs_invite') }}@endif</li>
+                    <li class="{{ $fsIssue ? 'done' : '' }}"><i class="fa {{ $fsIssue ? 'fa-check-circle' : 'fa-circle-o' }}"></i>
+                        @if($fsFirst && !$fsIssue)<a href="{{ $fsFirst['url'] }}#new">{{ PortalDefinition::trans('fs_first_issue') }}</a>@else{{ PortalDefinition::trans('fs_first_issue') }}@endif</li>
+                </ol>
+            </section>
+            @endif
 
             {{-- Projects, in the top-left corner where Backlog keeps them.
                  Hovering a row swaps its numbers for the launch menu. --}}
@@ -296,8 +330,8 @@
                     @endif
                     {{-- fold the project tree (snoro 2026-11-18) --}}
                     <span class="pp-dfold" id="pp-dfold" hidden>
-                        <a href="javascript:void(0);" id="pp-dfold-open">すべて開く</a> /
-                        <a href="javascript:void(0);" id="pp-dfold-close">すべて閉じる</a>
+                        <a href="javascript:void(0);" id="pp-dfold-open">{{ PortalDefinition::trans('pj_open_all') }}</a> /
+                        <a href="javascript:void(0);" id="pp-dfold-close">{{ PortalDefinition::trans('pj_close_all') }}</a>
                     </span>
                     @if($create['can'] || $archived_count > 0)
                     <span class="pp-ph-right">
@@ -337,7 +371,7 @@
                 <div class="pp-pj {{ $project['archived'] ? 'arch' : '' }} {{ !empty($project['depth']) ? 'kid' : '' }}"
                      id="pp-dpj-{{ $project['id'] }}"
                      data-id="{{ $project['id'] }}" data-parent="{{ $project['parent_id'] ?? '' }}" data-depth="{{ intval($project['depth'] ?? 0) }}"
-                     @if(!empty($reorder_url)) draggable="true" title="ドラッグで並べ替え" @endif
+                     @if(!empty($reorder_url)) draggable="true" title="{{ PortalDefinition::trans('drag_sort') }}" @endif
                      @if(!empty($project['depth'])) style="padding-left:{{ 14 + 22 * min(intval($project['depth']), 4) }}px" @endif>
                     <span class="pp-dtgl-slot"></span>
                     <button type="button" class="pp-star" data-star="{{ $project['id'] }}"
@@ -370,7 +404,7 @@
                     <span class="od" @if($project['overdue'] > 0) title="{{ $t('card_overdue', ['count' => $project['overdue']]) }}" @endif>{{ $project['overdue'] > 0 ? $project['overdue'] : '' }}</span>
                     <span class="mi" @if($project['mine'] > 0) title="{{ $t('card_mine', ['count' => $project['mine']]) }}" @endif>{{ $project['mine'] > 0 ? $project['mine'] : '' }}</span>
                     <button type="button" class="pp-pj-more mo" aria-haspopup="true" aria-expanded="false"
-                            title="メニューを開く" aria-label="メニューを開く"><i class="fa fa-ellipsis-h"></i></button>
+                            title="{{ PortalDefinition::trans('menu_open') }}" aria-label="{{ PortalDefinition::trans('menu_open') }}"><i class="fa fa-ellipsis-h"></i></button>
                     <div class="pp-launch" hidden>
                         @foreach($launch as $item)
                         @if($item[0] !== 'new' || !empty($project['can_add']))
@@ -384,7 +418,12 @@
                     </div>
                 </div>
                 @empty
-                <div class="pp-empty">{{ PortalDefinition::trans('empty') }}</div>
+                <div class="pp-empty">{{ PortalDefinition::trans('empty_projects') }}
+                    <div class="pp-empty-acts">
+                        @if($create['can'])<a href="javascript:void(0);" class="pp-first-newpj"><i class="fa fa-plus"></i> {{ PortalDefinition::trans('fs_new_project') }}</a>@endif
+                        <a href="{{ \App\Plugins\ExmentPM\ManualLink::url() }}" target="_blank" rel="noopener"><i class="fa fa-question-circle"></i> {{ PortalDefinition::trans('fs_manual') }}</a>
+                    </div>
+                </div>
                 @endforelse
                 </div>
             </section>
@@ -453,6 +492,10 @@
                 <div class="pp-feedbody">
                 @php $lastDay = null; @endphp
                 @forelse($dashboard['feed'] as $entry)
+                {{-- S15: ten first, the rest behind もっと見る --}}
+                @if($loop->index === 10)
+                <details class="pp-fmore"><summary>{{ PortalDefinition::trans('feed_more') }} ({{ count($dashboard['feed']) - 10 }})</summary>
+                @endif
                 @if($entry['day'] !== '' && $entry['day'] !== $lastDay)
                 <div class="pp-fday">{{ $entry['day'] }}</div>
                 @php $lastDay = $entry['day']; @endphp
@@ -470,6 +513,9 @@
                 @empty
                 <div class="pp-empty">{{ $t('feed_empty') }}</div>
                 @endforelse
+                @if(count($dashboard['feed']) > 10)
+                </details>
+                @endif
                 </div>
             </section>
         </div>
@@ -564,10 +610,11 @@
             if (Array.isArray(s)) { s.forEach(function (id) { fold[String(id)] = true; }); }
         } catch (e) { /* ignore */ }
         function save() { try { localStorage.setItem(KEY, JSON.stringify(Object.keys(fold))); } catch (e) { /* ignore */ } }
+        var FOLD_T = @json([PortalDefinition::trans('fold_open'), PortalDefinition::trans('fold_close')]);
         function paint(b) {
             var shut = !!fold[b.getAttribute('data-tgl')];
             b.textContent = shut ? '▶' : '▼';
-            b.title = shut ? '開く' : '閉じる';
+            b.title = shut ? FOLD_T[0] : FOLD_T[1];
             b.setAttribute('aria-expanded', shut ? 'false' : 'true');
         }
         function apply() {
@@ -904,6 +951,28 @@
         }
     }
 
+    // M10: the first steps' panel, unless closed for good on this browser;
+    // its プロジェクトを作る opens the same dialog as the panel head's link.
+    (function () {
+        var first = document.getElementById('pp-first');
+        var hidden = false;
+        try { hidden = localStorage.getItem('pmportal.firststeps') === '0'; } catch (e) { hidden = false; }
+        if (first && !hidden) { first.hidden = false; }
+        var hide = document.getElementById('pp-first-hide');
+        if (hide && first) {
+            hide.addEventListener('click', function () {
+                first.hidden = true;
+                try { localStorage.setItem('pmportal.firststeps', '0'); } catch (e) { /* ignore */ }
+            });
+        }
+        document.querySelectorAll('.pp-first-newpj').forEach(function (a) {
+            a.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                var open = document.getElementById('pp-newpj-open');
+                if (open) { open.click(); }
+            });
+        });
+    })();
     var opener = document.getElementById('pp-newpj-open');
     if (opener) { opener.addEventListener('click', open); }
     wrap.querySelector('.pp-npj-back').addEventListener('click', close);

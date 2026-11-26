@@ -28,8 +28,10 @@
             return $.ajax({ url: slot.url, cache: false, dataType: 'text' })
             .done(function (html) {
                 if (typeof html !== 'string' || !html.length) {
+                    // M10: with the way to the same issues as a list.
                     host.innerHTML = '<div class="bl-card-box"><div class="bl-boxbody"><i class="fa fa-info-circle"></i> ' +
-                        esc(kind === 'gantt' ? L.gantt_none : L.board_none) + '</div></div>';
+                        esc(kind === 'gantt' ? L.gantt_none : L.board_none) +
+                        ' <a class="pp-none-list" href="#issues">' + esc(L.tab_issues) + ' <i class="fa fa-angle-right"></i></a></div></div>';
                 } else {
                     host.innerHTML = html;
                     execEmbeddedScripts(host);

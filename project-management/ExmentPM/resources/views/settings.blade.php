@@ -12,9 +12,9 @@ use App\Plugins\ExmentPM\PortalDefinition as PD;
 <div id="pp-settings">
     <style>
         #pp-settings {
-            --bl-accent: #4caf93; --bl-accent-d: #3d9a80; --bl-ink: #24323f; --bl-sub: #6b7a88;
+            --bl-accent: var(--exm-ui-accent,#4caf93); --bl-accent-d: var(--exm-ui-accent-strong,#3d9a80); --bl-ink: #24323f; --bl-sub: #6b7a88;
             --bl-line: #dfe5ea; --bl-faint: #8b99a5; --bl-box: #ffffff; --bl-box2: #f5f7f9;
-            --bl-chip: #eef3f6; --bl-hover: #f2f8f5; --bl-red: #d9534f; --bl-amber: #eda62a;
+            --bl-chip: #eef3f6; --bl-hover: var(--exm-ui-accent-soft,#f2f8f5); --bl-red: #d9534f; --bl-amber: #eda62a;
             color: var(--bl-ink); font-size: 13px; max-width: 1280px;
         }
         #pp-settings *, #pp-settings *::before, #pp-settings *::after { box-sizing: border-box; }

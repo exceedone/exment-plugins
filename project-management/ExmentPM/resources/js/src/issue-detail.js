@@ -1555,7 +1555,7 @@
                     return '<div><b>' + esc(c[0]) + '</b>: ' + esc(c[1]) + '<span class="arr">→</span><b>' + esc(c[2]) + '</b></div>';
                 }).join('') + '</div>';
             } else if (e.tp === 'add') {
-                body = '<div class="chg"><i class="fa fa-plus" style="color:#4caf93;margin-right:6px;"></i>' + esc(L.added) + '</div>';
+                body = '<div class="chg"><i class="fa fa-plus" style="color:var(--bl-accent);margin-right:6px;"></i>' + esc(L.added) + '</div>';
             } else if (e.tp === 'file') {
                 body = '<div class="chg"><i class="fa fa-paperclip" style="margin-right:6px;"></i>' + esc(L.file_added) +
                     ' <a class="bl-file" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a>' + officeViewBtn(e) + '</div>';
