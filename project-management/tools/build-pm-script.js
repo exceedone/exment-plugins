@@ -48,6 +48,7 @@ const FILES = [
     'routing.js',          // routing, recently viewed
     'events.js',           // tabs, hovercard, other bindings
     'list-events.js',      // paging, tree view, ticking rows, staying current
+    'palette.js',          // Ctrl+K: every action of the screen with its key
     'boot.js',             // shortcuts, boot
 ];
 
