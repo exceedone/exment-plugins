@@ -5470,7 +5470,7 @@ window.PmPortalBoot = function () {
         }
         return out;
     }
-    function attachFmt(tpl, n) { return String(tpl || '').replace(':n', String(n)); }
+    function attachFmt(tpl, n) { return String(tpl || '').replace(/:n(?![A-Za-z0-9_])/g, String(n)); }
     function attachBox(title) {
         attachClose();
         var wrap = document.createElement('div');
@@ -5556,7 +5556,7 @@ window.PmPortalBoot = function () {
                 if (!mine && by) {
                     var lk = box.querySelector('.lock');
                     lk.hidden = false;
-                    lk.textContent = attachFmt(L.attach_locked_by, '').replace(':name', by);
+                    lk.textContent = String(L.attach_locked_by || '').replace(':name', function () { return by; });
                 }
                 bd.innerHTML = '';
                 var ta = document.createElement('textarea');
@@ -5568,7 +5568,7 @@ window.PmPortalBoot = function () {
                 view.hidden = true;
                 bd.appendChild(view);
                 var ft = box.querySelector('.ft');
-                ft.querySelector('.msg').textContent = attachFmt(L.attach_encoding, '').replace(':enc', res.encoding);
+                ft.querySelector('.msg').textContent = String(L.attach_encoding || '').replace(':enc', function () { return res.encoding; });
                 if (ext === 'md' || ext === 'markdown' || ext === 'csv' || ext === 'tsv') {
                     var tog = document.createElement('button');
                     tog.type = 'button';
@@ -5657,7 +5657,7 @@ window.PmPortalBoot = function () {
         if (!m || !D.urls.office_edit) { return; }
         attachLock(issueId, doc, function (lk) {
             if (!lk || !lk.mine) {
-                toast(attachFmt(L.attach_locked_by, '').replace(':name', lk ? lk.name : ''), true);
+                toast(String(L.attach_locked_by || '').replace(':name', function () { return lk ? lk.name : ''; }), true);
                 return;
             }
             // Groupware saves, keeps the older version and writes its own line; the lock is let go
