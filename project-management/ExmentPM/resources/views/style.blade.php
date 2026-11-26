@@ -1966,4 +1966,14 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-pal kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid var(--bl-line);border-bottom-width:2px;border-radius:4px;font-size:11.5px;text-align:center;color:var(--bl-sub);background:var(--bl-bg);}
 .pmportal .pp-pal .none{padding:12px 14px;color:var(--bl-faint);font-size:13px;}
 @media (max-width:560px){.pmportal .pp-pal{padding-top:8px;}.pmportal .pp-pal .in{max-height:calc(100vh - 16px);}}
+/* Button map: the issue's ⋯ menu also holds 子課題を追加・注目・お気に入り・ウォッチ.
+   What is on shows as a small icon on the ⋯ button (:has, so it follows a toggle at once). */
+.pmportal .pp-more > .m .sep{display:block;height:0;margin:4px 0;border-top:1px solid var(--bl-line2);}
+.pmportal .pp-more > .m a.on .fa{color:var(--bl-accent-d,var(--bl-accent));}
+.pmportal .pp-more > .m a .wc,.pmportal .pp-more > .m a .ct{margin-left:auto;font-size:12px;color:var(--bl-sub);}
+.pmportal .pp-morebtn .pp-act-on{display:inline-flex;gap:3px;margin-left:4px;font-size:11px;color:var(--bl-accent-d,var(--bl-accent));}
+.pmportal .pp-morebtn .pp-act-on .fa{display:none;margin:0;}
+.pmportal .pp-more:has(.m .pp-star.on) .pp-act-on .ind-s,
+.pmportal .pp-more:has(.m .pp-fav.on) .pp-act-on .ind-f,
+.pmportal .pp-more:has(.m .pp-watch.on) .pp-act-on .ind-w{display:inline-block;}
 </style>
