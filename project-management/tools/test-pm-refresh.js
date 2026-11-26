@@ -133,6 +133,100 @@ test('an issue just opened stays read when a refresh fetched before the mark arr
     assert.ok(/readLocal\(key, read\)/.test(functionSource(reads, 'markRead')));
 });
 
+// The read marks themselves: they reach the server even when the page is
+// reloaded right after (they used to wait in the slow lane and were lost).
+function readSandbox() {
+    const reads = read('read-receipts.js');
+    const decl = reads.slice(reads.indexOf('var READ_SENT = {};'), reads.indexOf('function readAv('));
+    const body = reads.slice(reads.indexOf('    var READ_UNSENT = {};'), reads.indexOf('    // "Mail this issue"'));
+    const env = { jobs: [], beacons: [], listeners: {}, timers: [] };
+    const make = new Function('env', `
+        var D = { urls: { base: '/p/5' }, issues: [{ id: 11, unread: true }, { id: 12, unread: true }, { id: 13, unread: false }], users: {} };
+        var CSRF = 'tok', DET = {}, currentIssue = null;
+        function issueById(id) { return D.issues.filter(function (i) { return String(i.id) === String(id); })[0] || null; }
+        function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined; }
+        function alive() { return true; }
+        function readsHtml() { return ''; }
+        function paintUnread() {}
+        var document = { querySelector: function () { return null; } };
+        var window = { addEventListener: function (n, f) { env.listeners[n] = f; } };
+        function setTimeout(f) { env.timers.push(f); return env.timers.length; }
+        function FormData() { this.v = {}; }
+        FormData.prototype.append = function (k, v) { this.v[k] = v; };
+        var navigator = { sendBeacon: function (url, body) { env.beacons.push({ url: url, v: body.v }); return true; } };
+        var $ = { extend: Object.assign, ajax: function (o) { return o; } };
+        // Answers when the test says so, and at once (no microtask to wait for).
+        function ppQueue(task, low) {
+            var job = { low: !!low, opts: null, cbs: [] };
+            var p = {
+                then: function (a, b) { job.cbs.push([a, b]); return p; },
+                catch: function (b) { job.cbs.push([null, b]); return p; }
+            };
+            job.run = function (ok) {
+                job.opts = task();
+                job.cbs.forEach(function (c) { var f = ok ? c[0] : c[1]; if (f) { f({ ok: true, reads: [] }); } });
+            };
+            env.jobs.push(job);
+            return p;
+        }
+        ` + decl + body + `
+        return { markRead: markRead, D: D, unsent: function () { return READ_UNSENT; } };`);
+    return { env, api: make(env) };
+}
+
+test('a read mark goes in the normal lane, after the click', () => {
+    const { env, api } = readSandbox();
+    api.markRead(11, true);
+    assert.strictEqual(env.jobs.length, 0, 'queued after the click\'s own requests');
+    assert.strictEqual(api.D.issues[0].unread, false, 'shown read at once');
+    env.timers.shift()();
+    assert.strictEqual(env.jobs.length, 1);
+    assert.strictEqual(env.jobs[0].low, false, 'not the slow lane, which a reload or a page swap drops');
+    env.jobs[0].run(true);
+    assert.strictEqual(env.jobs[0].opts.url, '/p/5/issue/11/read');
+    assert.deepStrictEqual(env.jobs[0].opts.data, { read: 1 });
+    assert.deepStrictEqual(Object.keys(api.unsent()), []);
+});
+
+test('the marks of one click go in one request', () => {
+    const { env, api } = readSandbox();
+    api.markRead(11, false);
+    api.markRead(12, false);
+    env.timers.shift()();
+    assert.strictEqual(env.jobs.length, 1);
+    env.jobs[0].run(true);
+    assert.strictEqual(env.jobs[0].opts.url, '/p/5/reads');
+    assert.deepStrictEqual(env.jobs[0].opts.data, { read: 0, ids: '11,12' });
+    assert.deepStrictEqual(Object.keys(api.unsent()), [], 'answered: nothing left to send');
+});
+
+test('a mark not answered yet when the page goes away leaves with sendBeacon', () => {
+    const { env, api } = readSandbox();
+    api.markRead(11, true);
+    env.timers.shift()();
+    env.jobs[0].run(true);              // answered
+    api.markRead(12, true);             // queued, its turn not come yet
+    env.timers.shift()();
+    api.markRead(13, false);            // not even queued yet
+    assert.ok(env.listeners.pagehide, 'listens for the page going away');
+    env.listeners.pagehide();
+    assert.deepStrictEqual(env.beacons, [
+        { url: '/p/5/reads', v: { _token: 'tok', read: '1', ids: '12' } },
+        { url: '/p/5/reads', v: { _token: 'tok', read: '0', ids: '13' } },
+    ], 'the answered mark (11) is not sent again');
+    assert.deepStrictEqual(Object.keys(api.unsent()), []);
+});
+
+test('a mark that failed is sent again at the next opening', () => {
+    const { env, api } = readSandbox();
+    api.markRead(11, true);
+    env.timers.shift()();
+    env.jobs[0].run(false);
+    api.D.issues[0].unread = false;
+    api.markRead(11, true);             // READ_SENT was cleared: it goes again
+    assert.strictEqual(env.timers.length, 1);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

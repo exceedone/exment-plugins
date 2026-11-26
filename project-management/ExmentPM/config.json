@@ -49,6 +49,7 @@
         { "method": "get", "uri": "{id}/issue/{issue_id}", "function": "issueDetail" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/comment", "function": "postComment" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/read", "function": "issueRead", "middleware_except": ["admin.morph", "admin.bootstrap"] },
+        { "method": "post", "uri": "{id}/reads", "function": "issueReadMany", "middleware_except": ["admin.morph", "admin.bootstrap"] },
         { "method": "post", "uri": "{id}/read-all", "function": "projectReadAll" },
         { "method": "get", "uri": "{id}/archived", "function": "archivedIssues" },
         { "method": "post", "uri": "{id}/issue/{issue_id}/mail", "function": "mailIssue" },

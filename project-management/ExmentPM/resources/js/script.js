@@ -4364,12 +4364,11 @@ window.PmPortalBoot = function () {
     // Who has opened an issue, and the list's unread mark (Outlook-style:
     // bold until opened, and right-click to mark read / unread).
     //
-    // Opening an issue tells the server without waiting, in the slow lane of
-    // the request queue, and only once per page view: the screen never waits
-    // on it and a busy reader's real requests go first.
+    // Opening an issue tells the server without waiting, only once per page
+    // view, after the requests the opening itself makes (see markRead).
     var READ_SENT = {};
     // What this reader just marked, for a while: the mark goes to the server
-    // in the slow lane, so a refresh of the list fetched before it got there
+    // after the click's own requests, so a refresh of the list fetched before it got there
     // still says "unread" and would put the bold row back until the next
     // reload. id => { read, at }.
     var READ_LOCAL = {};
@@ -4424,6 +4423,15 @@ window.PmPortalBoot = function () {
             toast(String(L.read_all_done).replace(':count', res.count));
         }, function (xhr) { toast(xhrErr(xhr, L.read_all_fail), true); });
     }
+    // Marks the server has not confirmed yet: id => { read, seq, q }. They
+    // used to wait in the slow lane, behind every prefetch, and a reload or a
+    // move to another page before their turn dropped them, so the issue was
+    // unread again after a reload. Now they go in the normal lane (the marks
+    // of one click in one request), and what is still unconfirmed when the
+    // page goes away leaves with navigator.sendBeacon.
+    var READ_UNSENT = {};
+    var READ_SEQ = 0;
+    var READ_TIMER = null;
     function markRead(id, read) {
         if (id === null || id === undefined || !D.urls || !D.urls.base) { return; }
         var row = issueById(id);
@@ -4433,34 +4441,86 @@ window.PmPortalBoot = function () {
         readLocal(key, read);
         if (row) { row.unread = !read; }
         paintUnread(id);
-        ppQueue(function () {
-            return $.ajax({
-                url: D.urls.base + '/issue/' + encodeURIComponent(key) + '/read',
-                type: 'POST', dataType: 'json', data: { read: read ? 1 : 0 },
-                headers: { 'X-CSRF-TOKEN': CSRF }
-            });
-        }, true).then(function (res) {
-            if (!alive() || !res || !res.ok) { return; }
-            $.extend(D.users, res.users || {});
-            var det = own(DET, key);
-            // A reader who just opened it has seen the latest: nobody's mark
-            // in this fresh list is "old" for what this screen shows.
-            if (det) {
-                var before = {};
-                (det.reads || []).forEach(function (r) { before[r.by] = r; });
-                det.reads = (res.reads || []).map(function (r) {
-                    var was = before[r.by];
-                    return { by: r.by, at: r.at, old: !!(was && was.at === r.at && was.old) };
-                });
-            }
-            if (String(currentIssue) === key) {
-                var box = document.querySelector('#pp-d-main .pp-reads .pp-reads-v');
-                if (box) { box.outerHTML = readsHtml(det ? det.reads : res.reads); }
-            }
-        }).catch(function () {
-            // Not worth a message: the next opening tries again.
-            if (READ_SENT[key] === read) { delete READ_SENT[key]; }
+        READ_UNSENT[key] = { read: !!read, seq: ++READ_SEQ, q: false };
+        // After the click's own requests (opening an issue queues its detail
+        // right after this): the reader waits for those, not for the mark.
+        if (!READ_TIMER) { READ_TIMER = setTimeout(readFlush, 0); }
+    }
+    // The marks of this click, grouped by read / unread: one issue goes to its
+    // own address (the answer lists who has read it), several in one request.
+    function readFlush() {
+        READ_TIMER = null;
+        var groups = { 1: [], 0: [] };
+        Object.keys(READ_UNSENT).forEach(function (key) {
+            var m = READ_UNSENT[key];
+            if (m.q) { return; }
+            m.q = true;
+            groups[m.read ? 1 : 0].push({ key: key, seq: m.seq });
         });
+        [1, 0].forEach(function (flag) {
+            var list = groups[flag];
+            if (!list.length) { return; }
+            var one = list.length === 1;
+            ppQueue(function () {
+                return $.ajax({
+                    url: D.urls.base + (one ? '/issue/' + encodeURIComponent(list[0].key) + '/read' : '/reads'),
+                    type: 'POST', dataType: 'json',
+                    data: one ? { read: flag } : { read: flag, ids: list.map(function (m) { return m.key; }).join(',') },
+                    headers: { 'X-CSRF-TOKEN': CSRF }
+                });
+            }).then(function (res) {
+                readSettled(list);
+                if (one && res && res.ok && alive()) { readReceipts(list[0].key, res); }
+            }).catch(function () {
+                readSettled(list);
+                // Not worth a message: the next opening tries again.
+                list.forEach(function (m) {
+                    if (READ_SENT[m.key] === !!flag) { delete READ_SENT[m.key]; }
+                });
+            });
+        });
+    }
+    // Answered: forget the marks, unless the reader changed one meanwhile.
+    function readSettled(list) {
+        list.forEach(function (m) {
+            var now = READ_UNSENT[m.key];
+            if (now && now.seq === m.seq) { delete READ_UNSENT[m.key]; }
+        });
+    }
+    // The page goes away (reload, another page, the tab closed) with marks not
+    // yet confirmed: they leave anyway. Sending one twice does no harm.
+    function readBeacon() {
+        var keys = Object.keys(READ_UNSENT);
+        if (!keys.length || !navigator.sendBeacon || !D.urls || !D.urls.base) { return; }
+        [true, false].forEach(function (read) {
+            var ids = keys.filter(function (k) { return READ_UNSENT[k].read === read; });
+            if (!ids.length) { return; }
+            var body = new FormData();
+            body.append('_token', CSRF || '');
+            body.append('read', read ? '1' : '0');
+            body.append('ids', ids.join(','));
+            try { navigator.sendBeacon(D.urls.base + '/reads', body); } catch (e) { /* nothing more to try */ }
+        });
+        READ_UNSENT = {};
+    }
+    window.addEventListener('pagehide', readBeacon);
+    function readReceipts(key, res) {
+        $.extend(D.users, res.users || {});
+        var det = own(DET, key);
+        // A reader who just opened it has seen the latest: nobody's mark
+        // in this fresh list is "old" for what this screen shows.
+        if (det) {
+            var before = {};
+            (det.reads || []).forEach(function (r) { before[r.by] = r; });
+            det.reads = (res.reads || []).map(function (r) {
+                var was = before[r.by];
+                return { by: r.by, at: r.at, old: !!(was && was.at === r.at && was.old) };
+            });
+        }
+        if (String(currentIssue) === key) {
+            var box = document.querySelector('#pp-d-main .pp-reads .pp-reads-v');
+            if (box) { box.outerHTML = readsHtml(det ? det.reads : res.reads); }
+        }
     }
     // "Mail this issue": pick people of the project, add a note, send.
     function mailClose() {
