@@ -63,6 +63,14 @@ class SalesLink
         return admin_url('data/' . static::QUOTE_TABLE . '/' . $id);
     }
 
+    /** Whether the person may make a quote (the button shows only then; the server asks again). */
+    public static function canCreateQuote(): bool
+    {
+        $table = CustomTable::getEloquent(static::QUOTE_TABLE);
+
+        return isset($table) && boolval($table->hasPermission(\Exceedone\Exment\Enums\Permission::AVAILABLE_EDIT_CUSTOM_VALUE));
+    }
+
     /** @return array{url: string, title: string, total: string}|null */
     public static function quoteOf(CustomValue $ticket): ?array
     {

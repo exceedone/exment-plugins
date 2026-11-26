@@ -552,6 +552,7 @@ function renderTicket(draft) {
     if (t.quotes_on && t.box_kind === 'quote') {
         h += '<div class="d-sec"><h4><i class="fa fa-file-text-o" aria-hidden="true"></i>見積</h4>' + (t.quote
             ? (t.quote.url ? '<a href="' + esc(t.quote.url) + '" target="_blank" rel="noopener"><b>' + esc(t.quote.title) + '</b></a>' : '<b>' + esc(t.quote.title) + '</b>') + (t.quote.total ? ' <span class="its-sub">' + esc(t.quote.total) + '</span>' : '')
+            : !t.quote_can ? '<div class="its-sub">見積はまだありません（作る権限がありません）。</div>'
             : '<button type="button" class="its-btn small" id="d-quote-make"><i class="fa fa-file-text-o" aria-hidden="true"></i>見積を作る</button><div class="its-sub">営業のパックの「見積」を作って開きます。金額と明細はそこで入れます。</div>') + '</div>';
     }
     if (t.sales_on && t.box_kind === 'trial') {
@@ -563,6 +564,7 @@ function renderTicket(draft) {
     if (t.pm_on) {
         h += '<div class="d-sec"><h4><i class="fa fa-tasks" aria-hidden="true"></i>ExmentPM</h4>' + (t.pm
             ? (t.pm.url ? '<a href="' + esc(t.pm.url) + '" target="_blank" rel="noopener"><b>' + esc(t.pm.subject) + '</b></a>' : '<b>' + esc(t.pm.subject) + '</b>') + (t.pm.status ? ' ' + soft(t.pm.status, '#3b82f6', 'fa-flag-o', '課題の状態') : '')
+            : !t.pm_can ? '<div class="its-sub">課題はまだありません（ExmentPM の課題を作る権限がありません）。</div>'
             : '<div class="its-row" style="gap:6px;flex-wrap:wrap"><select id="d-pm-project" aria-label="課題にするプロジェクト"><option value="">プロジェクトを選ぶ…</option></select><button type="button" class="its-btn small" id="d-pm-make" disabled><i class="fa fa-tasks" aria-hidden="true"></i>ExmentPM の課題にする</button></div>') + '</div>';
     }
     if (t.customer_info) {
