@@ -504,6 +504,14 @@ test('HINT-1 fix: the list hint is above the table and its link opens 保存し�
     assert.ok(/ev\.stopPropagation\(\);/.test(show) && /setTimeout\(go, 0\)/.test(show));
 });
 
+test('QE-SA: the dock changes the sub-assignees too, where the table has them', () => {
+    const qe = functionSource(detail, 'renderQuickEdit');
+    assert.ok(/if \(qeCol\(QE_COLS\.sa\)\) \{\s*box\.appendChild\(qeRow\(L\.lbl_sub_assignees, qeChips\('sa', people, QE\.base\.sa/.test(qe));
+    assert.ok(qe.indexOf("qeChips('as'") < qe.indexOf("qeChips('sa'") && qe.indexOf("qeChips('sa'") < qe.indexOf("qeChips('cat'"), 'right under the assignees');
+    assert.ok(/sa: 'sub_assignees'/.test(detail), 'saved by the same column map');
+    assert.ok(index.indexOf("'lbl_sub_assignees'") > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

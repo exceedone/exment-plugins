@@ -4052,6 +4052,15 @@ window.PmPortalBoot = function () {
             var u = own(D.users, v);
             return u ? String(u.n) : qeUnlisted(v);
         }, true), 'w-full'));
+        // QE-SA: the sub-assignees, the same picker as the assignees, where
+        // the issue table has the column (schema 27). Saved with the comment
+        // through the same partial write (QE_COLS.sa), so the history says it.
+        if (qeCol(QE_COLS.sa)) {
+            box.appendChild(qeRow(L.lbl_sub_assignees, qeChips('sa', people, QE.base.sa, function (v) {
+                var u = own(D.users, v);
+                return u ? String(u.n) : qeUnlisted(v);
+            }, true), 'w-full'));
+        }
         box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat), 'w-full'));
         box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd), 'w-date'));
         // The due time sits beside the due date it belongs to, small.
