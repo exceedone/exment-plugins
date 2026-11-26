@@ -1913,4 +1913,18 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-empty-row td{padding:18px 12px;text-align:center;color:var(--bl-sub);}
 .pmportal .pp-empty-row .bl-btn-sub{margin-left:8px;}
 .pmportal .pp-none-list{margin-left:8px;font-weight:700;color:var(--bl-accent-d);}
+/* ==== UX-H: the issue form (S6, M11) ==== */
+/* S6: on a phone the buttons of the form's head go to a line of their own,
+   so 保存 is never pushed off the right edge. */
+@media (max-width:560px){
+  .pp-nedit .pp-ne-head-top{flex-wrap:wrap;row-gap:8px;}
+  .pp-nedit .pp-ne-head-actions{margin-left:0;flex:1 1 100%;flex-wrap:wrap;justify-content:flex-end;gap:6px;}
+  .pp-nedit .pp-ne-head-actions .bl-btn-main,.pp-nedit .pp-ne-head-actions .bl-btn-sub{min-width:0;}
+  .pp-nedit .pp-ne-head-actions .pp-ne-mail{margin-right:auto;}
+}
+/* M11: the fold of the other fields can be searched */
+.pp-nedit .pp-ne-more-find{grid-column:1 / -1;width:100%;max-width:320px;box-sizing:border-box;margin:0 0 6px;padding:5px 10px;
+  border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);font-size:12.5px;}
+.pp-nedit .pp-ne-more-find:focus{border-color:var(--bl-accent);outline:none;box-shadow:var(--bl-focus);}
+.pp-nedit .pp-ne-more .pp-ne-nomatch{display:none !important;}
 </style>

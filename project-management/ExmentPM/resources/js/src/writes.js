@@ -126,6 +126,7 @@
                 }
                 settled();
                 dockDraftClear(issueId, text);
+                notifyRecentSave(notifyUsers);
                 applyDetail(res, epoch, false, seq);
                 if (!statusOnly && alive() && String(currentIssue) === String(issueId)
                     && submittedBox === document.getElementById('pp-cmt-text')

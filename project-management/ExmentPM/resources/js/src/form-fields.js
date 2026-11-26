@@ -1356,6 +1356,24 @@
             nedMoreRemember(open);
         });
         grid.appendChild(btn);
+        // M11: a long fold is searched by the name of the field.
+        if (names.length > 6) {
+            var find = document.createElement('input');
+            find.type = 'search';
+            find.className = 'pp-ne-more-find';
+            find.placeholder = nedGetLangKey('ned_more_find', '項目を探す');
+            find.setAttribute('aria-label', find.placeholder);
+            find.addEventListener('input', function () {
+                var q = String(find.value || '').trim().toLowerCase();
+                Array.prototype.forEach.call(box.querySelectorAll('[data-fname]'), function (fg) {
+                    var lb = fg.querySelector('label');
+                    var text = String((lb ? lb.textContent : '') + ' ' + fg.dataset.fname).toLowerCase();
+                    fg.classList.toggle('pp-ne-nomatch', q !== '' && text.indexOf(q) < 0);
+                });
+            });
+            find.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); } });
+            box.insertBefore(find, box.firstChild);
+        }
         grid.appendChild(box);
         nedMoreSetOpen(box, btn, filled > 0 || nedMoreRemembered());
     }
@@ -1490,6 +1508,11 @@
             metaOrder.filter(function (name) { return !taken[name]; }).forEach(function (name) {
                 moreBox.appendChild(built[name]);
                 taken[name] = true;
+            });
+            // A field that must be filled is never folded away (M11).
+            Array.prototype.slice.call(moreBox.children).forEach(function (fg) {
+                var col = NED.columns.filter(function (cc) { return cc && cc.name === fg.dataset.fname; })[0];
+                if (col && col.required && !col.readonly) { slots.grid.appendChild(fg); }
             });
             if (moreBox.children.length) { nedMountMore(slots.grid, moreBox); }
             metaOrder = metaOrder.filter(function (name) { return !taken[name]; });

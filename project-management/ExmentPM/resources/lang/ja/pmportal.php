@@ -1880,4 +1880,6 @@ return [
         'line_today' => '今日が期限です（期限 :due）。',
         'line_over' => '期限を :n 日過ぎています（期限 :due）。',
     ],
+    // UX-H: the issue form (S6, M11, M12)
+    'ned_more_find' => '項目を探す',
 ];
