@@ -39,6 +39,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   課題の本文・コメント・Wiki の Markdown で書けることを増やしました：項目の中のリスト（字下げ）、`+` の箇条書き、ほかの番号から始まる番号つきリスト（`3.`・`1)`）、何行もの引用と引用の中の引用、`__太字__`・`_斜体_`・`***両方***`（snake_case のような語の中ではそのまま）、リンクのタイトル（`[文字](URL "タイトル")`）、`<https://...>`、表の列のそろえ（`:---:`）、バックスラッシュでの打ち消し（`\*`・`\#` など）。コードの囲み（```` ```js ````）の言語名は、コードの 1 行目に出なくなりました。書いたものは今までどおり先にエスケープします（HTML・スクリプトは文字のまま、リンクは新しいタブで `rel="noopener"`）。
 - A file that is not a picture, pasted or dropped on the body of a saved issue, is attached to the issue and a link to it is put at the caret (as the comment box already did). A picture goes as before. On a new issue or a wiki page, a message says to attach it with 「ファイル」.
   保存してある課題の本文に、画像でないファイルを貼る・落とすと、その課題に添付して、本文にリンクを入れます（コメント欄は前からできていました）。画像は今までどおりです。新しい課題と Wiki では、「ファイル」から添付するよう案内します。
+- The form of an issue shows the time of the due date right under the start and due dates (it was folded in 「その他の項目」, and was not found when an issue was added).
+  課題のフォームで、期限日の時刻を、開始日・期限日のすぐ下に出すようにしました（「その他の項目」の中にたたまれていて、課題を追加するときに見つからなかった）。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
