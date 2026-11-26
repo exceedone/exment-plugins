@@ -1127,6 +1127,9 @@ class PmPortalController extends AdminControllerBase
         if ($comment === '' && !$changed) {
             return $this->messageError(400, 'comment_empty');
         }
+        if (mb_strlen($comment) > PortalDefinition::MAX_BODY) {
+            return $this->messageError(422, 'too_long', ['max' => number_format(PortalDefinition::MAX_BODY)]);
+        }
         $status_meta = [];
         if ($changed) {
             if (PortalDefinition::enableEdit($issue, true) !== true) {
@@ -2093,6 +2096,9 @@ class PmPortalController extends AdminControllerBase
         $text = is_scalar($text) ? trim(strval($text)) : '';
         if ($text === '') {
             return $this->messageError(400, 'comment_empty');
+        }
+        if (mb_strlen($text) > PortalDefinition::MAX_BODY) {
+            return $this->messageError(422, 'too_long', ['max' => number_format(PortalDefinition::MAX_BODY)]);
         }
 
         try {

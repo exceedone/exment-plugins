@@ -13,6 +13,10 @@
         }
         var http = (L && L.http) || {};
         var said = http.messages || {};
+        // A 403 that is not Exment's: a firewall in front of the site (AWS WAF) refused what was
+        // sent - a body with localhost or ../ in it - and answered with its own page. Not a
+        // permission, so not said as one.
+        if (status === 403 && !body && own(said, 'blocked')) { return own(said, 'blocked'); }
         var known = typeof status === 'number' && isFinite(status);
         var key = known ? own(http.status, String(status)) : undefined;
         if (!key && known && status >= 500) { key = 'server'; }
@@ -30,6 +34,15 @@
             var parsed = JSON.parse(String(xhr.responseText || ''));
             return (parsed && typeof parsed === 'object') ? parsed : null;
         } catch (e) { return null; }
+    }
+    // The longest body, comment and wiki page the portal takes (PortalDefinition::MAX_BODY).
+    function maxBody() {
+        var n = Number(((L && L.http) || {}).max_body);
+        return n > 0 ? n : 200000;
+    }
+    function tooLongText(max) {
+        var said = ((L && L.http) || {}).messages || {};
+        return String(own(said, 'too_long_text') || '').replace(':max', Number(max).toLocaleString());
     }
     function xhrErr(xhr, fallback) {
         return errText(xhr && typeof xhr.status === 'number' ? xhr.status : null, xhrBody(xhr), fallback);

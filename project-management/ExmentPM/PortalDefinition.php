@@ -635,12 +635,20 @@ class PortalDefinition
      *
      * @return array{messages: array<string, string>, status: array<int, string>}
      */
+    /**
+     * The longest issue body, comment and wiki page, in characters: more than Backlog's 100,000,
+     * so nothing imported or pasted from there is cut. The portal's forms count to it, and the
+     * portal's own saves refuse more. Notification bodies keep their 2000 (cut()).
+     */
+    const MAX_BODY = 200000;
+
     public static function httpErrors(): array
     {
         $messages = static::trans('http_error');
 
         return [
             'messages' => is_array($messages) ? $messages : [],
+            'max_body' => static::MAX_BODY,
             'status' => [
                 0 => 'network',
                 401 => 'unauthorized',

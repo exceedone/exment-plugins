@@ -40,6 +40,10 @@
         // comment, so it needs both. Said before anything is sent - the
         // server would post the comment and quietly ask nobody. The "next
         // status" button sends no comment and so asks nobody.
+        if (String(text).length > maxBody()) {
+            ppDockMsg(tooLongText(maxBody()), true);
+            return;
+        }
         var review = !statusOnly && rvAskOn();
         if (review && !document.querySelector('#pp-notify-chips .pp-notify:not(.off)')) {
             ppDockMsg(L.rv_need_people, true);

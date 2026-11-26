@@ -200,6 +200,7 @@
             if (!detailCurrent(issueId) || !wrap.isConnected) { return; }
             var next = area.value.trim();
             if (!next || save.disabled) { return; }
+            if (next.length > maxBody()) { toast(tooLongText(maxBody()), true); return; }
             save.disabled = true;
             save.textContent = L.posting;
             var seq = ++DET_SEQ;
