@@ -103,8 +103,15 @@ class Problems
                 'body' => '問題 ' . array_get($problem->value, 'problem_no') . ' をまとめて解決にしました。' . ($text !== '' ? "\n\n" . mb_substr($text, 0, 5000) : ''),
                 'via' => 'staff',
             ]);
-            $ticket->setValue(['status' => 'resolved']);
-            $ticket->save();
+            // no mail to the customer, the survey of a resolved ticket either (the page says so)
+            $quiet = Automation::$quiet;
+            Automation::$quiet = true;
+            try {
+                $ticket->setValue(['status' => 'resolved']);
+                $ticket->save();
+            } finally {
+                Automation::$quiet = $quiet;
+            }
             $n++;
         }
         $problem->setValue(['status' => 'resolved', 'resolved_at' => Carbon::now()->format('Y-m-d H:i:s')]);
