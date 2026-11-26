@@ -59,6 +59,23 @@ trait PortalExportTrait
         }
 
         $columns = $this->exportColumns($all);
+        // the project's custom attributes, a column each, after the others (ISS02939)
+        $attrNames = [];
+        if (PortalAttributes::projectOn($project)) {
+            $people = [];
+            foreach (PortalAttributes::forProject(intval($project->id)) as $d) {
+                $columns['attr:' . $d['id']] = ['label' => $d['label'], 'type' => $d['type'] === 'number' ? 'number' : ($d['type'] === 'date' ? 'date' : 'text'), 'col' => null, 'attr' => $d];
+                if ($d['type'] === 'user') {
+                    foreach ($issues as $issue) {
+                        $people = array_merge($people, (array) (PortalAttributes::decode(array_get($issue->value, PortalAttributes::column()))[strval($d['id'])] ?? []));
+                    }
+                }
+            }
+            foreach ($this->usersFor($people) as $uid => $u) {
+                $attrNames[intval($uid)] = strval($u['n'] ?? '');
+            }
+        }
+        $this->exportAttrNames = $attrNames;
         $users = $this->exportUserNames($issues);
         $related = $all ? $this->exportRelated($project, $issues) : [];
         $rows = [];
@@ -222,8 +239,22 @@ trait PortalExportTrait
     /**
      * One cell: a string, a number, a date (Y-m-d) or a date and time (Y-m-d H:i:s), or null.
      */
+    /** @var array<int, string> the names of the people in the custom attributes of an export */
+    protected $exportAttrNames = [];
+
     protected function exportCell($project, $issue, string $key, array $column, array $users, array $related)
     {
+        if (isset($column['attr'])) {
+            $d = $column['attr'];
+            $value = PortalAttributes::decode(array_get($issue->value, PortalAttributes::column()))[strval($d['id'])] ?? null;
+            if ($value === null) {
+                return null;
+            }
+            if ($d['type'] === 'number') {
+                return floatval($value);
+            }
+            return PortalAttributes::text($d, $value, $this->exportAttrNames);
+        }
         switch ($key) {
             case 'key':
                 return $this->issueKey($project, $issue->id);

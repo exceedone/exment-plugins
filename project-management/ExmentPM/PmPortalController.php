@@ -42,6 +42,7 @@ class PmPortalController extends AdminControllerBase
     use PortalExportTrait;
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
+    use PortalAttributesTrait;
 
     /**
      * How many issues one bulk edit may touch.
@@ -1408,6 +1409,19 @@ class PmPortalController extends AdminControllerBase
             }
         }
 
+        // The custom attributes (ISS02939): those the new project has too (the same name and kind).
+        $attrColumn = PortalAttributes::column();
+        if (PortalAttributes::exists() && !is_nullorempty(array_get($issue->value, $attrColumn))) {
+            $members = array_map('intval', array_keys(PortalMembership::roles((array) $target->value)));
+            [$moved] = PortalAttributes::move(
+                PortalAttributes::forProject(intval($project->id), true),
+                PortalAttributes::forProject(intval($target->id)),
+                array_get($issue->value, $attrColumn),
+                empty($members) ? null : $members
+            );
+            $changes[$attrColumn] = $moved;
+        }
+
         $oldKey = $this->issueKey($project, $issue->id);
         try {
             \DB::transaction(function () use ($issue, $target, $changes) {
@@ -2665,7 +2679,21 @@ class PmPortalController extends AdminControllerBase
                 continue;
             }
             try {
-                $issue->setValue($set)->save();
+                $row = $set;
+                // the custom attributes: merged into what this issue has (ISS02939)
+                if (isset($row['__attributes'])) {
+                    $values = PortalAttributes::decode(array_get($issue->value, PortalAttributes::column()));
+                    foreach ($row['__attributes'] as $attrId => $value) {
+                        if ($value === null) {
+                            unset($values[$attrId]);
+                        } else {
+                            $values[$attrId] = $value;
+                        }
+                    }
+                    unset($row['__attributes']);
+                    $row[PortalAttributes::column()] = PortalAttributes::encode($values);
+                }
+                $issue->setValue($row)->save();
                 $updated++;
             } catch (ValidationException $e) {
                 $failed[] = [
@@ -2787,6 +2815,33 @@ class PmPortalController extends AdminControllerBase
                 return [[], PortalDefinition::trans('message.invalid_params')];
             }
             $out[$column] = $values->all();
+        }
+
+        // the custom attributes (ISS02939): {"12": value or "__none__"}, merged into each row
+        if (array_key_exists('at', $set)) {
+            $defs = [];
+            foreach (PortalAttributes::forProject(intval($project->id)) as $d) {
+                $defs[strval($d['id'])] = $d;
+            }
+            $merge = [];
+            foreach ((array) $set['at'] as $attrId => $raw) {
+                $d = $defs[strval($attrId)] ?? null;
+                if ($d === null || !PortalAttributes::projectOn($project)) {
+                    return [[], PortalDefinition::trans('message.invalid_params')];
+                }
+                if ($raw === '__none__') {
+                    $merge[strval($attrId)] = null;
+                    continue;
+                }
+                [$value, $why] = PortalAttributes::normalize($d, $raw);
+                if ($why !== null || $value === null) {
+                    return [[], PortalDefinition::trans('rules.' . ($why ?? 'attr_required'), ['label' => $d['label']])];
+                }
+                $merge[strval($attrId)] = $value;
+            }
+            if (!empty($merge)) {
+                $out['__attributes'] = $merge;
+            }
         }
 
         if (array_key_exists('as', $set)) {
@@ -3033,6 +3088,8 @@ class PmPortalController extends AdminControllerBase
                 'viewers' => $viewer_ids,
                 'edit_url' => admin_url('data', [$this->project_table->table_name, $project->id, 'edit']),
                 'features' => $features,
+                // the custom attributes of the project's issues (ISS02939), while it uses them
+                'attributes' => !empty($features['attributes']) ? PortalAttributes::payload(intval($project->id)) : [],
                 // Read-only while archived: the comment, attachment and bulk
                 // routes refuse, so the screen can say so before anyone types.
                 'archived' => $archived,
@@ -3043,6 +3100,8 @@ class PmPortalController extends AdminControllerBase
             'git' => $can['manage'] ? $this->gitState($project) : null,
             // the Files tab with the file server (ISS02825): off unless the feature is on
             'fileserver' => $features['file'] ? PortalFiles::state($project, $can['manage']) : ['on' => false],
+            // the definitions of the custom attributes, for the manager (ISS02939)
+            'attributes' => ($can['manage'] && !empty($features['attributes'])) ? PortalAttributes::state(intval($project->id)) : ['on' => false],
             // Whether the issue form shows the AI button, and the numbers it
             // labels the answers with. Never the key.
             'ai' => $this->aiPayload($project),
@@ -3158,6 +3217,7 @@ class PmPortalController extends AdminControllerBase
                 'git_key_remove' => PortalDefinition::url($project->id, 'git_key_remove'),
                 'git_token' => PortalDefinition::url($project->id, 'git_token'),
                 'file_workspace' => PortalDefinition::url($project->id, 'file_workspace'),
+                'attributes' => PortalDefinition::url($project->id, 'attributes'),
                 'ai_suggest' => PortalDefinition::url($project->id, 'ai', 'suggest'),
                 'ai_feedback' => PortalDefinition::url($project->id, 'ai', 'feedback'),
                 'ai_state' => PortalDefinition::url($project->id, 'ai', 'state'),
@@ -3581,6 +3641,8 @@ class PmPortalController extends AdminControllerBase
             // The people told of every change (お知らせ先), shown and set on
             // the issue's own side as well as in the form.
             'nu' => $this->userIds($v, 'notified_users'),
+            // the custom attributes (ISS02939): definition id => value
+            'at' => PortalAttributes::decode(array_get($v, PortalAttributes::column())),
         ];
         if ($lean) {
             // Rebuilt by the page's script (unpackRows) from the id, the
@@ -3619,7 +3681,7 @@ class PmPortalController extends AdminControllerBase
     const ROW_DEFAULTS = [
         'sub' => '', 'rc' => '', 'ms' => '', 'dt' => '', 'df' => '',
         'sd' => null, 'dd' => null, 'pg' => null, 'eh' => null, 'ah' => null, 'parent' => null, 'by' => null,
-        'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [], 'nu' => [],
+        'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [], 'nu' => [], 'at' => [],
         'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'my_fav' => false, 'al' => '', 'unread' => false,
     ];
 
@@ -4672,6 +4734,44 @@ class PmPortalController extends AdminControllerBase
      * @param array<int, string> $hide
      * @return array<int, array<int, string>>
      */
+    /**
+     * The custom attributes that changed between two values of the column (ISS02939).
+     *
+     * @param mixed $before
+     * @param mixed $after
+     * @return array<int, array{0: string, 1: string, 2: string}>
+     */
+    protected function attributeChanges($before, $after): array
+    {
+        $old = PortalAttributes::decode($before);
+        $new = PortalAttributes::decode($after);
+        $ids = array_unique(array_merge(array_keys($old), array_keys($new)));
+        $defs = PortalAttributes::byIds($ids);
+        $people = [];
+        foreach ($ids as $id) {
+            if (($defs[$id]['type'] ?? '') === 'user') {
+                $people = array_merge($people, (array) ($old[$id] ?? []), (array) ($new[$id] ?? []));
+            }
+        }
+        $names = [];
+        foreach ($this->usersFor($people) as $uid => $u) {
+            $names[intval($uid)] = strval(is_array($u) ? ($u['n'] ?? '') : $u);
+        }
+        $rows = [];
+        foreach ($ids as $id) {
+            $d = $defs[$id] ?? null;
+            if ($d === null || json_encode($old[$id] ?? null) === json_encode($new[$id] ?? null)) {
+                continue;
+            }
+            $rows[] = [
+                $d['label'],
+                mb_strimwidth(PortalAttributes::text($d, $old[$id] ?? null, $names), 0, 40, '…'),
+                mb_strimwidth(PortalAttributes::text($d, $new[$id] ?? null, $names), 0, 40, '…'),
+            ];
+        }
+        return $rows;
+    }
+
     protected function diffRevisionValues($custom_table, $rev, array $hide)
     {
         list($old, $new) = $this->revisionValues($rev);
@@ -4689,6 +4789,16 @@ class PmPortalController extends AdminControllerBase
             }
             $custom_column = $this->columnOf($custom_table, $column_name);
             if (!isset($custom_column)) {
+                continue;
+            }
+            // the custom attributes (ISS02939): a row for each one that changed, by its name
+            if (strval($column_name) === PortalAttributes::column()) {
+                foreach ($this->attributeChanges($before, $after) as $row) {
+                    $changes[] = $row;
+                    if (count($changes) >= 6) {
+                        break 2;
+                    }
+                }
                 continue;
             }
             // the auto number is stamped by the system right after create;
