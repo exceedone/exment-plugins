@@ -98,6 +98,8 @@
     // The custom attributes of the project's issues (ISS02939): the form, the detail, the list
     // and its filters read their strings as one block (L.attributes.*).
     $lang['attributes'] = \App\Plugins\ExmentPM\PortalDefinition::trans('attributes');
+    // The records of other tables the issues link to (ISS02939): the detail's box (L.links.*).
+    $lang['links'] = \App\Plugins\ExmentPM\PortalDefinition::trans('links');
     // Wording for a failure the portal did not word itself - an expired
     // session, a proxy's error page, a dropped line - picked in the client
     // by the HTTP status (errText). Embedded once so no English transport
@@ -409,6 +411,11 @@
                     <div class="bl-card-box" id="pp-d-relbox" style="display:none;">
                         <div class="bl-boxhead" data-collapse="1"><i class="fa fa-link"></i>{{ $lang['box_related'] }}<span class="bl-childsum" id="pp-d-relsum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
                         <div class="bl-boxbody bl-rows bl-related" id="pp-d-related"></div>
+                    </div>
+                    {{-- ISS02939: the records of other tables the issue links to (issue-record-links.js) --}}
+                    <div class="bl-card-box" id="pp-d-reclinkbox" style="display:none;">
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-database"></i>{{ $lang['links']['section'] ?? '' }}<span class="bl-childsum" id="pp-d-reclinksum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxbody bl-rows bl-related" id="pp-d-reclinks"></div>
                     </div>
                 </div>
                 <div class="bl-card-box" id="pp-d-tlbox">
