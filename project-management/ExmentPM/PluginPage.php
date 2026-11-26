@@ -484,6 +484,16 @@ class PluginPage extends PluginPageBase
         return $this->portal()->postFileWorkspace(request(), $id);
     }
 
+    public function attributes($id)
+    {
+        return $this->portal()->attributes(request(), $id);
+    }
+
+    public function postAttributes($id)
+    {
+        return $this->portal()->postAttributes(request(), $id);
+    }
+
     public function channels($id)
     {
         return $this->portal()->channels(request(), $id);

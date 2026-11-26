@@ -28,6 +28,7 @@ const { execFileSync } = require('child_process');
 const FILES = [
     'core.js',             // request queue, page title, form styles, small helpers
     'errors.js',           // error wording
+    'attributes.js',       // the custom attributes of the issues (ISS02939): form, detail, list, filters, bulk
     'review-reactions.js', // review request, reactions
     'home.js',             // project head, home, archive
     'list.js',             // issue list, bulk edit, CSV, saved conditions, staying current

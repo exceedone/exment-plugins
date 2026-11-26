@@ -1,8 +1,9 @@
     /* ------------------------------------------------ issues ------------ */
     // rl: one of the other people of an issue (ISS02931), as "<role>:<user>"
-    // - sa:12 is "12 is a sub-assignee"; df: the difficulty.
-    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', rd: '', q: '', rl: '', df: '' };
-    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'rd', 'rl', 'df', 'kw'];
+    // - sa:12 is "12 is a sub-assignee"; df: the difficulty; at: the custom
+    // attributes' filters, as one string (atFilterParse, ISS02939).
+    var FILTER = { st: '', kw: '', as: '', ty: '', pr: '', ms: '', cat: '', rd: '', q: '', rl: '', df: '', at: '' };
+    var FILTER_FIELDS = ['st', 'q', 'as', 'ty', 'pr', 'ms', 'cat', 'rd', 'rl', 'df', 'at', 'kw'];
     // These were per browser, so a shared machine handed the next person the
     // last one's filters and saved conditions. They are per person now. What
     // is still under the old key is taken over once, by whoever opens the
@@ -246,6 +247,7 @@
         if (k === 'pr') { return own(D.priorities, v) ? v : ''; }
         if (k === 'rd') { return (v === 'unread' || v === 'read') ? v : ''; }
         if (k === 'df') { return difficulties().indexOf(v) >= 0 ? v : ''; }
+        if (k === 'at') { return atFilterKeep(v); }
         return v;
     }
     try {
@@ -336,6 +338,8 @@
         rv: { t: true, v: function (i) { return (i.rv && i.rv.length) ? String(user(i.rv[0]).n) : ''; } },
         df: { t: false, v: function (i) { var r = difficulties().indexOf(String(i.df || '')); return r < 0 ? null : r; } }
     };
+    // and one for each custom attribute of the project (at<id>, ISS02939)
+    atSortRegister();
     /* ---- optional columns (ISS02931) ---- */
     // The other people of an issue and its difficulty, as columns of the list
     // the reader turns on (off at first: the list is wide already), kept per
@@ -354,12 +358,14 @@
         });
     } catch (e) { /* ignore */ }
     function difficulties() { return (D.difficulties || ['easy', 'normal', 'hard']).map(String); }
-    function ocolsOffered() { return OCOLS.filter(function (c) { return xOn(c.role); }); }
+    // the custom attributes' columns after them (ISS02939)
+    function ocolsOffered() { return OCOLS.filter(function (c) { return xOn(c.role); }).concat(atOcols()); }
     function ocolsShown() { return ocolsOffered().filter(function (c) { return own(OCOL_ON, c.k); }); }
     function ocolSave() {
         try { localStorage.setItem(OCOL_KEY, JSON.stringify(Object.keys(OCOL_ON))); } catch (e) { /* ignore */ }
     }
     function ocolCell(i, c) {
+        if (c.at) { return atCell(i, c.at); }
         if (c.k === 'df') { return '<td style="white-space:nowrap;">' + (i.df ? esc(L['df_' + i.df] || i.df) : '') + '</td>'; }
         return '<td>' + avlist(i[c.k]) + '</td>';
     }
@@ -368,7 +374,10 @@
     function renderOcols() {
         var offered = ocolsOffered();
         var head = document.getElementById('pp-issue-head');
+        // (the attributes may have changed with a refresh of the data)
+        atSortRegister();
         if (head) {
+            atEnsureHead(head);
             head.querySelectorAll('th[data-ocol]').forEach(function (th) {
                 var k = th.getAttribute('data-ocol');
                 th.hidden = !offered.some(function (c) { return c.k === k && own(OCOL_ON, k); });
@@ -380,12 +389,12 @@
         if (menu && !menu._ppBuilt && offered.length) {
             menu._ppBuilt = true;
             menu.innerHTML = offered.map(function (c) {
-                return '<label><input type="checkbox" data-ocol="' + esc(c.k) + '"' + (own(OCOL_ON, c.k) ? ' checked' : '') + '> ' + esc(L[c.l]) + '</label>';
+                return '<label><input type="checkbox" data-ocol="' + esc(c.k) + '"' + (own(OCOL_ON, c.k) ? ' checked' : '') + '> ' + esc(c.at ? c.at.l : L[c.l]) + '</label>';
             }).join('');
         }
         var rl = document.getElementById('pp-f-rl');
         if (rl) {
-            var roles = offered.filter(function (c) { return c.k !== 'df'; });
+            var roles = offered.filter(function (c) { return c.k !== 'df' && !c.at; });
             rl.hidden = !roles.length;
             if (roles.length && rl.options.length <= 1) {
                 var people = Object.keys(D.users || {}).sort(function (a, b) { return cmpText(user(a).n, user(b).n); });
@@ -764,6 +773,7 @@
         setVal('pp-f-rd', FILTER.rd);
         setVal('pp-f-rl', FILTER.rl);
         setVal('pp-f-df', FILTER.df);
+        atSyncFilterControls();
         setVal('pp-jump', FILTER.kw);
         setVal('pp-pg-size', String(PAGE.size));
         // Offered only when there is something to clear, so the row does not
@@ -796,6 +806,8 @@
         // then throw all but thirty of them away was the whole cost of typing.
         var kw = FILTER.kw ? FILTER.kw.toLowerCase() : '';
         var quick = FILTER.q ? qchipTest(FILTER.q) : null;
+        var atDefList = atDefs();
+        var atf = FILTER.at && atDefList.length ? atFilterParse(FILTER.at) : null;
 
         return (D.issues || []).filter(function (i) {
             if (i.ar && !AR.show) { return false; }
@@ -810,6 +822,7 @@
             if (FILTER.rd === 'read' && i.unread) { return false; }
             if (FILTER.rl && !rlMatch(i, FILTER.rl)) { return false; }
             if (FILTER.df && String(i.df || '') !== String(FILTER.df)) { return false; }
+            if (atf && !atRowMatch(i, atDefList, atf)) { return false; }
             if (kw && (i.key + ' ' + i.subject + ' ' + (i.sub || '')).toLowerCase().indexOf(kw) < 0) { return false; }
 
             return true;
@@ -821,6 +834,7 @@
         if (alHead) { alHead.hidden = !aliasOn(); }
         renderOcols();
         renderIssueFilters();
+        renderAtFilters();
         renderSortHead();
         var ocols = ocolsShown();
 
@@ -1027,6 +1041,8 @@
         Object.keys(D.milestones || {}).sort(function (a, b) {
             return cmpText(msSortKey(a), msSortKey(b));
         }).forEach(function (k) { ms.add(new Option(D.milestones[k].l, k)); });
+        // one custom attribute and its value (ISS02939)
+        atBulkFill();
     }
 
     // Only the boxes the user moved. '__none__' is how the two clearable
@@ -1046,6 +1062,8 @@
             }
             set[def[1]] = def[1] === 'as' ? [el.value] : el.value;
         });
+        var at = atBulkSet();
+        if (at) { set.at = at; }
 
         return set;
     }

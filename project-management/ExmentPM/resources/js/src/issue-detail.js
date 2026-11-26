@@ -253,6 +253,7 @@
             ['time', L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah)) + qfPen('time', res)],
             ['pg', L.lbl_pg, pbar(i.pg) + rollupBadge(rollupMap(), i.id)],
             ['parent', L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
+        ], atProps(i), [
             // An import's author is the source's; Exment's is the importer.
             ['by', L.lbl_author, res.source && res.source.cby ? esc(res.source.cby) : (i.by ? avname(i.by) : '')],
             ['notify', L.lbl_notify, qfNotify(i, res)],

@@ -94,6 +94,8 @@
         { "method": "post", "uri": "{id}/git_token", "function": "postGitToken" },
         { "method": "get", "uri": "{id}/file_workspace", "function": "fileWorkspace" },
         { "method": "post", "uri": "{id}/file_workspace", "function": "postFileWorkspace" },
+        { "method": "get", "uri": "{id}/attributes", "function": "attributes" },
+        { "method": "post", "uri": "{id}/attributes", "function": "postAttributes" },
         { "method": "get", "uri": "{id}/channels", "function": "channels" },
         { "method": "post", "uri": "{id}/channels", "function": "postChannels" },
         { "method": "post", "uri": "{id}/ai/suggest", "function": "aiSuggest" },

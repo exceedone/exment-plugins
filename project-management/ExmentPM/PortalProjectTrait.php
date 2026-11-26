@@ -110,7 +110,7 @@ trait PortalProjectTrait
      */
     protected function projectFeatures($project): array
     {
-        $defaults = ['use_wiki' => true, 'use_file' => true, 'use_gantt' => true, 'use_git' => false, 'subtasking' => true];
+        $defaults = ['use_wiki' => true, 'use_file' => true, 'use_gantt' => true, 'use_git' => false, 'subtasking' => true, 'use_attributes' => false];
 
         $out = [];
         foreach ($defaults as $name => $default) {
@@ -208,7 +208,10 @@ trait PortalProjectTrait
         };
 
         $features = [];
-        foreach (['use_wiki', 'use_file', 'use_gantt', 'use_git', 'subtasking'] as $name) {
+        foreach (['use_wiki', 'use_file', 'use_gantt', 'use_git', 'subtasking', 'use_attributes'] as $name) {
+            if ($name === 'use_attributes' && !PortalAttributes::exists()) {
+                continue;
+            }
             if ($has($name)) {
                 $features[] = $name;
             }

@@ -15,6 +15,8 @@
         'fs' => PortalDefinition::trans('fileserver'),
         'ch' => PortalDefinition::trans('channels'),
         'ai' => PortalDefinition::trans('ai'),
+        // the custom attributes of the project's issues (ISS02939)
+        'at' => PortalDefinition::trans('attributes'),
         'feat_site_on' => PortalDefinition::trans('feat_site_on'),
         'feat_site_off' => PortalDefinition::trans('feat_site_off'),
         'feat_site_open' => PortalDefinition::trans('feat_site_open'),
@@ -99,6 +101,9 @@
         'fileserver' => $payload['fileserver'] ?? ['on' => false],
         'channels_url' => $payload['urls']['channels'] ?? null,
         'channels' => $payload['channels'] ?? ['on' => false],
+        // the definitions of the custom attributes (ISS02939): {on:false} unless the manager's
+        'attributes_url' => $payload['urls']['attributes'] ?? null,
+        'attributes' => $payload['attributes'] ?? ['on' => false],
         'delete_url' => $payload['urls']['delete_project'],
         'dashboard_url' => $payload['urls']['dashboard'],
         'map' => $payload['settings_map'] ?? [],
@@ -174,6 +179,10 @@
     // The chat channels, while the feature is on (ISS02939).
     if (boolval(array_get($setData, 'channels.on'))) {
         $setSections[] = ['channels', $st('tab_channels'), 'fa-comments-o'];
+    }
+    // The custom attributes, while the project uses them and its manager looks (ISS02939).
+    if (boolval(array_get($setData, 'attributes.on'))) {
+        $setSections[] = ['attributes', $st('tab_attributes'), 'fa-tags'];
     }
     if ($setData['can_delete']) {
         $setSections[] = ['danger', $st('tab_danger'), 'fa-trash-o'];
@@ -336,6 +345,13 @@
 .pmportal .pp-set-del:hover{color:var(--bl-red);}
 .pmportal .pp-set-addrow{display:flex;align-items:center;gap:8px;margin-top:12px;}
 .pmportal .pp-set-addrow .pp-set-in{flex:1 1 auto;}
+.pmportal .pp-set-atcard{border:1px solid var(--bl-line);border-radius:4px;padding:10px 12px;margin-bottom:10px;max-width:560px;}
+.pmportal .pp-set-atcard .pp-set-f{margin-bottom:10px;}
+.pmportal .pp-set-athead{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.pmportal .pp-set-attype{font-size:11.5px;color:var(--bl-sub);background:var(--bl-chip);border-radius:3px;padding:1px 6px;}
+.pmportal .pp-set-atbar{display:flex;flex-wrap:wrap;gap:6px;}
+.pmportal .pp-set-atck{display:flex;align-items:center;gap:6px;font-weight:400;font-size:12.5px;cursor:pointer;}
+.pmportal .pp-set-atck input{margin:0;}
 </style>
 
 <section class="bl-screen" id="pp-settings">
@@ -2023,9 +2039,220 @@
             return frag;
         }
 
+        // ---- custom attributes (ISS02939) ------------------------------
+        // The items a project adds to its issues. Each change is posted on
+        // its own and the answer is the whole list again, so the pane is
+        // simply drawn anew from it.
+        var AT = S.attributes || { on: false };
+        function atInput(type, value) {
+            var i = el('input', 'pp-set-in');
+            i.type = type;
+            i.value = value === undefined || value === null ? '' : String(value);
+            return i;
+        }
+        function atField(labelText, input, help) {
+            var f = el('div', 'pp-set-f');
+            f.appendChild(el('label', 'pp-set-lab', labelText));
+            f.appendChild(input);
+            if (help) { f.appendChild(el('div', 'help', help)); }
+            return f;
+        }
+        function atButton(text, cls) {
+            var b = el('button', 'pp-set-btn' + (cls ? ' ' + cls : ''), text);
+            b.type = 'button';
+            return b;
+        }
+        // The inputs of one definition (the type is fixed once made); read()
+        // gives the fields of its save.
+        function atForm(d, T) {
+            var box = el('div');
+            var label = atInput('text', d.l);
+            label.maxLength = 40;
+            box.appendChild(atField(T.label, label));
+            var opts = null;
+            var unit = null;
+            var dec = null;
+            var mx = null;
+            if (d.t === 'select' || d.t === 'multi_select') {
+                opts = el('textarea', 'pp-set-in');
+                opts.rows = 4;
+                opts.value = (d.o || []).join('\n');
+                box.appendChild(atField(T.options, opts, T.options_help));
+            }
+            if (d.t === 'number') {
+                unit = atInput('text', d.u);
+                unit.maxLength = 10;
+                box.appendChild(atField(T.unit, unit));
+                dec = atInput('number', d.d || 0);
+                dec.min = '0';
+                dec.max = '4';
+                box.appendChild(atField(T.decimals, dec));
+            }
+            if (d.t === 'text') {
+                mx = atInput('number', d.mx || 1000);
+                mx.min = '1';
+                mx.max = '1000';
+                box.appendChild(atField(T.max, mx));
+            }
+            var ck = el('label', 'pp-set-atck');
+            var req = el('input');
+            req.type = 'checkbox';
+            req.checked = !!d.r;
+            ck.appendChild(req);
+            ck.appendChild(document.createTextNode(T.required || ''));
+            var reqRow = el('div', 'pp-set-f');
+            reqRow.appendChild(ck);
+            box.appendChild(reqRow);
+            return {
+                el: box,
+                read: function () {
+                    return {
+                        label: label.value,
+                        required: req.checked,
+                        options: opts ? opts.value.split(/\r\n|\r|\n/).map(function (o) { return o.trim(); }).filter(function (o) { return o !== ''; }) : [],
+                        unit: unit ? unit.value : '',
+                        decimals: dec ? (parseInt(dec.value, 10) || 0) : 0,
+                        max: mx ? (parseInt(mx.value, 10) || 1000) : 0
+                    };
+                }
+            };
+        }
+        // One live definition: its inputs, save, up, down and delete.
+        function atCard(d, i, live, post, T) {
+            var card = el('div', 'pp-set-atcard');
+            var head = el('div', 'pp-set-athead');
+            head.appendChild(el('strong', null, d.l));
+            head.appendChild(el('span', 'pp-set-attype', T['type_' + d.t] || d.t));
+            card.appendChild(head);
+            var form = atForm(d, T);
+            card.appendChild(form.el);
+            var bar = el('div', 'pp-set-atbar');
+            var save = atButton(T.save, 'main');
+            save.addEventListener('click', function () {
+                var b = form.read();
+                b.action = 'save';
+                b.id = d.id;
+                b.type = d.t;
+                post(b, save);
+            });
+            bar.appendChild(save);
+            var ids = live.map(function (x) { return x.id; });
+            var move = function (to, btn) {
+                var order = ids.slice();
+                order.splice(i, 1);
+                order.splice(to, 0, d.id);
+                post({ action: 'order', ids: order }, btn);
+            };
+            var up = atButton(T.up);
+            up.disabled = i === 0;
+            up.addEventListener('click', function () { move(i - 1, up); });
+            var down = atButton(T.down);
+            down.disabled = i === live.length - 1;
+            down.addEventListener('click', function () { move(i + 1, down); });
+            var del = atButton(T.delete);
+            del.addEventListener('click', function () {
+                if (window.confirm(T.delete_confirm || '')) { post({ action: 'delete', id: d.id }, del); }
+            });
+            bar.appendChild(up);
+            bar.appendChild(down);
+            bar.appendChild(del);
+            card.appendChild(bar);
+            return card;
+        }
+        // The form of a new definition: its type first, then the inputs of
+        // that type.
+        function atAddForm(live, post, T) {
+            var card = el('div', 'pp-set-atcard');
+            card.appendChild(el('div', 'pp-set-sub', T.add_label));
+            if (live.length >= (AT.max || 30)) {
+                card.appendChild(el('div', 'pp-set-warn', T.max_reached));
+                return card;
+            }
+            var type = el('select', 'pp-set-in');
+            (AT.types || []).forEach(function (t) {
+                var o = document.createElement('option');
+                o.value = t;
+                o.textContent = T['type_' + t] || t;
+                type.appendChild(o);
+            });
+            card.appendChild(atField(T.type, type));
+            var slot = el('div');
+            card.appendChild(slot);
+            var form = null;
+            var draw = function () {
+                form = atForm({ id: 0, t: type.value, l: '', o: [], r: false, u: '', d: 0, mx: 1000 }, T);
+                slot.textContent = '';
+                slot.appendChild(form.el);
+            };
+            type.addEventListener('change', draw);
+            draw();
+            var add = atButton(T.add, 'main');
+            add.addEventListener('click', function () {
+                var b = form.read();
+                b.action = 'save';
+                b.id = 0;
+                b.type = type.value;
+                post(b, add);
+            });
+            card.appendChild(add);
+            return card;
+        }
+        function paneAttributes() {
+            var frag = document.createDocumentFragment();
+            var T = LANG.at || {};
+            var err = el('div', 'pp-set-warn');
+            err.hidden = true;
+            var post = function (body, btn) {
+                err.hidden = true;
+                if (btn) { btn.disabled = true; }
+                fetch(S.attributes_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(body)
+                }).then(readJson).then(function (res) {
+                    var j = res.body || {};
+                    if (res.status === 200 && j.ok) {
+                        AT = j.attributes || AT;
+                        renderPane('attributes');
+                        say(T.saved || '', 'ok');
+                        return;
+                    }
+                    err.textContent = errText(res.status, res.body, L.save_fail);
+                    err.hidden = false;
+                    if (btn) { btn.disabled = false; }
+                }).catch(function () {
+                    err.textContent = errText(0, null, L.save_fail);
+                    err.hidden = false;
+                    if (btn) { btn.disabled = false; }
+                });
+            };
+            frag.appendChild(el('div', 'pp-set-note', T.note || ''));
+            frag.appendChild(err);
+            var defs = AT.defs || [];
+            var live = defs.filter(function (d) { return !d.del; });
+            var gone = defs.filter(function (d) { return d.del; });
+            live.forEach(function (d, i) { frag.appendChild(atCard(d, i, live, post, T)); });
+            frag.appendChild(atAddForm(live, post, T));
+            if (gone.length) {
+                frag.appendChild(el('div', 'pp-set-sub', T.deleted));
+                gone.forEach(function (d) {
+                    var row = el('div', 'pp-set-row');
+                    row.appendChild(el('span', 'nm', d.l));
+                    row.appendChild(el('span', 'pp-set-attype', T['type_' + d.t] || d.t));
+                    var back = atButton(T.restore);
+                    back.addEventListener('click', function () { post({ action: 'restore', id: d.id }, back); });
+                    row.appendChild(back);
+                    frag.appendChild(row);
+                });
+            }
+            return frag;
+        }
+
         var PANES = {
             basic: paneBasic, people: panePeople, features: paneFeatures,
             other: paneOther, git: paneGit, ai: paneAi, danger: paneDanger, fileserver: paneFiles, channels: paneChannels,
+            attributes: paneAttributes,
             statuses: function () { return paneList('statuses'); },
             types: function () { return paneList('types'); },
             categories: function () { return paneList('categories'); },
@@ -2047,7 +2274,7 @@
             // The save bar belongs to the panes that edit project columns.
             // Git and delete carry their own buttons, and a master list
             // saves each row the moment it is changed.
-            foot.hidden = ['git', 'fileserver', 'channels', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
+            foot.hidden = ['git', 'fileserver', 'channels', 'attributes', 'danger', 'statuses', 'types', 'categories', 'milestones'].indexOf(name) >= 0;
             nav.querySelectorAll('a').forEach(function (a) {
                 a.classList.toggle('on', a.getAttribute('data-sec') === name);
             });

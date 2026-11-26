@@ -724,9 +724,52 @@ class PortalRules
         if (!is_nullorempty($projectId)) {
             $errors += static::projectLists($table, $input, $projectId, $def);
             $errors += static::people($input, $current, $projectId, $def);
+            $errors += static::attributes($input, $current, $projectId, $def);
         }
 
         return $errors;
+    }
+
+    /**
+     * The custom attributes of the project (ISS02939): each value as its definition says, the
+     * required ones filled, a person one of the project's. A new issue is checked even when the
+     * write has no attributes at all (a required one is then missing).
+     *
+     * @param array<string, mixed> $input
+     * @param array<string, mixed> $def
+     * @return array<string, string>
+     */
+    protected static function attributes(array $input, ?CustomValue $current, $projectId, array $def): array
+    {
+        $column = PortalAttributes::column();
+        if (!PortalAttributes::exists()) {
+            return [];
+        }
+        $project = static::findRow(strval(array_get($def, 'project_table')), $projectId, true);
+        if (!$project || !PortalAttributes::projectOn($project)) {
+            return [];
+        }
+        $defs = PortalAttributes::forProject(intval($projectId), true);
+        if (empty($defs)) {
+            return [];
+        }
+        $creating = !$current || !$current->exists;
+        if (!array_key_exists($column, $input)) {
+            if (!$creating) {
+                return [];
+            }
+            $input[$column] = '';
+        }
+        $stored = (!$creating && !static::moving($current)) ? array_get(PortalMembership::storedValue($current), $column) : '';
+        $members = array_map('intval', array_keys(PortalMembership::roles((array) $project->value)));
+        [, $problems] = PortalAttributes::check($defs, $input[$column], $stored, empty($members) ? null : $members);
+        if (empty($problems)) {
+            return [];
+        }
+
+        return [$column => implode(' ', array_map(function ($p) {
+            return strval(PortalDefinition::trans('rules.' . $p[1], ['label' => $p[0]]));
+        }, $problems))];
     }
 
     /**

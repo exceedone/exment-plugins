@@ -124,6 +124,10 @@ jobs:
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
 
+      # The custom attributes on the screen (ISS02939): the JSON a save sends,
+      # how a value reads, the filters, the sort and the bulk edit.
+      - name: Custom attributes check (ExmentPM screen)
+        run: node project-management/tools/test-pm-attributes.js
       - name: Simple or full issue screen (ExmentPM)
         run: node project-management/tools/test-pm-simple.js
       # Where each person's notice arrives (ISS02931): the chips, and the rule of the server.
@@ -139,6 +143,9 @@ jobs:
       - name: Recent updates pages (ExmentPM)
         run: php project-management/tools/test-pm-feed.php
 
+      # The custom attributes of a project's issues (ExmentPM, plain PHP)
+      - name: Custom attributes check (ExmentPM server)
+        run: php project-management/tools/test-pm-attributes.php
       # The messages of the chat channels of a project (ExmentPM, plain PHP)
       - name: Chat channels (ExmentPM)
         run: php project-management/tools/test-pm-channels.php
