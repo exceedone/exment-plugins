@@ -307,7 +307,7 @@
         }
         function pvCards(root) {
             if (!root || !root.querySelectorAll) { return; }
-            var links = root.querySelectorAll('a[data-pv="1"]:not([data-pvc])');
+            var links = root.querySelectorAll('a[data-pvdone]:not([data-pvc])');
             for (var i = 0; i < links.length; i++) {
                 var a = links[i];
                 a.setAttribute('data-pvc', '1');
@@ -316,7 +316,7 @@
                 // the issue's list draws pictures itself; a card for what can be shown as text, a sheet, a picture in a comment
                 if (!kind || (kind === 'image' && a.querySelector('img'))) { continue; }
                 var place = a.closest('.pp-cmt-body, .bl-cmt-body, li, p, td, div') || a.parentNode;
-                var many = place.querySelectorAll('a[data-pv="1"]').length > PV_FOLD_COUNT;
+                var many = place.querySelectorAll('a[data-pvdone]').length > PV_FOLD_COUNT;
                 var card = pvCard(a.getAttribute('href'), name, many);
                 var after = a.nextSibling && a.nextSibling.classList && a.nextSibling.classList.contains('pp-pvb') ? a.nextSibling : a;
                 after.parentNode.insertBefore(card, after.nextSibling);
