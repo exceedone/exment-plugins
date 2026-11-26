@@ -1970,6 +1970,8 @@ body.pp-ib-open{overflow:hidden;}
    What is on shows as a small icon on the ⋯ button (:has, so it follows a toggle at once). */
 .pmportal .pp-more > .m .sep{display:block;height:0;margin:4px 0;border-top:1px solid var(--bl-line2);}
 .pmportal .pp-more > .m a.on .fa{color:var(--bl-accent-d,var(--bl-accent));}
+/* In the menu every item says its word, on a phone too (the head's 注目 button drops it under 480px) */
+.pmportal .pp-more > .m .pp-star-d .lb{display:inline !important;}
 .pmportal .pp-more > .m a .wc,.pmportal .pp-more > .m a .ct{margin-left:auto;font-size:12px;color:var(--bl-sub);}
 .pmportal .pp-morebtn .pp-act-on{display:inline-flex;gap:3px;margin-left:4px;font-size:11px;color:var(--bl-accent-d,var(--bl-accent));}
 .pmportal .pp-morebtn .pp-act-on .fa{display:none;margin:0;}

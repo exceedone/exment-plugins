@@ -59,6 +59,12 @@ test('every button has a title, the words in ja', () => {
     assert.ok(langJa.indexOf('// ACT-1') > 0);
 });
 
+test('the on / off items keep the menu open; 注目 says its word on a phone', () => {
+    const events = fs.readFileSync(path.join(PM, 'resources', 'js', 'src', 'events.js'), 'utf8');
+    assert.ok(/moreKeep = moreBtn \|\| ev\.target\.closest\('\.pp-more \.pp-issuedel, \.pp-more \.pp-star, \.pp-more \.pp-fav, \.pp-more \.pp-watch'\)/.test(events));
+    assert.ok(style.indexOf('.pmportal .pp-more > .m .pp-star-d .lb{display:inline !important;}') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

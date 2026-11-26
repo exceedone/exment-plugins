@@ -11979,7 +11979,9 @@ window.PmPortalBoot = function () {
         // asks a second time in place, so the first click on it must leave
         // the menu open for the question to be read.
         var moreBtn = ev.target.closest('.pp-morebtn');
-        var moreKeep = moreBtn || ev.target.closest('.pp-more .pp-issuedel');
+        // The on / off items (注目, お気に入り, ウォッチ) keep it open too: the
+        // item changes in place, and the person sees its new state.
+        var moreKeep = moreBtn || ev.target.closest('.pp-more .pp-issuedel, .pp-more .pp-star, .pp-more .pp-fav, .pp-more .pp-watch');
         Array.prototype.forEach.call(root.querySelectorAll('.pp-more'), function (w) {
             var m = w.querySelector('.m');
             var b = w.querySelector('.pp-morebtn');
