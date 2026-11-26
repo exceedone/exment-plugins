@@ -90,7 +90,8 @@ trait PortalFeedTrait
             if ($before !== null) {
                 $q->where('created_at', '<', $before);
             }
-            return $q->orderBy('created_at', 'desc')->orderBy('id', 'desc')->skip($skip)->take($take)->get()->all();
+            // sorted over the ids (takeSorted): a row with a long body does not fit MySQL's sort buffer
+            return static::takeSorted($q->orderBy('created_at', 'desc')->orderBy('id', 'desc'), $take, $skip)->all();
         }, $issue_ids, 'revisionable_id', $want, $floor);
         $this->primeLabels($this->issue_table, $revs);
         $issue_rev = [];
@@ -108,7 +109,8 @@ trait PortalFeedTrait
             if ($before !== null) {
                 $q->where('created_at', '<', $before);
             }
-            return $q->orderBy('created_at', 'desc')->orderBy('id', 'desc')->skip($skip)->take($take)->get()->all();
+            // sorted over the ids (takeSorted): a row with a long body does not fit MySQL's sort buffer
+            return static::takeSorted($q->orderBy('created_at', 'desc')->orderBy('id', 'desc'), $take, $skip)->all();
         }, $issue_ids, 'parent_id', $want, $floor);
 
         $docs = PortalFeedPage::scan(function ($skip, $take) use ($issue_name, $before) {
@@ -116,7 +118,8 @@ trait PortalFeedTrait
             if ($before !== null) {
                 $q->where('created_at', '<', $before);
             }
-            return $q->orderBy('created_at', 'desc')->orderBy('id', 'desc')->skip($skip)->take($take)->get()->all();
+            // sorted over the ids (takeSorted): a row with a long body does not fit MySQL's sort buffer
+            return static::takeSorted($q->orderBy('created_at', 'desc')->orderBy('id', 'desc'), $take, $skip)->all();
         }, $issue_ids, 'parent_id', $want, $floor);
 
         // The subjects of the issues named, and nothing else.
@@ -229,7 +232,7 @@ trait PortalFeedTrait
             $q->where('created_at', '<', $before);
         }
 
-        $rows = $q->orderBy('created_at', 'desc')->take($take)->get()->all();
+        $rows = static::takeSorted($q->orderBy('created_at', 'desc')->orderBy('id', 'desc'), $take)->all();
         // As many as asked for: there may be older ones (see PortalFeedPage::scan).
         if (count($rows) >= $take) {
             $at = strval($rows[count($rows) - 1]->created_at);

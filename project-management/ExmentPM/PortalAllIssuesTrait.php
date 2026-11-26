@@ -67,7 +67,7 @@ trait PortalAllIssuesTrait
             return $this->messageError(422, 'export_empty');
         }
         [$query, $cards] = $found;
-        $issues = $query->take(static::$EXPORT_MAX)->get()->all();
+        $issues = static::takeSorted($query, static::$EXPORT_MAX)->all();
         if (empty($issues)) {
             return $this->messageError(422, 'export_empty');
         }
@@ -274,7 +274,7 @@ trait PortalAllIssuesTrait
         $per = static::$all_per_page;
         $pages = max(1, intval(ceil($total / $per)));
         $page = min($pages, max(1, intval($request->query('page', 1))));
-        $issues = $query->skip(($page - 1) * $per)->take($per)->get();
+        $issues = static::takeSorted($query, $per, ($page - 1) * $per);
 
         $users = $this->allUserNames($issues, array_get($is, 'assignees'));
         $rows = [];

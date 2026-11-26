@@ -251,6 +251,10 @@ window.PmPortalBoot = function () {
         }
         var http = (L && L.http) || {};
         var said = http.messages || {};
+        // A 403 that is not Exment's: a firewall in front of the site (AWS WAF) refused what was
+        // sent - a body with localhost or ../ in it - and answered with its own page. Not a
+        // permission, so not said as one.
+        if (status === 403 && !body && own(said, 'blocked')) { return own(said, 'blocked'); }
         var known = typeof status === 'number' && isFinite(status);
         var key = known ? own(http.status, String(status)) : undefined;
         if (!key && known && status >= 500) { key = 'server'; }
@@ -268,6 +272,15 @@ window.PmPortalBoot = function () {
             var parsed = JSON.parse(String(xhr.responseText || ''));
             return (parsed && typeof parsed === 'object') ? parsed : null;
         } catch (e) { return null; }
+    }
+    // The longest body, comment and wiki page the portal takes (PortalDefinition::MAX_BODY).
+    function maxBody() {
+        var n = Number(((L && L.http) || {}).max_body);
+        return n > 0 ? n : 200000;
+    }
+    function tooLongText(max) {
+        var said = ((L && L.http) || {}).messages || {};
+        return String(own(said, 'too_long_text') || '').replace(':max', Number(max).toLocaleString());
     }
     function xhrErr(xhr, fallback) {
         return errText(xhr && typeof xhr.status === 'number' ? xhr.status : null, xhrBody(xhr), fallback);
@@ -5565,6 +5578,10 @@ window.PmPortalBoot = function () {
         // comment, so it needs both. Said before anything is sent - the
         // server would post the comment and quietly ask nobody. The "next
         // status" button sends no comment and so asks nobody.
+        if (String(text).length > maxBody()) {
+            ppDockMsg(tooLongText(maxBody()), true);
+            return;
+        }
         var review = !statusOnly && rvAskOn();
         if (review && !document.querySelector('#pp-notify-chips .pp-notify:not(.off)')) {
             ppDockMsg(L.rv_need_people, true);
@@ -5635,7 +5652,10 @@ window.PmPortalBoot = function () {
                 url: base + '/issue/' + issueId + '/comment',
                 type: 'POST',
                 dataType: 'json',
-                data: data,
+                // as JSON: a Japanese character is 3 bytes there, 9 in a form (nginx stops at 1 MB)
+                contentType: 'application/json',
+                processData: false,
+                data: JSON.stringify(data),
                 headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
@@ -6378,13 +6398,16 @@ window.PmPortalBoot = function () {
             if (!detailCurrent(issueId) || !wrap.isConnected) { return; }
             var next = area.value.trim();
             if (!next || save.disabled) { return; }
+            if (next.length > maxBody()) { toast(tooLongText(maxBody()), true); return; }
             save.disabled = true;
             save.textContent = L.posting;
             var seq = ++DET_SEQ;
             $.ajax({
                 url: D.urls.base + '/comment/' + cid, type: 'PATCH',
                 dataType: 'json',
-                data: { comment: next }, headers: { 'X-CSRF-TOKEN': CSRF }
+                // as JSON, as the comment is posted (writes.js)
+                contentType: 'application/json', processData: false,
+                data: JSON.stringify({ comment: next }), headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
                     if (detailCurrent(issueId)) {
@@ -9239,13 +9262,15 @@ window.PmPortalBoot = function () {
     }
 
     // Phase B: live char counter below the description textarea. The limit
-    // comes from col.max_length when present, or falls back to 2000 which
-    // matches the default Exment text-column length.
+    // comes from col.max_length when present, or is the portal's own
+    // (PortalDefinition::MAX_BODY, 200,000 - more than Backlog's 100,000): an
+    // editor or textarea column of Exment has no length of its own.
     function nedAttachCharCount(fg) {
         var ta = fg.querySelector('textarea.pp-ne-in');
         if (!ta) { return; }
         var col = NED.columns.filter(function (c) { return c.name === fg.dataset.fname; })[0];
-        var max = (col && col.max_length) ? col.max_length : 2000;
+        var max = (col && col.max_length) ? col.max_length : maxBody();
+        fg.dataset.max = String(max);
         var box = document.createElement('div');
         box.className = 'pp-ne-charcount';
         var n = document.createElement('span'); n.className = 'n'; n.textContent = String((ta.value || '').length);
@@ -9292,6 +9317,15 @@ window.PmPortalBoot = function () {
         var ok = true;
         NED.el.querySelectorAll('.pp-ne-fg').forEach(function (fg) {
             if (!nedValidateField(fg)) { ok = false; }
+            // too long: said here, before the server is asked
+            var ta = fg.dataset.max ? fg.querySelector('textarea.pp-ne-in') : null;
+            if (ta && (ta.value || '').length > Number(fg.dataset.max)) {
+                ok = false;
+                fg.classList.add('err');
+                nedRevealField(fg);
+                var errEl = fg.querySelector('.err');
+                if (errEl) { errEl.textContent = tooLongText(Number(fg.dataset.max)); errEl.hidden = false; }
+            }
         });
         return ok;
     }
