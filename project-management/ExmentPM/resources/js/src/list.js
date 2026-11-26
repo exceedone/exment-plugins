@@ -613,6 +613,48 @@
         return st === want;
     }
 
+    // S18: 自分が担当 counts this project only; the dashboard has them all.
+    function mineAllLink() {
+        if (FILTER.q !== 'mine' || !(D.urls && D.urls.projects)) { return ''; }
+        return '<a class="pp-mine-all" href="' + esc(D.urls.projects) + '">' + esc(L.mine_all) + ' <i class="fa fa-angle-right"></i></a>';
+    }
+    // S11, M7: a pencil in each cell that can be changed in place; one press
+    // opens the same editor a double-click does (edCell), which stays.
+    function edPen() {
+        return BULK_ON ? '<button type="button" class="pp-ed-pen" tabindex="-1" title="' + esc(L.ed_pen) + '" aria-label="' + esc(L.ed_pen) + '"><i class="fa fa-pencil"></i></button>' : '';
+    }
+    (function () {
+        var rows = document.getElementById('pp-issue-rows');
+        if (!rows) { return; }
+        // Capture: before the row's own click opens the issue.
+        rows.addEventListener('click', function (ev) {
+            var pen = ev.target.closest && ev.target.closest('.pp-ed-pen');
+            if (!pen) { return; }
+            ev.preventDefault();
+            ev.stopPropagation();
+            var td = pen.closest('td[data-ed]');
+            if (!td) { return; }
+            edHintSeen();
+            var dbl;
+            try { dbl = new MouseEvent('dblclick', { bubbles: true, cancelable: true }); } catch (e) { dbl = null; }
+            if (dbl) { td.dispatchEvent(dbl); }
+        }, true);
+        rows.addEventListener('dblclick', function () { edHintSeen(); });
+        // A first visit is told once, under the list, how a cell is changed.
+        var hint = document.getElementById('pp-ed-hint');
+        var seen = true;
+        try { seen = localStorage.getItem('pmportal.edhint') === '1'; } catch (e) { seen = true; }
+        if (hint && BULK_ON && !seen) {
+            hint.hidden = false;
+            var x = hint.querySelector('.x');
+            if (x) { x.addEventListener('click', edHintSeen); }
+        }
+    }());
+    function edHintSeen() {
+        var hint = document.getElementById('pp-ed-hint');
+        if (hint) { hint.hidden = true; }
+        try { localStorage.setItem('pmportal.edhint', '1'); } catch (e) { /* ignore */ }
+    }
     function renderIssueFilters() {
         var tabs = '<button class="bl-sttab' + (FILTER.st === '' ? ' active' : '') + '" data-st="">' +
             esc(L.f_all) + '<span class="ct">' + (D.issues.length + arCount()) + '</span></button>';
@@ -638,7 +680,7 @@
                 '" data-q="' + c.k + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
                 '<i class="fa ' + c.i + '"></i>' + esc(L[c.l]) + '<span class="ct">' + n + '</span></button>';
         });
-        document.getElementById('pp-qchips').innerHTML = chips;
+        document.getElementById('pp-qchips').innerHTML = chips + mineAllLink();
 
         var selAs = document.getElementById('pp-f-as');
         if (selAs.options.length <= 1) {
@@ -831,7 +873,7 @@
                 (BULK_ON ? '<td class="chk"><input type="checkbox" class="pp-bchk" data-id="' + esc(i.id) + '"' +
                     (own(SEL, i.id) ? ' checked' : '') + '></td>' : '') +
                 '<td>' + starBtn('star', D.issue_table, i.id, i.star, i.my_star) + '</td>' +
-                '<td' + edAttr('ty') + '>' + tag(i.ty) + '</td>' +
+                '<td' + edAttr('ty') + '>' + tag(i.ty) + edPen() + '</td>' +
                 '<td><a class="bl-key" href="#issue-' + esc(keyRef(i)) + '" title="' + esc(i.key) + '">' + esc(keyNum(i)) + '</a>' + ikCopyButton(i) + '</td>' +
                 (aliasOn() ? '<td class="pp-al">' + (i.al ? '<a href="#issue-' + esc(i.al) + '">' + esc(i.al) + '</a>' : '') + '</td>' : '') +
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
@@ -841,12 +883,12 @@
                     (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
                 ocols.map(function (c) { return ocolCell(i, c); }).join('') +
-                '<td' + edAttr('st') + '>' + pill(i.st) + '</td>' +
-                '<td' + edAttr('pr') + '>' + prio(i.pr) + '</td>' +
-                '<td style="white-space:nowrap;"' + edAttr('ms') + '>' + esc(ms ? ms.l : '') + '</td>' +
-                '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + '</td>' +
-                '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + '</td>' +
-                '<td' + edAttr('dd') + '>' + dueCell(i) + '</td>' +
+                '<td' + edAttr('st') + '>' + pill(i.st) + edPen() + '</td>' +
+                '<td' + edAttr('pr') + '>' + prio(i.pr) + edPen() + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('ms') + '>' + esc(ms ? ms.l : '') + edPen() + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('cat') + '>' + (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') + edPen() + '</td>' +
+                '<td style="white-space:nowrap;"' + edAttr('sd') + '>' + esc(d2(i.sd)) + edPen() + '</td>' +
+                '<td' + edAttr('dd') + '>' + dueCell(i) + edPen() + '</td>' +
                 '<td>' + pbar(i.pg) + rollupBadge(ru, i.id) + '</td>' +
                 '<td class="up">' + esc(i.up) + '</td></tr>';
         });

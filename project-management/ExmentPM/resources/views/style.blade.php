@@ -1793,4 +1793,80 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-tabs .bl-tabsearch{display:none;}
   .pmportal .bl-tabs .bl-tab[data-scr="settings"]{display:none;}
 }
+/* ==== UX-E: list, board and gantt (S9, S10, S11, S18, M4, M7, M8) ==== */
+/* S11, M7: a cell that can be changed shows it - a dotted edge and a pencil
+   on hover, the pencil one press away. */
+.pmportal #pp-issue-rows td[data-ed]{position:relative;}
+.pmportal #pp-issue-rows td[data-ed]:hover{box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--bl-accent) 45%, transparent);
+  outline:1px dashed color-mix(in srgb, var(--bl-accent) 55%, var(--bl-line));outline-offset:-3px;}
+.pmportal .pp-ed-pen{position:absolute;right:2px;top:50%;transform:translateY(-50%);border:0;border-radius:4px;padding:2px 5px;
+  background:var(--bl-box);color:var(--bl-sub);font-size:11px;line-height:1;cursor:pointer;opacity:0;transition:opacity .12s;}
+.pmportal #pp-issue-rows td[data-ed]:hover .pp-ed-pen,.pmportal .pp-ed-pen:focus-visible{opacity:1;}
+.pmportal .pp-ed-pen:hover{color:var(--bl-accent-d);background:var(--bl-hover);}
+@media (hover:none){.pmportal .pp-ed-pen{opacity:.55;}}
+.pmportal .pp-ed-hint{display:flex;align-items:center;gap:8px;margin:8px 12px 0;padding:6px 10px;border-radius:var(--bl-radius-s);
+  background:var(--bl-box2);color:var(--bl-sub);font-size:12px;}
+.pmportal .pp-ed-hint[hidden]{display:none;}
+.pmportal .pp-ed-hint .x{margin-left:auto;border:0;background:none;color:var(--bl-faint);font-size:16px;line-height:1;cursor:pointer;}
+/* S18: the way from this project's 自分が担当 to every project's */
+.pmportal .pp-mine-all{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:12px;color:var(--bl-accent-d);
+  white-space:nowrap;text-decoration:none;}
+.pmportal .pp-mine-all:hover{text-decoration:underline;}
+/* S10: the gantt on a phone */
+.pmportal .pp-gantt-hint{display:none;}
+@media (max-width:760px){
+  .pmportal .pp-gantt-hint{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:8px;padding:8px 12px;
+    background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius);font-size:12.5px;color:var(--bl-sub);}
+  .pmportal .pp-gantt-hint a{font-weight:700;color:var(--bl-accent-d);white-space:nowrap;}
+}
+/* S9: the board is calmer - the quick add appears in the column under the
+   pointer (or with the focus) - and says it moves sideways: the right edge
+   fades while there is more, with ‹ › to move. */
+.pmportal .pp-kb-wrap{position:relative;}
+.pmportal .pp-kb-wrap .kb-quickadd{transition:opacity .12s;}
+@media (hover:hover){
+  .pmportal .pp-kb-wrap .kb-col:not(:hover):not(:focus-within) .kb-quickadd{opacity:0;}
+}
+@media (hover:none){.pmportal .pp-kb-wrap .kb-quickadd{display:none;}}
+.pmportal .pp-kb-wrap.pp-kb-more-r .kb-scroll{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);
+  mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);}
+.pmportal .pp-kb-nav{display:flex;align-items:center;gap:6px;justify-content:flex-end;padding:4px 8px;}
+.pmportal .pp-kb-nav .pp-kb-chips{display:none;}
+.pmportal .pp-kb-prev,.pmportal .pp-kb-next{width:30px;height:28px;border:1px solid var(--bl-line);border-radius:var(--bl-radius-s);
+  background:var(--bl-box);color:var(--bl-sub);cursor:pointer;font-size:15px;line-height:1;}
+.pmportal .pp-kb-prev:hover:not([disabled]),.pmportal .pp-kb-next:hover:not([disabled]){color:var(--bl-accent-d);border-color:var(--bl-accent);}
+.pmportal .pp-kb-prev[disabled],.pmportal .pp-kb-next[disabled]{opacity:.35;cursor:default;}
+.pmportal .pp-kb-wrap:not(.pp-kb-more-r):not(.pp-kb-more-l) .pp-kb-nav{display:none;}
+/* M4: a phone shows one status column at a time - the columns snap, and
+   the chips above jump to one. Only inside the portal (Exment's own kanban
+   page is left as it is). */
+@media (max-width:760px){
+  .pmportal .pp-kb-nav{justify-content:flex-start;padding:4px 4px 6px;}
+  .pmportal .pp-kb-nav .pp-kb-chips{display:flex;flex:1 1 auto;min-width:0;gap:6px;overflow-x:auto;scrollbar-width:none;}
+  .pmportal .pp-kb-nav .pp-kb-chips::-webkit-scrollbar{display:none;}
+  .pmportal .pp-kb-prev,.pmportal .pp-kb-next{display:none;}
+  .pmportal .pp-kb-wrap:not(.pp-kb-more-r):not(.pp-kb-more-l) .pp-kb-nav{display:flex;}
+  .pmportal .pp-kb-chip{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 11px;border:1px solid var(--bl-line);
+    border-radius:16px;background:var(--bl-box);color:var(--bl-sub);font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;}
+  .pmportal .pp-kb-chip .n{font-size:11px;color:var(--bl-faint);}
+  .pmportal .pp-kb-chip.on{border-color:var(--bl-accent);color:var(--bl-accent-d);background:var(--bl-hover);}
+  .pmportal .pp-kb-wrap .kb-scroll{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+  .pmportal .pp-kb-wrap .kb-col{scroll-snap-align:start;width:calc(100vw - 72px);min-width:calc(100vw - 72px);max-width:calc(100vw - 72px);}
+}
+/* M8: the status, pressed to pick another */
+.pmportal .pp-st-btn{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:2px 4px;margin:-2px -4px;
+  border-radius:12px;cursor:pointer;}
+.pmportal .pp-st-btn .fa-caret-down{font-size:11px;color:var(--bl-faint);}
+.pmportal .pp-st-btn:hover,.pmportal .pp-st-btn[aria-expanded="true"]{background:var(--bl-hover);}
+.pmportal .pp-st-btn:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
+.pmportal .pp-st-menu{position:absolute;z-index:45;margin-top:4px;min-width:180px;padding:4px 0;background:var(--bl-box);
+  border:1px solid var(--bl-line);border-radius:var(--bl-radius);box-shadow:var(--bl-shadow-m);}
+.pmportal .bl-dsum .it,.pmportal .bl-props .row .v{position:relative;}
+.pmportal .bl-props .row .v > .pp-st-menu,.pmportal .bl-dsum .it > .pp-st-menu{top:100%;left:0;}
+.pmportal .pp-st-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:7px 14px;border:0;background:none;
+  font-size:13px;color:var(--bl-ink);text-align:left;cursor:pointer;}
+.pmportal .pp-st-menu button:hover:not([disabled]),.pmportal .pp-st-menu button:focus-visible{background:var(--bl-hover);outline:0;}
+.pmportal .pp-st-menu button[disabled]{color:var(--bl-sub);cursor:default;font-weight:700;}
+.pmportal .pp-st-menu .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+.pmportal .pp-st-menu .fa-check{margin-left:auto;color:var(--bl-accent-d);}
 </style>

@@ -55,7 +55,7 @@ return [
         'star_off' => 'お気に入りに追加',
         'card_open' => '未完了 :count',
         'card_overdue' => '期限切れ :count',
-        'card_mine' => '自分 :count',
+        'card_mine' => '自分が担当 :count',
         'more' => 'ほかにもあります',
         // Feed date group headers. day_fmt is a Carbon format string; the
         // non-token characters pass through as-is.
@@ -262,7 +262,7 @@ return [
     'f_rd_unread' => '未読',
     'f_rd_read' => '既読',
     'f_pr' => '優先度',
-    'f_mine' => '自分の課題',
+    'f_mine' => '自分が担当',
     'f_clear' => '条件をクリア',
     'ar_hidden' => '完了した課題 %s 件（完了から %s 日以上）はアーカイブ中です。',
     'ar_shown' => 'アーカイブ中の課題 %s 件も表示しています。',
@@ -1694,4 +1694,18 @@ return [
     'pj_close_all' => 'すべて閉じる',
     'pj_switch' => 'プロジェクトを切り替える',
     'proj_info' => 'プロジェクトの情報',
+    // UX-E: list, board and gantt (S9, S10, S11, S12, S18, M4, M7, M8)
+    'ed_hint' => '鉛筆を押すか、ダブルクリックすると、その場で変えられます。',
+    'ed_pen' => 'その場で変える',
+    'mine_all' => 'すべてのプロジェクトで見る',
+    'gantt_hint' => 'ガントは広い画面むけです。横に動かせます。',
+    'gantt_list' => '期限の順にリストで見る',
+    'kb_prev' => '左へ',
+    'kb_next' => '右へ',
+    'kb_cols' => '状態の列',
+    'st_menu' => '状態を変える（s）',
+    'dash_help_progress' => '完了した課題の割合',
+    'dash_help_open' => '完了していない課題の数',
+    'dash_help_overdue' => '期限を過ぎて、まだ完了していない課題の数',
+    'dash_help_mine' => '自分が担当している、完了していない課題の数',
 ];

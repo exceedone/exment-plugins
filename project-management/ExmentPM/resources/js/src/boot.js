@@ -24,6 +24,11 @@
             if (add) { ev.preventDefault(); add.click(); }
             return;
         }
+        // M8: s opens the status menu of the issue on screen.
+        if (k === 's' && window.ppStMenuFromKey) {
+            if (window.ppStMenuFromKey()) { ev.preventDefault(); }
+            return;
+        }
         if (ev.key === '/') {
             var jump = document.getElementById('pp-jump');
             if (jump) { ev.preventDefault(); jump.focus(); }
