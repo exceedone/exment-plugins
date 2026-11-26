@@ -1936,6 +1936,8 @@ class PmPortalController extends AdminControllerBase
         $my_stars = Star::mine(Star::TYPE_STAR, $issue_name, [$issue->id], $me);
         $detail['issue']['star'] = intval(array_get($star_counts, strval($issue->id), 0));
         $detail['issue']['my_star'] = in_array(strval($issue->id), $my_stars);
+        // ISS00272: the user's own favorite
+        $detail['issue']['my_fav'] = !empty(Star::mine(Star::TYPE_FAV, $issue_name, [$issue->id], $me));
 
         return array_merge($detail, [
             'users' => $this->usersFor($this->detailUserIds($detail)),
@@ -2386,7 +2388,7 @@ class PmPortalController extends AdminControllerBase
 
         $star_type = strval($request->get('star_type'));
         $target_type = strval($request->get('target_type'));
-        $allowed_types = [Star::TYPE_STAR, Star::TYPE_WATCH];
+        $allowed_types = [Star::TYPE_STAR, Star::TYPE_WATCH, Star::TYPE_FAV];
         $allowed_targets = array_filter([
             $this->issue_table->table_name,
             $this->project_table->table_name,
@@ -2401,6 +2403,11 @@ class PmPortalController extends AdminControllerBase
         if ((!$reaction && !in_array($star_type, $allowed_types)) || !in_array($target_type, $allowed_targets)) {
             return $this->messageError(400, 'invalid_params');
         }
+        // a favorite is of an issue, and nobody learns how many people have one (ISS00272)
+        if ($star_type === Star::TYPE_FAV && $target_type !== $this->issue_table->table_name) {
+            return $this->messageError(400, 'invalid_params');
+        }
+        $private = $star_type === Star::TYPE_FAV;
         $target_id = $request->get('target_id');
         $target_id = is_scalar($target_id) ? strval($target_id) : '';
         $me = \Exment::getUserId();
@@ -2412,6 +2419,9 @@ class PmPortalController extends AdminControllerBase
         // target they could read when they marked it.
         if ($target_id !== '' && !empty(Star::mine($star_type, $target_type, [$target_id], $me))) {
             $result = Star::toggle($star_type, $target_type, $target_id, $me);
+            if ($private) {
+                unset($result['count']);
+            }
             if ($reaction) {
                 $result['users'] = Star::userIds($star_type, $target_type, $target_id);
             }
@@ -2437,6 +2447,9 @@ class PmPortalController extends AdminControllerBase
         if ($reaction) {
             // Who is on it now, so the chip's names are right without a reload.
             $result['users'] = Star::userIds($star_type, $target_type, $target_id);
+        }
+        if ($private) {
+            unset($result['count']);
         }
 
         return response()->json(['ok' => true] + $result);
@@ -3342,12 +3355,15 @@ class PmPortalController extends AdminControllerBase
         // Keyed once: in_array over every row was quadratic on a big project.
         $my_stars = array_flip(array_map('strval', (array) $my_stars));
         $my_watches = array_flip(array_map('strval', (array) $my_watches));
+        // ISS00272: the reader's own favorites, one indexed read
+        $my_favs = array_flip(array_map('strval', Star::mine(Star::TYPE_FAV, $this->issue_table->table_name, $issues->pluck('id')->all(), \Exment::getUserId())));
         foreach ($issues as $issue) {
             $row = $this->buildIssueRow($project, $issue, $lean);
             $row['my_rv'] = isset($review[intval($issue->id)]);
             $row['star'] = intval(array_get($star_counts, strval($issue->id), 0));
             $row['my_star'] = isset($my_stars[strval($issue->id)]);
             $row['my_watch'] = isset($my_watches[strval($issue->id)]);
+            $row['my_fav'] = isset($my_favs[strval($issue->id)]);
             $row['unread'] = isset($unread[intval($issue->id)]);
             $rows[] = $row;
         }
@@ -3505,7 +3521,7 @@ class PmPortalController extends AdminControllerBase
         'sub' => '', 'rc' => '', 'ms' => '', 'dt' => '', 'df' => '',
         'sd' => null, 'dd' => null, 'pg' => null, 'eh' => null, 'ah' => null, 'parent' => null, 'by' => null,
         'as' => [], 'cat' => [], 'sa' => [], 'mg' => [], 'rv' => [], 'nu' => [],
-        'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'unread' => false,
+        'my_rv' => false, 'star' => 0, 'my_star' => false, 'my_watch' => false, 'my_fav' => false, 'unread' => false,
     ];
 
     /**

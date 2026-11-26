@@ -2476,6 +2476,9 @@ window.PmPortalBoot = function () {
             (res.editable && CAN_ADD_ISSUE && childRoom(i) && !(D.issues || []).some(function (x) { return String(x.parent) === String(i.id); })
                 ? '<a class="bl-btn-sub pp-addchild"><i class="fa fa-sitemap"></i> ' + esc(L.child_add) + '</a>' : '') +
             starDetailBtn(i.id, local.star, local.my_star) +
+            // ISS00272: a favorite, the user's own
+            '<a class="bl-btn-sub pp-fav' + (local.my_fav ? ' on' : '') + '" role="button" href="javascript:void(0);" data-target-id="' + esc(i.id) + '" aria-pressed="' + (local.my_fav ? 'true' : 'false') +
+                '" title="' + esc(L.fav_tip) + '"><i class="fa ' + (local.my_fav ? 'fa-bookmark' : 'fa-bookmark-o') + '"></i> <span class="lb">' + esc(local.my_fav ? L.fav_on : L.fav) + '</span></a>' +
             '<a class="bl-btn-sub pp-watch' + (res.watch.on ? ' on' : '') + '" data-target-type="' + esc(D.issue_table) + '" data-target-id="' + esc(i.id) + '">' +
                 '<i class="fa fa-eye"></i> <span class="wl">' + esc(res.watch.on ? L.unwatch : L.watch) + '</span> <span class="wc">' + (res.watch.count === null ? '…' : esc(res.watch.count)) + '</span></a>' +
             '<a class="bl-btn-sub pp-mlink" data-url="' + esc(i.edit_url) + '" data-mtitle="' + esc(L.m_edit_issue) + '" data-msub="' + esc(i.key) + '"><i class="fa fa-pencil"></i> ' + esc(L.edit) + '</a>' +
@@ -10863,6 +10866,12 @@ window.PmPortalBoot = function () {
         if (!ev.target.closest('.pp-rxbar')) {
             document.querySelectorAll('.pp-rxpick').forEach(function (p) { p.hidden = true; });
         }
+        var fav = ev.target.closest('.pp-fav');
+        if (fav) {
+            ev.stopPropagation();
+            favToggle(fav.dataset.targetId, fav);
+            return;
+        }
         var star = ev.target.closest('.pp-star');
         if (star) {
             ev.stopPropagation();
@@ -11280,6 +11289,9 @@ window.PmPortalBoot = function () {
                 items.push({ l: L.ctx_change_parent, i: 'fa-sitemap', f: function () { location.hash = '#' + issueHash(id) + '?edit'; } });
             }
             items.push({ l: L.ctx_copy_link, i: 'fa-link', f: function () { copyText(issuePageUrl(id), L.link_copied); } });
+            items.push(row.my_fav
+                ? { l: L.fav_off, i: 'fa-bookmark', f: function () { favToggle(id, null); } }
+                : { l: L.fav_add, i: 'fa-bookmark-o', f: function () { favToggle(id, null); } });
         }
         // the tree (ISS00361): this row, the rows under it, and all of them
         if (TREE_ON && ids.length === 1) {
@@ -11323,6 +11335,24 @@ window.PmPortalBoot = function () {
             if (next) { ev.preventDefault(); next.focus(); }
         }
     });
+    // A favorite issue (ISS00272): on or off, from the detail's button or the row's menu.
+    function favToggle(issueId, btn) {
+        $.ajax({
+            url: D.urls.base + '/star', type: 'POST',
+            data: { star_type: 'fav', target_type: D.issue_table, target_id: issueId },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            var issue = issueById(issueId);
+            if (issue) { issue.my_fav = !!res.on; }
+            document.querySelectorAll('.pp-fav[data-target-id="' + String(issueId).replace(/[^0-9]/g, '') + '"]').forEach(function (b) {
+                b.classList.toggle('on', !!res.on);
+                b.setAttribute('aria-pressed', res.on ? 'true' : 'false');
+                b.querySelector('i').className = 'fa ' + (res.on ? 'fa-bookmark' : 'fa-bookmark-o');
+                b.querySelector('.lb').textContent = res.on ? L.fav_on : L.fav;
+            });
+            toast(res.on ? L.fav_added : L.fav_removed);
+        }).fail(function (xhr) { toast(xhrErr(xhr, L.fav_fail), true); });
+    }
     // The Wiki tree (ISS00361): the same menu and keys as the issue tree.
     (function () {
         var wtree = document.getElementById('pp-wtree');

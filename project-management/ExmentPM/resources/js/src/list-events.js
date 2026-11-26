@@ -87,6 +87,9 @@
                 items.push({ l: L.ctx_change_parent, i: 'fa-sitemap', f: function () { location.hash = '#' + issueHash(id) + '?edit'; } });
             }
             items.push({ l: L.ctx_copy_link, i: 'fa-link', f: function () { copyText(issuePageUrl(id), L.link_copied); } });
+            items.push(row.my_fav
+                ? { l: L.fav_off, i: 'fa-bookmark', f: function () { favToggle(id, null); } }
+                : { l: L.fav_add, i: 'fa-bookmark-o', f: function () { favToggle(id, null); } });
         }
         // the tree (ISS00361): this row, the rows under it, and all of them
         if (TREE_ON && ids.length === 1) {
@@ -130,6 +133,24 @@
             if (next) { ev.preventDefault(); next.focus(); }
         }
     });
+    // A favorite issue (ISS00272): on or off, from the detail's button or the row's menu.
+    function favToggle(issueId, btn) {
+        $.ajax({
+            url: D.urls.base + '/star', type: 'POST',
+            data: { star_type: 'fav', target_type: D.issue_table, target_id: issueId },
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).done(function (res) {
+            var issue = issueById(issueId);
+            if (issue) { issue.my_fav = !!res.on; }
+            document.querySelectorAll('.pp-fav[data-target-id="' + String(issueId).replace(/[^0-9]/g, '') + '"]').forEach(function (b) {
+                b.classList.toggle('on', !!res.on);
+                b.setAttribute('aria-pressed', res.on ? 'true' : 'false');
+                b.querySelector('i').className = 'fa ' + (res.on ? 'fa-bookmark' : 'fa-bookmark-o');
+                b.querySelector('.lb').textContent = res.on ? L.fav_on : L.fav;
+            });
+            toast(res.on ? L.fav_added : L.fav_removed);
+        }).fail(function (xhr) { toast(xhrErr(xhr, L.fav_fail), true); });
+    }
     // The Wiki tree (ISS00361): the same menu and keys as the issue tree.
     (function () {
         var wtree = document.getElementById('pp-wtree');

@@ -8,7 +8,7 @@
     $texts = [];
     foreach (['projects', 'assignees', 'me', 'status', 'open', 'priority', 'type', 'due', 'due_any', 'due_overdue', 'due_today', 'due_week', 'due_none',
               'words', 'sort_due', 'sort_pr', 'sort_up', 'sort_key', 'count', 'none', 'loading', 'fail', 'prev', 'next', 'clear', 'save', 'save_ask',
-              'saved', 'del', 'all', 'pick', 'dl', 'dl_xlsx_all', 'dl_xlsx_screen', 'dl_csv_all', 'dl_csv_screen', 'col_key', 'col_subject', 'col_project', 'col_type', 'col_status', 'col_priority', 'col_as', 'col_due', 'col_up'] as $k) {
+              'saved', 'del', 'all', 'pick', 'fav_only', 'dl', 'dl_xlsx_all', 'dl_xlsx_screen', 'dl_csv_all', 'dl_csv_screen', 'col_key', 'col_subject', 'col_project', 'col_type', 'col_status', 'col_priority', 'col_as', 'col_due', 'col_up'] as $k) {
         $texts[$k] = strval($a($k));
     }
 @endphp
@@ -80,7 +80,7 @@
     function tx(k, n) { return String(L[k] || k).replace(':n', n); }
 
     // the filters: lists of values, each list one filter; also in the address, so a view can be bookmarked
-    var F = { pj: [], as: [], st: [], pr: [], ty: [], due: '', q: '', sort: 'due', dir: 'asc', page: 1 };
+    var F = { pj: [], as: [], st: [], pr: [], ty: [], due: '', q: '', fav: '', sort: 'due', dir: 'asc', page: 1 };
     var FILTERS = [
         { k: 'pj', l: L.projects, items: function () { return D.projects.map(function (p) { return { v: p.id, l: (p.k ? p.k + ' ' : '') + p.n + (p.ar ? '（アーカイブ）' : '') }; }); }, search: true },
         { k: 'as', l: L.assignees, items: function () { return [{ v: 'me', l: L.me }].concat(D.users.map(function (u) { return { v: String(u.id), l: u.n }; })); }, search: true },
@@ -92,14 +92,14 @@
         var p = new URLSearchParams(location.search);
         var any = false;
         ['pj', 'as', 'st', 'pr', 'ty'].forEach(function (k) { if (p.has(k)) { F[k] = p.get(k).split(',').filter(Boolean); any = true; } });
-        ['due', 'q', 'sort', 'dir'].forEach(function (k) { if (p.has(k)) { F[k] = p.get(k); any = true; } });
+        ['due', 'q', 'fav', 'sort', 'dir'].forEach(function (k) { if (p.has(k)) { F[k] = p.get(k); any = true; } });
         if (p.has('page')) { F.page = Math.max(1, parseInt(p.get('page'), 10) || 1); }
         if (!any) { F.as = ['me']; F.st = ['_open']; }
     }
     function query(withPage) {
         var p = new URLSearchParams();
         ['pj', 'as', 'st', 'pr', 'ty'].forEach(function (k) { if (F[k].length) { p.set(k, F[k].join(',')); } });
-        ['due', 'q'].forEach(function (k) { if (F[k]) { p.set(k, F[k]); } });
+        ['due', 'q', 'fav'].forEach(function (k) { if (F[k]) { p.set(k, F[k]); } });
         if (F.sort !== 'due') { p.set('sort', F.sort); }
         if (F.dir !== 'asc') { p.set('dir', F.dir); }
         if (withPage && F.page > 1) { p.set('page', String(F.page)); }
@@ -118,6 +118,7 @@
             '<select id="pp-a-due" aria-label="' + esc(L.due) + '">' + [['', L.due_any], ['overdue', L.due_overdue], ['today', L.due_today], ['week', L.due_week], ['none', L.due_none]].map(function (o) {
                 return '<option value="' + o[0] + '"' + (F.due === o[0] ? ' selected' : '') + '>' + esc(L.due + ': ' + o[1]) + '</option>';
             }).join('') + '</select>' +
+            '<label style="display:flex;align-items:center;gap:5px;font-weight:400;font-size:12.5px;margin:0;min-height:32px;"><input type="checkbox" id="pp-a-fav"' + (F.fav === '1' ? ' checked' : '') + '> <i class="fa fa-bookmark"></i> ' + esc(L.fav_only) + '</label>' +
             '<input type="search" class="q" id="pp-a-q" placeholder="' + esc(L.words) + '" value="' + esc(F.q) + '">' +
             '<select id="pp-a-sort">' + [['due', L.sort_due], ['pr', L.sort_pr], ['up', L.sort_up], ['key', L.sort_key]].map(function (o) {
                 return '<option value="' + o[0] + '"' + (F.sort === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -174,7 +175,7 @@
             return;
         }
         if (ev.target.closest('#pp-a-clear')) {
-            F = { pj: [], as: [], st: [], pr: [], ty: [], due: '', q: '', sort: 'due', dir: 'asc', page: 1 };
+            F = { pj: [], as: [], st: [], pr: [], ty: [], due: '', q: '', fav: '', sort: 'due', dir: 'asc', page: 1 };
             drawBar(); load();
             return;
         }
@@ -184,6 +185,7 @@
     document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { closePop(); } });
     bar.addEventListener('change', function (ev) {
         if (ev.target.id === 'pp-a-due') { F.due = ev.target.value; }
+        else if (ev.target.id === 'pp-a-fav') { F.fav = ev.target.checked ? '1' : ''; }
         else if (ev.target.id === 'pp-a-sort') { F.sort = ev.target.value; }
         else if (ev.target.id === 'pp-a-dir') { F.dir = ev.target.value; }
         else { return; }

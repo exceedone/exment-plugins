@@ -408,6 +408,12 @@
         if (!ev.target.closest('.pp-rxbar')) {
             document.querySelectorAll('.pp-rxpick').forEach(function (p) { p.hidden = true; });
         }
+        var fav = ev.target.closest('.pp-fav');
+        if (fav) {
+            ev.stopPropagation();
+            favToggle(fav.dataset.targetId, fav);
+            return;
+        }
         var star = ev.target.closest('.pp-star');
         if (star) {
             ev.stopPropagation();

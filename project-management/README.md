@@ -33,6 +33,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   すべてのプロジェクトの課題も、Excel・CSV でダウンロードできます（すべての項目か一覧と同じ項目。先頭にプロジェクト）。今の絞り込みと並び順で出します。
 - The Wiki tree folds too, with the same ▼/▶, right-click menu and keys; the folded pages are remembered, and the page shown is never hidden. The right-click menu of an issue row has 「子課題を追加」, 「親課題を変える（編集を開く）」 and 「課題のリンクをコピー」.
   Wiki のツリーも、同じ ▼／▶・右クリックのメニュー・キーで開いたりたたんだりできます（たたんだページは覚えます。開いているページは隠れません）。課題の行の右クリックのメニューに「子課題を追加」「親課題を変える（編集を開く）」「課題のリンクをコピー」を足しました。
+- Favorite issues: 「お気に入り」 on the issue's detail and in the right-click menu of a row marks an issue for oneself only (nobody else sees it, nor how many have it). 「お気に入りの課題」 on the top page, or 「お気に入りだけ」 on the list across the projects, lists them.
+  お気に入りの課題: 課題の詳細の「お気に入り」と、行の右クリックのメニューで、自分だけの印を付けられます（ほかの人には見えず、数も出ません）。トップの「お気に入りの課題」か、すべてのプロジェクトの課題の「お気に入りだけ」で一覧にできます。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
