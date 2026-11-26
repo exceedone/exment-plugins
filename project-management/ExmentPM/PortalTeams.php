@@ -178,7 +178,7 @@ class PortalTeams
      * @param array<int, int> $targets
      * @param array<int, string> $lines
      */
-    protected static function sendTo(array $targets, string $issue_table, int $issue_id, string $kind, string $key, string $subject, array $lines, string $url, bool $mailAll): void
+    public static function sendTo(array $targets, string $issue_table, int $issue_id, string $kind, string $key, string $subject, array $lines, string $url, bool $mailAll, ?string $title = null): void
     {
         if (empty($targets)) {
             return;
@@ -186,14 +186,17 @@ class PortalTeams
         $issue = getModelName($issue_table)::withoutGlobalScopes()->find($issue_id);
         $users = getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereIn('id', $targets)->get();
         $html = !isMatchString(System::system_mail_body_type(), MailBodyType::PLAIN);
+        // where each one gets it: the receiver's own choice (PortalNotifyPrefs)
+        $prefs = PortalNotifyPrefs::channelsFor($targets, PortalNotifyPrefs::eventOfKind($kind), isset($issue) ? intval($issue->parent_id) : 0);
         foreach ($users as $user) {
-            $choice = static::choiceOf($user);
-            $byMail = $mailAll || in_array($choice, ['mail', 'both'], true);
-            $byTeams = static::teamsAvailable() && in_array($choice, ['teams', 'both'], true);
+            $pref = $prefs[intval($user->id)] ?? ['bell' => true, 'mail' => false, 'teams' => false];
+            $byMail = $mailAll || $pref['mail'];
+            $byTeams = $pref['teams'];
             if (!$byMail && !$byTeams) {
                 continue;
             }
-            $title = static::title($kind, $key);
+            // a title of its own: a reminder (PortalReminder)
+            $title = $title ?? static::title($kind, $key);
             if ($byMail && !is_nullorempty($user->getValue('email'))) {
                 try {
                     MailSender::make(null, $user)

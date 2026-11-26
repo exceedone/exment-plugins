@@ -340,9 +340,9 @@
         }
 
         var p = D.project;
-        var people = [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
+        var people = notifyOrder(i, [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
             return v && a.indexOf(v) === x && String(v) !== String(D.me);
-        });
+        }), notifyRecent());
         document.getElementById('pp-notify-chips').innerHTML = people.map(function (u) {
             var on = keepNotify && keepNotify.indexOf(String(u)) >= 0;
             return '<span class="bl-chip has-av' + (on ? '' : ' off') + ' pp-notify" role="button" tabindex="0" data-user="' + esc(u) + '">' + av(u) + esc(user(u).n) + '</span>';
@@ -352,6 +352,36 @@
         if (dockav) { dockav.innerHTML = av(D.me); }
         cmtSetBusy(cmtBusy);
         ppDockFit();
+    }
+    // M12: who is told is picked from the people most likely meant: the
+    // assignees and the author of the issue first, then the people picked
+    // before in this project (newest first), then the rest. Nobody is
+    // switched on for the reader - telling stays a choice.
+    function notifyRecentKey() {
+        return 'pmportal.notify.u' + String(D.me || 0) + '.p' + String((D.project && D.project.id) || 0);
+    }
+    function notifyRecent() {
+        try {
+            var v = JSON.parse(localStorage.getItem(notifyRecentKey()) || '[]');
+            return Array.isArray(v) ? v.map(String) : [];
+        } catch (e) { return []; }
+    }
+    function notifyRecentSave(ids) {
+        if (!ids || !ids.length) { return; }
+        var list = ids.map(String).concat(notifyRecent()).filter(function (v, x, a) { return v && a.indexOf(v) === x; }).slice(0, 12);
+        try { localStorage.setItem(notifyRecentKey(), JSON.stringify(list)); } catch (e) { /* ignore */ }
+    }
+    function notifyOrder(issue, people, recent) {
+        var first = [].concat((issue && issue.as) || [], issue && issue.by ? [issue.by] : []).map(String);
+        var rank = function (u) {
+            var s = String(u);
+            if (first.indexOf(s) >= 0) { return first.indexOf(s); }
+            if (recent.indexOf(s) >= 0) { return 100 + recent.indexOf(s); }
+            return 1000;
+        };
+        return people.map(function (u, n) { return { u: u, r: rank(u), n: n }; })
+            .sort(function (a, b) { return a.r - b.r || a.n - b.n; })
+            .map(function (e) { return e.u; });
     }
     /* ------------------------------------------------ quick edit -------- */
     // Backlog changes an issue from the same form the comment is written in:

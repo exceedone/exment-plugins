@@ -27,7 +27,7 @@
         'rel_self', 'rel_dup', 'rel_fail', 'rel_del_fail',
         'lbl_eh', 'lbl_pg', 'rollup', 'rollup_tip', 'lbl_parent', 'lbl_watch', 'lbl_source', 'lbl_sub_assignees', 'lbl_managers', 'lbl_reviewers', 'lbl_difficulty', 'lbl_author', 'df_easy', 'df_normal', 'df_hard', 'lbl_custom_fields', 'src_created', 'src_updated', 'src_assignees', 'src_assignees_hint', 'watch', 'unwatch', 'star', 'star_label', 'star_on', 'star_on_tip', 'star_off_tip', 'edit', 'to_next',
         'notify_to', 'notify_mail', 'notify_mail_hint', 'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
-        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_dl_csv_all', 'f_dl_csv_screen', 'f_dl_xlsx_all', 'f_dl_xlsx_screen', 'f_dl_busy', 'f_dl_fail', 'tree_ctx_open', 'tree_ctx_close', 'tree_ctx_open_below', 'tree_ctx_close_below', 'tree_ctx_open_all', 'tree_ctx_close_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail', 'tree_ctx_open_w', 'tree_ctx_close_w', 'ctx_add_child', 'ctx_change_parent', 'ctx_copy_link', 'fav', 'fav_on', 'fav_tip', 'fav_add', 'fav_off', 'fav_added', 'fav_removed', 'fav_fail', 'col_alias', 'alias', 'alias_set', 'alias_ask', 'alias_saved', 'alias_fail',
+        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_dl_csv_all', 'f_dl_csv_screen', 'f_dl_xlsx_all', 'f_dl_xlsx_screen', 'f_dl_busy', 'f_dl_fail', 'tree_ctx_open', 'tree_ctx_close', 'tree_ctx_open_below', 'tree_ctx_close_below', 'tree_ctx_open_all', 'tree_ctx_close_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail', 'tree_ctx_open_w', 'tree_ctx_close_w', 'ctx_add_child', 'ctx_change_parent', 'ctx_copy_link', 'fav', 'fav_on', 'fav_tip', 'fav_add', 'fav_off', 'fav_added', 'fav_removed', 'fav_fail', 'col_alias', 'alias', 'alias_set', 'alias_ask', 'alias_saved', 'alias_fail', 'f_multi', 'f_multi_n', 'f_multi_find', 'f_multi_ok', 'f_multi_clear',
         'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',
         'dock_open', 'dock_title', 'dock_close', 'dock_cancel', 'dock_cmt', 'dock_edit', 'dock_keep',
         'dock_draft', 'dock_saving', 'dock_save_fail', 'dock_stale', 'dock_stale_keep', 'dock_empty',
@@ -86,6 +86,8 @@
         'feed_more', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
         'kh_comment', 'kh_status', 'kh_prevnext', 'kh_send', 'kh_close', 'kh_help', 'empty_issues', 'empty_filtered', 'empty_wiki',
         'first_steps', 'fs_add_issue', 'fs_invite', 'fs_statuses', 'f_clear_all',
+        // UX-H
+        'ned_more_find',
     ])->mapWithKeys(function ($key) {
         return [$key => \App\Plugins\ExmentPM\PortalDefinition::trans($key)];
     })->toArray();

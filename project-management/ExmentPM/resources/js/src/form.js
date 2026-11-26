@@ -970,6 +970,23 @@
             // issue was added (ISS02923)
             [null, x.due_time || null]
         ].filter(keep);
+        // M11: a new issue asks first for what one is filed with - who,
+        // by when, how urgent (and the title and text above). The rest -
+        // the status (it starts at the first one), milestone, category,
+        // start - folds under ほかの項目, which can be searched. A required
+        // field is never folded (nedRenderForm).
+        var newRows = null;
+        if (NED.mode === 'create') {
+            newRows = [
+                [c.assignees || null, c.due || null],
+                [c.priority || null, x.due_time || null]
+            ].filter(keep);
+        }
+        var newMore = NED.mode === 'create' ? [
+            [c.status || null, c.milestone || null],
+            [c.category || null, x.versions || null],
+            [c.start || null, null]
+        ].filter(keep) : [];
         var more = [
             // Schema 27: the other people, beside the assignees.
             [x.sub_assignees || null, x.managers || null],
@@ -982,8 +999,8 @@
 
         return {
             top: [c.parent || null, c.type || null].filter(Boolean),
-            rows: rows,
-            more: more
+            rows: newRows || rows,
+            more: newMore.concat(more)
         };
     }
     // A column with nothing to say until the row exists. A resolution is how

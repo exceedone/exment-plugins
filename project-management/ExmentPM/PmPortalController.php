@@ -43,6 +43,9 @@ class PmPortalController extends AdminControllerBase
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
     use PortalAttributesTrait;
+    use PortalSchedulePageTrait;
+    use PortalCalendarPageTrait;
+    use PortalReminderPageTrait;
 
     /**
      * How many issues one bulk edit may touch.
@@ -136,6 +139,10 @@ class PmPortalController extends AdminControllerBase
         }
         // Recurring issues whose turn has come (at most every few minutes).
         PortalRecurrence::tick();
+        // the issues of the recurring schedules (ISS00432)
+        PortalSchedule::tick();
+        // reminders whose time has come, when the batch is not run (ISS00432)
+        PortalReminder::tick();
 
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
@@ -573,6 +580,10 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::projectUrl($project) . ($query !== '' ? '?' . $query : ''));
         }
         PortalRecurrence::tick();
+        // the issues of the recurring schedules (ISS00432)
+        PortalSchedule::tick();
+        // reminders whose time has come, when the batch is not run (ISS00432)
+        PortalReminder::tick();
 
         $this->setPageInfo(
             PortalDefinition::trans('title'),
@@ -589,6 +600,12 @@ class PmPortalController extends AdminControllerBase
 
         return $this->AdminContent($content)->body(view(PortalDefinition::view('index'), [
             'payload' => $payload,
+            // the link to the recurring schedules of the project, for its manager (ISS00432)
+            'schedule_url' => (PortalSchedule::enabled() && PortalMembership::canManage($project))
+                ? PortalDefinition::url($project->id, 'schedules') : null,
+            // the link to the reminders of the project, for its manager (ISS00432)
+            'reminder_url' => (PortalReminder::enabled() && PortalReminderRules::exists() && PortalMembership::canManage($project))
+                ? PortalDefinition::url($project->id, 'reminder') : null,
             'topbar' => $this->topbarData(strval($project->id)),
             'lazy_widgets' => $lazy,
             'board_available' => $this->hasEmbeddedView(ViewKindType::KANBAN),
@@ -1119,6 +1136,9 @@ class PmPortalController extends AdminControllerBase
         $changed = $status_to !== '' && $status_to !== $status_old;
         if ($comment === '' && !$changed) {
             return $this->messageError(400, 'comment_empty');
+        }
+        if (mb_strlen($comment) > PortalDefinition::maxBody()) {
+            return $this->messageError(422, 'too_long', ['max' => number_format(PortalDefinition::maxBody())]);
         }
         $status_meta = [];
         if ($changed) {
@@ -2099,6 +2119,9 @@ class PmPortalController extends AdminControllerBase
         $text = is_scalar($text) ? trim(strval($text)) : '';
         if ($text === '') {
             return $this->messageError(400, 'comment_empty');
+        }
+        if (mb_strlen($text) > PortalDefinition::maxBody()) {
+            return $this->messageError(422, 'too_long', ['max' => number_format(PortalDefinition::maxBody())]);
         }
 
         try {
@@ -3811,16 +3834,12 @@ class PmPortalController extends AdminControllerBase
         }
         $from = min($today, min($needs));
 
-        $rows = \DB::table('revisions')
-            ->select(['revisionable_id', 'created_at', 'old_value', 'new_value'])
+        $rows = collect(static::sortedRows(\DB::table('revisions')
+            ->select(['id', 'revisionable_id', 'created_at', 'old_value', 'new_value'])
             ->where('revisionable_type', $issue_name)
             ->whereIn('revisionable_id', $ids)
             ->whereNull('deleted_at')
-            ->where('created_at', '>=', $from . ' 00:00:00')
-            ->orderBy('created_at', 'desc')
-            ->orderBy('id', 'desc')
-            ->take(self::BURNDOWN_REVISION_LIMIT + 1)
-            ->get();
+            ->where('created_at', '>=', $from . ' 00:00:00'), [['created_at', 'desc'], ['id', 'desc']], self::BURNDOWN_REVISION_LIMIT + 1));
 
         // Cut short: the oldest second read may be only half there, so the
         // window opens just after it rather than on it.
@@ -4110,11 +4129,30 @@ class PmPortalController extends AdminControllerBase
         return response($content->title($title)->body($body)->render(), 404);
     }
 
+    /**
+     * Some routes (stamp, feed, read) skip Exment's admin.morph middleware to
+     * stay light. Without the morph map a row's shares are looked up under the
+     * class name instead of the table name, so enableAccess() refuses a person
+     * who is in the project only through a share (a role group). Define the map
+     * here when it is missing, as PluginPage::apiCall does for the lightapi.
+     */
+    protected function ensureMorphMap()
+    {
+        if (!isset($this->project_table)
+            || \Illuminate\Database\Eloquent\Relations\Relation::getMorphedModel($this->project_table->table_name) !== null) {
+            return;
+        }
+        $lazy = method_exists(\Exceedone\Exment\Services\ClassBuilder::class, 'autoloaderRegistered')
+            && \Exceedone\Exment\Services\ClassBuilder::autoloaderRegistered();
+        \Exceedone\Exment\Middleware\Morph::defineMorphMap($lazy);
+    }
+
     protected function findProject($id)
     {
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
         }
+        $this->ensureMorphMap();
         $ref = trim(strval($id));
         if (!ctype_digit($ref)) {
             // By code (ISS00440). Not there and not allowed answer alike.
@@ -4143,6 +4181,7 @@ class PmPortalController extends AdminControllerBase
      */
     protected function findIssue($project, $issue_id)
     {
+        $this->ensureMorphMap();
         $issue = $this->issue_table->getValueModel()->find($issue_id);
         if (!isset($issue) || intval($issue->parent_id) != intval($project->id)
             || $issue->parent_type != $this->project_table->table_name) {
@@ -4658,14 +4697,112 @@ class PmPortalController extends AdminControllerBase
             return [];
         }
 
-        return \DB::table('revisions')
+        return static::sortedRows(\DB::table('revisions')
             ->where('revisionable_type', $morph_type)
             ->whereIn('revisionable_id', $ids)
-            ->whereNull('deleted_at')
-            ->orderBy('created_at', $order)
-            ->take($take)
-            ->get()
-            ->all();
+            ->whereNull('deleted_at'), [['created_at', $order], ['id', $order]], $take);
+    }
+
+    /**
+     * The rows of a query already in its order (orderBy / orderByRaw), sorted over the ids only
+     * and then read by id - see sortedRows(). Takes $take rows after $skip; the same kind of
+     * collection as get() (an Eloquent one for an Eloquent query).
+     *
+     * @param \Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder $query
+     * @param array<int, string>|null $columns the columns of a query builder's rows (get($columns))
+     * @return \Illuminate\Support\Collection
+     */
+    /** The ids takeSorted() sorts at most (the first step reads them unsorted). */
+    const SORT_MATCH_CAP = 20000;
+
+    public static function takeSorted($query, int $take, int $skip = 0, ?array $columns = null)
+    {
+        $eloquent = $query instanceof \Illuminate\Database\Eloquent\Builder;
+        $base = $eloquent ? $query->getQuery() : $query;
+        $table = $eloquent ? $query->getModel()->getTable() : $base->from;
+        // 1. the ids that match, not sorted: a WHERE that reads value (a LIKE over a field of the
+        // JSON) makes MySQL carry value into the sort, whatever is selected
+        $match = (clone $query)->reorder();
+        $matchBase = $eloquent ? $match->getQuery() : $match;
+        $matchBase->columns = null;
+        $matchBase->bindings['select'] = [];
+        $matchBase->offset = null;
+        $matchBase->limit = null;
+        $matched = $match->select($table . '.id')->take(static::SORT_MATCH_CAP)->pluck($table . '.id')->all();
+        if (empty($matched)) {
+            return $eloquent ? $query->getModel()->newCollection() : collect();
+        }
+        // 2. those ids in the order: the WHERE reads nothing but the id now
+        $keys = clone $query;
+        $keysBase = $eloquent ? $keys->getQuery() : $keys;
+        $keysBase->wheres = [];
+        $keysBase->bindings['where'] = [];
+        $keysBase->columns = null;
+        $keysBase->bindings['select'] = [];
+        $keys->select($table . '.id')->whereIn($table . '.id', $matched);
+        if ($skip > 0) {
+            $keys->skip($skip);
+        }
+        $keys->take($take);
+        $ids = $keys->pluck($table . '.id')->map(function ($v) {
+            return intval($v);
+        })->all();
+        $empty = $eloquent ? $query->getModel()->newCollection() : collect();
+        if (empty($ids)) {
+            return $empty;
+        }
+        $rowsQuery = (clone $query)->reorder();
+        $rowsQuery->offset = null;
+        $rowsQuery->limit = null;
+        $rows = [];
+        foreach ($rowsQuery->whereIn($table . '.id', $ids)->get($columns ?? ['*']) as $row) {
+            $rows[intval($row->id)] = $row;
+        }
+        $out = [];
+        foreach ($ids as $id) {
+            if (isset($rows[$id])) {
+                $out[] = $rows[$id];
+            }
+        }
+
+        return $eloquent ? $query->getModel()->newCollection($out) : collect($out);
+    }
+
+    /**
+     * The rows of a query in an order, sorted over their ids only, then read by id: an ORDER BY
+     * over whole rows sorts the rows themselves, and one with a body of 150,000 characters does
+     * not fit MySQL's sort buffer (1038 Out of sort memory, 256 KB by default).
+     *
+     * @param \Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder $query
+     * @param array<int, array{0: string, 1: string}> $orders column, direction
+     * @return array<int, mixed>
+     */
+    public static function sortedRows($query, array $orders, ?int $take = null): array
+    {
+        $keys = clone $query;
+        foreach ($orders as [$column, $dir]) {
+            $keys->orderBy($column, $dir);
+        }
+        if ($take !== null) {
+            $keys->take($take);
+        }
+        $table = $query instanceof \Illuminate\Database\Eloquent\Builder ? $query->getModel()->getTable() : $query->from;
+        $ids = $keys->pluck($table . '.id')->all();
+        if (empty($ids)) {
+            return [];
+        }
+        $rows = [];
+        foreach ((clone $query)->whereIn($table . '.id', $ids)->get() as $row) {
+            $rows[intval($row->id)] = $row;
+        }
+        $out = [];
+        foreach ($ids as $id) {
+            if (isset($rows[intval($id)])) {
+                $out[] = $rows[intval($id)];
+            }
+        }
+
+        return $out;
     }
 
     /**

@@ -19,6 +19,76 @@
         filterToUrl();
     });
 
+    /* ---- several values in one filter (ISS00255) ---- */
+    var MULTI_SELECTS = ['pp-f-as', 'pp-f-ty', 'pp-f-pr', 'pp-f-ms', 'pp-f-cat'];
+    // The select shows one value as itself, and several as one option of their own
+    // ("担当者: 3 件"), made when needed.
+    function setFilterVal(id, v) {
+        var el = document.getElementById(id);
+        if (!el) { return; }
+        var made = el.querySelector('option.pp-fmulti');
+        if (String(v).indexOf(',') >= 0) {
+            var head = (el.options[0] ? el.options[0].text.split(':')[0] : '');
+            if (!made) {
+                made = new Option('', v);
+                made.className = 'pp-fmulti';
+                el.add(made, el.options[1] || null);
+            }
+            made.value = v;
+            made.text = head + ': ' + String(L.f_multi_n).replace(':n', String(v.split(',').length));
+        } else if (made) {
+            made.remove();
+        }
+        if (el.value !== v) { el.value = v; }
+    }
+    function multiPick(sel, key) {
+        var old = document.getElementById('pp-fpick');
+        if (old) { old.remove(); }
+        var have = String(FILTER[key] || '').split(',').filter(Boolean);
+        var opts = Array.prototype.filter.call(sel.options, function (o) {
+            return o.value !== '' && o.value !== '__multi' && o.className !== 'pp-fmulti';
+        });
+        var box = document.createElement('div');
+        box.id = 'pp-fpick';
+        box.className = 'pp-fpick';
+        box.setAttribute('role', 'dialog');
+        box.innerHTML = (opts.length > 10 ? '<input type="search" class="s" placeholder="' + esc(L.f_multi_find) + '">' : '') +
+            '<div class="ls">' + opts.map(function (o) {
+                return '<label data-l="' + esc(o.text.toLowerCase()) + '"><input type="checkbox" value="' + esc(o.value) + '"' +
+                    (have.indexOf(o.value) >= 0 ? ' checked' : '') + '> ' + esc(o.text) + '</label>';
+            }).join('') + '</div>' +
+            '<div class="ft"><button type="button" class="bl-btn-sub" data-a="clear">' + esc(L.f_multi_clear) + '</button>' +
+            '<button type="button" class="bl-btn-main" data-a="ok">' + esc(L.f_multi_ok) + '</button></div>';
+        root.appendChild(box);
+        var r = sel.getBoundingClientRect();
+        box.style.left = Math.max(4, Math.min(r.left, window.innerWidth - box.offsetWidth - 4)) + 'px';
+        box.style.top = Math.min(r.bottom + 2, window.innerHeight - box.offsetHeight - 4) + 'px';
+        var s = box.querySelector('input.s');
+        if (s) {
+            s.addEventListener('input', function () {
+                var w = s.value.trim().toLowerCase();
+                box.querySelectorAll('label[data-l]').forEach(function (lb) { lb.hidden = w !== '' && lb.getAttribute('data-l').indexOf(w) < 0; });
+            });
+        }
+        (s || box.querySelector('input[type=checkbox]') || box).focus();
+        function close() {
+            box.remove();
+            document.removeEventListener('mousedown', away, true);
+            document.removeEventListener('keydown', esc1);
+        }
+        function away(ev) { if (!box.contains(ev.target)) { close(); } }
+        function esc1(ev) { if (ev.key === 'Escape') { close(); sel.focus(); } }
+        document.addEventListener('mousedown', away, true);
+        document.addEventListener('keydown', esc1);
+        box.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-a]');
+            if (!b) { return; }
+            FILTER[key] = b.getAttribute('data-a') === 'clear' ? '' : Array.prototype.map.call(box.querySelectorAll('input[type=checkbox]:checked'), function (x) { return x.value; }).join(',');
+            close();
+            afterFilterChange();
+        });
+    }
+
     /* ---- tree view ---- */
     // Folding changes which rows are listed, so the ticks go, the same as on
     // any other change of the list: a bulk edit must not reach a hidden row.
@@ -224,7 +294,7 @@
     // server checks apply (permission per row, values of this project);
     // Esc or clicking away cancels, a refused save flashes red.
     var ED_NAV_TIMER = null;
-    function edAttr(f) { return BULK_ON ? ' data-ed="' + f + '" title="ダブルクリックで編集"' : ''; }
+    function edAttr(f) { return BULK_ON ? ' data-ed="' + f + '" title="' + esc(L.ed_hint) + '"' : ''; }
     var ED_SRC = { st: 'pp-bk-st', ty: 'pp-bk-ty', pr: 'pp-bk-pr', ms: 'pp-bk-ms', cat: 'pp-f-cat' };
     function edOptions(field) {
         var src = document.getElementById(ED_SRC[field]), out = [];
@@ -303,7 +373,7 @@
         var sel = document.createElement('select');
         sel.className = 'pp-ed-in';
         var opts = edOptions(f);
-        if (f === 'ms' || f === 'cat') { opts.unshift(['', '（なし）']); }
+        if (f === 'ms' || f === 'cat') { opts.unshift(['', L.bk_none]); }
         if (cur !== '' && !opts.some(function (o) { return o[0] === cur; })) { opts.unshift([cur, cur]); }
         opts.forEach(function (o) {
             var op = document.createElement('option');

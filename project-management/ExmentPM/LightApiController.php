@@ -896,6 +896,7 @@ class LightApiController
         $input = $request->input('value');
         if (!is_array($input)) { $input = []; }
         $filtered = array_intersect_key($input, $this->writableColumns($table));
+        if (($long = $this->tooLong($filtered)) !== null) { return $long; }
 
         $parent = $this->resolveParent($request, $table);
         if ($parent instanceof JsonResponse) { return $parent; }
@@ -1035,6 +1036,7 @@ class LightApiController
         $input = $request->input('value');
         if (!is_array($input)) { $input = []; }
         $filtered = array_intersect_key($input, $this->writableColumns($table));
+        if (($long = $this->tooLong($filtered)) !== null) { return $long; }
 
         $parent = $this->resolveParent($request, $table);
         if ($parent instanceof JsonResponse) { return $parent; }
@@ -2207,7 +2209,7 @@ class LightApiController
         if ($e instanceof \League\Flysystem\PathTraversalDetected
             || stripos($e->getMessage(), 'Path traversal detected') !== false) {
             Log::warning('pm_portal lightapi ' . $key . ': markdown image with an invalid location: ' . $e->getMessage());
-            $message = '本文の画像 ![…](…) の ( ) の中が、画像の場所になっていません。画像の URL にするか、先頭の ! を消して保存してください。';
+            $message = strval(PortalDefinition::trans('message.image_location'));
 
             return response()->json([
                 'ok' => false,
@@ -2220,6 +2222,24 @@ class LightApiController
         Log::error('pm_portal lightapi ' . $key . ': ' . $e->getMessage(), ['exception' => $e]);
 
         return $this->err(500, $key);
+    }
+
+    /**
+     * A 422 for a text longer than the portal takes (PortalDefinition::maxBody()), or null.
+     *
+     * @param array<string, mixed> $values
+     */
+    protected function tooLong(array $values): ?JsonResponse
+    {
+        foreach ($values as $name => $v) {
+            if (is_string($v) && mb_strlen($v) > PortalDefinition::maxBody()) {
+                $message = strval(PortalDefinition::trans('message.too_long', ['max' => number_format(PortalDefinition::maxBody())]));
+
+                return response()->json(['ok' => false, 'error' => 'validation', 'message' => $message, 'fields' => [$name => [$message]]], 422);
+            }
+        }
+
+        return null;
     }
 
     /**

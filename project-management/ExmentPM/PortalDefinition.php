@@ -635,12 +635,32 @@ class PortalDefinition
      *
      * @return array{messages: array<string, string>, status: array<int, string>}
      */
+    /**
+     * The longest issue body, comment and wiki page, in characters: more than Backlog's 100,000,
+     * so nothing imported or pasted from there is cut. The portal's forms count to it, and the
+     * portal's own saves refuse more. Notification bodies keep their 2000 (cut()).
+     */
+    const MAX_BODY = 200000;
+
+    /**
+     * The longest body this site takes: MAX_BODY, or Exment's own limit of a text column when it
+     * is less (exment.char_length_limit, EXMENT_CHAR_LENGTH_LIMIT_COUNT in .env, 63,999 unless
+     * raised). Raise that to 200000 for the whole of MAX_BODY.
+     */
+    public static function maxBody(): int
+    {
+        $exment = intval(config('exment.char_length_limit', 63999));
+
+        return $exment > 0 ? min(static::MAX_BODY, $exment) : static::MAX_BODY;
+    }
+
     public static function httpErrors(): array
     {
         $messages = static::trans('http_error');
 
         return [
             'messages' => is_array($messages) ? $messages : [],
+            'max_body' => static::maxBody(),
             'status' => [
                 0 => 'network',
                 401 => 'unauthorized',

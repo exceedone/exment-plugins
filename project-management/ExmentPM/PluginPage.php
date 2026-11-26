@@ -37,6 +37,10 @@ class PluginPage extends PluginPageBase
         PluginEvent::registerGuards();
         // the Files tab with the file server: a feature of Feature management (ISS02825)
         PortalFiles::registerFeature();
+        // recurring schedules: a feature of Feature management, off at first (ISS00432)
+        PortalSchedule::registerFeature();
+        // reminders before the due date: a feature of Feature management, off at first (ISS00432)
+        PortalReminder::registerFeature();
         // Exment's "?" of the header opens the manual of the plugin (ISS02882)
         ManualLink::register($plugin);
         // before 初期セットアップ: the entry in the left menu that leads to it (7.2.1)
@@ -227,6 +231,59 @@ class PluginPage extends PluginPageBase
     public function hideRevision($id, $issue_id, $revision_id)
     {
         return $this->portal()->hideRevision(request(), $id, $issue_id, $revision_id);
+    }
+
+    // ISS00432: the recurring schedules of a project
+    public function schedulesPage($id)
+    {
+        return $this->respond($this->portal()->schedulesPage(request(), new Content(), $id));
+    }
+
+    public function schedulesSave($id)
+    {
+        return $this->portal()->schedulesSave(request(), $id);
+    }
+
+    public function schedulesDelete($id, $sid)
+    {
+        return $this->portal()->schedulesDelete(request(), $id, $sid);
+    }
+
+    public function schedulesException($id, $sid)
+    {
+        return $this->portal()->schedulesException(request(), $id, $sid);
+    }
+
+    // ISS00432 2b: the calendars
+    public function schedulesCalendar($id)
+    {
+        return $this->respond($this->portal()->schedulesCalendar(request(), new Content(), $id));
+    }
+
+    public function companyCalendar()
+    {
+        return $this->respond($this->portal()->companyCalendar(request(), new Content()));
+    }
+
+    public function companyCalendarSave()
+    {
+        return $this->portal()->companyCalendarSave(request());
+    }
+
+    public function companyCalendarDelete()
+    {
+        return $this->portal()->companyCalendarDelete(request());
+    }
+
+    // ISS00432: the reminders of a project
+    public function reminderPage($id)
+    {
+        return $this->respond($this->portal()->reminderPage(request(), new Content(), $id));
+    }
+
+    public function reminderSave($id)
+    {
+        return $this->portal()->reminderSave(request(), $id);
     }
 
     public function mailIssue($id, $issue_id)

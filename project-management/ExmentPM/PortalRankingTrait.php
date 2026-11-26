@@ -204,14 +204,14 @@ trait PortalRankingTrait
         return $day->copy()->addWeeks($step);
     }
 
-    /** "2026/11/19", "2026/11/17〜11/23" or "2026年11月". */
+    /** "2026/11/19", "2026/11/17〜11/23" or the month in the user's language ("2026年11月"). */
     protected static function rankLabel(string $period, Carbon $from, Carbon $to): string
     {
         if ($period === 'day') {
             return $from->format('Y/m/d');
         }
         if ($period === 'month') {
-            return $from->format('Y') . '年' . $from->format('n') . '月';
+            return strval(PortalDefinition::trans('rank.month_label', ['year' => $from->format('Y'), 'month' => $from->format('n')]));
         }
 
         return $from->format('Y/m/d') . '〜' . $to->copy()->subDay()->format('m/d');
@@ -280,9 +280,8 @@ trait PortalRankingTrait
                 ->whereNull('deleted_at')
                 ->where('created_at', '>=', $fromS)
                 ->where('created_at', '<', $toS)
-                ->orderBy('created_at')
-                ->take(static::$rank_revision_cap)
-                ->get(['revisionable_id', 'old_value', 'new_value']);
+                ->orderBy('created_at');
+            $revs = static::takeSorted($revs, static::$rank_revision_cap, 0, ['id', 'revisionable_id', 'old_value', 'new_value']);
             foreach ($revs as $rev) {
                 $old = json_decode(strval($rev->old_value), true) ?: [];
                 $new = json_decode(strval($rev->new_value), true) ?: [];
