@@ -71,6 +71,9 @@ return [
         'changed_mark' => 'This occurrence was changed',
         'people_add' => 'Add a person',
         'people_me' => 'Me',
+        'people_remove' => 'Remove',
+        'people_empty' => 'Add people to see their events side by side.',
+        'people_none' => 'No one found.',
         'saved' => 'Saved.',
         'deleted' => 'Deleted.',
         'err_title' => 'Enter a title.',
@@ -85,5 +88,7 @@ return [
         'err_not_owner' => 'Only the person who made this event can change it.',
         'err_not_attendee' => 'You are not an attendee of this event.',
         'err_failed' => 'It did not work. Please try again later.',
+        'err_expired' => 'The page has expired. Reload the page.',
+        'err_network' => 'Cannot reach the server.',
     ],
 ];

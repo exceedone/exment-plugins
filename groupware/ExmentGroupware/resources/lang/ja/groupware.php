@@ -71,6 +71,9 @@ return [
         'changed_mark' => 'この回だけ変えてあります',
         'people_add' => '人を足す',
         'people_me' => '自分',
+        'people_remove' => '外す',
+        'people_empty' => '人を足すと、その人の予定がここに並びます。',
+        'people_none' => '見つかりません。',
         'saved' => '保存しました。',
         'deleted' => '消しました。',
         'err_title' => '件名を入れてください。',
@@ -85,5 +88,7 @@ return [
         'err_not_owner' => 'この予定を変えられるのは、作った人だけです。',
         'err_not_attendee' => 'この予定の参加者ではありません。',
         'err_failed' => 'うまくいきませんでした。しばらくしてからもう一度ためしてください。',
+        'err_expired' => 'ページの有効期限が切れました。ページを読みこみなおしてください。',
+        'err_network' => 'サーバーにつながりません。',
     ],
 ];
