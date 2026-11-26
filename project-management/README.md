@@ -70,6 +70,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   **200,000 文字まで書くには、Exment の文字の上限も上げてください**：`.env` に `EXMENT_CHAR_LENGTH_LIMIT_COUNT=200000`（書いていないと 63,999。ポータルは小さいほうまで数えます）。コメントは JSON で送るので（日本語 1 文字 約 3 バイト）、Web サーバーの上限（nginx の client_max_body_size、既定 1 MB）のままでも 200,000 文字のコメントが送れます。
 - Stage 2b of the schedules: 「予定のカレンダー」 (a month, a year) of a project's schedules, the days off shaded; 「ここから先を変える」 on a date (the schedule ends the day before, a new one starts on it, the issues made from it on go with the new one); 「会社の休みと休日出勤」 for administrators (the site's days off and working days, used with the holidays of Japan wherever business days are counted). A new table, pm_portal_calendar_days.
   繰り返しの予定の段 2b：プロジェクトの「予定のカレンダー」（月・年。休みの日に色）、日付ごとの「ここから先を変える」（今の予定はその前の日で終わり、その日から新しい予定。その日からあとに作った課題は新しい予定のもの）、管理者の「会社の休みと休日出勤」（サイト全体。営業日を数えるところで、日本の祝日といっしょに使います）。新しいテーブル pm_portal_calendar_days。
+- The filters of the issue list (assignee, type, priority, milestone, category) take several values: 「複数選ぶ…」 at the end of each opens a list to tick; the filter then shows how many are chosen. The URL and the saved conditions keep them.
+  課題の一覧の絞り込み（担当者・種別・優先度・マイルストーン・カテゴリー）で、いくつも選べるようにしました。それぞれのいちばん下の「複数選ぶ…」で一覧が開き、チェックを付けて選びます。選んだ数が絞り込みに出ます。URL と保存した条件にも残ります。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
