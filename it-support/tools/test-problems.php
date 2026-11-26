@@ -60,7 +60,21 @@ try {
 
     $problem->setValue(['root_cause' => '証明書の期限切れ', 'workaround' => '有線でつなぐ', 'resolution' => '証明書を更新した']);
     $problem->save();
+    // the customers' tickets: visible, with an address (the survey would go there)
+    foreach ([$a, $b] as $visible) {
+        $row = $T::find($visible->id);
+        $row->setValue(['customer_visible' => '1', 'requester_email' => 'problem-test@example.invalid', 'requester_name' => 'テスト']);
+        $row->save();
+    }
+    config(['mail.default' => 'array']);
+    app('mail.manager')->forgetMailers();
+    app()->forgetInstance('mailer');
+    $mails = function () { return count(app('mail.manager')->mailer('array')->getSymfonyTransport()->messages()); };
+    $before = $mails();
+    $A = 'App\Plugins\ExmentITSupport\Automation';
     $n = $P::resolveAll($P::find($problem->id));
+    $check('no mail to the customers (no survey either)', $mails() === $before, (string) ($mails() - $before));
+    $check('the survey is asked again after it', $A::$quiet === false);
     $check('the open tickets resolved together (the closed one left)', $n === 2, (string) $n);
     $check('they are resolved', array_get($T::find($a->id)->value, 'status') === 'resolved' && array_get($T::find($b->id)->value, 'status') === 'resolved');
     $check('the closed one stays closed', array_get($T::find($c->id)->value, 'status') === 'closed');
@@ -69,7 +83,7 @@ try {
     $check('the problem is solved', array_get($P::find($problem->id)->value, 'status') === 'resolved' && !empty(array_get($P::find($problem->id)->value, 'resolved_at')));
 
     $k = $P::toKnowledge($P::find($problem->id));
-    $check('knowledge drafted, not public', $k !== null && array_get($k->value, 'public') === '0');
+    $check('knowledge drafted, not public', $k !== null && strval(array_get($k->value, 'public')) === '0');
     $check('with the cause, the workaround and the solution', $k !== null && strpos(strval(array_get($k->value, 'body')), '【原因】') !== false && strpos(strval(array_get($k->value, 'body')), '有線でつなぐ') !== false);
     $check('the problem keeps it', intval(array_get($P::find($problem->id)->value, 'knowledge_id')) === intval($k->id ?? 0));
 

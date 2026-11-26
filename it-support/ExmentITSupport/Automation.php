@@ -172,8 +172,14 @@ class Automation
      * A solved ticket asks the customer for a rating, through a link. One
      * click is the rating; the comment is optional.
      */
+    /** @var bool set while tickets are resolved without telling the customer (Problems::resolveAll) */
+    public static $quiet = false;
+
     public static function askForRating(CustomValue $ticket): void
     {
+        if (static::$quiet) {
+            return;
+        }
         if (Its::setting('csat_enabled', '1') !== '1' || !Its::portalOn()
             || !boolval(array_get($ticket->value, 'customer_visible', '1')) || !empty(array_get($ticket->value, 'csat'))) {
             return;
