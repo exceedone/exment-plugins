@@ -152,3 +152,7 @@ jobs:
       # The fields of the request catalog (ExmentITSupport, plain PHP).
       - name: Request catalog check (ExmentITSupport)
         run: php it-support/tools/test-catalog-spec.php
+
+      # The hosts of Mackerel and Zabbix into IT assets, and which asset a host is (plain PHP).
+      - name: Asset sync check (ExmentITSupport)
+        run: php it-support/tools/test-asset-sync.php
