@@ -62,6 +62,8 @@
 .its .d-meta select:hover{background-color:var(--its-hover)}
 .d-meta .sp{margin-left:auto}
 .its #d-qsel{display:none}
+.d-qgroup{padding:0 10px 6px}.d-qgroup select{width:100%}
+.d-prog{display:flex;align-items:center;gap:6px;margin:4px 0 0}.d-prog .bar{flex:1;height:6px;border-radius:3px;background:var(--its-line,#e3e7ec);overflow:hidden}.d-prog .bar span{display:block;height:100%;background:var(--its-accent,#3b82f6)}.d-prog small{color:var(--its-mute,#6b7785)}
 .d-items{flex:1;overflow:auto}
 .d-item{position:relative;display:flex;gap:11px;padding:11px 12px 11px 14px;border-bottom:1px solid var(--its-line2);cursor:pointer;transition:background .08s}
 .d-item:hover{background:var(--its-hover)}
@@ -231,6 +233,8 @@
 <div class="d-wrap"><div class="d-app" id="d-app">
     <aside class="d-queues" aria-label="受付箱">
         <div class="d-qhead">受付箱</div>
+        <div class="d-qgroup"><select id="d-group" aria-label="受付箱のまとまり"></select></div>
+        <div class="d-qhead">一覧</div>
         <div id="d-qlist"></div>
         <div class="d-qfoot" id="d-qfoot"></div>
     </aside>
@@ -263,7 +267,7 @@
             <button type="button" class="its-btn small primary" id="d-bapply">変える</button>
             <button type="button" class="its-btn small ghost" id="d-bcancel">やめる</button>
         </div>
-        <div class="d-meta"><select id="d-qsel" aria-label="受付箱"></select><span id="d-total"></span><span class="sp"></span>
+        <div class="d-meta"><select id="d-qsel" aria-label="一覧"></select><span id="d-total"></span><span class="sp"></span>
             <select id="d-sort" aria-label="並び順"><option value="due">期限が近い順</option><option value="priority">優先度順</option><option value="new">新しい順</option><option value="old">古い順</option><option value="updated">更新順</option></select>
         </div>
         <div class="d-items" id="d-items"></div>
@@ -301,7 +305,7 @@ root.dataset.ready = '1';
 
 var B = @json($boot);
 var CSRF = @json(csrf_token());
-var S = { queue: B.queue, page: 1, items: [], counts: {}, sel: null, ticket: null, f: { status: [], priority: [], assignee: '', customer: '', category: '', tags: '', tag_mode: 'and', kw: '', sort: 'due' }, checked: {}, kind: 'reply', side: true, loading: false };
+var S = { group: B.group || '', queue: B.queue, page: 1, items: [], counts: {}, sel: null, ticket: null, f: { status: [], priority: [], assignee: '', customer: '', category: '', tags: '', tag_mode: 'and', kw: '', sort: 'due' }, checked: {}, kind: 'reply', side: true, loading: false };
 try { S.side = localStorage.getItem('its_side') !== '0'; } catch (e) {}
 
 var $ = function (id) { return document.getElementById(id); };
@@ -362,6 +366,12 @@ function renderQueues() {
     $('d-qfoot').innerHTML = '<div><span class="its-dot ' + (st.imap_error ? 'err' : (st.imap_on ? 'on' : '')) + '" aria-hidden="true"></span>メール受信 ' + (st.imap_error ? '<b>エラー</b>' : (st.imap_on ? 'オン' : 'オフ')) + '</div><div><i class="fa fa-magic" aria-hidden="true" style="width:8px;margin-right:6px;font-size:10px"></i>自動処理 ' + esc(st.batch_at ? rel(st.batch_at.replace(' ', 'T')) : 'まだ') + '</div>';
 }
 function pickQueue(q) { S.queue = q; S.page = 1; S.checked = {}; renderBulk(); load(); }
+(function () {
+    var g = $('d-group');
+    if (!g) { return; }
+    g.innerHTML = '<option value="">すべての受付箱</option>' + Object.keys(B.groups || {}).map(function (k) { return '<option value="' + k + '"' + (S.group === k ? ' selected' : '') + '>' + esc(B.groups[k]) + '</option>'; }).join('');
+    g.onchange = function () { S.group = g.value; S.page = 1; load(); };
+})();
 $('d-qlist').addEventListener('click', function (e) { var q = e.target.closest('.d-q'); if (!q) { return; } pickQueue(q.dataset.q); });
 $('d-qsel').onchange = function () { pickQueue(this.value); };
 
@@ -394,6 +404,7 @@ $('d-next').onclick = function () { if (S.page < S.pages) { S.page++; load(); } 
 function load(silent) {
     var p = new URLSearchParams({ queue: S.queue, page: S.page, kw: S.f.kw, assignee: S.f.assignee, customer: S.f.customer, category: S.f.category, tags: S.f.tags, tag_mode: S.f.tag_mode, sort: S.f.sort });
     S.f.status.forEach(function (x) { p.append('status[]', x); }); S.f.priority.forEach(function (x) { p.append('priority[]', x); });
+    if (S.group) { p.append('group', S.group); }
     if (!silent) { $('d-items').innerHTML = '<div style="padding:14px">' + '<div class="d-skel"></div><div class="d-skel" style="width:70%"></div><div class="d-skel" style="width:85%"></div>'.repeat(3) + '</div>'; }
     return api(B.url.list + '?' + p.toString()).then(function (d) {
         if (d.error) { toast('一覧を読めませんでした', true); return; }
@@ -496,13 +507,14 @@ function slaBlock(t) {
 }
 function renderTicket(draft) {
     var t = S.ticket, st = t.status;
-    var tpl = '<option value="">定型文…</option>' + B.templates.map(function (x) { return '<option value="' + x.id + '">' + esc(x.name) + '</option>'; }).join('');
+    var tpl = '<option value="">定型文…</option>' + B.templates.filter(function (x) { return !x.category || x.category === String(t.category || ''); }).map(function (x) { return '<option value="' + x.id + '">' + esc(x.name) + '</option>'; }).join('');
     var h = '<div class="d-dhead"><div class="d-crumb"><button type="button" class="its-btn small ghost icon d-back" id="d-back" aria-label="一覧へ戻る" title="一覧へ戻る"><i class="fa fa-chevron-left" aria-hidden="true"></i></button><span class="no">' + esc(t.no) + '</span><span class="m">' + esc(B.channels[t.channel] || '') + ' · 受付 ' + esc(fmt(t.created)) + '</span>' +
         '<span class="acts"><a class="its-btn small ghost icon" href="' + esc(u('edit', t.id)) + '" title="Exment の画面ですべての項目を編集" aria-label="Exment の画面ですべての項目を編集"><i class="fa fa-pencil" aria-hidden="true"></i></a><button type="button" class="its-btn small ghost icon" id="d-sidebtn" title="右の欄を開く・閉じる（\\）" aria-label="右の欄を開く・閉じる" aria-pressed="' + (S.side ? 'true' : 'false') + '"><i class="fa fa-columns" aria-hidden="true"></i></button></span></div>' +
         '<h2 class="d-title">' + esc(t.subject) + '</h2><div class="d-chips2">' + pill(B.statuses[st] || st, B.statusColors[st] || '#888') + prio(t.priority, true) +
         (t.sla.state !== 'none' ? soft('SLA ' + (B.slaStates[t.sla.state] || ''), B.slaColors[t.sla.state] || '#888', t.sla.state === 'breached' ? 'fa-exclamation-triangle' : (t.sla.state === 'met' ? 'fa-check' : 'fa-clock-o')) : '') +
         (!t.customer_visible ? soft('お客様には見せない', '#8b95a3', 'fa-eye-slash') : '') + (t.require_otp ? soft('確認のコードあり', '#8e4ec6', 'fa-shield') : '') +
         (t.occurrences > 1 ? soft(t.occurrences + ' 回発生', '#e5484d', 'fa-repeat') : '') + (t.csat ? soft('満足度 ' + t.csat + ' / 5', '#f08c2b', 'fa-star') : '') +
+        (t.stage ? soft(t.stage, '#3b82f6', 'fa-flag-o', '段階') : '') +
         (t.requester_name || t.requester_email ? '<span class="from"><i class="fa fa-user-o" aria-hidden="true"></i><span>' + (t.requester_name ? '<b>' + esc(t.requester_name) + '</b> ' : '') + (t.requester_email ? (t.requester_name ? '&lt;' + esc(t.requester_email) + '&gt;' : esc(t.requester_email)) : '') + '</span></span>' : '') + '</div></div>';
 
     h += '<div class="d-body' + (S.side ? '' : ' noside') + '" id="d-bodybox"><div class="d-main">';
@@ -525,6 +537,8 @@ function renderTicket(draft) {
     var assets = Object.keys(t.assets || {}).length ? '<div class="d-field"><label for="d-p-asset">IT 資産</label><select id="d-p-asset" data-p="asset"><option value="">（なし）</option>' + opts(t.assets, t.asset) + '</select></div>' : '';
     h += '<aside class="d-side" aria-label="チケットの項目">' +
         '<div class="d-sec"><h4><i class="fa fa-sliders" aria-hidden="true"></i>チケット</h4>' +
+        ((t.stages || []).length ? '<div class="d-field"><label for="d-p-stage">段階</label><select id="d-p-stage" data-p="stage">' + t.stages.map(function (s) { return '<option value="' + esc(s) + '"' + (s === t.stage ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>' +
+            '<div class="d-prog" title="進捗率"><span class="bar"><span style="width:' + Math.max(0, Math.min(100, t.progress | 0)) + '%"></span></span><small>' + (t.progress | 0) + '%</small></div></div>' : '') +
         '<div class="d-field"><label for="d-p-status">状態</label><select id="d-p-status" data-p="status">' + opts(B.statuses, st) + '</select></div>' +
         '<div class="d-field"><label for="d-p-priority">優先度</label><select id="d-p-priority" data-p="priority">' + opts(B.priorities, t.priority) + '</select></div>' +
         '<div class="d-field"><label for="d-p-assignee">担当者</label><select id="d-p-assignee" data-p="assignee">' + agents + '</select></div>' +
