@@ -20,6 +20,13 @@ $check('to: only known ones', $s['to'] === ['assignees', 'watchers']);
 $bad1 = R::parseSettings(['days' => 'x, 0, 99, 2', 'time' => '25:00', 'to' => []]);
 $check('bad values dropped', $bad1['days'] === [2] && $bad1['time'] === '09:00' && $bad1['to'] === ['assignees']);
 
+// a rule as a project saves it (already read: lists and booleans) reads the same again (#128)
+$saved = json_decode(json_encode($s), true);
+$check('a saved rule reads the same', R::parseSettings($saved) === $s, json_encode(R::parseSettings($saved)));
+$empty = json_decode(json_encode(R::parseSettings(['days' => '', 'today' => '0', 'overdue' => '0'])), true);
+$check('a saved empty rule reads', R::parseSettings($empty)['days'] === [] && R::parseSettings($empty)['today'] === false);
+$check('odd values do not break it', is_array(R::parseSettings(['days' => [['x'], 3, '2'], 'to' => [['a'], 'managers'], 'time' => ['9:00'], 'overdue_max' => ['x']])));
+
 // due Thu 2026-12-03: 3 days before is Mon 11-30, 1 day before Wed 12-02
 $check('3 days before', $keys(R::slots('2026-12-03', '2026-11-30', '09:00', $s, $cal)) === 'before:3:2026-12-03');
 $check('1 day before', $keys(R::slots('2026-12-03', '2026-12-02', '10:15', $s, $cal)) === 'before:1:2026-12-03');
