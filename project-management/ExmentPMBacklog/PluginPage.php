@@ -45,8 +45,8 @@ class PluginPage extends PluginPageBase
         require_once __DIR__ . '/BacklogConnector.php';
         require_once __DIR__ . '/SyncBridge.php';
         // by name: on Exment 7.2 (and in its static analysis) these classes do not exist
-        $connector = __NAMESPACE__ . '\BacklogConnector';
-        call_user_func(['\Exceedone\Exment\Services\Sync\SyncConnectors', 'register'], new $connector());
+        $connector = (new \ReflectionClass(__NAMESPACE__ . '\BacklogConnector'))->newInstance();
+        call_user_func(['\Exceedone\Exment\Services\Sync\SyncConnectors', 'register'], $connector);
     }
 
     /**
