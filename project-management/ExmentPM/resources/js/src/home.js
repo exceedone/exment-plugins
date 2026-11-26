@@ -40,7 +40,11 @@
             // fetched is what tells the two apart.
             '<span class="pp-freshat">' + esc(String(L.rf_at).replace(':time', String(D.now || ''))) + '</span>' +
             '<a class="bl-btn-sub pp-refresh" href="javascript:void(0);" title="' + esc(L.rf_button) + '">' +
-            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a></div>';
+            '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a></div>' +
+            // POS-1: the one 課題の追加 inside a project, at the right of its
+            // name's row (the top bar's is for the pages across projects).
+            (CAN_ADD_ISSUE && !p.archived ? '<a class="bl-btn-main pp-projadd" href="#new" title="' + esc(L.pos_add_tip) + '">' +
+                '<i class="fa fa-plus"></i><span class="tx"> ' + esc(L.add_issue) + '</span></a>' : '');
         var head = document.getElementById('pp-projhead');
         if (head && !head._ppHeadBound) {
             head._ppHeadBound = true;

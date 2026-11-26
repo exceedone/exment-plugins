@@ -37,8 +37,9 @@
             var scr = tab.getAttribute('data-scr');
             out.push({ g: L.kh_move, l: String(tab.textContent || '').trim(), k: keys[scr] || '', run: function () { tab.click(); } });
         });
-        if (document.querySelector('#pp-top .pp-top-addmain')) {
-            out.push({ g: L.kh_list, l: L.add_issue, k: 'a', run: palPress('#pp-top .pp-top-addmain') });
+        var addSel = document.querySelector('#pp-projhead .pp-projadd') ? '#pp-projhead .pp-projadd' : '#pp-top .pp-top-addmain';
+        if (document.querySelector(addSel)) {
+            out.push({ g: L.kh_list, l: L.add_issue, k: 'a', run: palPress(addSel) });
         }
         if (document.getElementById('pp-jump')) {
             out.push({ g: L.kh_list, l: L.kh_search, k: '/', run: function () {

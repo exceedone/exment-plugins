@@ -370,7 +370,8 @@
     {{-- Somebody who may file an issue into none of their projects is not
          offered a menu whose every entry would be refused. With no project
          at all the menu stays, to say so. --}}
-    @if($addable || !$open)
+    {{-- POS-1: inside a project its 課題の追加 is on the project's own header row --}}
+    @if(($addable || !$open) && $topbarCur === null)
     {{-- S5: the one 課題の追加. Inside a project it adds to that project at
          once ("#new" is the route of its form); ▾ picks another. --}}
     <div class="pp-top-dd pp-top-addwrap{{ $topbarCurAdd ? ' split' : '' }}">
