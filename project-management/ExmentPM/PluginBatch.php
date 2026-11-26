@@ -120,6 +120,20 @@ class PluginBatch extends PluginBatchBase
             return 0;
         }
 
+        // --param1=remind: the reminders before the due date (ISS00432), every 15 minutes
+        if ($target === 'remind') {
+            \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            if (!PortalReminder::enabled()) {
+                $this->say('remind_off');
+
+                return 0;
+            }
+            $r = PortalReminder::run($dry);
+            $this->say($dry ? 'remind_dry' : 'remind', ['issues' => $r['issues'], 'count' => $r['sent'], 'skipped' => $r['skipped']]);
+
+            return 0;
+        }
+
         if ($target === 'recur') {
             \Exceedone\Exment\Middleware\Morph::defineMorphMap();
             $made = PortalRecurrence::run($dry);
