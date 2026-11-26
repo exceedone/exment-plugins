@@ -168,6 +168,18 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 - 右上の閉じる（×）で、ファイルをチェックインしてエディターを離れます。「Office で開く」で開いたタブは閉じ、そうでなければ画面全体がファイルの画面に戻ります（エディターの枠の中に Exment が開くことはなくなりました）。ファイルの画面のプレビュー（読み取り専用）には閉じるを出しません。
 - インストールのときに、ibisOffice の大きいファイルの `.gz` の複製と Apache 用の `.htaccess` を書きます。[Web サーバーの設定](#web-サーバーの設定)（nginx の設定も）を見てください。
 
+## Chat
+
+Rooms of a group or of two people (ISS02945). Off at first: Admin setting → Feature management → **Chat** (`exment_groupware.chat`). The menu **チャット** opens it (`/admin/plugins/exment_groupware/chat`).
+
+- A group room has a name and members chosen by its maker (its owner, who adds and removes members); anyone can leave. Two people have one direct room.
+- Messages: line breaks, `code`, **bold**, links; `@name` of a member is lit for them, `@全員` / `@all` in a group room. Ctrl+Enter sends.
+- Files: attach or paste (at most 10, 25 MB each). They are opened only by the members of the room.
+- Read counts ("既読 n") under one's own messages; unread counts in the list of rooms.
+- New messages are fetched every 3 seconds while the page is seen, every 30 seconds while it is hidden, and not at all after 30 minutes of nothing done (until the page is used again). No new server is needed (Exment SaaS too).
+- Only the members of a room read it; another room or another room's file answers "not found".
+- Coming: replies, reactions, editing, 「タスクにする」 / 「課題にする」, search, notices (bell, mail, Teams), muting, how long messages are kept. See [docs/chat-design.md](docs/chat-design.md).
+
 ## できること
 
 Exment のグループウェア（ex1task ISS00233）です。今あるのは次の 2 つです。
@@ -267,3 +279,15 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 **セキュリティ**: パスワード・トークンはアプリの鍵（`APP_KEY`）で暗号化します。HTML のメールはサーバーで危ない部分を取り除き、スクリプトの動かない iframe（sandbox）で表示します。外部の画像は「画像を表示」を押すまで読み込みません。つなげるのはインターネットのアドレスのメールのポートだけです。社内のネットワークのメールサーバー（オンプレミスの Exment）につなぐときは、管理者が設定の **社内のネットワークのメールサーバーを許可する** をオンにします。どの操作でも、アカウントがログインしている本人のものかを確かめます。
 
 テーブル `gw_mail_accounts` は zip をアップロードしたときに作られます（`database/migrations`）。
+
+## チャット
+
+グループや 2 人のルームで話します（ISS02945）。初めは使いません：管理者設定 → 機能の管理 → **チャット**（`exment_groupware.chat`）。メニューの **チャット** で開きます。
+
+- グループのルームは、作った人（持ち主）が名前とメンバーを決めます（足す・外す）。だれでも出られます。2 人の間のルームは 1 つです。
+- メッセージ：改行・`code`・**太字**・リンク。メンバーの `@名前` はその人に目立って見え、グループでは `@全員` も使えます。Ctrl+Enter で送ります。
+- ファイル：付ける・貼りつける（10 個まで、1 つ 25 MB まで）。開けるのはそのルームのメンバーだけです。
+- 自分のメッセージの下に「既読 n」、ルームの一覧に未読の数。
+- 新しいメッセージは、ページを見ている間は 3 秒ごと、ほかのタブのときは 30 秒ごとに確かめ、30 分なにもしないと止めます（ページを動かすとまた確かめます）。新しいサーバーは要りません（Exment SaaS でも）。
+- ルームはメンバーだけが読めます。ほかのルームやそのファイルは「見つからない」になります。
+- これから：返信・リアクション・編集・「タスクにする」／「課題にする」・探す・知らせ（ベル・メール・Teams）・知らせを止める・残す期間。[docs/chat-design.md](docs/chat-design.md)。

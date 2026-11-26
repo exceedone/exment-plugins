@@ -4,4 +4,6 @@ return [
     'feature_mail' => 'Thư',
     'feature_mail_help' => 'Đọc, soạn và gửi thư bạn đang dùng (Xserver, KAGOYA, Microsoft 365, Gmail hoặc bất kỳ máy chủ IMAP / SMTP nào) ngay trên trình duyệt (Exment Plugin Groupware).',
     'feature_office' => 'Office (ibisOffice)',
+    'feature_chat' => 'Chat',
+    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
 ];
