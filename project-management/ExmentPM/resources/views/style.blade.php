@@ -1432,9 +1432,9 @@ body.pp-ib-open{overflow:hidden;}
    follow the description with nothing in between. .pp-two is set by
    ppSideFit() only while there is a box to show. The second row takes any
    height the column needs beyond the description, so no gap opens above the
-   comments. */
-@media (min-width:1800px){
-  .pmportal .bl-detail.pp-two{display:grid;grid-template-columns:minmax(0,1fr) clamp(340px,24%,440px);grid-template-rows:auto 1fr;
+   comments. From 1200px (S1; it was 1800px, so most screens never saw it). */
+@media (min-width:1200px){
+  .pmportal .bl-detail.pp-two{display:grid;grid-template-columns:minmax(0,1fr) clamp(300px,28%,420px);grid-template-rows:auto 1fr;
     column-gap:12px;align-items:start;}
   .pmportal .bl-detail.pp-two > *{grid-column:1;min-width:0;}
   .pmportal .bl-detail.pp-two > #pp-d-tlbox{grid-row:2;}
@@ -1675,4 +1675,84 @@ body.pp-ib-open{overflow:hidden;}
   background:var(--bl-box);border:1px solid var(--bl-line);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.12);}
 .pmportal .pp-oc-menu label{display:block;margin:4px 0;font-weight:400;white-space:nowrap;cursor:pointer;}
 
+/* ==== UX-C: the issue screen (S1, S2, S17, S19, M1) ==== */
+/* S19: the trail above the issue instead of the green 課題一覧へ button. */
+.pmportal .pp-crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px;margin:0 0 8px;font-size:12px;color:var(--bl-sub);min-width:0;}
+.pmportal .pp-crumbs a{color:var(--bl-sub);text-decoration:none;max-width:22em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pmportal .pp-crumbs a:hover,.pmportal .pp-crumbs a:focus-visible{color:var(--bl-accent-d);text-decoration:underline;}
+.pmportal .pp-crumbs .fa{color:var(--bl-faint);font-size:11px;}
+.pmportal .pp-crumbs [aria-current]{color:var(--bl-ink);font-weight:700;}
+.pmportal .pp-dbar .pp-dbar-back{flex:none;color:var(--bl-sub);font-weight:600;text-decoration:none;white-space:nowrap;}
+.pmportal .pp-dbar .pp-dbar-back:hover{color:var(--bl-accent-d);}
+/* S1: one box for the issue's fields. Its top rows (status, assignees, due,
+   priority, roles) are said in the strip under the title as long as there is
+   no column beside the text; with the column, the strip keeps only who read
+   it and the way to the comments. */
+.pmportal .bl-props .row[data-top]{display:none;}
+.pmportal #pp-d-propsum{display:none;}
+@media (max-width:760px){.pmportal #pp-d-propsum:not(:empty){display:inline;}}
+@media (min-width:761px) and (max-width:1199px){
+  .pmportal #pp-d-propbox.pp-no-mid{display:none !important;}
+}
+@media (min-width:1200px){
+  .pmportal .bl-detail.pp-two .bl-dsum [data-sum]{display:none;}
+  .pmportal .bl-detail.pp-two .bl-props .row[data-top]{display:flex;}
+  /* the first four rows, a little apart from the rest */
+  .pmportal .bl-detail.pp-two .bl-props .row[data-p="pr"]{border-bottom:1px solid var(--bl-line);padding-bottom:9px;margin-bottom:2px;}
+}
+/* S2: a phone reads the text, then the comments, then the rest - folded,
+   with their counts on their heads. Its strip keeps the status, the
+   assignees and the due date; the priority and the roles move to the box. */
+@media (max-width:760px){
+  .pmportal .bl-detail{display:flex;flex-direction:column;}
+  .pmportal .bl-detail > .bl-card-box:first-child{order:1;}
+  .pmportal .bl-detail > #pp-d-tlbox{order:2;}
+  .pmportal .bl-detail > #pp-d-side{order:3;}
+  .pmportal .bl-dsum [data-sum="pr"],.pmportal .bl-dsum [data-sum="role"]{display:none;}
+  .pmportal .bl-props .row[data-top="pr"],.pmportal .bl-props .row[data-top="role"]{display:flex;}
+  .pmportal #pp-d-propbox.pp-no-phone{display:none !important;}
+  .pmportal .pp-crumbs a{max-width:12em;}
+}
+/* M1: a value of the box opens its editor in place. */
+.pmportal .bl-props .pp-qf-v{cursor:pointer;border-radius:4px;margin:-2px -4px;padding:2px 22px 2px 4px;position:relative;}
+.pmportal .bl-props .pp-qf-v:hover,.pmportal .bl-props .pp-qf-v:focus-visible{background:var(--bl-hover);outline:0;}
+.pmportal .bl-props .pp-qf-v::after{content:"040";font-family:FontAwesome;position:absolute;right:5px;top:50%;transform:translateY(-50%);
+  font-size:11px;color:var(--bl-faint);opacity:0;transition:opacity .12s;}
+.pmportal .bl-props .pp-qf-v:hover::after,.pmportal .bl-props .pp-qf-v:focus-visible::after{opacity:1;}
+@media (hover:none){.pmportal .bl-props .pp-qf-v::after{opacity:.6;}}
+.pmportal .bl-props > .pp-qf,.pmportal .bl-props > .pp-qf-unset{grid-column:1 / -1;}
+.pmportal .pp-qf-unset{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:8px 0 2px;font-size:12px;}
+.pmportal .pp-qf-unset .k{color:var(--bl-faint);font-size:11.5px;}
+.pmportal .pp-qf-unset .pp-qf-add{color:var(--bl-sub);text-decoration:none;white-space:nowrap;}
+.pmportal .pp-qf-unset .pp-qf-add:hover,.pmportal .pp-qf-unset .pp-qf-add:focus-visible{color:var(--bl-accent-d);}
+.pmportal .pp-qf-unset .pp-qf-add .fa{font-size:10px;margin-right:2px;}
+/* the editor sits inside the box's rows: their row and label rules stop at it */
+.pmportal .bl-props .pp-qf .bl-qe > .row{align-items:stretch;border-bottom:0;padding:0;}
+.pmportal .bl-props .pp-qf .bl-qe > .row > .k{width:auto;}
+.pmportal .pp-qf .bl-qe > .row.w-date{width:auto;}
+.pmportal .pp-qf .bl-qe > .row.w-date > .v{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.pmportal .pp-qf .bl-qe > .row.w-date .bl-qe-in{width:120px;}
+.pmportal .pp-qf-quick{display:inline-flex;gap:4px;}
+.pmportal .pp-qf-quick .bl-btn-sub,.pmportal .pp-qf-mine{padding:3px 9px;font-size:12px;}
+.pmportal .pp-qf-mine{margin-top:6px;}
+/* the undo button in the toast */
+#pp-toast .pp-toast-act{margin-left:10px;border:1px solid rgba(255,255,255,.55);background:transparent;color:#fff;
+  border-radius:4px;padding:2px 10px;font-weight:700;cursor:pointer;}
+#pp-toast .pp-toast-act:hover,#pp-toast .pp-toast-act:focus-visible{background:rgba(255,255,255,.16);}
+/* S17: the dock is a comment box first. The status stays beside the comment;
+   the other fields fold under ほかの項目も変える, the due time beside its date. */
+.pmportal .pp-cmt-st{margin-top:10px;}
+/* Closed, the fields take one line under the comment rather than a column
+   of their own (a browser without :has keeps the two columns). */
+.pmportal .bl-dockbody:has(#pp-d-editbox:not(.pp-qe-open)){display:block;}
+.pmportal .bl-dockbody:has(#pp-d-editbox:not(.pp-qe-open)) .bl-dockside{max-width:none;}
+.pmportal #pp-d-editbox .pp-qe-toggle{cursor:pointer;user-select:none;}
+.pmportal #pp-d-editbox .pp-qe-toggle .bl-caret{margin-left:auto;transition:transform .12s;}
+.pmportal #pp-d-editbox.pp-qe-open .pp-qe-toggle .bl-caret{transform:rotate(90deg);}
+.pmportal #pp-d-editbox:not(.pp-qe-open) > .bl-boxbody{display:none;}
+.pmportal #pp-d-editbox:not(.pp-qe-open) > .bl-boxhead{border-bottom-color:transparent;}
+.pmportal .bl-qe > .row.pp-qe-due{width:auto;}
+.pmportal .bl-qe > .row.pp-qe-due > .v{display:flex;align-items:center;gap:6px;}
+.pmportal .bl-qe > .row.pp-qe-due .bl-qe-in{width:120px;}
+.pmportal .bl-qe > .row.pp-qe-due .bl-qe-in.pp-qe-dt{width:80px;font-size:12px;}
 </style>

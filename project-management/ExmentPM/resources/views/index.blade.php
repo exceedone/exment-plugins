@@ -75,6 +75,8 @@
         'ned_stale', 'ned_stale_by', 'ned_stale_reload', 'ned_stale_force', 'ned_reloaded',
         'issue_move', 'move_title', 'move_pick', 'move_note', 'move_do', 'move_cancel', 'move_loading',
         'move_none', 'move_fail', 'issue_delete', 'issue_del_ask', 'issue_del_fail',
+        // UX-C
+        'bc_label', 'bc_root', 'qf_click', 'qf_unset', 'qf_undo', 'qf_undone', 'qf_today', 'qf_tomorrow', 'qf_next_week', 'qf_assign_me',
     ])->mapWithKeys(function ($key) {
         return [$key => \App\Plugins\ExmentPM\PortalDefinition::trans($key)];
     })->toArray();
@@ -344,7 +346,7 @@
                      the comments follow the description directly. --}}
                 <div class="bl-dside" id="pp-d-side">
                     <div class="bl-card-box" id="pp-d-propbox">
-                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-sliders"></i>{{ $lang['box_props'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-info-circle"></i>{{ $lang['box_props'] }}<span class="bl-childsum" id="pp-d-propsum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
                         <div class="bl-boxbody bl-rows bl-props" id="pp-d-props"></div>
                     </div>
                     <div class="bl-card-box" id="pp-d-childbox" style="display:none;">
@@ -356,7 +358,7 @@
                         <div class="bl-boxbody bl-rows bl-dfiles" id="pp-d-files"></div>
                     </div>
                     <div class="bl-card-box" id="pp-d-relbox" style="display:none;">
-                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-link"></i>{{ $lang['box_related'] }}<i class="fa fa-chevron-down bl-caret"></i></div>
+                        <div class="bl-boxhead" data-collapse="1"><i class="fa fa-link"></i>{{ $lang['box_related'] }}<span class="bl-childsum" id="pp-d-relsum"></span><i class="fa fa-chevron-down bl-caret"></i></div>
                         <div class="bl-boxbody bl-rows bl-related" id="pp-d-related"></div>
                     </div>
                 </div>
@@ -373,9 +375,6 @@
                     </div>
                 </div>
             </div>
-            {{-- The same way back at the foot, for a reader who scrolled down
-                 through a long body and timeline. --}}
-            <p class="bl-dback-foot"><a class="bl-dback" href="#issues"><i class="fa fa-angle-left"></i> {{ $lang['back'] }}</a></p>
 
             {{-- Backlog's pinned composer: a thin row that stays on screen while
                  the issue is read, and unfolds into the comment box together
@@ -423,6 +422,8 @@
                                     <div class="bl-cmthint">{{ $lang['cmt_hint'] }}</div>
                                     <input type="file" id="pp-cmt-file" multiple hidden>
                                 </div>
+                                {{-- S17: the status is changed with the comment, so it stays here, open. --}}
+                                <div class="bl-qe pp-cmt-st" id="pp-cmt-st"></div>
                             </div>
                         </div>
                         {{-- Who hears about it belongs with what is being said,
@@ -443,8 +444,10 @@
                         </div>
                         </div>
                         <div class="bl-dockside">
+                            {{-- S17: closed at first, so the dock reads as a comment box
+                                 and not as a second edit form. --}}
                             <div class="bl-card-box" id="pp-d-editbox">
-                                <div class="bl-boxhead"><i class="fa fa-sliders"></i>{{ $lang['dock_edit'] }}</div>
+                                <div class="bl-boxhead pp-qe-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="pp-cmt-fields"><i class="fa fa-sliders"></i>{{ $lang['dock_edit'] }}<span class="bl-qe-n" id="pp-qe-n" hidden></span><i class="fa fa-chevron-right bl-caret"></i></div>
                                 <div class="bl-boxbody bl-qe" id="pp-cmt-fields"></div>
                             </div>
                         </div>

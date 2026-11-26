@@ -630,7 +630,9 @@ window.PmPortalBoot = function () {
         return found;
     }
     var toastTimer = null;
-    function toast(message, danger) {
+    // action: { label, run } - one button in the toast (元に戻す after an
+    // edit in place), which keeps it on screen a little longer.
+    function toast(message, danger, action) {
         var el = document.getElementById('pp-toast');
         if (!el) {
             el = document.createElement('div');
@@ -639,9 +641,21 @@ window.PmPortalBoot = function () {
         }
         el.className = danger ? 'danger' : '';
         el.textContent = message;
+        if (action && action.label && typeof action.run === 'function') {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'pp-toast-act';
+            btn.textContent = action.label;
+            btn.addEventListener('click', function () {
+                el.style.display = 'none';
+                action.run();
+            });
+            el.appendChild(document.createTextNode(' '));
+            el.appendChild(btn);
+        }
         el.style.display = 'block';
         if (toastTimer) { clearTimeout(toastTimer); }
-        toastTimer = setTimeout(function () { el.style.display = 'none'; }, 2600);
+        toastTimer = setTimeout(function () { el.style.display = 'none'; }, action ? 6000 : 2600);
     }
 
     /* ------------------------------------------------ project head ------ */
@@ -2478,9 +2492,9 @@ window.PmPortalBoot = function () {
             if (seen && !next) { next = s; }
             if (s.k === i.st) { seen = true; }
         });
-        // The way back sits on the head row itself, so it costs no line of
-        // its own above the issue (the same button closes the page too).
-        var head = '<div class="bl-dhead"><a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' + tag(i.ty) +
+        // The way back is the trail above the issue (S19): where it sits, each
+        // step a link, with no big button of its own.
+        var head = crumbs(i) + '<div class="bl-dhead">' + tag(i.ty) +
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' + ikCopyButton(i) +
             // ISS00248: the alias, and a way to set it
             (local.al ? '<span class="pp-al-d" title="' + esc(L.alias) + '">' + esc(local.al) + '</span>' : '') +
@@ -2515,14 +2529,17 @@ window.PmPortalBoot = function () {
             '<div class="pp-move" hidden></div>' +
             '<div class="bl-dtitle">' + esc(i.subject) + '</div>' +
             (i.sub ? '<div class="pp-dsubsub">' + esc(i.sub) + '</div>' : '') +
+            // The strip under the title. With the info column beside the text
+            // (1200px and wider) its fields are said there instead and the
+            // strip keeps only who read it and the way to the comments; on a
+            // phone it keeps the status, the assignees and the due date
+            // (data-sum, see the stylesheet).
             '<div class="bl-dsum">' +
-            '<span class="it"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
-            '<span class="it"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
-            // No user here for the source's assignee (schema 29): its name, greyed.
-            '<span class="it"><span class="k">' + esc(L.col_as) + '</span>' + ((i.as || []).map(function (u) { return avname(u); }).join('') ||
-                (res.source && res.source.asg ? '<span style="color:var(--bl-faint);" title="' + esc(L.src_assignees_hint) + '">' + esc(res.source.asg) + '</span>' : '—')) + '</span>' +
+            '<span class="it" data-sum="st"><span class="k">' + esc(L.col_st) + '</span>' + pill(i.st) + '</span>' +
+            '<span class="it" data-sum="pr"><span class="k">' + esc(L.col_pr) + '</span>' + (prio(i.pr) || '—') + '</span>' +
+            '<span class="it" data-sum="as"><span class="k">' + esc(L.col_as) + '</span>' + asHtml(i, res, '') + '</span>' +
             qfSummary(i, res) +
-            '<span class="it"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
+            '<span class="it" data-sum="dd"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
             '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
@@ -2539,50 +2556,62 @@ window.PmPortalBoot = function () {
 
         var parentIssue = i.parent ? issueById(i.parent) : null;
         var ms = own(D.milestones, i.ms);
+        // One box for everything about the issue (S1). Each row: [key, label,
+        // value, top]. top: said in the strip above the text too, so the
+        // box shows it only while the strip does not - 'top' in the info
+        // column at 1200px and wider, 'pr' and 'role' there and on a phone
+        // (whose strip keeps the status, the assignees and the due date).
         var props = [
-            [L.col_st, pill(i.st)], [L.col_pr, prio(i.pr)],
-            [L.col_as, (i.as || []).map(function (u) { return avname(u); }).join('<br>') || '—'],
-            // Schema 27 (ISS00252): the other people on the issue are on the
-            // summary row beside the assignees (qfSummary), set or not.
-            // An import's author is the source's; Exment's is the importer.
-            [L.lbl_author, res.source && res.source.cby ? esc(res.source.cby) : (i.by ? avname(i.by) : '')],
-            [L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:#8e44ad;margin-right:5px;"></i>' + esc(ms.l) : '—'],
-            [L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
-            [L.col_sd, esc(d2(i.sd))], [L.col_dd, dueCell(i)],
-            [L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
+            ['st', L.col_st, pill(i.st), 'top'],
+            ['as', L.col_as, asHtml(i, res, '<br>'), 'top'],
+            ['dd', L.col_dd, dueCell(i), 'top'],
+            ['pr', L.col_pr, prio(i.pr) || '—', 'pr'],
+        ].concat(qfRoleProps(i), [
+            ['ms', L.col_ms, ms ? '<i class="fa fa-flag-checkered" style="color:var(--bl-sub);margin-right:5px;"></i>' + esc(ms.l) : '—'],
+            ['cat', L.col_cat, (i.cat || []).map(function (c) { return esc(own(D.categories, c) || ''); }).join(', ') || '—'],
+            ['sd', L.col_sd, i.sd ? esc(d2(i.sd)) : '—'],
+            ['rc', L.col_rc, i.rc ? '<i class="fa fa-repeat" style="color:var(--bl-accent-d);margin-right:5px;"></i>' + esc(L['rc_' + i.rc] || i.rc) : '—'],
             // ISS02931: the hours and who is told, on the issue's own side and
             // not only in the comment box - shown when empty too, with the
             // way to set them.
-            [L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah)) + qfPen('time', res)],
-            [L.lbl_notify, qfNotify(i, res)],
-            [L.lbl_pg, pbar(i.pg) + rollupBadge(rollupMap(), i.id)],
-            [L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
-            [L.lbl_source, sourceHtml(res.source)],
-            [L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : ''],
-            [L.lbl_watch, '<i class="fa fa-eye" style="color:var(--bl-faint);"></i> ' + (res.watch.count === null ? '…' : esc(res.watch.count + L.people))]
-        ];
-        // Status, priority, assignees and the due date are on the summary row
-        // above the description, and the watch count on its button: said
-        // once is enough. Of the rest, only what is set - a column of dashes
-        // only pushed the comments further down. Nothing set, no box.
-        var shown = [L.col_st, L.col_pr, L.col_as, L.col_dd, L.lbl_watch];
-        var setProps = props.filter(function (p) {
-            if (shown.indexOf(p[0]) >= 0) { return false; }
-            var v = String(p[1] === null || p[1] === undefined ? '' : p[1]);
-            if (p[0] === L.lbl_eh) { return !!(qeCol('estimate') || qeCol('actual')); }
-            if (p[0] === L.lbl_notify) { return true; }
-            if (p[0] === L.lbl_pg) { return Number(i.pg || 0) > 0 || p[1].indexOf('pp-rollup') >= 0; }
-            return v !== '' && v !== '—' && v !== esc('—');
-        });
-        document.getElementById('pp-d-props').innerHTML = setProps.map(function (p) {
-            return '<div class="row"><span class="k">' + esc(p[0]) + '</span><span class="v">' + p[1] + '</span></div>';
-        }).join('');
+            ['time', L.lbl_eh, esc(hours(i.eh) + ' / ' + hours(i.ah)) + qfPen('time', res)],
+            ['pg', L.lbl_pg, pbar(i.pg) + rollupBadge(rollupMap(), i.id)],
+            ['parent', L.lbl_parent, parentIssue ? '<a class="bl-issuelink" href="#' + esc(issueHash(parentIssue.id)) + '">' + esc(parentIssue.key) + ' ' + esc(parentIssue.subject) + '</a>' : '—'],
+            // An import's author is the source's; Exment's is the importer.
+            ['by', L.lbl_author, res.source && res.source.cby ? esc(res.source.cby) : (i.by ? avname(i.by) : '')],
+            ['notify', L.lbl_notify, qfNotify(i, res)],
+            ['source', L.lbl_source, sourceHtml(res.source)],
+            ['cf', L.lbl_custom_fields, res.source && res.source.cf ? res.source.cf.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; }).map(esc).join('<br>') : '']
+        ]);
+        var shownProps = propsShown(props, i, res);
+        document.getElementById('pp-d-props').innerHTML = shownProps.rows.map(function (p) {
+            var qf = qfField(p[0], res);
+            return '<div class="row" data-p="' + esc(p[0]) + '"' + (p[3] ? ' data-top="' + esc(p[3]) + '"' : '') +
+                (qf ? ' data-qf="' + esc(qf) + '"' : '') + '><span class="k">' + esc(p[1]) + '</span>' +
+                '<span class="v' + (qf ? ' pp-qf-v' : '') + '"' + (qf ? ' role="button" tabindex="0" title="' + esc(L.qf_click) + '"' : '') + '>' + p[2] + '</span></div>';
+        }).join('') + (shownProps.unset.length
+            // The fields with no value yet, each a link that opens its editor
+            // (M1): set in place, without a row of dashes for each.
+            ? '<div class="pp-qf-unset"><span class="k">' + esc(L.qf_unset) + '</span>' + shownProps.unset.map(function (p) {
+                return '<a href="javascript:void(0);" class="pp-qf-add" data-qf="' + esc(qfField(p[0], res)) + '"><i class="fa fa-plus"></i> ' + esc(p[1]) + '</a>';
+            }).join('') + '</div>' : '');
         var propBox = document.getElementById('pp-d-propbox');
+        var propSum = document.getElementById('pp-d-propsum');
+        // The count is for a phone, where the box starts folded and holds
+        // what its strip does not say.
+        if (propSum) { propSum.textContent = String(shownProps.rows.filter(function (p) { return p[3] !== 'top'; }).length); }
         // Left alone while the inline editor has stood it aside: the editor
         // brings its own fields, and puts this box back as it was on close.
         var mainBox = document.getElementById('pp-d-main').closest('.bl-card-box');
         var editingNow = mainBox && mainBox.style.display === 'none';
-        if (propBox && !editingNow) { propBox.style.display = setProps.length ? '' : 'none'; }
+        if (propBox && !editingNow) {
+            propBox.style.display = '';
+            // Below 1200px the top rows are in the strip: a box holding
+            // nothing else stays away there (and on a phone, nothing beyond
+            // the priority and the roles).
+            propBox.classList.toggle('pp-no-mid', !shownProps.rest);
+            propBox.classList.toggle('pp-no-phone', !shownProps.rest && !shownProps.phone);
+        }
 
         var kids = (D.issues || []).filter(function (x) { return String(x.parent) === String(i.id); });
         // A child is a new issue: editing this one is not enough on its own.
@@ -2890,10 +2919,15 @@ window.PmPortalBoot = function () {
         // The status row is built here so it sits with the other fields, but
         // the select keeps its id: the comment endpoint - not the row API -
         // is what changes a status, because that is what notifies people.
+        // S17: the status stays beside the comment, always open; the other
+        // fields fold under ほかの項目も変える, closed for each new issue.
+        var stBox = document.getElementById('pp-cmt-st') || box;
+        if (stBox !== box) { stBox.innerHTML = ''; }
         var st = document.createElement('select');
         st.id = 'pp-cmt-status';
         st.className = 'bl-qe-in';
-        box.appendChild(qeRow(L.st_change, st, 'w-st'));
+        stBox.appendChild(qeRow(L.st_change, st, 'w-st'));
+        if (!same) { qeFold(false); }
         if (!res.editable) {
             if (editbox) { editbox.hidden = true; }
 
@@ -2922,14 +2956,42 @@ window.PmPortalBoot = function () {
         }, true), 'w-full'));
         box.appendChild(qeRow(L.col_cat, qeChips('cat', cats, QE.base.cat), 'w-full'));
         box.appendChild(qeRow(L.col_sd, qeInput('sd', 'date', QE.base.sd), 'w-date'));
-        box.appendChild(qeRow(L.col_dd, qeInput('dd', 'date', QE.base.dd), 'w-date'));
-        box.appendChild(qeRow(L.col_dt, qeInput('dt', 'time', QE.base.dt), 'w-time'));
+        // The due time sits beside the due date it belongs to, small.
+        var ddRow = qeRow(L.col_dd, qeInput('dd', 'date', QE.base.dd), 'w-date pp-qe-due');
+        var dtIn = qeInput('dt', 'time', QE.base.dt, { title: L.col_dt, 'aria-label': L.col_dt });
+        dtIn.classList.add('pp-qe-dt');
+        ddRow.querySelector('.v').appendChild(dtIn);
+        box.appendChild(ddRow);
         box.appendChild(qeRow(L.lbl_eh_only, qeInput('eh', 'number', QE.base.eh, { min: '0', step: '0.5' }), 'w-num', 'h'));
         box.appendChild(qeRow(L.lbl_ah_only, qeInput('ah', 'number', QE.base.ah, { min: '0', step: '0.5' }), 'w-num', 'h'));
         box.appendChild(qeRow(L.lbl_pg, qeInput('pg', 'number', QE.base.pg, { min: '0', max: '100', step: '1' }), 'w-num', '%'));
         if (carry) { qeApplyCarry(carry); }
+        // Work carried across a redraw stays in sight.
+        if (carry && Object.keys(carry).length) { qeFold(true); }
         qeMark();
     }
+    // ほかの項目も変える: open or closed, with the count of fields moved on
+    // its head so a closed box still says it holds something.
+    function qeFold(open) {
+        var editbox = document.getElementById('pp-d-editbox');
+        if (!editbox) { return; }
+        editbox.classList.toggle('pp-qe-open', !!open);
+        var head = editbox.querySelector('.pp-qe-toggle');
+        if (head) { head.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+    }
+    (function () {
+        var editbox = document.getElementById('pp-d-editbox');
+        var head = editbox ? editbox.querySelector('.pp-qe-toggle') : null;
+        if (!head) { return; }
+        var flip = function (ev) {
+            if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') { return; }
+            ev.preventDefault();
+            qeFold(!editbox.classList.contains('pp-qe-open'));
+            ppDockFit();
+        };
+        head.addEventListener('click', flip);
+        head.addEventListener('keydown', flip);
+    }());
     // What the reader has moved and not sent, each with the base it was moved
     // from - read off the dock just before it is drawn again.
     function qeCarry() {
@@ -3059,6 +3121,9 @@ window.PmPortalBoot = function () {
         if (stEl && stEl.value) { n += 1; }
         var typed = !!(text && text.value.trim());
         state.textContent = (n || typed) ? L.dock_draft + (n ? ' (' + n + ')' : '') : '';
+        var fields = Object.keys(qeChanged()).length;
+        var foldN = document.getElementById('pp-qe-n');
+        if (foldN) { foldN.textContent = fields ? String(fields) : ''; foldN.hidden = !fields; }
     }
     window.ppQeDiff = qeDiff;
     // The dock is fixed to the window, so it has to be told where the content
@@ -3180,12 +3245,17 @@ window.PmPortalBoot = function () {
         var tl = document.getElementById('pp-d-tlbox');
         if (tl) { tl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
-    // Boxes folded on an earlier visit come back folded.
+    // Boxes folded on an earlier visit come back folded. On a phone the
+    // boxes beside the issue (info, children, files, related) sit under the
+    // comments and start folded, their counts on their heads (S2), until
+    // the reader opens one - which is remembered the same way.
+    var PHONE = window.matchMedia ? window.matchMedia('(max-width:760px)') : null;
     Array.prototype.forEach.call(root.querySelectorAll('.bl-card-box[id]'), function (card) {
         if (!card.querySelector('.bl-boxhead[data-collapse]')) { return; }
-        try {
-            if (localStorage.getItem('pmportal.fold.' + card.id) === '1') { card.classList.add('bl-collapsed'); }
-        } catch (e) { /* ignore */ }
+        var stored = null;
+        try { stored = localStorage.getItem('pmportal.fold.' + card.id); } catch (e) { /* ignore */ }
+        var side = !!(card.parentNode && card.parentNode.id === 'pp-d-side');
+        if (stored === '1' || (stored === null && side && PHONE && PHONE.matches)) { card.classList.add('bl-collapsed'); }
     });
     // The boxes about the issue stand beside its text on a wide screen
     // (.pp-two in the stylesheet) - but only while there is a box to show
@@ -3280,10 +3350,10 @@ window.PmPortalBoot = function () {
         var out = '';
         QF_ROLES.forEach(function (r) {
             if (!xOn(r[1])) { return; }
-            out += '<span class="it pp-qf-it" data-qf-at="' + r[0] + '"><span class="k">' + esc(L[r[2]]) + '</span>' + qfPeople(i[r[0]]) + qfPen(r[0], res) + '</span>';
+            out += '<span class="it pp-qf-it" data-sum="role" data-qf-at="' + r[0] + '"><span class="k">' + esc(L[r[2]]) + '</span>' + qfPeople(i[r[0]]) + qfPen(r[0], res) + '</span>';
         });
         if (xOn('difficulty')) {
-            out += '<span class="it pp-qf-it" data-qf-at="df"><span class="k">' + esc(L.lbl_difficulty) + '</span>' +
+            out += '<span class="it pp-qf-it" data-sum="role" data-qf-at="df"><span class="k">' + esc(L.lbl_difficulty) + '</span>' +
                 (i.df ? esc(L['df_' + i.df] || i.df) : '—') + qfPen('df', res) + '</span>';
         }
 
@@ -3300,7 +3370,75 @@ window.PmPortalBoot = function () {
         return out;
     }
     function qfClose() {
-        document.querySelectorAll('#pp-issue .pp-qf').forEach(function (n) { n.remove(); });
+        document.querySelectorAll('#pp-issue .pp-qf').forEach(function (n) {
+            // A date field's calendar lives off <body>: told before its
+            // input goes (see renderQuickEdit).
+            if (window.ppDateFieldDestroy) { window.ppDateFieldDestroy(n); }
+            n.remove();
+        });
+    }
+    // The same people, as rows of the info box (S1).
+    function qfRoleProps(i) {
+        var out = [];
+        QF_ROLES.forEach(function (r) {
+            if (xOn(r[1])) { out.push([r[0], L[r[2]], qfPeople(i[r[0]]), 'role']); }
+        });
+        if (xOn('difficulty')) { out.push(['df', L.lbl_difficulty, i.df ? esc(L['df_' + i.df] || i.df) : '—', 'role']); }
+
+        return out;
+    }
+    // The assignees; with no user here for an imported issue's assignee
+    // (schema 29), its name from the source, greyed.
+    function asHtml(i, res, sep) {
+        return (i.as || []).map(function (u) { return avname(u); }).join(sep) ||
+            (res.source && res.source.asg ? '<span style="color:var(--bl-faint);" title="' + esc(L.src_assignees_hint) + '">' + esc(res.source.asg) + '</span>' : '—');
+    }
+    // Which rows of the info box are drawn. The top ones and the roles are
+    // always there (the stylesheet decides where they show); the others only
+    // once set - a column of dashes only pushed the rest down - and a field
+    // that is not set but may be goes to the list of ones to set (unset).
+    // rest: a row beyond the top ones and the roles; phone: a row a phone
+    // shows that its strip does not.
+    function propsShown(props, i, res) {
+        var out = { rows: [], unset: [], rest: 0, phone: 0 };
+        var empty = function (v) {
+            var t = String(v === null || v === undefined ? '' : v);
+            return t === '' || t === '—' || t === esc('—');
+        };
+        props.forEach(function (p) {
+            var show;
+            if (p[3]) {
+                show = true;
+            } else if (p[0] === 'time') {
+                show = !!(qeCol('estimate') || qeCol('actual'));
+            } else if (p[0] === 'notify') {
+                show = true;
+            } else if (p[0] === 'pg') {
+                show = Number(i.pg || 0) > 0 || String(p[2]).indexOf('pp-rollup') >= 0;
+            } else {
+                show = !empty(p[2]);
+            }
+            if (!show) {
+                if (qfField(p[0], res)) { out.unset.push(p); }
+                return;
+            }
+            out.rows.push(p);
+            if (!p[3]) { out.rest++; }
+            if (p[3] === 'pr' || p[3] === 'role') { out.phone++; }
+        });
+        if (out.unset.length) { out.rest++; }
+
+        return out;
+    }
+    // S19: where the issue sits, each step a link - the portal, the
+    // project, its issues - instead of a big 課題一覧へ button.
+    function crumbs(i) {
+        var p = D.project || {};
+        return '<nav class="pp-crumbs" aria-label="' + esc(L.bc_label) + '">' +
+            (D.urls && D.urls.projects ? '<a href="' + esc(D.urls.projects) + '">' + esc(L.bc_root) + '</a><i class="fa fa-angle-right"></i>' : '') +
+            '<a href="#home">' + esc(p.name || '') + '</a><i class="fa fa-angle-right"></i>' +
+            '<a href="#issues">' + esc(L.tab_issues) + '</a><i class="fa fa-angle-right"></i>' +
+            '<span aria-current="page">' + esc(i.key) + '</span></nav>';
     }
     // The project's people a field may name: the assignee rule (members and
     // the manager) for a sub-assignee, everybody on the project otherwise.
@@ -3310,36 +3448,168 @@ window.PmPortalBoot = function () {
         return ids.filter(function (v, x, a) { return v && a.indexOf(v) === x; })
             .map(function (u) { return [String(u), user(u).n]; });
     }
+    // M1: which editor a row of the info box opens, '' for none - only for
+    // somebody who may edit the issue, and only for a column the table has.
+    function qfField(key, res) {
+        if (!res || !res.editable) { return ''; }
+        var cols = { as: 'assignees', pr: 'priority', ms: 'milestone', cat: 'category', sd: 'start', dd: 'due', pg: 'progress' };
+        if (own(cols, key)) { return qeCol(cols[key]) ? key : ''; }
+        if (key === 'time') { return (qeCol('estimate') || qeCol('actual')) ? 'time' : ''; }
+        var role = '';
+        QF_ROLES.forEach(function (r) { if (r[0] === key) { role = r[1]; } });
+        if (role) { return xOn(role) ? key : ''; }
+        if (key === 'df') { return xOn('difficulty') ? 'df' : ''; }
+
+        return '';
+    }
+    // The keys one editor writes: the due date carries its time beside it.
+    function qfKeys(field) {
+        if (field === 'time') { return ['eh', 'ah']; }
+        if (field === 'dd') { return qeCol('due_time') ? ['dd', 'dt'] : ['dd']; }
+
+        return [field];
+    }
+    // What a field holds now, in the shape the widgets read back.
+    function qfValue(i, k) {
+        var v = i[k];
+        if (Array.isArray(v)) { return v.map(String); }
+        if (k === 'as' || k === 'cat' || k === 'sa' || k === 'mg' || k === 'rv' || k === 'nu') { return []; }
+
+        return v == null ? '' : String(v);
+    }
+    // A day N days from the day the server calls today, as YYYY-MM-DD.
+    function qfDayFrom(n) {
+        var d = new Date(String(D.today || '') + 'T00:00:00');
+        if (isNaN(d.getTime())) { d = new Date(); }
+        d.setDate(d.getDate() + n);
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+    function qfSetInput(input, value) {
+        input.value = value;
+        ['input', 'change'].forEach(function (t) {
+            try { input.dispatchEvent(new Event(t, { bubbles: true })); } catch (e) { /* old browser */ }
+        });
+    }
+    function qfWidget(k, i, fields) {
+        var w;
+        var people = function (v) { var u = own(D.users, v); return u ? String(u.n) : qeUnlisted(v); };
+        if (k === 'eh' || k === 'ah') {
+            w = qeInput(k, 'number', qfValue(i, k), { min: '0', step: '0.5' });
+            fields.appendChild(qeRow(k === 'eh' ? L.lbl_eh_only : L.lbl_ah_only, w, 'w-num', 'h'));
+        } else if (k === 'df') {
+            w = qeSelect('df', (D.difficulties || ['easy', 'normal', 'hard']).map(function (d) { return [d, L['df_' + d] || d]; }), i.df || '', L.empty);
+            fields.appendChild(qeRow(L.lbl_difficulty, w, 'w-sel'));
+        } else if (k === 'pr') {
+            w = qeSelect('pr', metaKeys(D.priorities).map(function (x) { return [x, D.priorities[x].l]; }), qfValue(i, 'pr'), L.empty);
+            fields.appendChild(qeRow(L.col_pr, w, 'w-sel'));
+        } else if (k === 'ms') {
+            w = qeSelect('ms', Object.keys(D.milestones || {}).map(function (x) { return [x, D.milestones[x].l]; })
+                .sort(function (a, b) { return cmpText(a[1], b[1]); }), qfValue(i, 'ms'), L.empty);
+            fields.appendChild(qeRow(L.col_ms, w, 'w-sel'));
+        } else if (k === 'sd' || k === 'dd') {
+            w = qeInput(k, 'date', qfValue(i, k));
+            var row = qeRow(k === 'sd' ? L.col_sd : L.col_dd, w, 'w-date');
+            if (k === 'dd') {
+                // The days a due date is most often moved to, one press each.
+                var quick = document.createElement('span');
+                quick.className = 'pp-qf-quick';
+                [['qf_today', 0], ['qf_tomorrow', 1], ['qf_next_week', 7]].forEach(function (q) {
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'bl-btn-sub';
+                    b.textContent = L[q[0]];
+                    b.addEventListener('click', function () { qfSetInput(w, qfDayFrom(q[1])); });
+                    quick.appendChild(b);
+                });
+                row.querySelector('.v').appendChild(quick);
+            }
+            fields.appendChild(row);
+        } else if (k === 'dt') {
+            w = qeInput('dt', 'time', qfValue(i, 'dt'));
+            fields.appendChild(qeRow(L.col_dt, w, 'w-time'));
+        } else if (k === 'pg') {
+            w = qeInput('pg', 'number', qfValue(i, 'pg'), { min: '0', max: '100', step: '1' });
+            fields.appendChild(qeRow(L.lbl_pg, w, 'w-num', '%'));
+        } else if (k === 'cat') {
+            w = qeChips('cat', Object.keys(D.categories || {}).map(function (x) { return [x, String(D.categories[x])]; })
+                .sort(function (a, b) { return cmpText(a[1], b[1]); }), qfValue(i, 'cat'));
+            fields.appendChild(qeRow(L.col_cat, w, 'w-full'));
+        } else {
+            // People: the assignees and the sub-assignees by the assignee
+            // rule, the other roles and the notified users from everybody on
+            // the project (qfOptions).
+            w = qeChips(k, qfOptions(k === 'as' ? 'sa' : k), qfValue(i, k), people, true);
+            var label = k === 'as' ? L.col_as : (k === 'nu' ? L.lbl_notified : L.qf_edit);
+            QF_ROLES.forEach(function (r) { if (r[0] === k) { label = L[r[2]]; } });
+            var prow = qeRow(label, w, 'w-full');
+            if (k === 'as' && D.me) {
+                // Taking an issue is the change made most often: one press.
+                var mine = document.createElement('button');
+                mine.type = 'button';
+                mine.className = 'bl-btn-sub pp-qf-mine';
+                mine.textContent = L.qf_assign_me;
+                mine.addEventListener('click', function () {
+                    var on = Array.prototype.map.call(w.querySelectorAll('.bl-chip:not(.off)'), function (c) { return String(c.dataset.val); });
+                    if (on.indexOf(String(D.me)) < 0) { on.push(String(D.me)); }
+                    qeChipsSet(w, on);
+                });
+                prow.querySelector('.v').appendChild(mine);
+            }
+            fields.appendChild(prow);
+        }
+
+        return w;
+    }
+    function qfRead(w) {
+        if (w.dataset.qeMulti) {
+            return Array.prototype.map.call(w.querySelectorAll('.bl-chip:not(.off)'), function (c) { return String(c.dataset.val); });
+        }
+        var v = String(w.value == null ? '' : w.value);
+
+        return w.dataset.qe === 'dt' ? (qeRowValue('dt', v) || '') : v;
+    }
+    // Write and draw again. undo: what to put back when the toast's undo
+    // button is pressed; none for the undo itself.
+    function qfApply(issueId, changed, undo, done) {
+        var ours = QE.issue !== null && String(QE.issue) === String(issueId);
+        var listed = issueById(issueId) || (own(DET, String(issueId)) || {}).issue || {};
+        var version = ours ? QE.ua : (listed.ua || null);
+        qeSaveFields(issueId, changed, version).then(function (r) {
+            if (!alive()) { return; }
+            if (done) { done(r); }
+            if (!r.ok) {
+                if (r.stale) { reloadIssue(issueId, undefined, true); }
+                return;
+            }
+            if (undo) {
+                toast(L.m_saved, false, {
+                    label: L.qf_undo,
+                    run: function () {
+                        qfApply(issueId, undo, null, function (u) {
+                            if (!u.ok) { toast(u.stale ? L.qf_stale : (u.error || L.dock_save_fail), true); }
+                        });
+                    }
+                });
+            } else {
+                toast(L.qf_undone);
+            }
+            if (String(currentIssue) === String(issueId) && own(DET, String(issueId))) { buildDetail(DET[String(issueId)]); }
+            // read again for the line the save left in the history
+            reloadIssue(issueId, undefined, false);
+        });
+    }
     function qfOpen(field, pen) {
         var issueId = currentIssue;
         var i = issueById(issueId) || (own(DET, String(issueId)) || {}).issue;
         if (!i || !pen) { return; }
         qfClose();
-        var keys = field === 'time' ? ['eh', 'ah'] : [field];
+        var keys = qfKeys(field);
         var box = document.createElement('div');
         box.className = 'pp-qf';
         var fields = document.createElement('div');
         fields.className = 'bl-qe';
         var widgets = {};
-        keys.forEach(function (k) {
-            var w;
-            var label = L.qf_edit;
-            if (k === 'eh' || k === 'ah') {
-                w = qeInput(k, 'number', i[k] == null ? '' : String(i[k]), { min: '0', step: '0.5' });
-                fields.appendChild(qeRow(k === 'eh' ? L.lbl_eh_only : L.lbl_ah_only, w, 'w-num', 'h'));
-            } else if (k === 'df') {
-                w = qeSelect('df', (D.difficulties || ['easy', 'normal', 'hard']).map(function (d) { return [d, L['df_' + d] || d]; }), i.df || '', L.empty);
-                fields.appendChild(qeRow(L.lbl_difficulty, w, 'w-sel'));
-            } else {
-                w = qeChips(k, qfOptions(k), (i[k] || []).map(String), function (v) {
-                    var u = own(D.users, v);
-                    return u ? String(u.n) : qeUnlisted(v);
-                }, true);
-                QF_ROLES.forEach(function (r) { if (r[0] === k) { label = L[r[2]]; } });
-                fields.appendChild(qeRow(k === 'nu' ? L.lbl_notified : label, w, 'w-full'));
-            }
-            widgets[k] = w;
-        });
+        keys.forEach(function (k) { widgets[k] = qfWidget(k, i, fields); });
         box.appendChild(fields);
         var foot = document.createElement('div');
         foot.className = 'pp-qf-foot';
@@ -3347,63 +3617,72 @@ window.PmPortalBoot = function () {
             '<button type="button" class="bl-btn-sub pp-qf-cancel">' + esc(L.dock_cancel) + '</button>' +
             '<button type="button" class="bl-btn-main pp-qf-save">' + esc(L.qf_save) + '</button>';
         box.appendChild(foot);
-        var at = pen.closest('.pp-qf-it, .row') || pen.parentNode;
+        var at = pen.closest('.pp-qf-it, .row, .pp-qf-unset') || pen.parentNode;
         at.parentNode.insertBefore(box, at.nextSibling);
         var msg = foot.querySelector('.pp-qf-msg');
-        foot.querySelector('.pp-qf-cancel').addEventListener('click', qfClose);
-        box.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { qfClose(); } });
         var save = foot.querySelector('.pp-qf-save');
+        foot.querySelector('.pp-qf-cancel').addEventListener('click', qfClose);
+        box.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Escape') { ev.stopPropagation(); qfClose(); return; }
+            // Enter in a text field saves, as a one-field form would.
+            if (ev.key === 'Enter' && ev.target && ev.target.tagName === 'INPUT' && !ev.isComposing) { ev.preventDefault(); save.click(); }
+        });
         save.addEventListener('click', function () {
             var changed = {};
+            var undo = {};
             keys.forEach(function (k) {
-                var w = widgets[k];
-                var now = w.dataset.qeMulti
-                    ? Array.prototype.map.call(w.querySelectorAll('.bl-chip:not(.off)'), function (c) { return String(c.dataset.val); })
-                    : String(w.value == null ? '' : w.value);
-                var was = Array.isArray(now) ? (i[k] || []).map(String) : (i[k] == null ? '' : String(i[k]));
-                if (!qeSame(now, was)) { changed[k] = now; }
+                var now = qfRead(widgets[k]);
+                var was = qfValue(i, k);
+                if (!qeSame(now, was)) { changed[k] = now; undo[k] = was; }
             });
             if (!Object.keys(changed).length) { qfClose(); return; }
             save.disabled = true;
             msg.textContent = L.dock_saving;
-            var ours = QE.issue !== null && String(QE.issue) === String(issueId);
-            qeSaveFields(issueId, changed, ours ? QE.ua : null).then(function (r) {
-                if (!alive()) { return; }
-                if (r.ok) {
-                    qfClose();
-                    toast(L.m_saved);
-                    if (String(currentIssue) === String(issueId) && own(DET, String(issueId))) { buildDetail(DET[String(issueId)]); }
-                    // read again for the line the save left in the history
-                    reloadIssue(issueId, undefined, false);
-                    return;
-                }
+            qfApply(issueId, changed, undo, function (r) {
+                if (r.ok) { qfClose(); return; }
                 save.disabled = false;
-                if (r.stale) {
-                    msg.textContent = L.qf_stale;
-                    reloadIssue(issueId, undefined, true);
-                    return;
-                }
-                msg.textContent = r.error || L.dock_save_fail;
+                msg.textContent = r.stale ? L.qf_stale : (r.error || L.dock_save_fail);
             });
         });
+        // The first field takes the focus - but not a date, whose calendar
+        // would open over the buttons beside it before anything is asked.
         var first = box.querySelector('input, select, .bl-chip');
-        if (first && first.focus) { first.focus(); }
+        if (first && first.focus && !(first.tagName === 'INPUT' && first.type === 'text' && /^(sd|dd|dt)$/.test(first.dataset.qe || ''))) {
+            first.focus();
+        } else {
+            var b0 = box.querySelector('.pp-qf-quick button, .pp-qf-save');
+            if (b0 && b0.focus) { b0.focus(); }
+        }
     }
     var ppIssueEl = document.getElementById('pp-issue');
     if (ppIssueEl) {
         ppIssueEl.addEventListener('click', function (ev) {
-            var pen = ev.target.closest && ev.target.closest('.pp-qf-pen');
+            var pen = ev.target.closest && ev.target.closest('.pp-qf-pen, .pp-qf-add');
+            // M1: the value itself opens its editor, unless a link or a
+            // button inside it (a parent issue, the mail button) was meant.
+            if (!pen && ev.target.closest && !ev.target.closest('a, button, input, select, textarea, .pp-qf')) {
+                var v = ev.target.closest('.pp-qf-v');
+                pen = v ? v.closest('.row[data-qf]') : null;
+            }
             if (!pen) { return; }
             ev.preventDefault();
             ev.stopPropagation();
             qfOpen(pen.getAttribute('data-qf'), pen);
+        });
+        ppIssueEl.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Enter' && ev.key !== ' ') { return; }
+            var v = ev.target && ev.target.classList && ev.target.classList.contains('pp-qf-v') ? ev.target : null;
+            var row = v ? v.closest('.row[data-qf]') : null;
+            if (!row) { return; }
+            ev.preventDefault();
+            qfOpen(row.getAttribute('data-qf'), row);
         });
     }
     function ppDbarFill(i) {
         var bar = document.getElementById('pp-dbar');
         if (!bar) { return; }
         bar.dataset.id = String(i.id);
-        bar.innerHTML = '<a class="bl-dback bl-dback-s" href="#issues"><i class="fa fa-angle-left"></i> ' + esc(L.back) + '</a>' +
+        bar.innerHTML = '<a class="pp-dbar-back" href="#issues" title="' + esc(L.back) + '"><i class="fa fa-angle-left"></i> ' + esc(L.tab_issues) + '</a>' +
             '<span class="bl-key">' + esc(i.key) + '</span>' +
             '<span class="t" role="button" tabindex="0" title="' + esc(i.subject) + '">' + esc(i.subject) + '</span>' + pill(i.st) +
             '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>';
@@ -4338,6 +4617,8 @@ window.PmPortalBoot = function () {
                 '<button type="button" class="bl-btn-sub" id="pp-rel-add"><i class="fa fa-plus"></i> ' + esc(L.rel_add) + '</button></div></div>';
         }
         document.getElementById('pp-d-related').innerHTML = html;
+        var relSum = document.getElementById('pp-d-relsum');
+        if (relSum) { relSum.textContent = rows.length ? String(rows.length) : ''; }
         // An issue of another project: the row starts with its number and is
         // filled in with its key, subject and status from the card endpoint
         // (ISS00258) - the same answer the hover card shows.

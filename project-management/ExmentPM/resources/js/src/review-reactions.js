@@ -137,7 +137,9 @@
         return found;
     }
     var toastTimer = null;
-    function toast(message, danger) {
+    // action: { label, run } - one button in the toast (元に戻す after an
+    // edit in place), which keeps it on screen a little longer.
+    function toast(message, danger, action) {
         var el = document.getElementById('pp-toast');
         if (!el) {
             el = document.createElement('div');
@@ -146,8 +148,20 @@
         }
         el.className = danger ? 'danger' : '';
         el.textContent = message;
+        if (action && action.label && typeof action.run === 'function') {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'pp-toast-act';
+            btn.textContent = action.label;
+            btn.addEventListener('click', function () {
+                el.style.display = 'none';
+                action.run();
+            });
+            el.appendChild(document.createTextNode(' '));
+            el.appendChild(btn);
+        }
         el.style.display = 'block';
         if (toastTimer) { clearTimeout(toastTimer); }
-        toastTimer = setTimeout(function () { el.style.display = 'none'; }, 2600);
+        toastTimer = setTimeout(function () { el.style.display = 'none'; }, action ? 6000 : 2600);
     }
 
