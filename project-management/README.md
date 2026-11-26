@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.19 / 1.7.19 で変わったこと**
 
 - The icons on the chips of 「知らせる人」 are read again when the comment dock opens (at most once a minute), so a person's quiet hours and muted projects show as they are now, not as they were when the page was opened (ISS02931). A small read (`GET {id}/notify-channels`, a new route); no issue is read.
   コメント欄を開いたときに、「知らせる人」のチップのアイコンを読み直すようにしました（1 分に 1 回まで）。ひとりひとりの「通知しない時間」やミュートしたプロジェクトが、ページを開いたときではなく今のとおりに出ます（ISS02931）。小さな読み出し（新しいルート `GET {id}/notify-channels`）で、課題は読みません。
