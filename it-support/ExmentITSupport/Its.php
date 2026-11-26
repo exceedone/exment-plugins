@@ -36,6 +36,7 @@ class Its
     const T_TEMPLATE = 'its_template';
     const T_ASSET = 'its_asset';
     const T_PROBLEM = 'its_problem';
+    const T_CATALOG = 'its_catalog';
 
     /** The states of a problem (Problems). */
     const PROBLEM_STATUSES = [
@@ -169,6 +170,8 @@ class Its
         'asset_notice_days' => '30',
         'auto_assign' => 'category',
         'csat_enabled' => '1',
+        // The request catalog on the portal (Catalog): off at first.
+        'catalog_enabled' => '0',
         // Problems: the tickets of one cause together (Problems): off at first.
         'problems_enabled' => '0',
         // The SLA escalation in steps (Escalation): off at first.

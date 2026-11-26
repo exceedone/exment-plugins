@@ -148,3 +148,7 @@ jobs:
       # The steps of the SLA escalation (ExmentITSupport, plain PHP).
       - name: SLA escalation check (ExmentITSupport)
         run: php it-support/tools/test-sla-escalation.php
+
+      # The fields of the request catalog (ExmentITSupport, plain PHP).
+      - name: Request catalog check (ExmentITSupport)
+        run: php it-support/tools/test-catalog-spec.php

@@ -122,6 +122,21 @@ class PluginPage extends PluginPageBase
         return $this->desk()->postAlertSharedKey(request());
     }
 
+    public function postCatalogTemplates()
+    {
+        return $this->desk()->postCatalogTemplates(request());
+    }
+
+    public function approval($id)
+    {
+        return $this->desk()->approval(request(), $id);
+    }
+
+    public function postApproval($id)
+    {
+        return $this->desk()->postApproval(request(), $id);
+    }
+
     public function problems()
     {
         return $this->desk()->problems(request());
