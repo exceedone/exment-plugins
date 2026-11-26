@@ -386,6 +386,38 @@ test('M10: empty project, empty filter result, first steps', () => {
     assert.ok(langJa.indexOf('// UX-F') > 0);
 });
 
+/* ---------------------------------------------- UX-H: the form -------- */
+test('M11: a new issue asks for who, by when and how urgent first; the rest folds and can be searched', () => {
+    const form = read('form.js');
+    const f = load(form, ['nedIssueLayout'], `
+        var NED = { mode: 'create', table: 'pm_issue' };
+        var D = { issue_table: 'pm_issue', issue_cols: { status: 'st', assignees: 'as', priority: 'pr', milestone: 'ms', category: 'cat', start: 'sd', due: 'dd', type: 'ty', parent: 'pa', estimate: 'eh' },
+            issue_extra_cols: { due_time: 'dt' } };`);
+    const lay = f.nedIssueLayout();
+    assert.deepStrictEqual(lay.rows, [['as', 'dd'], ['pr', 'dt']]);
+    assert.deepStrictEqual(lay.more.slice(0, 3), [['st', 'ms'], ['cat', null], ['sd', null]]);
+    const g = load(form, ['nedIssueLayout'], `
+        var NED = { mode: 'edit', table: 'pm_issue' };
+        var D = { issue_table: 'pm_issue', issue_cols: { status: 'st', assignees: 'as', priority: 'pr', milestone: 'ms', due: 'dd' }, issue_extra_cols: {} };`);
+    assert.deepStrictEqual(g.nedIssueLayout().rows[0], ['st', 'as'], 'the edit form keeps its rows');
+    const fields = read('form-fields.js');
+    assert.ok(/col && col\.required && !col\.readonly\) \{ slots\.grid\.appendChild\(fg\)/.test(fields), 'a required field is never folded');
+    assert.ok(/className = 'pp-ne-more-find'/.test(fields) && ja('ned_more_find'));
+});
+
+test('S6: on a phone the form head wraps so 保存 stays on screen', () => {
+    assert.ok(/\.pp-nedit \.pp-ne-head-top\{flex-wrap:wrap;/.test(style));
+});
+
+test('M12: who to tell - assignees and author first, then the recent picks, none switched on', () => {
+    const f = load(detail, ['notifyOrder']);
+    const order = f.notifyOrder({ as: [5], by: 7 }, [1, 2, 5, 7, 9], ['9', '2']);
+    assert.deepStrictEqual(order, [5, 7, 9, 2, 1]);
+    assert.ok(/notifyRecentSave\(notifyUsers\)/.test(read('writes.js')), 'the picks of a sent comment are remembered');
+    assert.ok(/var on = keepNotify && keepNotify\.indexOf/.test(functionSource(detail, 'buildDetail')), 'nothing on by itself');
+    assert.ok(langJa.indexOf('// UX-H') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

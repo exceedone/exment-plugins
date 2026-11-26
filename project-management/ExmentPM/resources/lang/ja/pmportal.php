@@ -1902,4 +1902,6 @@ return [
         'err_url_empty' => 'Webhook の URL を入れてください。',
         'err_channel_id' => 'LINE WORKS のチャンネル ID は、英数字・「_」「-」で入れてください。',
     ],
+    // UX-H: the issue form (S6, M11, M12)
+    'ned_more_find' => '項目を探す',
 ];

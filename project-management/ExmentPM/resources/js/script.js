@@ -2870,9 +2870,9 @@ window.PmPortalBoot = function () {
         }
 
         var p = D.project;
-        var people = [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
+        var people = notifyOrder(i, [p.manager].concat(p.members || [], p.viewers || []).filter(function (v, x, a) {
             return v && a.indexOf(v) === x && String(v) !== String(D.me);
-        });
+        }), notifyRecent());
         document.getElementById('pp-notify-chips').innerHTML = people.map(function (u) {
             var on = keepNotify && keepNotify.indexOf(String(u)) >= 0;
             return '<span class="bl-chip has-av' + (on ? '' : ' off') + ' pp-notify" role="button" tabindex="0" data-user="' + esc(u) + '">' + av(u) + esc(user(u).n) + '</span>';
@@ -2882,6 +2882,36 @@ window.PmPortalBoot = function () {
         if (dockav) { dockav.innerHTML = av(D.me); }
         cmtSetBusy(cmtBusy);
         ppDockFit();
+    }
+    // M12: who is told is picked from the people most likely meant: the
+    // assignees and the author of the issue first, then the people picked
+    // before in this project (newest first), then the rest. Nobody is
+    // switched on for the reader - telling stays a choice.
+    function notifyRecentKey() {
+        return 'pmportal.notify.u' + String(D.me || 0) + '.p' + String((D.project && D.project.id) || 0);
+    }
+    function notifyRecent() {
+        try {
+            var v = JSON.parse(localStorage.getItem(notifyRecentKey()) || '[]');
+            return Array.isArray(v) ? v.map(String) : [];
+        } catch (e) { return []; }
+    }
+    function notifyRecentSave(ids) {
+        if (!ids || !ids.length) { return; }
+        var list = ids.map(String).concat(notifyRecent()).filter(function (v, x, a) { return v && a.indexOf(v) === x; }).slice(0, 12);
+        try { localStorage.setItem(notifyRecentKey(), JSON.stringify(list)); } catch (e) { /* ignore */ }
+    }
+    function notifyOrder(issue, people, recent) {
+        var first = [].concat((issue && issue.as) || [], issue && issue.by ? [issue.by] : []).map(String);
+        var rank = function (u) {
+            var s = String(u);
+            if (first.indexOf(s) >= 0) { return first.indexOf(s); }
+            if (recent.indexOf(s) >= 0) { return 100 + recent.indexOf(s); }
+            return 1000;
+        };
+        return people.map(function (u, n) { return { u: u, r: rank(u), n: n }; })
+            .sort(function (a, b) { return a.r - b.r || a.n - b.n; })
+            .map(function (e) { return e.u; });
     }
     /* ------------------------------------------------ quick edit -------- */
     // Backlog changes an issue from the same form the comment is written in:
@@ -5672,6 +5702,7 @@ window.PmPortalBoot = function () {
                 }
                 settled();
                 dockDraftClear(issueId, text);
+                notifyRecentSave(notifyUsers);
                 applyDetail(res, epoch, false, seq);
                 if (!statusOnly && alive() && String(currentIssue) === String(issueId)
                     && submittedBox === document.getElementById('pp-cmt-text')
@@ -7717,6 +7748,23 @@ window.PmPortalBoot = function () {
             // issue was added (ISS02923)
             [null, x.due_time || null]
         ].filter(keep);
+        // M11: a new issue asks first for what one is filed with - who,
+        // by when, how urgent (and the title and text above). The rest -
+        // the status (it starts at the first one), milestone, category,
+        // start - folds under ほかの項目, which can be searched. A required
+        // field is never folded (nedRenderForm).
+        var newRows = null;
+        if (NED.mode === 'create') {
+            newRows = [
+                [c.assignees || null, c.due || null],
+                [c.priority || null, x.due_time || null]
+            ].filter(keep);
+        }
+        var newMore = NED.mode === 'create' ? [
+            [c.status || null, c.milestone || null],
+            [c.category || null, x.versions || null],
+            [c.start || null, null]
+        ].filter(keep) : [];
         var more = [
             // Schema 27: the other people, beside the assignees.
             [x.sub_assignees || null, x.managers || null],
@@ -7729,8 +7777,8 @@ window.PmPortalBoot = function () {
 
         return {
             top: [c.parent || null, c.type || null].filter(Boolean),
-            rows: rows,
-            more: more
+            rows: newRows || rows,
+            more: newMore.concat(more)
         };
     }
     // A column with nothing to say until the row exists. A resolution is how
@@ -9401,6 +9449,24 @@ window.PmPortalBoot = function () {
             nedMoreRemember(open);
         });
         grid.appendChild(btn);
+        // M11: a long fold is searched by the name of the field.
+        if (names.length > 6) {
+            var find = document.createElement('input');
+            find.type = 'search';
+            find.className = 'pp-ne-more-find';
+            find.placeholder = nedGetLangKey('ned_more_find', '項目を探す');
+            find.setAttribute('aria-label', find.placeholder);
+            find.addEventListener('input', function () {
+                var q = String(find.value || '').trim().toLowerCase();
+                Array.prototype.forEach.call(box.querySelectorAll('[data-fname]'), function (fg) {
+                    var lb = fg.querySelector('label');
+                    var text = String((lb ? lb.textContent : '') + ' ' + fg.dataset.fname).toLowerCase();
+                    fg.classList.toggle('pp-ne-nomatch', q !== '' && text.indexOf(q) < 0);
+                });
+            });
+            find.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); } });
+            box.insertBefore(find, box.firstChild);
+        }
         grid.appendChild(box);
         nedMoreSetOpen(box, btn, filled > 0 || nedMoreRemembered());
     }
@@ -9535,6 +9601,11 @@ window.PmPortalBoot = function () {
             metaOrder.filter(function (name) { return !taken[name]; }).forEach(function (name) {
                 moreBox.appendChild(built[name]);
                 taken[name] = true;
+            });
+            // A field that must be filled is never folded away (M11).
+            Array.prototype.slice.call(moreBox.children).forEach(function (fg) {
+                var col = NED.columns.filter(function (cc) { return cc && cc.name === fg.dataset.fname; })[0];
+                if (col && col.required && !col.readonly) { slots.grid.appendChild(fg); }
             });
             if (moreBox.children.length) { nedMountMore(slots.grid, moreBox); }
             metaOrder = metaOrder.filter(function (name) { return !taken[name]; });
