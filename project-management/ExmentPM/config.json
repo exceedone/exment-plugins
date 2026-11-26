@@ -19,6 +19,7 @@
         { "method": "post", "uri": "settings/migrate/export", "function": "postMigrateExport" },
         { "method": "post", "uri": "settings/migrate/import", "function": "postMigrateImport" },
         { "method": "post", "uri": "form-style", "function": "postFormStyle" },
+        { "method": "post", "uri": "md-split", "function": "postMdSplit" },
         { "method": "post", "uri": "notify-by", "function": "postNotifyBy" },
         { "method": "get", "uri": "notify-settings", "function": "notifySettings" },
         { "method": "post", "uri": "notify-settings", "function": "notifySettingsSave" },

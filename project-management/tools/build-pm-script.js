@@ -52,6 +52,7 @@ const FILES = [
     'events.js',           // tabs, hovercard, other bindings
     'list-events.js',      // paging, tree view, ticking rows, staying current
     'palette.js',          // Ctrl+K: every action of the screen with its key
+    'md-help.js',          // MD-1: the Markdown mark, cheat sheet and side-by-side preview of the editors
     'boot.js',             // shortcuts, boot
 ];
 

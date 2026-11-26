@@ -124,6 +124,9 @@ jobs:
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
 
+      - name: Markdown help of the editors (ExmentPM)
+        run: node project-management/tools/test-pm-md.js
+
       # The custom attributes on the screen (ISS02939): the JSON a save sends,
       # how a value reads, the filters, the sort and the bulk edit.
       - name: Custom attributes check (ExmentPM screen)

@@ -85,7 +85,7 @@
         // UX-E
         'ed_hint', 'ed_pen', 'mine_all', 'gantt_hint', 'gantt_list', 'kb_prev', 'kb_next', 'kb_cols', 'st_menu',
         // UX-F
-        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'sh_title', 'sh_palette', 'sh_home_1', 'sh_home_2', 'sh_home_3', 'sh_issues_1', 'sh_issues_2', 'sh_issues_3', 'sh_issues_4', 'sh_board_1', 'sh_board_2', 'sh_gantt_1', 'sh_gantt_2', 'sh_burndown_1', 'sh_wiki_1', 'sh_wiki_2', 'sh_files_1', 'sh_issue_1', 'sh_issue_2', 'sh_issue_3', 'sh_issue_4', 'sh_issue_5', 'hint_remind', 'hint_remind_go', 'hint_saved', 'hint_saved_go', 'pos_add_tip', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
+        'feed_more', 'pal_title', 'pal_ph', 'pal_none', 'pal_issues', 'pal_assign_me', 'kh_palette', 'sh_title', 'sh_palette', 'sh_home_1', 'sh_home_2', 'sh_home_3', 'sh_issues_1', 'sh_issues_2', 'sh_issues_3', 'sh_issues_4', 'sh_board_1', 'sh_board_2', 'sh_gantt_1', 'sh_gantt_2', 'sh_burndown_1', 'sh_wiki_1', 'sh_wiki_2', 'sh_files_1', 'sh_issue_1', 'sh_issue_2', 'sh_issue_3', 'sh_issue_4', 'sh_issue_5', 'hint_remind', 'hint_remind_go', 'hint_saved', 'hint_saved_go', 'pos_add_tip', 'md_ph', 'md_badge', 'md_badge_tip', 'md_split', 'md_split_tip', 'md_write', 'mdx_h', 'mdx_b', 'mdx_ul', 'mdx_ol', 'mdx_q', 'mdx_code', 'mdx_link', 'mdx_table', 'mdx_table_ins', 'mdx_task', 'mdx_img', 'mdx_img_how', 'kh_title', 'kh_move', 'kh_list', 'kh_issue', 'kh_other', 'kh_search', 'kh_updown', 'kh_open',
         'kh_comment', 'kh_status', 'kh_prevnext', 'kh_send', 'kh_close', 'kh_help', 'empty_issues', 'empty_filtered', 'empty_wiki',
         'first_steps', 'fs_add_issue', 'fs_invite', 'fs_statuses', 'f_clear_all',
         // UX-H
@@ -468,7 +468,8 @@
                                         <button type="button" data-ct="code" title="{{ $lang['ct_code'] }}"><i class="fa fa-code"></i></button>
                                         <button type="button" data-ct="link" title="{{ $lang['ct_link'] }}"><i class="fa fa-link"></i></button>
                                         <span class="sp"></span>
-                                        <button type="button" data-ct="preview" id="pp-cmt-prevbtn">{{ $lang['ct_preview'] }}</button>
+                                        {{-- MD-1: 書く｜プレビュー as a pair --}}
+                                        <span class="pp-md-tabs"><button type="button" class="on" id="pp-cmt-writebtn">{{ $lang['md_write'] }}</button><button type="button" data-ct="preview" id="pp-cmt-prevbtn">{{ $lang['ct_preview'] }}</button></span>
                                     </div>
                                     <div class="bl-emoji" id="pp-cmt-emoji" hidden></div>
                                     {{-- No data-mention here: the portal runs its own type-ahead

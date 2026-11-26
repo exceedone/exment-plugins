@@ -503,6 +503,12 @@ class PluginPage extends PluginPageBase
         return $this->portal()->postFormStyle(request());
     }
 
+    // MD-1: the editors' side-by-side preview, the user's setting
+    public function postMdSplit()
+    {
+        return $this->portal()->postMdSplit(request());
+    }
+
     public function searchIssues()
     {
         return $this->portal()->searchIssues(request());

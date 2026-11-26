@@ -771,6 +771,18 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * MD-1: the editors' side-by-side preview on or off, the user's own setting.
+     */
+    public function postMdSplit(Request $request)
+    {
+        $on = $request->get('on');
+        $on = is_scalar($on) && in_array(strval($on), ['1', 'true', 'on'], true);
+        \Exment::user()->setSettingValue('pmportal.md_split', $on ? '1' : '');
+
+        return response()->json(['ok' => true, 'on' => $on]);
+    }
+
+    /**
      * The active form style: the user's saved pick, or the first bundled one
      * when the user has not chosen yet.
      *
@@ -3436,6 +3448,8 @@ class PmPortalController extends AdminControllerBase
             'project_table' => $this->project_table->table_name,
             'form_styles' => $form_styles = PortalDefinition::formStyles(),
             'form_style' => $this->currentFormStyle($form_styles),
+            // MD-1: the editors' side-by-side preview, each person's own choice
+            'md_split' => boolval(\Exment::user()->getSettingValue('pmportal.md_split')),
             'features' => [
                 'prefetch' => (bool) config('exment.pmportal.prefetch', true),
                 'embedded' => count($details),
@@ -3470,6 +3484,7 @@ class PmPortalController extends AdminControllerBase
                 'temp_image_upload' => admin_url('tmpimages'),
                 'mention' => admin_url('webapi/mention/users'),
                 'form_style' => PortalDefinition::url('form-style'),
+                'md_split' => PortalDefinition::url('md-split'),
                 'embed_board' => PortalDefinition::url($project->id, 'embed', 'board'),
                 'embed_gantt' => PortalDefinition::url($project->id, 'embed', 'gantt'),
                 'lightapi_base' => PortalDefinition::url('lightapi'),
