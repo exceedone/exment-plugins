@@ -52,6 +52,10 @@ $check('resolved from 送る → 受注', Q::stageFor($q, 'resolved', '送る') 
 $check('on_hold has no stage: kept', Q::stageFor($q, 'on_hold', '見積を作る') === '見積を作る');
 $check('closed in a flow without closed: the first end', Q::stageFor($it, 'closed', '確認') === '完了');
 $check('nothing yet: the first stage', Q::stageFor($it, 'on_hold', '') === '受付');
+$check('closing a won quote keeps 受注 (the automation closes resolved)', Q::stageFor($q, 'closed', '受注') === '受注');
+$check('resolving a lost quote keeps 失注', Q::stageFor($q, 'resolved', '失注') === '失注');
+$check('outcome: 受注 won, 失注 lost, 送る none', Q::outcome('quote', $q, '受注') === 'won' && Q::outcome('quote', $q, '失注') === 'lost' && Q::outcome('quote', $q, '送る') === null);
+$check('outcome: not for other kinds', Q::outcome('product', Q::stages('product', ''), '完了') === null);
 $check('status of a stage', Q::statusOf($q, '送る') === 'pending' && Q::statusOf($q, 'x') === null);
 
 // the fields a queue asks for
