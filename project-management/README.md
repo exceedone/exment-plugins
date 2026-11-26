@@ -17,6 +17,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 **Unreleased / 未リリース**
 
+- Small fixes from the screen review: on a phone, the menus 「保存した条件」 and 「列」 of the issue list open at the left of their row instead of running off the left edge; the copy button under each key shows on the row the pointer is on (touch screens keep it on every row).
+  画面の見直しで見つけた小さな直し：スマホで、課題の一覧の「保存した条件」と「列」のメニューが左にはみ出さないようにしました。キーの下のコピーのボタンは、マウスを乗せた行だけに出します（タッチの画面では今までどおり全部の行に出ます）。
 - Where each person gets a notice (bell, mail, Teams) is read in one place, `PortalNotifyPrefs::channelsFor()`, per person and event; for now it is each person's choice of the 「通知」 menu, as before. The settings per event and per project come next behind it.
   通知をどこに届けるか（ベル・メール・Teams）を、1 か所（`PortalNotifyPrefs::channelsFor()`）で、人と出来事ごとに決めるようにしました。今は前と同じく、ひとりひとりの「通知」のメニューの選び方です。出来事ごと・プロジェクトごとの設定は、このあとここに足します。
 - かんたん / くわしく on an issue (the button map): 「かんたん」 in the line under the title shows only the subject, the status, the assignees, the due date, the text and the comments; 「くわしく」 brings back the rest (the other fields, children, attachments, related issues, who read it). くわしく until a person chooses かんたん, so nothing changes for anyone who does not; a one-time hint beside the switch (「表示を かんたん にできます」, closed with ✕) says it is there. Each person's choice is kept in their browser.

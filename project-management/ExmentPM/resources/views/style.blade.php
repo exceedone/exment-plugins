@@ -1508,6 +1508,12 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-ms .nm{width:110px;}
   .pmportal .bl-ms .cnt{width:auto;}
   .pmportal .pp-sf-menu{max-width:calc(100vw - 40px);}
+  /* FIX-1: on a phone the right-side tools wrap to their own line at the
+     left, and a menu hung from the right of its button ran off the left
+     edge (保存した条件, 列). Hung from the row instead, at its left. */
+  .pmportal .bl-fright{position:relative;}
+  .pmportal .pp-sf-wrap,.pmportal .pp-oc-wrap{position:static;}
+  .pmportal .pp-sf-menu,.pmportal .pp-oc-menu{left:0;right:auto;}
   .pp-top .pp-top-menu{max-width:calc(100vw - 32px);}
   .pp-top .pp-top-search{max-width:none;flex-basis:100%;margin:0 0 8px;}
 }
@@ -1978,4 +1984,11 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-more:has(.m .pp-star.on) .pp-act-on .ind-s,
 .pmportal .pp-more:has(.m .pp-fav.on) .pp-act-on .ind-f,
 .pmportal .pp-more:has(.m .pp-watch.on) .pp-act-on .ind-w{display:inline-block;}
+/* FIX-1: the copy button under each key of the list shows on the row the
+   pointer is on (or when focused), not on every row at once. Touch screens
+   keep it. */
+@media (hover:hover){
+  .pmportal #pp-issue-rows tr .pp-ikcopy{opacity:0;transition:opacity .12s;}
+  .pmportal #pp-issue-rows tr:hover .pp-ikcopy,.pmportal #pp-issue-rows tr:focus-within .pp-ikcopy,.pmportal #pp-issue-rows .pp-ikcopy:focus-visible{opacity:1;}
+}
 </style>
