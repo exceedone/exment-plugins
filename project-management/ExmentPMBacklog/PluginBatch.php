@@ -36,6 +36,10 @@ class PluginBatch extends PluginBatchBase
             if ($only ? intval($conn->id) !== $only : !Connections::due($conn)) {
                 continue;
             }
+            // moved to the data sync of Exment 7.3: run there, not here (never both)
+            if (!empty($conn->sync_mapping_id) && PluginPage::hasSync()) {
+                continue;
+            }
             $r = Syncer::runConnection($conn, $only ? 'manual' : 'schedule', max(1, $limit));
             $c = $r['counts'] + ['add' => 0, 'update' => 0, 'comment' => 0, 'error' => 0];
             $this->line(Lang::t('batch_run', [

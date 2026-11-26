@@ -83,6 +83,10 @@ class Connections
     /** The plain key, or '' when none is stored or it no longer decrypts. */
     public static function apiKey(object $conn): string
     {
+        // the key of a connection of Exment's data sync, given decrypted (SyncBridge)
+        if (isset($conn->api_key_plain) && strval($conn->api_key_plain) !== '') {
+            return strval($conn->api_key_plain);
+        }
         $enc = strval($conn->api_key_enc ?? '');
         if ($enc === '') {
             return '';
