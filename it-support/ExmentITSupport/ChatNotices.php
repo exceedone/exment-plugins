@@ -132,11 +132,8 @@ class ChatNotices
             return;
         }
         static::$pending[] = ['event' => $event, 'ticket' => $ticket, 'data' => $data];
-        if (app()->runningInConsole()) {
-            static::flush();
-
-            return;
-        }
+        // after the request (or the batch's command): by then Exment has given the ticket its
+        // number, which it does after the saved event
         if (!static::$hooked) {
             static::$hooked = true;
             app()->terminating(function () {
@@ -151,10 +148,11 @@ class ChatNotices
         static::$pending = [];
         foreach ($list as $one) {
             try {
-                $ticket = $one['ticket'];
+                // read again: the number (auto_number) is written after the save
+                $ticket = Tickets::find($one['ticket']->id) ?? $one['ticket'];
                 $box = Tickets::boxOf(array_get($ticket->value, 'category'));
                 $t = [
-                    'no' => strval(array_get($ticket->value, 'ticket_no')),
+                    'no' => strval(array_get($ticket->value, 'ticket_no')) ?: '#' . $ticket->id,
                     'subject' => strval(array_get($ticket->value, 'subject')),
                     'box' => $box['id'] ? $box['name'] : '',
                     'url' => Its::url('ticket', strval($ticket->id)),
