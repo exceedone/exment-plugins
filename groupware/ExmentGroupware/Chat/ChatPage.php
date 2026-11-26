@@ -154,9 +154,13 @@ class ChatPage
                 if ($up->getSize() > ChatService::MAX_FILE_BYTES) {
                     throw new \InvalidArgumentException('25 MB をこえるファイルは送れません。');
                 }
+                // kept on Exment's disk but not as an Exment file: Exment's /files/{uuid} gives a
+                // file without a parent row to anyone signed in, so these are served by the chat only
                 $name = ChatText::cleanName($up->getClientOriginalName()) ?: 'file';
-                $file = \Exceedone\Exment\Model\File::storeAs(null, $up, 'gw_chat/' . intval($id), $name);
-                $files[] = ['uuid' => strval($file->uuid), 'name' => $name, 'size' => intval($up->getSize())];
+                $key = bin2hex(random_bytes(16));
+                $path = 'gw_chat/' . intval($id) . '/' . $key;
+                \Illuminate\Support\Facades\Storage::disk(config('admin.upload.disk'))->putFileAs('gw_chat/' . intval($id), $up, $key);
+                $files[] = ['uuid' => $key, 'name' => $name, 'size' => intval($up->getSize()), 'path' => $path];
             }
 
             return ['message' => ChatService::post($uid, intval($id), strval($request->input('body', '')), $files)];
@@ -185,14 +189,16 @@ class ChatPage
     public function file($uuid)
     {
         $f = ChatService::fileFor($this->uid(), strval($uuid));
-        $file = isset($f) ? \Exceedone\Exment\Model\File::getData(strval($f['uuid'])) : null;
-        if (!isset($file)) {
+        $path = isset($f) ? strval($f['path'] ?? '') : '';
+        // only a path of the chat's own folder (the message was written by the chat)
+        if ($path === '' || !preg_match('#^gw_chat/\d+/[0-9a-f]{32}$#', $path)) {
             abort(404);
         }
         $disk = \Illuminate\Support\Facades\Storage::disk(config('admin.upload.disk'));
-        if (!$disk->exists($file->path)) {
+        if (!$disk->exists($path)) {
             abort(404);
         }
+        $file = (object) ['path' => $path];
         $name = strval($f['name'] ?? 'file');
         $inline = (bool) preg_match('/\.(png|jpe?g|gif|webp|pdf)$/i', $name);
 

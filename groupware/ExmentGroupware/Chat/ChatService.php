@@ -309,7 +309,7 @@ class ChatService
      */
     public static function fileFor(int $uid, string $uuid): ?array
     {
-        if (!preg_match('/^[0-9a-f-]{8,64}$/i', $uuid)) {
+        if (!preg_match('/^[0-9a-f]{32}$/', $uuid)) {
             return null;
         }
         $roomIds = DB::table('gw_chat_members')->where('user_id', $uid)->pluck('room_id')->all();
