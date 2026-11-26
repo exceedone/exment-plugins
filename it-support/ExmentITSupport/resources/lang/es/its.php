@@ -8,5 +8,7 @@ return [
         'portal_help' => 'El portal sin inicio de sesión (/support), los enlaces de los correos, la recepción de correos y alertas de monitorización, y "Mis solicitudes". Solo funciona mientras la bandeja de entrada está activada.',
         'pm_link' => 'Help desk: make an ExmentPM issue',
         'pm_link_help' => 'Make an issue of an ExmentPM project from a ticket in one press, and show the status of the issue on the ticket. Only with ExmentPM installed.',
+        'web_form' => 'Help desk: website forms',
+        'web_form_help' => 'A form to embed in a website for each box (an Exment public form). What is sent becomes a ticket of that box. Exment 7.3.0 or later.',
     ],
 ];

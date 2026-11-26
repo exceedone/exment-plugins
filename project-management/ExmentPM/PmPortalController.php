@@ -4213,13 +4213,7 @@ class PmPortalController extends AdminControllerBase
 
         $out = [];
         foreach ($pages as $page) {
-            $docs = [];
-            foreach ($page->getDocuments(['count' => 10]) as $doc) {
-                $docs[] = [
-                    'name' => strval(array_get($doc->value, 'document_name', '')),
-                    'url' => admin_url('files', [array_get($doc->value, 'file_uuid')]),
-                ];
-            }
+            $docs = $this->wikiPageFiles($page);
             $out[] = [
                 'id' => $page->id,
                 'title' => strval(array_get($page->value, array_get($wk, 'title'), $page->getLabel())),
@@ -4239,6 +4233,8 @@ class PmPortalController extends AdminControllerBase
                 // it reading the row again.
                 'hist' => $keeps_history && $wiki_table->hasPermissionEditData($page),
                 'files' => $docs,
+                // ISS02938: the 「編集」 of its attachments
+                'editable' => PortalDefinition::enableEdit($page, true) === true,
             ];
         }
 
@@ -4415,6 +4411,34 @@ class PmPortalController extends AdminControllerBase
      * @param mixed $issue_id
      * @return \Exceedone\Exment\Model\CustomValue
      */
+    /**
+     * The attachments of a wiki page (the newest 10), with which attachment, its version and how
+     * it is edited when attachments are edited here (ISS02938).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function wikiPageFiles($page): array
+    {
+        $documents = $page->getDocuments(['count' => 10]);
+        $attachOn = PortalAttachEdit::enabled();
+        $nos = $attachOn ? PortalAttachEdit::numbers(array_map(function ($d) {
+            return intval($d->id);
+        }, is_array($documents) ? $documents : iterator_to_array($documents))) : [];
+        $docs = [];
+        foreach ($documents as $doc) {
+            $name = strval(array_get($doc->value, 'document_name', ''));
+            $docs[] = [
+                'name' => $name,
+                'url' => admin_url('files', [array_get($doc->value, 'file_uuid')]),
+                'doc' => $attachOn ? intval($doc->id) : null,
+                'ver' => $attachOn ? intval($nos[intval($doc->id)] ?? 1) : null,
+                'ek' => $attachOn ? PortalAttachEdit::kindOf($name) : null,
+            ];
+        }
+
+        return $docs;
+    }
+
     protected function findIssue($project, $issue_id)
     {
         $this->ensureMorphMap();

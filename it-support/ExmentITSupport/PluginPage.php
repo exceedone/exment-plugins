@@ -158,6 +158,17 @@ class PluginPage extends PluginPageBase
         return $this->desk()->postApproval(request(), $id);
     }
 
+    // ISS02941: the 受付箱 and their website forms
+    public function boxes()
+    {
+        return $this->respond($this->desk()->boxes());
+    }
+
+    public function postBoxWebForm($id)
+    {
+        return $this->desk()->postBoxWebForm(request(), $id);
+    }
+
     public function problems()
     {
         return $this->desk()->problems(request());
