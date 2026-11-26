@@ -280,6 +280,8 @@
                 <div class="bl-filters pp-f-at" id="pp-f-at" hidden></div>
             </div>
 
+            {{-- HINT-1: above the list, under the filters, where it is seen --}}
+            <div class="pp-ed-hint pp-hint" id="pp-hint-list" hidden></div>
             {{-- Appears with the first tick; every control in it starts on
                  "leave as is", so an accidental apply changes nothing. --}}
             <div class="bl-bulk" id="pp-bulk" hidden>
@@ -326,7 +328,6 @@
                     <tbody id="pp-issue-rows"></tbody>
                 </table>
                 {{-- S11: said once, to whoever may change the cells. --}}
-                <div class="pp-ed-hint pp-hint" id="pp-hint-list" hidden></div>
                 <div class="pp-ed-hint" id="pp-ed-hint" hidden><i class="fa fa-pencil"></i> {{ $lang['ed_hint'] }} <button type="button" class="x" aria-label="{{ $lang['m_close'] }}">&times;</button></div>
                 <div class="bl-pager">
                     <span class="rg" id="pp-issue-count"></span>

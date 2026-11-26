@@ -498,6 +498,12 @@ test('HINT-1: hints shown once, only where they fit', () => {
     assert.ok(langJa.indexOf('// HINT-1') > 0);
 });
 
+test('HINT-1 fix: the list hint is above the table and its link opens 保存した条件', () => {
+    assert.ok(index.indexOf('id="pp-hint-list"') < index.indexOf('id="pp-bulk"') && index.indexOf('id="pp-hint-list"') < index.indexOf('<table class="bl-list">'));
+    const show = functionSource(read('home.js'), 'hintShow');
+    assert.ok(/ev\.stopPropagation\(\);/.test(show) && /setTimeout\(go, 0\)/.test(show));
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

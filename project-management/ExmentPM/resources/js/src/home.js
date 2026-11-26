@@ -291,9 +291,12 @@
             var g = ev.target.closest && ev.target.closest('.go');
             if (!x && !g) { return; }
             ev.preventDefault();
+            // the same click must not reach a menu's close-on-outside-click
+            // (保存した条件 opens below and would close at once)
+            ev.stopPropagation();
             hintDone(id);
             box.hidden = true;
-            if (g && go) { go(); }
+            if (g && go) { setTimeout(go, 0); }
         };
     }
     // The project home: many due dates and reminders there to be used - for
