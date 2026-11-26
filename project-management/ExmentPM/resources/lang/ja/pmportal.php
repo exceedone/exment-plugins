@@ -92,6 +92,8 @@ return [
         'you_rank' => 'あなたは :all 人中 :rank 位（:n）',
         'you_none' => 'あなたはこの期間、まだランキングに入っていません。',
         'empty' => 'この期間のデータはまだありません。',
+        // the label of a month (PortalRankingTrait::rankLabel)
+        'month_label' => ':year年:month月',
     ],
     'top' => [
         'dashboard' => 'ダッシュボード',
@@ -718,6 +720,8 @@ return [
         'upload_failed' => 'ファイルを保存できませんでした。時間をおいて再度お試しください。',
         'attachment_off' => 'この課題にはファイルを添付できない設定になっています。',
         'setup_required' => 'プロジェクト管理の初期セットアップが完了していません。システム管理者に依頼してください。',
+        // an image ![..](..) in the body whose ( ) is not a place of an image (LightApiController::failed)
+        'image_location' => '本文の画像 ![…](…) の ( ) の中が、画像の場所になっていません。画像の URL にするか、先頭の ! を消して保存してください。',
     ],
     // What a person reads when a JSON call is refused. The keys are the codes
     // the endpoints put in `error` (PortalDefinition::errorMessage()); the
