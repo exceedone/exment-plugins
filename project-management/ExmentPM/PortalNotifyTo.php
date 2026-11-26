@@ -96,7 +96,7 @@ class PortalNotifyTo
                 $targets = PortalMail::bellTargets($issue_table, $issue_id, $bell_mark, $me);
                 $own = static::channels($targets, $project_id, $kind);
                 $targets = array_values(array_filter($targets, function ($id) use ($own) {
-                    return empty($own[strval($id)]['teams']);
+                    return !array_get($own, strval($id) . '.teams', false);
                 }));
                 if (empty($targets)) {
                     return;
