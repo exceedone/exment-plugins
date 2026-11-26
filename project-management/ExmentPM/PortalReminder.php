@@ -292,7 +292,11 @@ class PortalReminder
                 continue;
             }
             $people = PortalMembership::filterReaders($issue, static::targets($issue, $s['to'], $def, $issueTable));
-            $channels = $rule['channels'] ?? [];
+            // the project's chat channels that take reminders (PortalChannels, ISS02939)
+            $channels = [];
+            foreach (PortalChannels::forEvent($pid, 'reminder') as $c) {
+                $channels[$c['id']] = $c;
+            }
             if (empty($people) && empty($channels)) {
                 continue;
             }
@@ -300,12 +304,17 @@ class PortalReminder
             foreach ($slots as $slot => [$kind, $n]) {
                 $sent = static::alreadySent(intval($issue->id), $slot);
                 $fresh = array_values(array_diff($people, $sent));
-                // a channel is "user 0" of the slot ch<n>:<slot>
+                // a channel is "user 0" of the slot c<id>:<slot>; one moved from the reminders'
+                // own list was ch<index>:<slot> there, and is not sent the same reminder again
                 $freshChannels = [];
-                foreach ($channels as $ci => $c) {
-                    if (empty(static::alreadySent(intval($issue->id), 'ch' . $ci . ':' . $slot))) {
-                        $freshChannels[$ci] = $c;
+                foreach ($channels as $cid => $c) {
+                    if (!empty(static::alreadySent(intval($issue->id), 'c' . $cid . ':' . $slot))) {
+                        continue;
                     }
+                    if ($c['legacy_index'] !== null && !empty(static::alreadySent(intval($issue->id), 'ch' . $c['legacy_index'] . ':' . $slot))) {
+                        continue;
+                    }
+                    $freshChannels[$cid] = $c;
                 }
                 $result['skipped'] += count($people) - count($fresh) + count($channels) - count($freshChannels);
                 if (empty($fresh) && empty($freshChannels)) {
@@ -404,8 +413,8 @@ class PortalReminder
         foreach ($people as $uid) {
             $rows[] = ['issue_id' => intval($issue->id), 'user_id' => $uid, 'slot' => $slot, 'created_at' => $now, 'updated_at' => $now];
         }
-        foreach (array_keys($channels) as $ci) {
-            $rows[] = ['issue_id' => intval($issue->id), 'user_id' => 0, 'slot' => 'ch' . $ci . ':' . $slot, 'created_at' => $now, 'updated_at' => $now];
+        foreach (array_keys($channels) as $cid) {
+            $rows[] = ['issue_id' => intval($issue->id), 'user_id' => 0, 'slot' => 'c' . $cid . ':' . $slot, 'created_at' => $now, 'updated_at' => $now];
         }
         DB::table(static::LOG_TABLE)->insertOrIgnore($rows);
 
@@ -438,9 +447,20 @@ class PortalReminder
         if (!empty($people)) {
             PortalTeams::sendTo($people, $issueTable->table_name, intval($issue->id), 'remind', $key, $subject, [$line], $url, false, $title);
         }
-        // the channels of the project (stage 1b)
+        // the chat channels of the project that take reminders (PortalChannels)
         if (!empty($channels)) {
-            PortalReminderRules::post(array_values($channels), $issue, $title, $subject, $line, $url);
+            $message = [
+                'project' => ['id' => intval($project->id), 'name' => strval($project->getLabel()), 'key' => $pkey, 'url' => PortalDefinition::projectUrl($project)],
+                'issue' => ['id' => intval($issue->id), 'key' => $key, 'subject' => $subject, 'url' => $url],
+                'by' => '',
+                'events' => ['reminder' => ['kind' => $kind, 'n' => $n, 'due' => $due]],
+                'title' => $title,
+                'lines' => [$subject, $line],
+                'issue_model' => $issue,
+            ];
+            foreach ($channels as $c) {
+                PortalChannels::post($c, $message);
+            }
         }
     }
 }

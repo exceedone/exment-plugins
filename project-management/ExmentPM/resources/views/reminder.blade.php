@@ -5,10 +5,6 @@
     $r = function ($key, $args = []) {
         return PortalDefinition::trans('remind.' . $key, $args);
     };
-    $types = ['slack' => 'Slack', 'teams' => 'Microsoft Teams'];
-    if ($line_works) {
-        $types['line_works'] = 'LINE WORKS';
-    }
     $toOpts = ['assignees', 'sub_assignees', 'managers', 'watchers'];
 @endphp
 <style>
@@ -62,24 +58,9 @@
 
             <div class="box2">
                 <h4>{{ $r('channels') }}</h4>
-                <p class="site">{{ $r('channels_help') }}</p>
-                @php $rows = $channels; while (count($rows) < min($max_channels, count($channels) + 1)) { $rows[] = ['index' => -1, 'type' => '', 'label' => '', 'masked' => '', 'channel' => '']; } @endphp
-                @foreach($rows as $n => $c)
-                <div class="ch">
-                    <input type="hidden" name="channels[{{ $n }}][index]" value="{{ $c['index'] }}">
-                    <select name="channels[{{ $n }}][type]" aria-label="{{ $r('ch_type') }}">
-                        <option value="">{{ $r('ch_none') }}</option>
-                        @foreach($types as $k => $l)<option value="{{ $k }}" @if($c['type'] === $k) selected @endif>{{ $l }}</option>@endforeach
-                    </select>
-                    <div>
-                        <input type="url" name="channels[{{ $n }}][url]" value="" autocomplete="off" placeholder="{{ $c['masked'] !== '' ? $r('ch_keep') : $r('ch_url') }}" style="width:100%;">
-                        @if($c['masked'] !== '')<div class="masked">{{ $r('ch_saved', ['url' => $c['masked']]) }}</div>@endif
-                        @if($line_works)<input type="text" name="channels[{{ $n }}][channel]" value="{{ $c['channel'] }}" placeholder="{{ $r('ch_lw') }}" style="width:100%;margin-top:4px;">@endif
-                    </div>
-                    <input type="text" name="channels[{{ $n }}][label]" value="{{ $c['label'] }}" placeholder="{{ $r('ch_label') }}">
-                    @if($c['index'] >= 0)<label class="ck"><input type="checkbox" name="channels[{{ $n }}][remove]" value="1"> {{ $r('ch_remove') }}</label>@else<span></span>@endif
-                </div>
-                @endforeach
+                {{-- the channels are on the project's settings, with the other chat notifications (ISS02939) --}}
+                <p class="site">{{ $r('channels_moved', ['n' => $channel_count]) }}</p>
+                <a href="{{ $channels_url }}">{{ PortalDefinition::trans('set.tab_channels') }} <i class="fa fa-angle-right"></i></a>
             </div>
 
             <button type="submit" class="btn btn-primary">{{ $r('save') }}</button>

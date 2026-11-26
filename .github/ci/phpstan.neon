@@ -22,6 +22,8 @@ parameters:
             - ../../kintone/ExmentKintone
             # its test reads KintoneApi from that folder
             - ../../kintone/tools
+            # ExmentPM's test of the chat channels declares a stand-in PortalDefinition
+            - ../../project-management/tools/test-pm-channels.php
             # IT Support's connectors of the data sync (7.3.0), and their test in an Exment 7.3
             - ../../it-support/ExmentITSupport/Sync
             - ../../it-support/tools/test-asset-sync-db.php
