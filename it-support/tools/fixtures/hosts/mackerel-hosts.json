@@ -1,0 +1,40 @@
+{
+  "hosts": [
+    {
+      "id": "2eQGEaLxibb",
+      "name": "web01.example.invalid",
+      "displayName": "web01",
+      "status": "working",
+      "isRetired": false,
+      "roles": {"Shop": ["web", "app"]},
+      "interfaces": [
+        {"name": "eth0", "ipAddress": "192.0.2.10", "ipv4Addresses": ["192.0.2.10"], "macAddress": "00:00:5e:00:53:01"},
+        {"name": "lo", "ipAddress": "127.0.0.1"}
+      ],
+      "meta": {
+        "agent-name": "mackerel-agent/0.80.0",
+        "cpu": [{"model name": "Intel(R) Xeon(R) CPU E5-2676 v3 @ 2.40GHz", "cores": "2"}],
+        "kernel": {"name": "Linux", "release": "5.15.0-1050-aws", "platform_name": "Ubuntu", "platform_version": "22.04"},
+        "memory": {"total": "4030464kB"}
+      }
+    },
+    {
+      "id": "3fRHFbMyjcc",
+      "name": "db01.example.invalid",
+      "status": "standby",
+      "isRetired": false,
+      "roles": {"Shop": ["db"]},
+      "interfaces": [{"name": "eth0", "ipAddress": "192.0.2.21"}],
+      "meta": {"kernel": {"name": "Linux", "release": "6.1.0"}}
+    },
+    {
+      "id": "4gSIGcNzkdd",
+      "name": "old01.example.invalid",
+      "status": "poweroff",
+      "isRetired": true,
+      "roles": {},
+      "interfaces": [],
+      "meta": {}
+    }
+  ]
+}
