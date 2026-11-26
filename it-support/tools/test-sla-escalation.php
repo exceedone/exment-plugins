@@ -47,6 +47,9 @@ $check('step 3: the managers', R::recipients(3, '5', ['10'], ['20'], $agents) ==
 $check('step 3 without managers: the leads', R::recipients(3, '5', ['10'], [], $agents) === ['10']);
 $check('step 3 with nobody set: the assignee', R::recipients(3, '5', [], [], $agents) === ['5']);
 $check('no one twice, no empty id', R::recipients(2, '5', ['10', '10', ''], [], $agents) === ['10']);
+$check('several assignees (a column of many users): all of them', R::recipients(1, ['5', '6'], [], [], $agents) === ['5', '6']);
+$check('an empty list of assignees: the agents', R::recipients(1, [], [], [], $agents) === ['7', '8']);
+$check('several assignees, no leads: all of them at step 2', R::recipients(2, ['5', '6'], [], [], $agents) === ['5', '6']);
 
 echo "\n$ok OK, $bad NG\n";
 exit($bad === 0 ? 0 : 1);
