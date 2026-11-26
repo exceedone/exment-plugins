@@ -23,6 +23,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   上のバーに「⚙ 設定」のメニューを 1 つだけ置きました（ボタンの地図）。「通知の受け取り方」「全体の設定」（管理者だけ）「マニュアル」は、それぞれのボタンでなく、このメニューの中にあります。「アップグレードが必要」は今までどおりバーに出します。
 - The issue list's own actions are in one 「⋯ ほかの操作」 menu (the button map): the four downloads (Excel / CSV, every column or the list's) and 「まとめて変更（表示中の課題を選ぶ）」, which ticks every issue on screen and opens the bulk change bar. The separate download link is gone from the toolbar.
   課題の一覧の操作を「⋯ ほかの操作」の 1 つのメニューにまとめました（ボタンの地図）：4 つのダウンロード（Excel・CSV、すべての項目か一覧の項目）と「まとめて変更（表示中の課題を選ぶ）」（表示中の課題すべてにチェックを付け、まとめて変更の行を出します）。ツールバーのダウンロードのリンクはなくしました。
+- Each screen says what its buttons do (the button map): the box of the `?` key starts with 「この画面のボタン」 for the screen on show (home, issues, board, gantt, burndown, wiki, files, an issue), above the keys. The command palette (Ctrl+K) lists it too.
+  画面ごとに、ボタンの説明を出すようにしました（ボタンの地図）。`?` のキーで出る窓の上に、今の画面（ホーム・課題・ボード・ガント・バーンダウン・Wiki・ファイル・課題の画面）の「この画面のボタン」を出します。コマンドの窓（Ctrl+K）からも開けます。
 - Small fixes from the screen review: on a phone, the menus 「保存した条件」 and 「列」 of the issue list open at the left of their row instead of running off the left edge; the copy button under each key shows on the row the pointer is on (touch screens keep it on every row).
   画面の見直しで見つけた小さな直し：スマホで、課題の一覧の「保存した条件」と「列」のメニューが左にはみ出さないようにしました。キーの下のコピーのボタンは、マウスを乗せた行だけに出します（タッチの画面では今までどおり全部の行に出ます）。
 - A comment sent also by mail or Teams keeps who got it, on a quiet line under the comment (「メールで知らせた: 山田、佐藤」 / 「Teams で知らせた: …」) (ISS02931). Written when the comment is posted; no notice of its own. Kept in exment_stars (types nt:mail, nt:teams), no new table.

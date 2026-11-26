@@ -443,6 +443,40 @@ test('LIST-1: the list\'s ⋯ menu holds the downloads and the bulk change', () 
     assert.ok(langJa.indexOf('// LIST-1') > 0);
 });
 
+test('HELP-1: the ? box says what the buttons of this screen do', () => {
+    const bootSrc = read('boot.js');
+    const f = new Function("var L = { sh_issue_1: 'a', sh_issue_2: 'b', sh_title: 'T', sh_palette: 'P' }; function esc(s) { return String(s); } " +
+        functionSource(bootSrc, 'screenHelpLines') + functionSource(bootSrc, 'screenHelpHtml') + 'return { lines: screenHelpLines, html: screenHelpHtml };')();
+    assert.deepStrictEqual(f.lines('issue'), ['a', 'b']);
+    assert.deepStrictEqual(f.lines('nothing'), []);
+    assert.strictEqual(f.html('nothing'), '');
+    assert.ok(f.html('issue').indexOf('<li>a</li><li>b</li>') > 0);
+    assert.ok(/screenHelpHtml\(currentScreen\)/.test(functionSource(bootSrc, 'keyHelp')));
+    assert.ok(/L\.sh_title/.test(read('palette.js')), 'in the palette too');
+    ['home', 'issues', 'board', 'gantt', 'wiki', 'files', 'issue'].forEach((scr) => {
+        assert.ok(ja('sh_' + scr + '_1'), scr);
+        assert.ok(index.indexOf("'sh_" + scr + "_1'") > 0, scr + ' passed to the script');
+    });
+    assert.ok(langJa.indexOf('// HELP-1') > 0);
+});
+
+test('HELP-1 fix: the ? box and the palette start under the fixed header', () => {
+    const bootSrc = read('boot.js');
+    const safe = functionSource(bootSrc, 'ppTopSafe');
+    assert.ok(/portal\.getBoundingClientRect\(\)\.top/.test(safe) && /\.main-header/.test(safe), 'below the top of the portal, or the header');
+    const f = new Function('root', 'document', safe + 'return ppTopSafe();');
+    const portal = { getBoundingClientRect: () => ({ top: 63 }) };
+    const fakeRoot = { closest: () => portal };
+    assert.strictEqual(f(fakeRoot, { querySelector: () => ({ getBoundingClientRect: () => ({ bottom: 50 }) }) }), 63);
+    assert.strictEqual(f(fakeRoot, { querySelector: () => ({ getBoundingClientRect: () => ({ bottom: 100 }) }) }), 100);
+    assert.strictEqual(f({ closest: () => ({ getBoundingClientRect: () => ({ top: -400 }) }) }, { querySelector: () => null }), 0, 'never above 0');
+    assert.ok(/ppPlaceBox\(box\);/.test(functionSource(bootSrc, 'keyHelp')), 'the ? box');
+    assert.ok(/ppPlaceBox\(box\);/.test(functionSource(read('palette.js'), 'palOpen')), 'the palette, the same helper');
+    assert.ok(/addEventListener\('resize'/.test(functionSource(bootSrc, 'ppPlaceBox')));
+    assert.ok(style.indexOf('.pmportal .pp-keyhelp{align-items:flex-start;padding:calc(var(--pp-top-safe, 0px) + 8px) 16px 16px;z-index:1100;}') > 0);
+    assert.ok(style.indexOf('.pmportal .pp-keyhelp .in{max-height:calc(100vh - var(--pp-top-safe, 0px) - 24px);overflow:auto;}') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);
