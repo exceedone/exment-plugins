@@ -70,6 +70,26 @@ class WebForms
     }
 
     /**
+     * The columns a visitor must fill: the email always (the receipt mail), and those of the
+     * box's fields marked 必須 that are on the form.
+     *
+     * @param array<int, array{column: string, required: bool}> $fields
+     * @param array<int, string> $columns
+     * @return array<int, string>
+     */
+    public static function requiredFor(array $fields, array $columns): array
+    {
+        $required = ['requester_email'];
+        foreach ($fields as $f) {
+            if (!empty($f['required'])) {
+                $required[] = strval($f['column']);
+            }
+        }
+
+        return array_values(array_intersect($columns, array_unique($required)));
+    }
+
+    /**
      * What every sending gets without the visitor choosing: the box, the channel, seen by the
      * customer; a subject when the form has none.
      *
@@ -108,6 +128,7 @@ class WebForms
             'complete_title' => 'お問い合わせを受け付けました',
             'complete_text' => '担当者から、入力いただいたメールアドレスへご連絡します。',
             'notify_user_column' => 'requester_email',
+            'required' => static::requiredFor($box['fields'], $cols['columns']),
             'rate_limit' => static::RATE_LIMIT,
         ];
         if (!empty($box['default_assignee'])) {

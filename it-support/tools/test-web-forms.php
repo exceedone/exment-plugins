@@ -29,6 +29,10 @@ foreach (['status', 'category', 'channel', 'customer_visible', 'require_otp', 'a
     $check("$col never on a form", in_array($col, W::DENIED, true));
 }
 
+$fields = [['column' => 'requester_name', 'required' => true], ['column' => 'status', 'required' => true], ['column' => 'description', 'required' => false]];
+$cols = W::columnsFor($fields)['columns'];
+$check('required: the email and the 必須 on the form', W::requiredFor($fields, $cols) === ['requester_email', 'requester_name'], W::requiredFor($fields, $cols));
+$check('required: no fields, the email only', W::requiredFor([], W::DEFAULT_COLUMNS) === ['requester_email']);
 $f = W::fixedValues(7, '見積のご依頼', ['requester_email', 'description']);
 $check('fixed: the box, the channel, seen by the customer', $f['category'] === '7' && $f['channel'] === 'form' && $f['customer_visible'] === '1');
 $check('fixed: a subject when the form has none', $f['subject'] === '見積のご依頼（Web サイトのフォーム）');
