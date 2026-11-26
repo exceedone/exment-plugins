@@ -6877,6 +6877,16 @@ window.PmPortalBoot = function () {
                 var a = links[i];
                 if (a.hasAttribute('data-pv') || a.closest('.pp-pvb, .pp-pv, .pp-aed, .pp-pvskip')) { continue; }
                 a.setAttribute('data-pv', '1');
+                // a picture or an icon only (the list's thumbnail): its name link next to it gets them
+                if ((a.textContent || '').trim() === '') { continue; }
+                // the same file linked twice in one row: once
+                var row = a.parentNode, dup = false;
+                if (row) {
+                    var same = row.querySelectorAll('a[data-pvdone]');
+                    for (var j = 0; j < same.length; j++) { if (same[j].getAttribute('href') === a.getAttribute('href')) { dup = true; } }
+                }
+                if (dup) { continue; }
+                a.setAttribute('data-pvdone', '1');
                 var b = pvButtons(a.getAttribute('href'), pvName(a));
                 if (b) { a.parentNode.insertBefore(b, a.nextSibling); }
             }
