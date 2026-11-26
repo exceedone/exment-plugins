@@ -2009,4 +2009,7 @@ body.pp-ib-open{overflow:hidden;}
 /* ISS02931: under a comment, who it was also sent to by mail / Teams */
 .pmportal .pp-ntline{margin:4px 0 0;font-size:11.5px;color:var(--bl-faint);}
 .pmportal .pp-ntline .fa{margin-right:3px;}
+/* HELP-1: what this screen's buttons do, above the keys in the ? box */
+.pmportal .pp-keyhelp .pp-sh ul{margin:0 0 4px;padding-left:18px;font-size:13px;color:var(--bl-ink);line-height:1.6;}
+.pmportal .pp-keyhelp .pp-sh-tip{font-size:12px;color:var(--bl-sub);margin:2px 0 6px;}
 </style>

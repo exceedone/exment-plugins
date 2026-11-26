@@ -13885,6 +13885,9 @@ window.PmPortalBoot = function () {
             if (main && main.querySelector('.bl-inav a:first-child:not(.off)')) { out.push({ g: L.kh_issue, l: L.nav_prev, k: '[', run: palPress('#pp-d-main .bl-inav a:first-child:not(.off)') }); }
             if (main && main.querySelector('.bl-inav a:last-child:not(.off)')) { out.push({ g: L.kh_issue, l: L.nav_next, k: ']', run: palPress('#pp-d-main .bl-inav a:last-child:not(.off)') }); }
         }
+        if (screenHelpLines(currentScreen).length) {
+            out.push({ g: L.kh_other, l: L.sh_title, k: '?', run: function () { keyHelp(true); } });
+        }
         out.push({ g: L.kh_other, l: L.kh_help, k: '?', run: function () { keyHelp(true); } });
         return out;
     }
@@ -14096,6 +14099,24 @@ window.PmPortalBoot = function () {
         ['kh_issue', [['e', 'edit'], ['c', 'kh_comment'], ['s', 'kh_status'], ['[ ]', 'kh_prevnext']]],
         ['kh_other', [['Ctrl+K', 'kh_palette'], ['Ctrl+Enter', 'kh_send'], ['Esc', 'kh_close'], ['?', 'kh_help']]]
     ];
+    // HELP-1: what the buttons of this screen do, above the keys. The lines
+    // are lang keys sh_<screen>_1, _2, ... (as many as the screen has).
+    function screenHelpLines(scr) {
+        var out = [];
+        for (var n = 1; n <= 9; n++) {
+            var line = L['sh_' + String(scr || '') + '_' + n];
+            if (!line) { break; }
+            out.push(line);
+        }
+        return out;
+    }
+    function screenHelpHtml(scr) {
+        var lines = screenHelpLines(scr);
+        if (!lines.length) { return ''; }
+        return '<div class="grp pp-sh"><div class="gt">' + esc(L.sh_title) + '</div><ul>' +
+            lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
+            '<div class="pp-sh-tip">' + esc(L.sh_palette) + '</div></div>';
+    }
     function keyHelp(show) {
         var box = document.getElementById('pp-keyhelp');
         if (!show) { if (box) { box.remove(); } return; }
@@ -14108,6 +14129,7 @@ window.PmPortalBoot = function () {
         box.setAttribute('aria-label', L.kh_title);
         box.innerHTML = '<div class="in"><div class="hd"><span>' + esc(L.kh_title) + '</span>' +
             '<button type="button" class="x" aria-label="' + esc(L.m_close) + '">&times;</button></div>' +
+            screenHelpHtml(currentScreen) +
             KEY_HELP.map(function (g) {
                 return '<div class="grp"><div class="gt">' + esc(L[g[0]]) + '</div>' + g[1].map(function (k) {
                     return '<div class="kr">' + String(k[0]).split(' ').map(function (x) { return '<kbd>' + esc(x) + '</kbd>'; }).join(' ') +

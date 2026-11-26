@@ -71,6 +71,9 @@
             if (main && main.querySelector('.bl-inav a:first-child:not(.off)')) { out.push({ g: L.kh_issue, l: L.nav_prev, k: '[', run: palPress('#pp-d-main .bl-inav a:first-child:not(.off)') }); }
             if (main && main.querySelector('.bl-inav a:last-child:not(.off)')) { out.push({ g: L.kh_issue, l: L.nav_next, k: ']', run: palPress('#pp-d-main .bl-inav a:last-child:not(.off)') }); }
         }
+        if (screenHelpLines(currentScreen).length) {
+            out.push({ g: L.kh_other, l: L.sh_title, k: '?', run: function () { keyHelp(true); } });
+        }
         out.push({ g: L.kh_other, l: L.kh_help, k: '?', run: function () { keyHelp(true); } });
         return out;
     }
