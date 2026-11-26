@@ -102,32 +102,47 @@ class PortalReminder
     public static function parseSettings(array $raw): array
     {
         $days = [];
-        foreach (preg_split('/[\s,、，]+/u', strval($raw['days'] ?? '')) ?: [] as $d) {
+        // the days as typed ("3,1"), or as saved already (a project's rule: [3, 1])
+        $rawDays = $raw['days'] ?? '';
+        $dayList = is_array($rawDays) ? $rawDays : (preg_split('/[\s,、，]+/u', strval($rawDays)) ?: []);
+        foreach ($dayList as $d) {
+            $d = is_scalar($d) ? strval($d) : '';
             if (ctype_digit($d) && intval($d) >= 1 && intval($d) <= 60) {
                 $days[intval($d)] = true;
             }
         }
         $days = array_keys($days);
         rsort($days);
-        $time = strval($raw['time'] ?? '09:00');
+        $time = is_scalar($raw['time'] ?? null) ? strval($raw['time']) : '09:00';
         if (!preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', $time, $m)) {
             $time = '09:00';
         } else {
             $time = sprintf('%02d:%s', intval($m[1]), $m[2]);
         }
         $to = $raw['to'] ?? ['assignees'];
-        $to = is_array($to) ? $to : explode(',', strval($to));
-        $to = array_values(array_intersect(static::TARGETS, array_map('strval', $to)));
+        $to = is_array($to) ? $to : explode(',', is_scalar($to) ? strval($to) : '');
+        $to = array_values(array_intersect(static::TARGETS, array_map(function ($v) {
+            return is_scalar($v) ? strval($v) : '';
+        }, $to)));
 
         return [
             'days' => $days,
-            'business' => boolval(intval($raw['business'] ?? 0)),
-            'today' => boolval(intval($raw['today'] ?? 0)),
-            'overdue' => boolval(intval($raw['overdue'] ?? 0)),
-            'overdue_max' => max(1, min(90, intval($raw['overdue_max'] ?? 14) ?: 14)),
+            'business' => static::flagOf($raw['business'] ?? 0),
+            'today' => static::flagOf($raw['today'] ?? 0),
+            'overdue' => static::flagOf($raw['overdue'] ?? 0),
+            'overdue_max' => max(1, min(90, intval(is_scalar($raw['overdue_max'] ?? null) ? $raw['overdue_max'] : 14) ?: 14)),
             'time' => $time,
             'to' => empty($to) ? ['assignees'] : $to,
         ];
+    }
+
+    /** A switch as typed ('1', '0', 'on') or as saved (true, false). */
+    protected static function flagOf($v): bool
+    {
+        if (is_bool($v)) {
+            return $v;
+        }
+        return is_scalar($v) && (boolval(intval($v)) || strtolower(strval($v)) === 'on' || strtolower(strval($v)) === 'true');
     }
 
     /**
