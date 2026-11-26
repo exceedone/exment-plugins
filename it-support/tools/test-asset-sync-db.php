@@ -49,6 +49,10 @@ $fake = function (array $responses) use (&$history, $Base) {
 $assets = $I::table($I::T_ASSET);
 $q = function () use ($assets) { return $assets->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class); };
 
+// the hosts of the fixtures (*.invalid) do not resolve: Exment's address guard (WebhookUrlGuard)
+// would refuse them before the fake client is asked, so they are the administrator's allowed hosts here
+config(['exment.notify_webhook_allow_hosts' => 'api.example.invalid,zabbix.example.invalid']);
+
 DB::beginTransaction();
 try {
     // ---- Mackerel, link only (the default) ---------------------------------
@@ -155,6 +159,9 @@ try {
     }
     $fake([new Response(401, [], '')]);
     $check('mackerel: a refused key says so', strpos(strval($mk->test($conn)), '401') !== false);
+} catch (\Throwable $e) {
+    // a check that stops the test is a failure, not the end
+    $check('the test ran to its end', false, get_class($e) . ': ' . $e->getMessage());
 } finally {
     DB::rollBack();
     $Base::$http = null;

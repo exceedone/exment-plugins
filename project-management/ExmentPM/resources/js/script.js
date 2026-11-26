@@ -1870,53 +1870,6 @@ window.PmPortalBoot = function () {
         });
     }
 
-    /* ------------------------------------------------ csv --------------- */
-    function csvCell(v) {
-        var s = (v === null || v === undefined) ? '' : String(v);
-        // A cell opening with =, +, - or @ (or a tab or CR in front of one)
-        // is a formula to a spreadsheet, not a subject line. A leading
-        // apostrophe makes it text again, and excel hides the apostrophe. A
-        // plain negative number is the one '-' cell left as it is, so it
-        // still sorts and sums as a number.
-        if (/^[=+@\t\r]/.test(s) || /^-(?!\d+(\.\d+)?$)/.test(s)) { s = "'" + s; }
-
-        return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    }
-    function exportCsv() {
-        var rows = filteredIssues();
-        if (!rows.length) { toast(L.f_csv_empty, true); return; }
-        var lines = [[L.col_ty, L.col_key, L.col_subject, L.col_as, L.col_st, L.col_pr,
-            L.col_ms, L.col_cat, L.col_sd, L.col_dd, L.col_pg, L.col_up].map(csvCell).join(',')];
-        rows.forEach(function (i) {
-            lines.push([
-                (own(D.types, i.ty) || {}).l || '',
-                i.key,
-                i.subject,
-                (i.as || []).map(function (u) { return user(u).n; }).join(' / '),
-                (own(ST, i.st) || {}).l || '',
-                (own(D.priorities, i.pr) || {}).l || '',
-                (own(D.milestones, i.ms) || {}).l || '',
-                (i.cat || []).map(function (c) { return own(D.categories, c) || ''; }).join(' / '),
-                i.sd || '',
-                i.dd || '',
-                (i.pg === null || i.pg === undefined) ? '' : i.pg,
-                i.up || ''
-            ].map(csvCell).join(','));
-        });
-        // Excel on a japanese windows reads a UTF-8 file with no byte order
-        // mark as shift_jis and turns every label into mojibake, so the mark
-        // is not optional here. CRLF for the same reader.
-        var blob = new Blob(['\ufeff' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8;' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = (D.project.key || 'issues') + '-' + D.today + '.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    }
-
     /* ------------------------------------------------ saved conditions -- */
     function savedList() {
         try {
@@ -3946,7 +3899,8 @@ window.PmPortalBoot = function () {
     // Only addresses a browser can be pointed at without running anything.
     // "javascript:" survives escaping untouched, so it is stopped here.
     function safeHref(url) {
-        return /^(https?:\/\/|\/|\.{1,2}\/|#)/i.test(String(url || ''));
+        // a path of this site starts with one "/": "//host" and "/\host" go to another site
+        return /^(https?:\/\/|\/(?![\/\\])|\.{1,2}\/|#)/i.test(String(url || ''));
     }
     // An address for a link the page writes itself; anything that is not a
     // safe one points nowhere.
@@ -11439,7 +11393,51 @@ window.PmPortalBoot = function () {
         if (!alive()) { window.removeEventListener('focus', onPpFocus); return; }
         checkStamp(CHECK_GAP_FOCUS);
     });
-    document.getElementById('pp-f-csv').addEventListener('click', exportCsv);
+    // ISS00275: CSV or Excel, every column or the list's; the server makes the file
+    document.getElementById('pp-f-csv').addEventListener('click', function (ev) {
+        var r = this.getBoundingClientRect();
+        ev.preventDefault();
+        ctxOpen(r.left, r.bottom + 2, [
+            { l: L.f_dl_xlsx_all, i: 'fa-file-excel-o', f: function () { exportIssues('xlsx', 'all'); } },
+            { l: L.f_dl_xlsx_screen, i: 'fa-file-excel-o', f: function () { exportIssues('xlsx', 'screen'); } },
+            { l: L.f_dl_csv_all, i: 'fa-file-text-o', f: function () { exportIssues('csv', 'all'); } },
+            { l: L.f_dl_csv_screen, i: 'fa-file-text-o', f: function () { exportIssues('csv', 'screen'); } }
+        ]);
+    });
+    var EXPORT_BUSY = false;
+    function exportIssues(fmt, cols) {
+        var rows = filteredIssues();
+        if (!rows.length) { toast(L.f_csv_empty, true); return; }
+        if (EXPORT_BUSY) { return; }
+        EXPORT_BUSY = true;
+        toast(L.f_dl_busy);
+        var body = new FormData();
+        body.append('ids', rows.map(function (i) { return i.id; }).join(','));
+        body.append('fmt', fmt);
+        body.append('cols', cols);
+        fetch(D.urls.base + '/export', {
+            method: 'POST', body: body, credentials: 'same-origin',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (res) {
+            if (!res.ok) {
+                return res.json().catch(function () { return {}; }).then(function (j) { throw new Error((j && j.message) || L.f_dl_fail); });
+            }
+            return res.blob();
+        }).then(function (blob) {
+            EXPORT_BUSY = false;
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = (D.project.key || 'issues') + '-' + D.today + '.' + fmt;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        }).catch(function (e) {
+            EXPORT_BUSY = false;
+            toast((e && e.message) || L.f_dl_fail, true);
+        });
+    }
     document.getElementById('pp-jump').addEventListener('input', function () {
         FILTER.kw = this.value;
         if (parseHash().path !== 'issues') {

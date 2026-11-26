@@ -19,6 +19,12 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 - The portal speaks the language of each user (Exment 7.2.5): its strings are now also in English, Vietnamese, Simplified Chinese, Korean, German and Spanish (`ExmentPM/resources/lang/<locale>/pmportal.php`, the same keys as `ja`). A language the plugin does not ship reads English, and a line missing in a language reads English, then Japanese. The names the setup and the upgrade write into the data (statuses, issue types, priorities, resolutions, notifications, column help, menu — the `schema` lines) stay Japanese, because the upgrade finds its rows again by those names. `project-management/tools/test-languages.php` checks the files (keys and placeholders as in `ja`) and the language each line is read in.
   ポータルが、ユーザーごとの言語で出るようになりました（Exment 7.2.5）。文言に、英語・ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`ExmentPM/resources/lang/<言語>/pmportal.php`、キーは `ja` と同じ）。プラグインにない言語は英語で、ある言語で足りない文言は英語、その次に日本語で出ます。セットアップとアップグレードがデータに書く名前（状態・種別・優先度・完了理由・通知・列の説明・メニュー。`schema` の文言）は、今までどおり日本語です。アップグレードはその名前で行を探し直すためです。`project-management/tools/test-languages.php` で、ファイル（キーと置き換えの印が `ja` と同じか）と、どの言語で読むかを試せます。
+- Tighter checks: the type templates of a new issue only for a project the user may read; the filters of the pickers only by a column that points at another table; "mail this issue" at most 30 times an hour a person; a link of the body that starts with "//" is not taken as a page of this site.
+  チェックを強めました：新しい課題の種別のテンプレートは、見られるプロジェクトの分だけ。選ぶ画面の絞り込みは、ほかのテーブルを指す列だけ。「この課題をメールで送る」は 1 人 1 時間に 30 回まで。本文の「//」で始まるリンクは、このサイトのページとして扱わない。
+- The download of the issue list makes CSV or Excel (.xlsx), with every column of an issue (people by name, the creator and the updater, the description, the related issues …) or the columns of the list, in the list's filters and order. The file is made by the server, with the caller's permissions; in Excel the dates are dates, the head row is frozen and has a filter.
+  課題の一覧のダウンロードで、CSV と Excel（.xlsx）を選べるようにしました。すべての項目（担当者などは名前、作成者・更新者・詳細・関連課題も）か、一覧と同じ項目を、今の絞り込みと並び順で出します。ファイルはサーバーで、使う人の権限で作ります。Excel では日付を日付として出し、見出しの行を固定してフィルターを付けます。
+- Opening a project you are not a member of (or one that is not there) shows a page that says so, with the way back to the top, instead of Exment's error page. The message of the migration that asks to replace the masters now names the option as the screen does.
+  参加していないプロジェクト（またはないプロジェクト）を開いたときは、Exment のエラーの画面でなく、そのことと、トップへ戻るボタンを出すようにしました。移行で「置き換え」を選ぶように出るメッセージを、画面の選択肢と同じ言葉にしました。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 

@@ -156,3 +156,8 @@ jobs:
       # The hosts of Mackerel and Zabbix into IT assets, and which asset a host is (plain PHP).
       - name: Asset sync check (ExmentITSupport)
         run: php it-support/tools/test-asset-sync.php
+
+      # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
+      # plain PHP)
+      - name: kintone API check (ExmentKintone)
+        run: php kintone/tools/test-kintone-api.php

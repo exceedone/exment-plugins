@@ -190,6 +190,11 @@ class PluginPage extends PluginPageBase
         return $this->portal()->postComment(request(), $id, $issue_id);
     }
 
+    public function exportIssues($id)
+    {
+        return $this->portal()->exportIssues(request(), $id);
+    }
+
     public function mailIssue($id, $issue_id)
     {
         return $this->portal()->mailIssue(request(), $id, $issue_id);
