@@ -163,6 +163,7 @@ class Desk
                     'problem_link' => Its::url('ticket', '__ID__', 'problem'),
                     'problem' => Its::url('problem', '__ID__'),
                     'pm_issue' => Its::url('ticket', '__ID__', 'pm-issue'),
+                    'quote' => Its::url('ticket', '__ID__', 'quote'),
                     'pm_projects' => Its::url('api', 'pm-projects'),
                     'ksearch' => Its::url('knowledge', 'search'),
                     'bulk' => Its::url('bulk'),
@@ -317,6 +318,13 @@ class Desk
             // 「ExmentPM の課題にする」 (ISS02941): the issue it became, or the projects to choose
             'pm_on' => PmLink::available(),
             'pm' => PmLink::available() ? PmLink::issueOf($ticket) : null,
+            // the quote and the trial key (ISS02941): by the kind of the ticket's box
+            'box_kind' => Tickets::boxOf($v['category'] ?? null)['kind'],
+            'sales_on' => SalesLink::on(),
+            'quotes_on' => SalesLink::quotesAvailable(),
+            'quote' => SalesLink::quotesAvailable() ? SalesLink::quoteOf($ticket) : null,
+            'trial_key' => SalesLink::on() ? strval($v['trial_key'] ?? '') : '',
+            'trial_until' => SalesLink::on() ? strval($v['trial_until'] ?? '') : '',
             'customer_visible' => boolval($v['customer_visible'] ?? '1'),
             'require_otp' => boolval($v['require_otp'] ?? '0'),
             'time_spent' => intval($v['time_spent'] ?? 0),
@@ -661,6 +669,20 @@ class Desk
         return $this->back(Its::url() . '?open=' . intval($ticket->id), $result['message'], !$result['ok']);
     }
 
+    public function postQuote(Request $request, $id)
+    {
+        if ($r = $this->gate()) {
+            return $r;
+        }
+        $ticket = Tickets::find($id);
+        if (!isset($ticket)) {
+            return $this->back(Its::url(), 'チケットが見つかりません。', true);
+        }
+        $result = SalesLink::createQuote($ticket);
+
+        return $this->back($result['url'] ?? (Its::url() . '?open=' . intval($ticket->id)), $result['message'], !$result['ok']);
+    }
+
     public function apiPmProjects()
     {
         if (!Its::isInstalled() || !static::isAgent()) {
@@ -689,6 +711,15 @@ class Desk
             if ($request->has($col)) {
                 $v = strval($request->get($col));
                 $values[$col] = ctype_digit($v) ? $v : null;
+            }
+        }
+        // the trial key and its end (ISS02941), typed until the licences come
+        if (SalesLink::on()) {
+            if ($request->has('trial_key')) {
+                $values['trial_key'] = SalesLink::cleanKey($request->get('trial_key'));
+            }
+            if ($request->has('trial_until')) {
+                $values['trial_until'] = SalesLink::cleanDate($request->get('trial_until'));
             }
         }
         // a stage of the ticket's box (its status follows, Tickets::applyStage)
@@ -1278,7 +1309,7 @@ class Desk
             } elseif (array_key_exists($key, $values) && strval($values[$key]) === '-') {
                 $values[$key] = '';
             } elseif (array_key_exists($key, $values) && !preg_match('#^https://#i', strval($values[$key]))) {
-                return $this->back(Its::url('settings'), 'Teams・Webhook の送り先は https:// で始まる URL にしてください。', true);
+                return $this->back(Its::url('settings'), '送り先（Teams・Slack・Webhook）は https:// で始まる URL にしてください。', true);
             }
         }
         foreach (['esc_lead_users', 'esc_manager_users'] as $key) {

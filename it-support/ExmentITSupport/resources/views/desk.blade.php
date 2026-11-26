@@ -549,6 +549,17 @@ function renderTicket(draft) {
         '<label class="d-switch"><span>開くときに確認のコード</span><span class="d-tg"><input type="checkbox" data-p="require_otp"' + (t.require_otp ? ' checked' : '') + '><span></span></span></label>' +
         '<div class="d-time"><span><i class="fa fa-clock-o" aria-hidden="true"></i> 作業時間 合計</span><b>' + t.time_spent + ' 分</b></div></div>';
     h += '<div class="d-sec"><h4><i class="fa fa-clock-o" aria-hidden="true"></i>SLA</h4>' + slaBlock(t) + '</div>';
+    if (t.quotes_on && t.box_kind === 'quote') {
+        h += '<div class="d-sec"><h4><i class="fa fa-file-text-o" aria-hidden="true"></i>見積</h4>' + (t.quote
+            ? (t.quote.url ? '<a href="' + esc(t.quote.url) + '" target="_blank" rel="noopener"><b>' + esc(t.quote.title) + '</b></a>' : '<b>' + esc(t.quote.title) + '</b>') + (t.quote.total ? ' <span class="its-sub">' + esc(t.quote.total) + '</span>' : '')
+            : '<button type="button" class="its-btn small" id="d-quote-make"><i class="fa fa-file-text-o" aria-hidden="true"></i>見積を作る</button><div class="its-sub">営業のパックの「見積」を作って開きます。金額と明細はそこで入れます。</div>') + '</div>';
+    }
+    if (t.sales_on && t.box_kind === 'trial') {
+        h += '<div class="d-sec"><h4><i class="fa fa-key" aria-hidden="true"></i>試用キー</h4>' +
+            '<div class="d-field"><label for="d-p-trial_key">キー</label><input type="text" id="d-p-trial_key" data-p="trial_key" value="' + esc(t.trial_key) + '" autocomplete="off"></div>' +
+            '<div class="d-field"><label for="d-p-trial_until">期限</label><input type="date" id="d-p-trial_until" data-p="trial_until" value="' + esc(t.trial_until) + '"></div>' +
+            '<div class="its-sub">返事の {trial_key}・{trial_until} に入ります。ライセンス（ISS00417）とつながるまでは、ここに入れます。</div></div>';
+    }
     if (t.pm_on) {
         h += '<div class="d-sec"><h4><i class="fa fa-tasks" aria-hidden="true"></i>ExmentPM</h4>' + (t.pm
             ? (t.pm.url ? '<a href="' + esc(t.pm.url) + '" target="_blank" rel="noopener"><b>' + esc(t.pm.subject) + '</b></a>' : '<b>' + esc(t.pm.subject) + '</b>') + (t.pm.status ? ' ' + soft(t.pm.status, '#3b82f6', 'fa-flag-o', '課題の状態') : '')
@@ -599,6 +610,13 @@ function update(data, msg) { return api(u('update', S.sel), data).then(function 
 
 function bindTicket() {
     var t = S.ticket;
+    var qm = $('d-quote-make');
+    if (qm) {
+        qm.onclick = function () {
+            qm.disabled = true;
+            api(u('quote', t.id), new FormData()).then(function (r) { toast(r.message || (r.ok === false ? 'できませんでした' : '見積を作りました'), r.ok === false); if (r.ok !== false && r.redirect) { window.open(r.redirect, '_blank'); } openTicket(t.id, true); });
+        };
+    }
     var pmSel = $('d-pm-project');
     if (pmSel) {
         api(B.url.pm_projects).then(function (d) {
@@ -614,7 +632,7 @@ function bindTicket() {
     $('d-comp').querySelectorAll('.d-ctab').forEach(function (x) { x.onclick = function () { setKind(x.dataset.kind); $('d-body').focus(); }; });
     $('d-body').addEventListener('input', function () { hold(); this.style.height = 'auto'; this.style.height = Math.min(320, Math.max(92, this.scrollHeight)) + 'px'; });
     $('d-tpl').onchange = function () { var id = parseInt(this.value, 10), x = B.templates.filter(function (y) { return y.id === id; })[0]; this.value = ''; if (!x) { return; }
-        var text = x.body.split('{name}').join(t.requester_name || 'お客様').split('{ticket_no}').join(t.no).split('{subject}').join(t.subject).split('{link}').join('（返信のメールに自動で入ります）');
+        var text = x.body.split('{name}').join(t.requester_name || 'お客様').split('{ticket_no}').join(t.no).split('{subject}').join(t.subject).split('{link}').join('（返信のメールに自動で入ります）').split('{trial_key}').join(t.trial_key || '').split('{trial_until}').join(t.trial_until || '');
         insert(text); if (x.status) { $('d-after').value = x.status; } };
     $('d-files').onchange = function () { $('d-fcount').textContent = this.files.length ? ' ' + this.files.length : ''; };
     $('d-send').onclick = send;

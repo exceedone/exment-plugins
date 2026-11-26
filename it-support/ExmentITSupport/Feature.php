@@ -30,6 +30,8 @@ class Feature
     const PM_LINK = 'exment_it_support.pm_link';
     /** The website forms of the 受付箱 (ISS02941): new, off at first. */
     const WEB_FORM = 'exment_it_support.web_form';
+    /** The quote of the sales pack and the trial key of a ticket (ISS02941): new, off at first. */
+    const SALES_LINK = 'exment_it_support.sales_link';
 
     const CORE = '\\Exceedone\\Exment\\Services\\Features';
 
@@ -61,6 +63,14 @@ class Feature
             'requires' => static::DESK,
             'who' => false,
             'existing' => true,
+        ]);
+        $core::register(static::SALES_LINK, [
+            'label' => $lang . 'sales_link',
+            'description' => $lang . 'sales_link_help',
+            'endpoints' => [],
+            'plugin' => $plugin->plugin_name,
+            'requires' => static::DESK,
+            'existing' => false,
         ]);
         $core::register(static::PM_LINK, [
             'label' => $lang . 'pm_link',
@@ -95,7 +105,7 @@ class Feature
             return true;
         }
         $core = static::CORE;
-        if (in_array($key, [static::PM_LINK, static::WEB_FORM], true) && !$core::enabled(static::DESK)) {
+        if (in_array($key, [static::PM_LINK, static::WEB_FORM, static::SALES_LINK], true) && !$core::enabled(static::DESK)) {
             return false;
         }
         if ($key === static::PORTAL && !$core::enabled(static::DESK)) {
