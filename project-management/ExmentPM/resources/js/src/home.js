@@ -7,13 +7,17 @@
         document.getElementById('pp-projhead').innerHTML =
             // Back to the list of projects, shaped and placed like the issue
             // detail's 課題一覧へ, so the two read as one kind of button.
-            (D.urls.projects ? '<a class="bl-dback bl-dback-s bl-dback-proj" href="' + esc(D.urls.projects) + '">' +
-                '<i class="fa fa-angle-left"></i> ' + esc(L.back_projects || 'プロジェクト一覧へ') + '</a>' : '') +
+            // On a phone only its arrow shows (S4).
+            (D.urls.projects ? '<a class="bl-dback bl-dback-s bl-dback-proj" href="' + esc(D.urls.projects) + '" title="' + esc(L.back_projects) + '" aria-label="' + esc(L.back_projects) + '">' +
+                '<i class="fa fa-angle-left"></i> <span class="tx">' + esc(L.back_projects) + '</span></a>' : '') +
             '<div class="bl-projicon"><i class="fa fa-folder-open"></i></div>' +
             // One line: name, then dates / manager / note beside it. The note
             // is cut to what fits and opens in place on a click (snoro 2026-11-18:
             // the header took a third of the screen).
-            '<div class="bl-projinfo"><span class="bl-projttl"><span class="bl-projname">' + esc(p.name) + '</span>' +
+            // M3: the name opens the list of projects (the top bar's), to
+            // go to another one on the same tab.
+            '<div class="bl-projinfo"><span class="bl-projttl"><button type="button" class="bl-projname pp-pjswitch" title="' + esc(L.pj_switch) + '" aria-haspopup="true">' +
+                '<span class="nm">' + esc(p.name) + '</span><i class="fa fa-caret-down"></i></button>' +
             (p.key ? '<span class="bl-projkey">' + esc(p.key) + '</span>' : '') +
             (p.status ? '<span class="bl-pill" style="background:' + ppColor(p.status.c) + ';">' + esc(p.status.l) + '</span>' : '') +
             // ISS02931: the project's settings, where they are looked for -
@@ -21,6 +25,9 @@
             // rule as the 設定 tab).
             (D.can && D.can.manage ? '<a class="bl-projset" href="#settings" title="' + esc(L.proj_settings) + '" aria-label="' + esc(L.proj_settings) + '">' +
                 '<i class="fa fa-cog"></i><span class="tx">' + esc(L.proj_settings) + '</span></a>' : '') +
+            // S4: on a phone the dates, the manager, the note and the people
+            // wait behind this button, so the head is one line.
+            '<button type="button" class="bl-projmore" aria-expanded="false" title="' + esc(L.proj_info) + '" aria-label="' + esc(L.proj_info) + '"><i class="fa fa-info-circle"></i></button>' +
             '</span><div class="bl-projmeta"><span class="mi"><i class="fa fa-calendar"></i>' +
             esc(p.start || '—') + ' 〜 ' + esc(p.end || '—') + '</span>' +
             '<span class="mi"><i class="fa fa-user"></i>' + esc(L.role_pm) + ': ' + esc(user(p.manager).n) + '</span>' +
@@ -34,6 +41,22 @@
             '<span class="pp-freshat">' + esc(String(L.rf_at).replace(':time', String(D.now || ''))) + '</span>' +
             '<a class="bl-btn-sub pp-refresh" href="javascript:void(0);" title="' + esc(L.rf_button) + '">' +
             '<i class="fa fa-refresh"></i> ' + esc(L.rf_button) + '</a></div>';
+        var head = document.getElementById('pp-projhead');
+        if (head && !head._ppHeadBound) {
+            head._ppHeadBound = true;
+            head.addEventListener('click', function (ev) {
+                var more = ev.target.closest('.bl-projmore');
+                if (more) {
+                    more.setAttribute('aria-expanded', head.classList.toggle('info-open') ? 'true' : 'false');
+                    return;
+                }
+                if (ev.target.closest('.pp-pjswitch') && window.ppTopOpenProjects) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    window.ppTopOpenProjects();
+                }
+            });
+        }
     }
 
     /* ------------------------------------------------ home -------------- */

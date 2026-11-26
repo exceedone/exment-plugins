@@ -203,6 +203,62 @@ test('UX-C: every new ja key is defined', () => {
     assert.ok(langJa.indexOf('// UX-C') > 0);
 });
 
+/* ---------------------------------------------- UX-D: navigation ------- */
+const topbar = view('_topbar.blade.php');
+const settingsView = view('_settings.blade.php');
+
+test('S3: the active tab is scrolled into the middle of a sideways row', () => {
+    const row = { scrollWidth: 600, clientWidth: 300, scrollLeft: 0, querySelector: () => tab };
+    const tab = { offsetLeft: 420, offsetWidth: 80 };
+    const f = load(read('routing.js'), ['tabIntoView'], 'var document = { getElementById: function () { return row; } };'.replace('row', 'globalThis.__row'));
+    globalThis.__row = row;
+    f.tabIntoView();
+    assert.strictEqual(row.scrollLeft, 300, 'clamped to the end of the row');
+    tab.offsetLeft = 200;
+    f.tabIntoView();
+    assert.strictEqual(row.scrollLeft, 90, 'centred');
+    row.scrollWidth = 300; row.scrollLeft = 5;
+    f.tabIntoView();
+    assert.strictEqual(row.scrollLeft, 5, 'a row that fits is left alone');
+    assert.ok(/flex-wrap:nowrap;overflow-x:auto/.test(style), 'one row that scrolls on a phone');
+    delete globalThis.__row;
+});
+
+test('S5: one 課題の追加, in the top bar; a adds to this project', () => {
+    assert.ok(index.indexOf('bl-addissue') < 0, 'no second button in the tab row');
+    assert.ok(/class="pp-top-addmain" href="#new"/.test(topbar), 'inside a project it opens the form at once');
+    assert.ok(/\$topbarCurAdd \? ' split' : ''/.test(topbar), 'with ▾ for the others');
+    assert.ok(/querySelector\('#pp-top \.pp-top-addmain'\)/.test(read('boot.js')), 'key a presses it');
+});
+
+test('S7, S8: 通知の受け取り方 with its own icon, 全体の設定, 使うタブ second', () => {
+    assert.ok(/<i class="fa fa-sliders"><\/i><span>\{\{ PortalDefinition::trans\('teams\.menu'\)/.test(topbar));
+    assert.ok(/'menu' => '通知の受け取り方'/.test(langJa));
+    assert.ok(/trans\('global_settings'\)/.test(topbar) && ja('global_settings') === '全体の設定');
+    assert.ok(topbar.indexOf('>設定<') < 0 && topbar.indexOf('>すべて開く<') < 0, 'no Japanese written in the view');
+    assert.strictEqual(ja('tab_features'), '使うタブ');
+    const order = settingsView.slice(settingsView.indexOf("$setSections = [['basic'"), settingsView.indexOf("$setSections[] = ['people'"));
+    assert.ok(order.indexOf("['features'") > 0, '使うタブ before 参加ユーザー');
+    assert.ok(/data-scr="gantt"><i class="fa fa-align-left">/.test(index), 'the gantt tab no longer shares the sliders icon');
+});
+
+test('M2: a phone keeps the bar on one line; it stays one line from 1200px', () => {
+    assert.ok(/class="pp-top-burger"/.test(topbar) && /class="pp-top-stgl"/.test(topbar));
+    assert.ok(/\.pp-top \.pp-top-pjdd\{order:1;flex:1 1 0;min-width:0;\}/.test(topbar), 'the project shrinks before the row wraps');
+    assert.ok(/@media \(min-width:1200px\)\{\s*\.pp-top\{flex-wrap:nowrap;\}/.test(topbar));
+    assert.ok(/pmBell\.hidden = !\(ex && narrow && ex\.offsetParent === null\)/.test(topbar), 'the copy of the bell only where Exment hides its own');
+});
+
+test('S4, M3: the project head on one line, the name opens the project list', () => {
+    const home = read('home.js');
+    assert.ok(/class="bl-projname pp-pjswitch"/.test(home));
+    assert.ok(/window\.ppTopOpenProjects\(\)/.test(home) && /window\.ppTopOpenProjects = function/.test(topbar));
+    assert.ok(/class="bl-projmore"/.test(home));
+    assert.ok(/\.bl-projhead:not\(\.info-open\) \.bl-projmeta/.test(style));
+    ['global_settings', 'top_menu', 'top_bell', 'add_other', 'pj_open_all', 'pj_close_all', 'pj_switch', 'proj_info'].forEach((k) => assert.ok(ja(k), k));
+    assert.ok(langJa.indexOf('// UX-D') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

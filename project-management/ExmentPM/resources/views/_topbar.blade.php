@@ -38,6 +38,14 @@
         'archived_tag' => PortalDefinition::trans('archived_tag'),
         'launch' => $topbarLaunch,
     ];
+
+    // UX-D: the project open now (its name on the phone's bar, and its
+    // own 課題の追加), and whether it may be added to.
+    $topbarCur = null;
+    foreach ($topbar['projects'] as $p) {
+        if ($topbar['current'] !== null && $p['id'] === $topbar['current']) { $topbarCur = $p; }
+    }
+    $topbarCurAdd = $topbarCur !== null && !$topbarCur['archived'] && !empty($topbarCur['can_add']);
 @endphp
 
 {{-- Global bar shared by every portal page - Backlog's top navigation.
@@ -186,6 +194,70 @@
     margin:6px 0 6px 6px;padding:0 13px;}
 .pp-top .pp-top-addwrap>button:hover{background:var(--bl-accent-d,#3d9a80);}
 .pp-top .pp-top-addwrap .fa-caret-down{color:rgba(255,255,255,.8);}
+
+/* ==== UX-D ==== */
+/* S5: inside a project, add to it at once; ▾ beside it for another one. */
+.pp-top .pp-top-addwrap.split{align-items:center;margin:6px 0 6px 6px;}
+.pp-top .pp-top-addwrap.split>.pp-top-addmain{display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;
+    background:var(--bl-accent,#4cae93);color:#fff;border-radius:6px 0 0 6px;white-space:nowrap;font-weight:600;}
+.pp-top .pp-top-addwrap.split>.pp-top-addmain:hover{background:var(--bl-accent-d,#3d9a80);color:#fff;}
+.pp-top .pp-top-addwrap.split>button{margin:0;border-radius:0 6px 6px 0;padding:0 9px;
+    border-left:1px solid rgba(255,255,255,.35);}
+.pp-top .pp-top-addmain:focus-visible{outline:2px solid var(--bl-accent,#4cae93);outline-offset:1px;}
+/* One line from 1200px, also with Exment's sidebar open: the search box
+   gives up width first, and below 1600px the three quiet entries on the
+   right (通知の受け取り方, 全体の設定, マニュアル) keep only their icons,
+   their names in the tooltip. */
+@media (min-width:1200px){
+    .pp-top{flex-wrap:nowrap;}
+    .pp-top .pp-top-search{flex:1 1 160px;min-width:110px;}
+}
+@media (min-width:761px) and (max-width:1599px){
+    .pp-top .pp-top-notifywrap>button>span,.pp-top .pp-top-settings>span,.pp-top .pp-top-manual>span{display:none;}
+    .pp-top .pp-top-notifywrap>button,.pp-top .pp-top-settings,.pp-top .pp-top-manual{padding:0 10px;}
+}
+/* the phone-only controls */
+.pp-top .pp-top-burger,.pp-top .pp-top-stgl,.pp-top .pp-top-curpj{display:none;}
+.pp-top .pp-top-bell[hidden]{display:none;}
+/* M2: a phone keeps one line - ☰, the project, search, the bell, add. */
+@media (max-width:760px){
+    .pp-top{padding:0 4px;gap:0;align-items:center;}
+    .pp-top .pp-top-burger,.pp-top .pp-top-stgl,.pp-top .pp-top-bell{display:flex;align-items:center;justify-content:center;
+        flex:none;width:40px;height:44px;border:0;background:none;color:inherit;font-size:16px;cursor:pointer;padding:0;}
+    .pp-top .pp-top-bell{position:relative;}
+    .pp-top .pp-top-bell[hidden]{display:none;}
+    .pp-top .pp-top-bell .n{position:absolute;top:6px;right:3px;min-width:16px;padding:0 4px;border-radius:8px;
+        background:var(--bl-red,#d9534f);color:#fff;font-size:10px;line-height:16px;text-align:center;}
+    .pp-top .pp-top-burger[aria-expanded="true"],.pp-top .pp-top-stgl[aria-expanded="true"]{color:var(--bl-accent-d,#3d9a80);}
+    .pp-top .pp-top-burger{order:0;}
+    /* a basis of 0: a wrapping row breaks on the basis, before anything shrinks */
+    .pp-top .pp-top-pjdd{order:1;flex:1 1 0;min-width:0;}
+    .pp-top .pp-top-pjdd>button{flex:1 1 auto;min-width:0;max-width:100%;overflow:hidden;padding:0 8px;font-weight:700;}
+    .pp-top .pp-top-pjdd .pp-top-curpj{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .pp-top .pp-top-pjdd>button:has(.pp-top-curpj) .pp-top-pjlbl{display:none;}
+    .pp-top .pp-top-pjdd .fa-caret-down{flex:none;}
+    .pp-top .pp-top-stgl{order:2;}
+    .pp-top .pp-top-bell{order:3;}
+    .pp-top .pp-top-addwrap{order:4;flex:none;}
+    .pp-top .pp-top-addwrap,.pp-top .pp-top-addwrap.split{margin:6px 2px 6px 0;}
+    .pp-top .pp-top-addwrap>button,.pp-top .pp-top-addwrap.split>.pp-top-addmain{margin:0;padding:0 10px;}
+    .pp-top .pp-top-addwrap.split>button{margin:0;padding:0 6px;}
+    .pp-top .pp-top-addwrap span{display:none;}
+    .pp-top .pp-top-addwrap:not(.split)>button .fa-caret-down{display:none;}
+    /* the rest: under the first line, one per row, while ☰ is open */
+    .pp-top > .pp-top-home,.pp-top > .pp-top-dd:not(.pp-top-pjdd):not(.pp-top-addwrap),.pp-top > .pp-top-upgrade{display:none;order:10;}
+    .pp-top.pp-top-more > .pp-top-home,.pp-top.pp-top-more > .pp-top-dd:not(.pp-top-pjdd):not(.pp-top-addwrap){display:flex;flex:1 1 100%;
+        border-top:1px solid var(--bl-line2,#eef2f5);}
+    .pp-top.pp-top-more > .pp-top-upgrade{display:inline-flex;margin:6px 8px;}
+    .pp-top.pp-top-more > .pp-top-dd > button{flex:1 1 auto;justify-content:flex-start;}
+    .pp-top.pp-top-more > .pp-top-dd > .pp-top-menu{left:0;right:0;max-width:none;}
+    .pp-top .pp-top-home.on{box-shadow:inset 3px 0 0 var(--bl-accent,#4cae93);}
+    /* search: on its own line while 🔍 is on */
+    .pp-top > .pp-top-search{display:none;order:9;}
+    .pp-top.pp-top-sopen > .pp-top-search{display:flex;flex:1 1 100%;max-width:none;margin:0 0 8px;}
+    .pp-top .pp-top-search .kbd{display:none;}
+    .pp-top .pp-top-pjmenu{left:-40px;width:calc(100vw - 40px);max-width:none;}
+}
 </style>
 
 <nav class="pp-top" id="pp-top" data-search-url="{{ $topbar['search_url'] }}"
@@ -193,21 +265,28 @@
      data-project-table="{{ $topbar['project_table'] }}"
      data-current="{{ $topbar['current'] }}"
      aria-label="{{ PortalDefinition::trans('title') }}">
+    {{-- M2: on a phone the bar is one line - this menu, the project, search,
+         the bell and add. The menu shows the other entries below it. --}}
+    <button type="button" class="pp-top-burger" aria-expanded="false" title="{{ PortalDefinition::trans('top_menu') }}" aria-label="{{ PortalDefinition::trans('top_menu') }}">
+        <i class="fa fa-bars"></i>
+    </button>
     <a class="pp-top-home {{ $topbar['current'] === null && ($topbar['page'] ?? '') !== 'ranking' ? 'on' : '' }}" href="{{ $topbar['dashboard_url'] }}">
         <i class="fa fa-home"></i><span>{{ $tt('dashboard') }}</span>
     </a>
 
-    <div class="pp-top-dd">
+    <div class="pp-top-dd pp-top-pjdd">
         <button type="button" aria-haspopup="true" aria-expanded="false">
-            <i class="fa fa-folder-open-o"></i><span>{{ $tt('projects') }}</span><i class="fa fa-caret-down"></i>
+            <i class="fa fa-folder-open-o"></i><span class="pp-top-pjlbl">{{ $tt('projects') }}</span>
+            @if($topbarCur)<span class="pp-top-curpj">{{ $topbarCur['name'] }}</span>@endif
+            <i class="fa fa-caret-down"></i>
         </button>
         <div class="pp-top-menu pp-top-pjmenu" data-projects hidden>
             <div class="pp-pjm-head">
                 <span class="ti">{{ $tt('projects') }}</span>
                 {{-- fold the project tree like the issue tree (snoro 2026-11-18) --}}
                 <span class="pp-pjm-fold" id="pp-pjm-fold" hidden>
-                    <a href="javascript:void(0);" id="pp-pjm-open">すべて開く</a> /
-                    <a href="javascript:void(0);" id="pp-pjm-close">すべて閉じる</a>
+                    <a href="javascript:void(0);" id="pp-pjm-open">{{ PortalDefinition::trans('pj_open_all') }}</a> /
+                    <a href="javascript:void(0);" id="pp-pjm-close">{{ PortalDefinition::trans('pj_close_all') }}</a>
                 </span>
                 {{-- Backlog's プロジェクト横断 corner. The portal's own
                      cross-project search is the box in this same bar, so the
@@ -264,6 +343,15 @@
         <div class="pp-top-menu" data-recent hidden></div>
     </div>
 
+    <button type="button" class="pp-top-stgl" aria-expanded="false" title="{{ $tt('search_ph') }}" aria-label="{{ $tt('search_ph') }}">
+        <i class="fa fa-search"></i>
+    </button>
+    {{-- The bell of Exment, on a phone whose header hides it (Exment 7.2):
+         shown by the script only then, with the same count. --}}
+    <a class="pp-top-bell" href="{{ admin_url('notify_navbar') }}" hidden title="{{ PortalDefinition::trans('top_bell') }}" aria-label="{{ PortalDefinition::trans('top_bell') }}">
+        <i class="fa fa-bell-o"></i><span class="n" hidden></span>
+    </a>
+
     <div class="pp-top-search">
         <i class="fa fa-search"></i>
         <input id="pp-top-q" type="search" autocomplete="off" spellcheck="false"
@@ -280,10 +368,21 @@
          offered a menu whose every entry would be refused. With no project
          at all the menu stays, to say so. --}}
     @if($addable || !$open)
-    <div class="pp-top-dd pp-top-addwrap">
+    {{-- S5: the one 課題の追加. Inside a project it adds to that project at
+         once ("#new" is the route of its form); ▾ picks another. --}}
+    <div class="pp-top-dd pp-top-addwrap{{ $topbarCurAdd ? ' split' : '' }}">
+        @if($topbarCurAdd)
+        <a class="pp-top-addmain" href="#new" title="{{ $tt('add_issue') }}: {{ $topbarCur['name'] }}">
+            <i class="fa fa-plus"></i><span>{{ $tt('add_issue') }}</span>
+        </a>
+        <button type="button" aria-haspopup="true" aria-expanded="false" title="{{ PortalDefinition::trans('add_other') }}" aria-label="{{ PortalDefinition::trans('add_other') }}">
+            <i class="fa fa-caret-down"></i>
+        </button>
+        @else
         <button type="button" aria-haspopup="true" aria-expanded="false">
             <i class="fa fa-plus"></i><span>{{ $tt('add_issue') }}</span><i class="fa fa-caret-down"></i>
         </button>
+        @endif
         <div class="pp-top-menu pp-top-menu-r" hidden>
             @forelse($addable as $p)
             {{-- "#new" is the hash the SPA router answers with the create
@@ -302,8 +401,10 @@
     {{-- ISS02863: how this user gets the notices of the issues: bell only, mail, Teams, both --}}
     @if(!empty($topbar['notify_by_url']))
     <div class="pp-top-dd pp-top-notifywrap">
+        {{-- S7: a setting (how the notices come), not the list of them -
+             that is Exment's bell - so not the bell's icon. --}}
         <button type="button" aria-haspopup="true" aria-expanded="false" title="{{ PortalDefinition::trans('teams.menu_title') }}">
-            <i class="fa fa-bell-o"></i><span>{{ PortalDefinition::trans('teams.menu') }}</span><i class="fa fa-caret-down"></i>
+            <i class="fa fa-sliders"></i><span>{{ PortalDefinition::trans('teams.menu') }}</span><i class="fa fa-caret-down"></i>
         </button>
         <div class="pp-top-menu pp-top-menu-r" hidden data-notify-by="{{ $topbar['notify_by_url'] }}">
             <div class="pp-top-none">{{ PortalDefinition::trans('teams.menu_title') }}</div>
@@ -320,8 +421,10 @@
          settings (and the master lists under it) open from here - for
          administrators only. --}}
     @if(!empty($topbar['settings_url']))
-    <a class="pp-top-home pp-top-settings" href="{{ $topbar['settings_url'] }}" title="設定">
-        <i class="fa fa-cog"></i><span>設定</span>
+    {{-- S8: the settings of the whole portal; a project's own are under the
+         gear beside its name. --}}
+    <a class="pp-top-home pp-top-settings" href="{{ $topbar['settings_url'] }}" title="{{ PortalDefinition::trans('global_settings') }}">
+        <i class="fa fa-cog"></i><span>{{ PortalDefinition::trans('global_settings') }}</span>
     </a>
     @if(!empty($topbar['upgrade_needed']))
     <a class="pp-top-upgrade" href="{{ $topbar['settings_url'] }}" title="{{ $tt('upgrade_needed_tip') }}">
@@ -460,6 +563,66 @@
         if (!alive()) { document.removeEventListener('keydown', onDocKey); return; }
         if (ev.key === 'Escape') { closeAll(); }
     });
+
+    // ---- UX-D: the phone's one-line bar (M2) ---------------------------
+    // ☰ shows the entries a phone keeps out of the first line under it; 🔍
+    // opens the search box on a line of its own.
+    function flip(cls, btn, on) {
+        on = on === undefined ? !bar.classList.contains(cls) : !!on;
+        bar.classList.toggle(cls, on);
+        if (btn) { btn.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+        return on;
+    }
+    var burger = bar.querySelector('.pp-top-burger');
+    var stgl = bar.querySelector('.pp-top-stgl');
+    if (burger) {
+        burger.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            closeAll();
+            flip('pp-top-sopen', stgl, false);
+            flip('pp-top-more', burger);
+        });
+    }
+    if (stgl) {
+        stgl.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            flip('pp-top-more', burger, false);
+            if (flip('pp-top-sopen', stgl) && q) { q.focus(); }
+        });
+    }
+    // M3: the project's name opens this list, from the project page.
+    window.ppTopOpenProjects = function () {
+        if (!alive()) { return; }
+        var btn = pjMenu ? pjMenu.parentElement.querySelector('button') : null;
+        if (!btn) { return; }
+        if (bar.getBoundingClientRect().top < 0 && bar.scrollIntoView) { bar.scrollIntoView({ block: 'start' }); }
+        if (pjMenu.hidden) { btn.click(); }
+    };
+    // Exment's bell, where the header hides it on a phone (Exment 7.2): a
+    // copy on this bar, with the same count, so a phone has the way to the
+    // notices. Where Exment shows its own (7.3), this one stays away.
+    var pmBell = bar.querySelector('.pp-top-bell');
+    function syncBell() {
+        if (!pmBell || !alive()) { return; }
+        var ex = document.querySelector('.navbar-notify .container-notify');
+        var narrow = window.matchMedia && window.matchMedia('(max-width:760px)').matches;
+        pmBell.hidden = !(ex && narrow && ex.offsetParent === null);
+        var label = ex ? ex.querySelector('.label') : null;
+        var n = pmBell.querySelector('.n');
+        var count = label ? String(label.textContent || '').trim() : '';
+        if (n) { n.textContent = count; n.hidden = count === '' || count === '0'; }
+    }
+    syncBell();
+    window.addEventListener('resize', function onBellResize() {
+        if (!alive()) { window.removeEventListener('resize', onBellResize); return; }
+        syncBell();
+    });
+    (function () {
+        var li = document.querySelector('.navbar-notify');
+        if (!li || !window.MutationObserver || !pmBell) { return; }
+        var mo = new MutationObserver(function () { if (!alive()) { mo.disconnect(); return; } syncBell(); });
+        mo.observe(li, { childList: true, subtree: true, characterData: true });
+    })();
 
     // ---- recently viewed ----------------------------------------------
     // Same pp_recent record the dashboard tab reads, same rule: strings out
