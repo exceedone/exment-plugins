@@ -39,6 +39,8 @@ class PmPortalController extends AdminControllerBase
     use PortalProjectTrait;
     use PortalAiTrait;
     use PortalRankingTrait;
+    use PortalNotifySettingsTrait;
+    use PortalAttachTrait;
     use PortalExportTrait;
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
@@ -883,6 +885,8 @@ class PmPortalController extends AdminControllerBase
         $issue_reactions = Star::reactions($issue_name, $ids);
         // Review requests (ISS00341): who was asked to confirm each comment.
         $comment_reviews = Star::reviews('comment', $comment_ids);
+        // ISS02931: who each comment was also sent to by mail / Teams
+        $comment_notices = Star::notices('comment', $comment_ids);
         $comments = [];
         foreach ($comment_rows as $comment) {
             $comments[intval($comment->parent_id)][] = $comment;
@@ -983,6 +987,9 @@ class PmPortalController extends AdminControllerBase
                     // reviewComment), so the button is not offered there.
                     $entry['rv_on'] = !$archived;
                 }
+                if (!empty($comment_notices[strval($comment->id)])) {
+                    $entry['nt'] = $comment_notices[strval($comment->id)];
+                }
                 $timeline[] = $entry;
             }
 
@@ -991,6 +998,11 @@ class PmPortalController extends AdminControllerBase
             // screenshot pasted into a comment has to be findable without
             // scrolling back through the whole conversation.
             $files = [];
+            // ISS02938: the number of each attachment's newest version, when attachments are edited here
+            $attachOn = $attachOn ?? PortalAttachEdit::enabled();
+            $versionNos = $attachOn ? PortalAttachEdit::numbers(array_map(function ($d) {
+                return intval($d->id);
+            }, $documents[intval($issue->id)] ?? [])) : [];
             foreach (($documents[intval($issue->id)] ?? []) as $doc) {
                 $name = strval(array_get($doc->value, 'document_name', ''));
                 $url = admin_url('files', [array_get($doc->value, 'file_uuid')]);
@@ -1008,6 +1020,10 @@ class PmPortalController extends AdminControllerBase
                     'by' => intval($doc->created_user_id),
                     'at' => $this->fmtAt($doc->created_at),
                     'img' => static::isImageName($name),
+                    // ISS02938: which attachment, its version, and how it is edited here
+                    'doc' => $attachOn ? intval($doc->id) : null,
+                    'ver' => $attachOn ? intval($versionNos[intval($doc->id)] ?? 1) : null,
+                    'ek' => $attachOn ? PortalAttachEdit::kindOf($name) : null,
                 ];
             }
 
@@ -1187,6 +1203,7 @@ class PmPortalController extends AdminControllerBase
         // The address the bells, the mail and Teams link to: the comment
         // itself once there is one (the screen scrolls to it), else the issue.
         $notice_url = $this->issueUrl($project, $issue);
+        $comment_id = null;
         if ($comment !== '') {
             try {
                 $model = CustomTable::getEloquent(SystemTableName::COMMENT)->getValueModel();
@@ -1207,6 +1224,7 @@ class PmPortalController extends AdminControllerBase
             // Exment's refreshdata empties the comment table. A comment this
             // new cannot have been starred yet.
             Star::purge('comment', $model->id);
+            $comment_id = $model->id;
             $notice_url = static::commentUrl($notice_url, $model->id);
 
             // Review request (ISS00341): the picked people are asked to
@@ -1309,7 +1327,7 @@ class PmPortalController extends AdminControllerBase
         // ISS02931: with who got a mail and who a Teams message, which the
         // writer is told (「メールで知らせた: 山田」).
         return response()->json(array_merge(
-            ['ok' => true, 'notice_to' => $this->noticeTo($issue_name, $issue, $bell_mark, $request, intval($project->id))],
+            ['ok' => true, 'notice_to' => $this->noticeTo($issue_name, $issue, $bell_mark, $request, intval($project->id), $comment_id)],
             $this->issueDetailBody($project, $issue->id)
         ));
     }
@@ -1322,11 +1340,16 @@ class PmPortalController extends AdminControllerBase
      * @param \Exceedone\Exment\Model\CustomValue $issue
      * @return array{mail: array<int, string>, teams: array<int, string>}
      */
-    protected function noticeTo(string $issue_name, $issue, int $bell_mark, Request $request, int $project_id): array
+    protected function noticeTo(string $issue_name, $issue, int $bell_mark, Request $request, int $project_id, $comment_id = null): array
     {
         try {
             $targets = PortalMail::bellTargets($issue_name, intval($issue->id), $bell_mark, \Exment::getUserId());
             $plan = PortalNotifyTo::plan($targets, $this->wantsMail($request), $this->wantsTeams($request), $project_id);
+            // ISS02931: kept under the comment (「メールで知らせた: 山田」), read back with the
+            // detail drawn after this. A post with no comment has no line to keep it on.
+            if (!is_null($comment_id) && (!empty($plan['mail']) || !empty($plan['teams']))) {
+                Star::noticeLog('comment', $comment_id, $plan['mail'], $plan['teams']);
+            }
             $names = $this->usersFor(array_merge($plan['mail'], $plan['teams']));
             $name = function ($id) use ($names) {
                 return strval(array_get($names, strval($id) . '.n', ''));
@@ -1838,6 +1861,47 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * The people of a project the comment dock offers to tell: the manager,
+     * the members and viewers the columns name, and whoever the organization
+     * columns bring (PortalMembership::roles).
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @return array<int, int>
+     */
+    protected function notifyPeopleIds($project): array
+    {
+        $pj = $this->def['project'];
+        $ids = [intval(array_get($project->value, array_get($pj, 'manager')))];
+        foreach (['members', 'viewers'] as $key) {
+            foreach ((array) array_get($project->value, array_get($pj, $key), []) as $v) {
+                $ids[] = intval($v);
+            }
+        }
+        foreach (array_keys(PortalMembership::roles((array) $project->value)) as $v) {
+            $ids[] = intval($v);
+        }
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * GET {id}/notify-channels: where each person's notice arrives now, for
+     * the chips of the comment dock when it opens - a person's quiet hours
+     * and mutes (PortalNotifyPrefs) change with the time, and the page may
+     * have been open since the morning. Small: no issue is read.
+     */
+    public function projectNotifyChannels(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+
+        return response()->json([
+            'ok' => true,
+            'notify_by' => (object) PortalNotifyTo::channels($this->notifyPeopleIds($project), intval($project->id)),
+            'notify_teams' => PortalTeams::teamsAvailable(),
+        ]);
+    }
+
+    /**
      * Whether the writer ticked "also send by Teams" (ISS02931).
      */
     public function wantsTeams(Request $request): bool
@@ -1913,6 +1977,10 @@ class PmPortalController extends AdminControllerBase
         $reviewers = collect(array_get($detail, 'timeline', []))->flatMap(function ($row) {
             return array_column((array) array_get($row, 'rv', []), 'by');
         });
+        // ...and the people a comment was also sent to by mail or Teams (ISS02931)
+        $reviewers = $reviewers->merge(collect(array_get($detail, 'timeline', []))->flatMap(function ($row) {
+            return array_merge((array) array_get($row, 'nt.mail', []), (array) array_get($row, 'nt.teams', []));
+        }));
 
         return collect(array_get($detail, 'timeline', []))->pluck('by')
             ->merge(collect(array_get($detail, 'reads', []))->pluck('by'))
@@ -3179,7 +3247,7 @@ class PmPortalController extends AdminControllerBase
                 // routes refuse, so the screen can say so before anyone types.
                 'archived' => $archived,
             ],
-            'can' => array_merge((array) $can, ['alias' => PortalIssueAliases::exists()]),
+            'can' => array_merge((array) $can, ['alias' => PortalIssueAliases::exists(), 'attach_edit' => PortalAttachEdit::enabled()]),
             // The settings tab's server-known bits; withheld from people the
             // tab is hidden from anyway.
             'git' => $can['manage'] ? $this->gitState($project) : null,
@@ -3215,11 +3283,7 @@ class PmPortalController extends AdminControllerBase
             // ISS02931: where each person of the project gets a notice besides
             // the bell (user id => {mail, teams}), shown on the chips of the
             // comment dock; one query for all of them.
-            'notify_by' => (object) PortalNotifyTo::channels(array_merge(
-                [intval(array_get($project->value, array_get($pj, 'manager')))],
-                collect($member_ids)->all(),
-                collect($viewer_ids)->all()
-            ), intval($project->id)),
+            'notify_by' => (object) PortalNotifyTo::channels($this->notifyPeopleIds($project), intval($project->id)),
             'notify_teams' => PortalTeams::teamsAvailable(),
             'statuses' => $statuses,
             'types' => $type_meta,
@@ -3302,6 +3366,8 @@ class PmPortalController extends AdminControllerBase
                     : null,
                 // ISS00416: Word, Excel and PowerPoint attachments shown in place
                 'office_view' => $this->officeViewBase(),
+                // ISS02938: Groupware's page that edits an Office attachment (0.4.0 or later)
+                'office_edit' => PortalAttachEdit::enabled() ? PortalAttachEdit::officeEditBase() : null,
                 'temp_image_upload' => admin_url('tmpimages'),
                 'mention' => admin_url('webapi/mention/users'),
                 'form_style' => PortalDefinition::url('form-style'),

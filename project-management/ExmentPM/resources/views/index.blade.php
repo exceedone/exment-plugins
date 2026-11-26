@@ -29,7 +29,7 @@
         'notify_to', 'notify_mail', 'notify_mail_hint',
         'nt_teams', 'nt_teams_hint', 'nt_bell', 'nt_mail', 'nt_by_teams', 'nt_tip', 'nt_line_mail', 'nt_line_teams', 'nt_line_bell', 'nt_others', 'nt_sent_mail', 'nt_sent_teams',
         'mail_btn', 'mail_title', 'mail_to', 'mail_msg_ph', 'mail_send',
-        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'f_dl_csv_all', 'f_dl_csv_screen', 'f_dl_xlsx_all', 'f_dl_xlsx_screen', 'f_dl_busy', 'f_dl_fail', 'tree_ctx_open', 'tree_ctx_close', 'tree_ctx_open_below', 'tree_ctx_close_below', 'tree_ctx_open_all', 'tree_ctx_close_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail', 'tree_ctx_open_w', 'tree_ctx_close_w', 'ctx_add_child', 'ctx_change_parent', 'ctx_copy_link', 'fav', 'fav_on', 'fav_tip', 'fav_add', 'fav_off', 'fav_added', 'fav_removed', 'fav_fail', 'col_alias', 'alias', 'alias_set', 'alias_ask', 'alias_saved', 'alias_fail', 'f_multi', 'f_multi_n', 'f_multi_find', 'f_multi_ok', 'f_multi_clear',
+        'mail_cancel', 'mail_none', 'mail_sent', 'mail_skipped', 'mail_fail', 'mail_note', 'reads', 'reads_none', 'reads_old', 'ctx_read', 'ctx_unread', 'ctx_open', 'ctx_read_all', 'l_more', 'l_more_tip', 'l_bulk_pick', 'attach_ver', 'attach_versions', 'attach_edit', 'attach_read', 'attach_close', 'attach_unsaved', 'attach_fail', 'attach_col_ver', 'attach_col_name', 'attach_col_by', 'attach_col_at', 'attach_current', 'attach_download', 'attach_restore', 'attach_restore_ask', 'attach_restored', 'attach_locked_by', 'attach_encoding', 'attach_table', 'attach_preview', 'attach_save', 'attach_saved', 'attach_popup', 'f_dl_csv_all', 'f_dl_csv_screen', 'f_dl_xlsx_all', 'f_dl_xlsx_screen', 'f_dl_busy', 'f_dl_fail', 'tree_ctx_open', 'tree_ctx_close', 'tree_ctx_open_below', 'tree_ctx_close_below', 'tree_ctx_open_all', 'tree_ctx_close_all', 'f_carried_cleared', 'col_tree', 'ar_hidden', 'ar_shown', 'ar_show', 'ar_hide', 'ar_loading', 'ar_fail', 'read_all_done', 'read_all_fail', 'tree_ctx_open_w', 'tree_ctx_close_w', 'ctx_add_child', 'ctx_change_parent', 'ctx_copy_link', 'fav', 'fav_on', 'fav_tip', 'fav_add', 'fav_off', 'fav_added', 'fav_removed', 'fav_fail', 'col_alias', 'alias', 'alias_set', 'alias_ask', 'alias_saved', 'alias_fail', 'f_multi', 'f_multi_n', 'f_multi_find', 'f_multi_ok', 'f_multi_clear',
         'st_change', 'st_keep', 'submit', 'posting', 'posted', 'post_fail',
         'dock_open', 'dock_title', 'dock_close', 'dock_cancel', 'dock_cmt', 'dock_edit', 'dock_keep',
         'dock_draft', 'dock_saving', 'dock_save_fail', 'dock_stale', 'dock_stale_keep', 'dock_empty',
@@ -266,7 +266,11 @@
                             </div>
                         </span>
                         <a class="sv" href="javascript:void(0);" id="pp-f-clear" hidden><i class="fa fa-times-circle-o"></i> {{ $lang['f_clear'] }}</a>
-                        <a class="sv" href="javascript:void(0);" id="pp-f-csv" title="{{ $lang['f_csv_title'] }}"><i class="fa fa-download"></i> {{ $lang['f_csv'] }}</a>
+                        {{-- Button map: the list's own actions in one ⋯ menu (the downloads,
+                             choosing every issue on screen for a bulk change). The old
+                             download link stays in the page for its handler, out of sight. --}}
+                        <a class="sv" href="javascript:void(0);" id="pp-f-csv" title="{{ $lang['f_csv_title'] }}" hidden><i class="fa fa-download"></i> {{ $lang['f_csv'] }}</a>
+                        <a class="sv pp-l-more" href="javascript:void(0);" id="pp-l-more" role="button" aria-haspopup="true" title="{{ $lang['l_more_tip'] }}"><i class="fa fa-ellipsis-h"></i> {{ $lang['l_more'] }}</a>
                     </span>
                 </div>
                 {{-- ISS02939: a filter for each custom attribute of the project;

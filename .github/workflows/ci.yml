@@ -172,6 +172,10 @@ jobs:
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php
 
+      # how each person gets the notices: per event, projects muted, quiet hours (ExmentPM)
+      - name: Notice settings (ExmentPM)
+        run: php project-management/tools/test-pm-notify-prefs.php
+
       # The project routes without admin.morph still find a project the same way as the others.
       - name: Morph-less routes check (ExmentPM)
         run: php project-management/tools/test-pm-morph-routes.php

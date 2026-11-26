@@ -578,7 +578,33 @@
         line.textContent = parts.length ? parts.join(' ／ ') : L.nt_line_bell;
         line.setAttribute('title', L.nt_others);
     }
+    // When the dock opens: where each person's notice arrives now (quiet
+    // hours and mutes change with the time). At most once a minute; the
+    // chips keep what they had if the read fails.
+    var NT_FRESH = { at: 0, busy: false };
+    function ntRefreshDue(now, last, busy) { return !busy && (now - last) >= 60000; }
+    function ntRefresh() {
+        if (!D.notify_by || !D.urls || !D.urls.base) { return; }
+        var now = Date.now();
+        if (!ntRefreshDue(now, NT_FRESH.at, NT_FRESH.busy)) { return; }
+        NT_FRESH.busy = true;
+        $.ajax({ url: D.urls.base + '/notify-channels', type: 'GET', dataType: 'json' }).done(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            D.notify_by = res.notify_by || {};
+            D.notify_teams = !!res.notify_teams;
+            NT_FRESH.at = Date.now();
+            ntRoutes();
+        }).always(function () { NT_FRESH.busy = false; });
+    }
     // What the server says it sent, for the toast after a post.
+    // ISS02931: under a comment, who it was also sent to by mail / Teams.
+    function ntLine(e) {
+        var nt = e && e.nt;
+        if (!nt) { return ''; }
+        var names = function (ids) { return (ids || []).map(function (u) { return user(u).n; }); };
+        var text = ntSentText({ mail: names(nt.mail), teams: names(nt.teams) });
+        return text ? '<div class="pp-ntline"><i class="fa fa-paper-plane-o"></i> ' + esc(text) + '</div>' : '';
+    }
     function ntSentText(to) {
         if (!to) { return ''; }
         var parts = [];
@@ -1628,6 +1654,7 @@
         dock.classList.toggle('on', !!on);
         if (bar) { bar.setAttribute('aria-expanded', on ? 'true' : 'false'); }
         ppDockFit();
+        if (on) { ntRefresh(); }
         if (on) {
             var box = document.getElementById('pp-cmt-text');
             if (box) { try { box.focus(); } catch (e) { /* ignore */ } }
@@ -1719,7 +1746,7 @@
                 // Only the author may rewrite or remove what they wrote; the
                 // address of a comment is public to everyone who can read it.
                 var mine = !!e.del;
-                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) +
+                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) + ntLine(e) +
                     '<div class="act">' + rxBar('comment', e.cid, e.rx) + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
                     '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
                     // ISS02931: each comment's own address, one click away
@@ -1831,7 +1858,7 @@
                 (f.img && imgSrcOk(f.url) ? '<img src="' + esc(f.url) + '" alt="' + esc(f.name) + '">'
                        : '<span class="ic"><i class="fa fa-file-o"></i></span>') +
                 '</a></div>' +
-                '<div class="v"><a class="n" href="' + href + '" target="_blank" rel="noopener">' + esc(f.name) + '</a>' + officeViewBtn(f) +
+                '<div class="v"><a class="n" href="' + href + '" target="_blank" rel="noopener">' + esc(f.name) + '</a>' + officeViewBtn(f) + attachTools(f, res) +
                 '<span class="mt">' + esc(user(f.by).n) + ' · ' + esc(f.at) + '</span></div></div>';
         }).join('');
     }

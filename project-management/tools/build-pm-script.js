@@ -36,6 +36,7 @@ const FILES = [
     'issue-detail.js',     // issue detail, quick edit, related issues
     'wiki.js',
     'files.js',            // files, Office view
+    'attach-edit.js',      // attachments edited in place, their versions (ISS02938)
     'read-receipts.js',
     'writes.js',
     'typeahead.js',
@@ -120,6 +121,29 @@ function syntaxCheck(builtText) {
     return failures;
 }
 
+// The pieces share one function scope, so two pieces declaring the same function
+// name is not an error: the later one silently wins (#152 had fmt2 in two files,
+// and every "版 :n" kept its ":n"). Every name declared at the top of a piece
+// must be declared once.
+function duplicateNames() {
+    const seen = {};
+    const out = [];
+    FILES.forEach((f) => {
+        const re = /^    (?:function\s+([A-Za-z_$][\w$]*)\s*\(|(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=)/gm;
+        let m;
+        const text = read(path.join(SRC, f));
+        while ((m = re.exec(text)) !== null) {
+            const name = m[1] || m[2];
+            if (seen[name] && seen[name] !== f) {
+                out.push(name + ': ' + seen[name] + ' and ' + f);
+            } else {
+                seen[name] = f;
+            }
+        }
+    });
+    return out;
+}
+
 function main() {
     const checkOnly = process.argv.includes('--check');
     let text;
@@ -127,6 +151,11 @@ function main() {
         text = build();
     } catch (e) {
         console.error(e.message);
+        process.exit(1);
+    }
+    const dups = duplicateNames();
+    if (dups.length) {
+        console.error('The same name is declared in two pieces (the later one wins in script.js):\n  ' + dups.join('\n  '));
         process.exit(1);
     }
     const failures = syntaxCheck(text);

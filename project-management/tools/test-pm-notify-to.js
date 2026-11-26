@@ -44,7 +44,8 @@ function test(name, fn) {
 
 const L = "var L = { nt_bell: 'ベル', nt_mail: 'メール', nt_by_teams: 'Teams', nt_sent_mail: 'メールで知らせた: %s', nt_sent_teams: 'Teams で知らせた: %s' };" +
     'function fmt(t) { var a = [].slice.call(arguments, 1), i = 0; return String(t).replace(/%s/g, function () { return a[i++]; }); }';
-const f = load(['ntRoute', 'ntWords', 'ntSentText'], L);
+const f = load(['ntRoute', 'ntWords', 'ntSentText', 'ntLine'], L +
+    "function esc(s) { return String(s); } function user(u) { return { n: { 1: '山田', 2: '佐藤', 3: '鈴木' }[u] || '?' }; }");
 
 test('each person: their own choice', () => {
     const B = { mail: false, teams: false }, M = { mail: true, teams: false }, T = { mail: false, teams: true }, MT = { mail: true, teams: true };
@@ -88,6 +89,23 @@ test('the view: the Teams tick only where Teams can be sent, the line under the 
         assert.ok(index.indexOf("'" + k + "'") > 0, k + ' passed to the script');
     });
     assert.ok(langJa.indexOf('// NOTIFY-TO') > 0);
+});
+
+test('under a comment: who it was also sent to', () => {
+    assert.strictEqual(f.ntLine({}), '');
+    assert.strictEqual(f.ntLine({ nt: { mail: [], teams: [] } }), '');
+    const line = f.ntLine({ nt: { mail: [1, 2], teams: [3] } });
+    assert.ok(line.indexOf('メールで知らせた: 山田、佐藤 ／ Teams で知らせた: 鈴木') > 0, line);
+    assert.ok(/rvBar\(e\) \+ ntLine\(e\)/.test(detail));
+});
+
+test('the chips are read again when the dock opens, at most once a minute', () => {
+    const g = new Function(functionSource(detail, 'ntRefreshDue') + 'return ntRefreshDue;')();
+    assert.ok(g(60000, 0, false));
+    assert.ok(!g(59999, 0, false));
+    assert.ok(!g(120000, 0, true), 'not while a read is on its way');
+    assert.ok(/if \(on\) \{ ntRefresh\(\); \}/.test(functionSource(detail, 'ppDockOpen')));
+    assert.ok(/'\/notify-channels'/.test(functionSource(detail, 'ntRefresh')));
 });
 
 if (failed) {

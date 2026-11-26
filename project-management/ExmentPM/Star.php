@@ -56,6 +56,14 @@ class Star extends ModelBase
     public const TYPE_REVIEW_OK = 'rv:ok';
 
     /**
+     * ISS02931: who a comment was also sent to by mail / by Teams, one row a person, shown under
+     * the comment (「メールで知らせた: 山田」). Written when the comment is posted; no notice of
+     * its own.
+     */
+    public const TYPE_NOTICE_MAIL = 'nt:mail';
+    public const TYPE_NOTICE_TEAMS = 'nt:teams';
+
+    /**
      * Ask people to confirm one target. Somebody already asked is left as
      * they are (a confirmation given is not taken back by asking again).
      *
@@ -109,6 +117,62 @@ class Star extends ModelBase
 
         // Already in the state asked for (a second tab, a double click).
         return static::target($to, $target_type, $target_id)->where('user_id', $user_id)->exists();
+    }
+
+    /**
+     * Keep who a target was also sent to by mail / by Teams (ISS02931).
+     *
+     * @param mixed $target_id
+     * @param array<int, mixed> $mail_ids
+     * @param array<int, mixed> $teams_ids
+     */
+    public static function noticeLog(string $target_type, $target_id, array $mail_ids, array $teams_ids): void
+    {
+        foreach ([self::TYPE_NOTICE_MAIL => $mail_ids, self::TYPE_NOTICE_TEAMS => $teams_ids] as $type => $ids) {
+            foreach (array_unique(array_map('intval', $ids)) as $user_id) {
+                if ($user_id <= 0) {
+                    continue;
+                }
+                try {
+                    static::firstOrCreate([
+                        'star_type' => $type,
+                        'target_type' => $target_type,
+                        'target_id' => strval($target_id),
+                        'user_id' => $user_id,
+                    ]);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // written by a parallel request meanwhile: it is there
+                }
+            }
+        }
+    }
+
+    /**
+     * Who each of these comments was also sent to: id => ['mail' => [user ids], 'teams' => [...]].
+     *
+     * @param array<int, mixed> $target_ids
+     * @return array<string, array{mail: array<int, int>, teams: array<int, int>}>
+     */
+    public static function notices(string $target_type, array $target_ids): array
+    {
+        if (empty($target_ids)) {
+            return [];
+        }
+        $rows = static::whereIn('star_type', [self::TYPE_NOTICE_MAIL, self::TYPE_NOTICE_TEAMS])
+            ->where('target_type', $target_type)
+            ->whereIn('target_id', array_map('strval', $target_ids))
+            ->orderBy('id')
+            ->get(['star_type', 'target_id', 'user_id']);
+        $out = [];
+        foreach ($rows as $row) {
+            $id = strval($row->target_id);
+            if (!isset($out[$id])) {
+                $out[$id] = ['mail' => [], 'teams' => []];
+            }
+            $out[$id][strval($row->star_type) === self::TYPE_NOTICE_MAIL ? 'mail' : 'teams'][] = intval($row->user_id);
+        }
+
+        return $out;
     }
 
     /**

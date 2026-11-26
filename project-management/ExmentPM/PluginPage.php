@@ -39,6 +39,8 @@ class PluginPage extends PluginPageBase
         PortalFiles::registerFeature();
         // what happens to the issues, told to chat channels: a feature, off at first (ISS02939)
         PortalChannels::registerFeature();
+        // attachments edited where they are, with versions: a feature of Feature management, off at first (ISS02938)
+        PortalAttachEdit::registerFeature();
         // recurring schedules: a feature of Feature management, off at first (ISS00432)
         PortalSchedule::registerFeature();
         // reminders before the due date: a feature of Feature management, off at first (ISS00432)
@@ -288,6 +290,43 @@ class PluginPage extends PluginPageBase
         return $this->portal()->reminderSave(request(), $id);
     }
 
+    // ISS02863 / ISS02931: how the notices reach this person
+    public function notifySettings()
+    {
+        return $this->respond($this->portal()->notifySettings(request(), new Content()));
+    }
+
+    public function notifySettingsSave()
+    {
+        return $this->portal()->notifySettingsSave(request());
+    }
+
+    // ISS02938: the attachments of an issue, edited where they are
+    public function attachVersions($id, $issue_id, $doc)
+    {
+        return $this->portal()->attachVersions(request(), $id, $issue_id, $doc);
+    }
+
+    public function attachRestore($id, $issue_id, $doc, $version)
+    {
+        return $this->portal()->attachRestore(request(), $id, $issue_id, $doc, $version);
+    }
+
+    public function attachText($id, $issue_id, $doc)
+    {
+        return $this->portal()->attachText(request(), $id, $issue_id, $doc);
+    }
+
+    public function attachTextSave($id, $issue_id, $doc)
+    {
+        return $this->portal()->attachTextSave(request(), $id, $issue_id, $doc);
+    }
+
+    public function attachLock($id, $issue_id, $doc)
+    {
+        return $this->portal()->attachLock(request(), $id, $issue_id, $doc);
+    }
+
     public function mailIssue($id, $issue_id)
     {
         return $this->portal()->mailIssue(request(), $id, $issue_id);
@@ -327,6 +366,12 @@ class PluginPage extends PluginPageBase
     public function projectFeed($id)
     {
         return $this->portal()->projectFeed(request(), $id);
+    }
+
+    // ISS02931: where each person's notice arrives now (quiet hours, mutes), when the dock opens.
+    public function projectNotifyChannels($id)
+    {
+        return $this->portal()->projectNotifyChannels(request(), $id);
     }
 
     public function issueRead($id, $issue_id)

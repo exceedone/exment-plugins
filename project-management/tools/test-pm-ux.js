@@ -232,7 +232,8 @@ test('S5: one 課題の追加, in the top bar; a adds to this project', () => {
 });
 
 test('S7, S8: 通知の受け取り方 with its own icon, 全体の設定, 使うタブ second', () => {
-    assert.ok(/<i class="fa fa-sliders"><\/i><span>\{\{ PortalDefinition::trans\('teams\.menu'\)/.test(topbar));
+    // TOP-1: under the gear, with its own icon
+    assert.ok(/<div class="pp-top-gh"><i class="fa fa-sliders"><\/i> \{\{ PortalDefinition::trans\('teams\.menu_title'\)/.test(topbar));
     assert.ok(/'menu' => '通知の受け取り方'/.test(langJa));
     assert.ok(/trans\('global_settings'\)/.test(topbar) && ja('global_settings') === '全体の設定');
     assert.ok(topbar.indexOf('>設定<') < 0 && topbar.indexOf('>すべて開く<') < 0, 'no Japanese written in the view');
@@ -421,6 +422,25 @@ test('M12: who to tell - assignees and author first, then the recent picks, none
 test('FIX-1: phone menus of the list stay on screen, the key copy button on the row in focus', () => {
     assert.ok(/\.pmportal \.pp-sf-menu,\.pmportal \.pp-oc-menu\{left:0;right:auto;\}/.test(style));
     assert.ok(/@media \(hover:hover\)\{\s*\.pmportal #pp-issue-rows tr \.pp-ikcopy\{opacity:0;/.test(style));
+});
+
+test('TOP-1: 通知の受け取り方, 全体の設定 and マニュアル in one menu under the gear', () => {
+    const gear = topbar.slice(topbar.indexOf('<div class="pp-top-dd pp-top-gear">'), topbar.indexOf('</nav>'));
+    assert.ok(gear.length > 0);
+    ['data-notify-by=', 'pp-notify-by', 'pp-top-mi pp-top-settings', 'pp-top-mi pp-top-manual'].forEach((c) => assert.ok(gear.indexOf(c) > 0, c));
+    assert.ok(gear.indexOf('pp-notify-by') < gear.indexOf('pp-top-settings') && gear.indexOf('pp-top-settings') < gear.indexOf('pp-top-manual'));
+    assert.ok(topbar.indexOf('pp-top-notifywrap') < 0, 'no second menu for the notices');
+    assert.ok(/PortalDefinition::trans\('top_gear'\)/.test(gear) && ja('top_gear') && ja('top_gear_tip'));
+    assert.ok(langJa.indexOf('// TOP-1') > 0);
+});
+
+test('LIST-1: the list\'s ⋯ menu holds the downloads and the bulk change', () => {
+    assert.ok(/id="pp-f-csv"[^>]*hidden>/.test(index), 'the old download link is out of sight');
+    assert.ok(/id="pp-l-more"/.test(index));
+    const items = functionSource(listSrc, 'listMoreItems');
+    ["exportIssues('xlsx', 'all')", "exportIssues('xlsx', 'screen')", "exportIssues('csv', 'all')", "exportIssues('csv', 'screen')", 'pp-chk-all'].forEach((c) => assert.ok(items.indexOf(c) > 0, c));
+    ['l_more', 'l_more_tip', 'l_bulk_pick'].forEach((k) => { assert.ok(ja(k), k); assert.ok(index.indexOf("'" + k + "'") > 0, k); });
+    assert.ok(langJa.indexOf('// LIST-1') > 0);
 });
 
 if (failed) {

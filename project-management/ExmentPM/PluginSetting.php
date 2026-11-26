@@ -133,6 +133,11 @@ class PluginSetting
             'watchers' => $r('to_watchers'),
         ])->default(['assignees']);
 
+        // attachments edited in place, on an Exment without Feature management (ISS02938)
+        if (!class_exists(PortalAttachEdit::FEATURES)) {
+            $form->switchbool('attach_edit_on', PortalDefinition::trans('attach.feature'))->help(PortalDefinition::trans('attach.feature_help'))->default('0');
+        }
+
         $form->exmheader($a('header'))->hr();
         $form->description($a('description'));
 
