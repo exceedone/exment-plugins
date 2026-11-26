@@ -2225,15 +2225,15 @@ class LightApiController
     }
 
     /**
-     * A 422 for a text longer than the portal takes (PortalDefinition::MAX_BODY), or null.
+     * A 422 for a text longer than the portal takes (PortalDefinition::maxBody()), or null.
      *
      * @param array<string, mixed> $values
      */
     protected function tooLong(array $values): ?JsonResponse
     {
         foreach ($values as $name => $v) {
-            if (is_string($v) && mb_strlen($v) > PortalDefinition::MAX_BODY) {
-                $message = strval(PortalDefinition::trans('message.too_long', ['max' => number_format(PortalDefinition::MAX_BODY)]));
+            if (is_string($v) && mb_strlen($v) > PortalDefinition::maxBody()) {
+                $message = strval(PortalDefinition::trans('message.too_long', ['max' => number_format(PortalDefinition::maxBody())]));
 
                 return response()->json(['ok' => false, 'error' => 'validation', 'message' => $message, 'fields' => [$name => [$message]]], 422);
             }

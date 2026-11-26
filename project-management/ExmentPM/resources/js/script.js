@@ -5652,7 +5652,10 @@ window.PmPortalBoot = function () {
                 url: base + '/issue/' + issueId + '/comment',
                 type: 'POST',
                 dataType: 'json',
-                data: data,
+                // as JSON: a Japanese character is 3 bytes there, 9 in a form (nginx stops at 1 MB)
+                contentType: 'application/json',
+                processData: false,
+                data: JSON.stringify(data),
                 headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
@@ -6402,7 +6405,9 @@ window.PmPortalBoot = function () {
             $.ajax({
                 url: D.urls.base + '/comment/' + cid, type: 'PATCH',
                 dataType: 'json',
-                data: { comment: next }, headers: { 'X-CSRF-TOKEN': CSRF }
+                // as JSON, as the comment is posted (writes.js)
+                contentType: 'application/json', processData: false,
+                data: JSON.stringify({ comment: next }), headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
                     if (detailCurrent(issueId)) {

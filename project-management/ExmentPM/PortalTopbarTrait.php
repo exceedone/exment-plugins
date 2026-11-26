@@ -359,7 +359,7 @@ trait PortalTopbarTrait
         // matches issues someone opened or was assigned before they were taken
         // off a project, and a page of those crowded out the issues they may
         // open and made "more" wrong.
-        $rows = $this->issue_table->getValueModel()->query()
+        $rows = $this->dashboardLean($this->issue_table->getValueModel()->query())
             ->where('parent_type', $this->project_table->table_name)
             ->whereIn('parent_id', array_map('intval', array_keys($cards)))
             ->where(function ($query) use ($subject_key, $like, $id_hit, $q) {

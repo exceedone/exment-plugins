@@ -66,6 +66,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   課題の履歴の変更を隠せるようにしました（まちがえて入れた値など）。変更の下の「この変更を隠す」で、変更した本人とプロジェクトの管理者が使えます。Exment の変更履歴には、消した印（だれが・いつ）を付けて残します。ポータルの履歴と最近の更新には出しません。
 - A person who is in a project only through a share (for example a manager given by a role group) gets the check for new updates of the project and the read marks of issues: those requests answered 403 for them (and so will the recent updates once they are loaded after the page).
   共有だけでプロジェクトに入っている人（役割グループで管理者になった人など）でも、プロジェクトの更新の確認と課題の既読の印が動くようにしました（その読み込みが 403 になっていました。ページのあとに読む「最近の更新」も同じです）。
+  **For the whole of 200,000, raise Exment's own limit of a text column** in `.env`: `EXMENT_CHAR_LENGTH_LIMIT_COUNT=200000` (63,999 when not set; the portal counts to the lower of the two). The comments are sent as JSON (a Japanese character is about 3 bytes there), so the web server's body limit (nginx `client_max_body_size`, 1 MB by default) takes a 200,000-character comment.
+  **200,000 文字まで書くには、Exment の文字の上限も上げてください**：`.env` に `EXMENT_CHAR_LENGTH_LIMIT_COUNT=200000`（書いていないと 63,999。ポータルは小さいほうまで数えます）。コメントは JSON で送るので（日本語 1 文字 約 3 バイト）、Web サーバーの上限（nginx の client_max_body_size、既定 1 MB）のままでも 200,000 文字のコメントが送れます。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
