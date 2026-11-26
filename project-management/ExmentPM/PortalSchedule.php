@@ -207,11 +207,20 @@ class PortalSchedule
         }
         $end = BusinessCalendar::normalize($f['end_date'] ?? '');
         $rdates = [];
-        foreach (preg_split('/[\s,、，]+/u', strval($f['rdates'] ?? '')) ?: [] as $d) {
-            $d = BusinessCalendar::normalize($d);
-            if ($d !== null) {
-                $rdates[$d] = true;
+        $notDates = [];
+        foreach (preg_split('/[\s,、，]+/u', trim(strval($f['rdates'] ?? ''))) ?: [] as $d) {
+            if ($d === '') {
+                continue;
             }
+            $n = BusinessCalendar::normalize($d);
+            if ($n !== null && strlen($d) <= 10) {
+                $rdates[$n] = true;
+            } else {
+                $notDates[] = $d;
+            }
+        }
+        if (!empty($notDates)) {
+            $errors[] = strval(PortalDefinition::trans('sched.err_not_dates', ['dates' => implode(', ', array_slice($notDates, 0, 5))]));
         }
         $rdates = array_keys($rdates);
         sort($rdates);
@@ -291,6 +300,11 @@ class PortalSchedule
     public static function setException(int $scheduleId, string $original, ?string $new, bool $remove = false): void
     {
         DB::table(static::EXCEPTIONS)->where('schedule_id', $scheduleId)->where('original_date', $original)->delete();
+        // the issue of that date, made already: it moves with it (a skipped one stays as it is)
+        $due = $remove ? static::dueOf($scheduleId, $original) : $new;
+        if ($due !== null) {
+            static::moveIssue($scheduleId, $original, $due);
+        }
         if ($remove) {
             return;
         }
@@ -299,6 +313,51 @@ class PortalSchedule
             'schedule_id' => $scheduleId, 'original_date' => $original, 'new_date' => $new,
             'created_at' => $now, 'updated_at' => $now,
         ]);
+    }
+
+    /** The due date a date of a schedule has by its rule (no exception), or null. */
+    protected static function dueOf(int $scheduleId, string $original): ?string
+    {
+        $s = DB::table(static::TABLE)->where('id', $scheduleId)->first();
+        if (!isset($s)) {
+            return null;
+        }
+        $dates = static::occurrences($s, $original, $original, PortalCalendarDays::calendar(), []);
+
+        return $dates[$original] ?? null;
+    }
+
+    /** The due date (and the start, by as much) of the issue made for a date, when there is one. */
+    protected static function moveIssue(int $scheduleId, string $original, string $due): void
+    {
+        $item = DB::table(static::ITEMS)->where('schedule_id', $scheduleId)->where('original_date', $original)->first();
+        if (!isset($item) || intval($item->issue_id) <= 0) {
+            return;
+        }
+        try {
+            $def = PortalDefinition::config();
+            $issueTable = CustomTable::getEloquent(array_get($def, 'issue_table'));
+            $issue = isset($issueTable) ? $issueTable->getValueModel()->query()->find(intval($item->issue_id)) : null;
+            $dueCol = array_get($def, 'issue.due');
+            if (!isset($issue) || is_nullorempty($dueCol)) {
+                return;
+            }
+            $old = BusinessCalendar::normalize(array_get($issue->value, $dueCol));
+            if ($old === $due) {
+                return;
+            }
+            $values = [$dueCol => $due];
+            $startCol = array_get($def, 'issue.start');
+            $start = !is_nullorempty($startCol) ? BusinessCalendar::normalize(array_get($issue->value, $startCol)) : null;
+            if ($old !== null && $start !== null) {
+                $shift = intval((new \DateTimeImmutable($old))->diff(new \DateTimeImmutable($due))->format('%r%a'));
+                $values[$startCol] = (new \DateTimeImmutable($start))->modify(($shift >= 0 ? '+' : '') . $shift . ' day')->format('Y-m-d');
+            }
+            $issue->setValue($values);
+            $issue->save();
+        } catch (\Throwable $e) {
+            Log::warning('PmPortal schedule ' . $scheduleId . ': the issue of ' . $original . ' could not move: ' . $e->getMessage());
+        }
     }
 
     public static function tick(): void
