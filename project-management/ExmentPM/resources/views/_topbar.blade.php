@@ -406,8 +406,8 @@
          administrators, ISS00256) and the manual (ISS02882). A project's own
          settings are under the gear beside its name. --}}
     <div class="pp-top-dd pp-top-gear">
-        <button type="button" aria-haspopup="true" aria-expanded="false" title="{{ $tt('top_gear_tip') }}">
-            <i class="fa fa-cog"></i><span>{{ $tt('top_gear') }}</span><i class="fa fa-caret-down"></i>
+        <button type="button" aria-haspopup="true" aria-expanded="false" title="{{ PortalDefinition::trans('top_gear_tip') }}">
+            <i class="fa fa-cog"></i><span>{{ PortalDefinition::trans('top_gear') }}</span><i class="fa fa-caret-down"></i>
         </button>
         <div class="pp-top-menu pp-top-menu-r" hidden @if(!empty($topbar['notify_by_url'])) data-notify-by="{{ $topbar['notify_by_url'] }}" @endif>
             @if(!empty($topbar['notify_by_url']))

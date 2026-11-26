@@ -430,7 +430,7 @@ test('TOP-1: 通知の受け取り方, 全体の設定 and マニュアル in on
     ['data-notify-by=', 'pp-notify-by', 'pp-top-mi pp-top-settings', 'pp-top-mi pp-top-manual'].forEach((c) => assert.ok(gear.indexOf(c) > 0, c));
     assert.ok(gear.indexOf('pp-notify-by') < gear.indexOf('pp-top-settings') && gear.indexOf('pp-top-settings') < gear.indexOf('pp-top-manual'));
     assert.ok(topbar.indexOf('pp-top-notifywrap') < 0, 'no second menu for the notices');
-    assert.ok(/\$tt\('top_gear'\)/.test(gear) && ja('top_gear') && ja('top_gear_tip'));
+    assert.ok(/PortalDefinition::trans\('top_gear'\)/.test(gear) && ja('top_gear') && ja('top_gear_tip'));
     assert.ok(langJa.indexOf('// TOP-1') > 0);
 });
 
