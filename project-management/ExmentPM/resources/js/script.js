@@ -14461,16 +14461,16 @@ window.PmPortalBoot = function () {
     // body (neither is changed here).
     var MD_SPLIT_MIN = 900;
     var MD_ITEMS = [
-        ['md_h', '## ', ''], ['md_b', '**', '**'], ['md_ul', '- ', ''], ['md_ol', '1. ', ''],
-        ['md_q', '> ', ''], ['md_code', '`', '`'], ['md_link', '[', '](https://)'],
-        ['md_table', '', ''], ['md_task', '- [ ] ', ''], ['md_img', '', '']
+        ['mdx_h', '## ', ''], ['mdx_b', '**', '**'], ['mdx_ul', '- ', ''], ['mdx_ol', '1. ', ''],
+        ['mdx_q', '> ', ''], ['mdx_code', '`', '`'], ['mdx_link', '[', '](https://)'],
+        ['mdx_table', '', ''], ['mdx_task', '- [ ] ', ''], ['mdx_img', '', '']
     ];
     // What one line puts in: at the start of the line for a block (heading,
     // list, quote, task), around the selection for an inline one.
     function mdInsert(ta, item) {
         if (!ta || ta.readOnly || ta.disabled) { return; }
         // the table's head words are the reader's language (md_table_ins)
-        var before = item[0] === 'md_table' ? String(L.md_table_ins || '').replace(/\\n/g, '\n') + '\n' : item[1], after = item[2];
+        var before = item[0] === 'mdx_table' ? String(L.mdx_table_ins || '').replace(/\\n/g, '\n') + '\n' : item[1], after = item[2];
         var from = ta.selectionStart || 0, to = ta.selectionEnd || 0;
         var block = !after && before && before.indexOf('\n') < 0;
         ta.focus();
@@ -14486,10 +14486,10 @@ window.PmPortalBoot = function () {
     }
     function mdSheetHtml() {
         return MD_ITEMS.map(function (it, n) {
-            if (it[0] === 'md_img') {
-                return '<div class="pp-md-row note"><span class="lb">' + esc(L.md_img) + '</span><span class="ex">' + esc(L.md_img_how) + '</span></div>';
+            if (it[0] === 'mdx_img') {
+                return '<div class="pp-md-row note"><span class="lb">' + esc(L.mdx_img) + '</span><span class="ex">' + esc(L.mdx_img_how) + '</span></div>';
             }
-            var ex = it[0] === 'md_table' ? '| … | … |' : it[1] + '…' + it[2];
+            var ex = it[0] === 'mdx_table' ? '| … | … |' : it[1] + '…' + it[2];
             return '<button type="button" class="pp-md-row" data-md="' + n + '"><span class="lb">' + esc(L[it[0]]) + '</span>' +
                 '<code class="ex">' + esc(ex) + '</code></button>';
         }).join('');

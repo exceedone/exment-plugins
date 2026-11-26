@@ -40,7 +40,7 @@ function test(name, fn) {
 
 const itemsSrc = src.slice(src.indexOf('var MD_ITEMS'), src.indexOf('];', src.indexOf('var MD_ITEMS')) + 2);
 const f = new Function('win',
-    "var L = { md_table_ins: '| a | b |\\\\n| --- | --- |', md_h: 'H', md_b: 'B', md_img: 'I', md_img_how: 'how' }; var D = { md_split: true }; var window = win;" +
+    "var L = { mdx_table_ins: '| a | b |\\\\n| --- | --- |', mdx_h: 'H', mdx_b: 'B', mdx_img: 'I', mdx_img_how: 'how' }; var D = { md_split: true }; var window = win;" +
     'function esc(s) { return String(s); } function Event(t, o) { this.type = t; }' +
     'var MD_SPLIT_MIN = 900;' + itemsSrc +
     functionSource(src, 'mdInsert') + functionSource(src, 'mdSheetHtml') + functionSource(src, 'mdSplitOn') +
@@ -60,20 +60,20 @@ test('a block goes to the start of the line, an inline one around the selection'
     const m = f({ innerWidth: 1200 });
     const byKey = (k) => m.items.find((it) => it[0] === k);
     const a = area('abc\ndef', 5, 5);
-    m.insert(a, byKey('md_h'));
+    m.insert(a, byKey('mdx_h'));
     assert.strictEqual(a.value, 'abc\n## def');
     assert.deepStrictEqual(a.events, ['input'], 'drafts and previews hear of it');
     const b = area('make bold', 5, 9);
-    m.insert(b, byKey('md_b'));
+    m.insert(b, byKey('mdx_b'));
     assert.strictEqual(b.value, 'make **bold**');
     const c = area('', 0, 0);
-    m.insert(c, byKey('md_table'));
+    m.insert(c, byKey('mdx_table'));
     assert.strictEqual(c.value, '| a | b |\n| --- | --- |\n', 'the table from the lang line');
 });
 test('the cheat sheet: each line a button, the image line a note', () => {
     const html = f({ innerWidth: 1200 }).sheet();
     assert.ok(/data-md="0"/.test(html) && /class="pp-md-row note"/.test(html));
-    ['md_h', 'md_b', 'md_ul', 'md_ol', 'md_q', 'md_code', 'md_link', 'md_table', 'md_task', 'md_img'].forEach((k) => {
+    ['mdx_h', 'mdx_b', 'mdx_ul', 'mdx_ol', 'mdx_q', 'mdx_code', 'mdx_link', 'mdx_table', 'mdx_task', 'mdx_img'].forEach((k) => {
         assert.ok(itemsSrc.indexOf("'" + k + "'") > 0, k);
         assert.ok(new RegExp("'" + k + "' => '").test(langJa), k + ' in ja');
         assert.ok(index.indexOf("'" + k + "'") > 0, k + ' passed to the script');
@@ -82,7 +82,7 @@ test('the cheat sheet: each line a button, the image line a note', () => {
 test('並べて表示: the person\'s setting, and only from 900px', () => {
     assert.strictEqual(f({ innerWidth: 1200 }).split(), true);
     assert.strictEqual(f({ innerWidth: 899 }).split(), false);
-    assert.ok(/'md_split' => boolval\(\\Admin::user\(\)->getSettingValue\('pmportal\.md_split'\)\)/.test(ctl));
+    assert.ok(/'md_split' => boolval\(\\Exment::user\(\)->getSettingValue\('pmportal\.md_split'\)\)/.test(ctl));
     assert.ok(cfg.route.some((r) => r.uri === 'md-split' && r.method === 'post' && r.function === 'postMdSplit'));
     assert.ok(/setTimeout\(draw, 200\)/.test(functionSource(src, 'ppMdAttach')), 'the preview follows the typing, 200ms after');
 });

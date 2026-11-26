@@ -777,7 +777,7 @@ class PmPortalController extends AdminControllerBase
     {
         $on = $request->get('on');
         $on = is_scalar($on) && in_array(strval($on), ['1', 'true', 'on'], true);
-        \Admin::user()->setSettingValue('pmportal.md_split', $on ? '1' : '');
+        \Exment::user()->setSettingValue('pmportal.md_split', $on ? '1' : '');
 
         return response()->json(['ok' => true, 'on' => $on]);
     }
@@ -3449,7 +3449,7 @@ class PmPortalController extends AdminControllerBase
             'form_styles' => $form_styles = PortalDefinition::formStyles(),
             'form_style' => $this->currentFormStyle($form_styles),
             // MD-1: the editors' side-by-side preview, each person's own choice
-            'md_split' => boolval(\Admin::user()->getSettingValue('pmportal.md_split')),
+            'md_split' => boolval(\Exment::user()->getSettingValue('pmportal.md_split')),
             'features' => [
                 'prefetch' => (bool) config('exment.pmportal.prefetch', true),
                 'embedded' => count($details),
