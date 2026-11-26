@@ -1469,4 +1469,34 @@
             if (safeToRefresh()) { refreshData(false); } else { markStale(true); }
         });
     }
-
+    /* ------------------------------------------------ the list's ⋯ ------ */
+    // Button map: what the list does as a whole, in one menu - the downloads
+    // (the same four as the download link's) and choosing every issue on the
+    // screen, which opens the bulk change bar.
+    function listMoreItems() {
+        var check = document.getElementById('pp-chk-all');
+        // the bulk change only where the list offers its ticks
+        var canBulk = !!(check && check.offsetParent !== null && !check.disabled);
+        return [
+            { l: L.f_dl_xlsx_all, i: 'fa-file-excel-o', f: function () { exportIssues('xlsx', 'all'); } },
+            { l: L.f_dl_xlsx_screen, i: 'fa-file-excel-o', f: function () { exportIssues('xlsx', 'screen'); } },
+            { l: L.f_dl_csv_all, i: 'fa-file-text-o', f: function () { exportIssues('csv', 'all'); } },
+            { l: L.f_dl_csv_screen, i: 'fa-file-text-o', f: function () { exportIssues('csv', 'screen'); } },
+        ].concat(canBulk ? [
+            { l: L.l_bulk_pick, i: 'fa-check-square-o', f: function () {
+                var all = document.getElementById('pp-chk-all');
+                if (!all) { return; }
+                all.checked = true;
+                all.dispatchEvent(new Event('change', { bubbles: true }));
+            } }
+        ] : []);
+    }
+    document.addEventListener('click', function onPpListMore(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpListMore); return; }
+        var btn = ev.target.closest && ev.target.closest('#pp-l-more');
+        if (!btn) { return; }
+        ev.preventDefault();
+        ev.stopPropagation();
+        var r = btn.getBoundingClientRect();
+        ctxOpen(r.left, r.bottom + 2, listMoreItems());
+    });

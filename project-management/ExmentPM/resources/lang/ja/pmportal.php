@@ -2073,4 +2073,8 @@ return [
         'note_edit' => '「:name」を編集しました（版 :no）。',
         'note_restore' => '「:name」を版 :no に戻しました。',
     ],
+    // LIST-1
+    'l_more' => 'ほかの操作',
+    'l_more_tip' => 'ダウンロード（Excel・CSV）・表示中の課題をまとめて変更',
+    'l_bulk_pick' => 'まとめて変更（表示中の課題を選ぶ）',
 ];
