@@ -364,19 +364,22 @@ class Star extends ModelBase
     }
 
     /**
-     * Mark many targets read now for one user ("mark all read"): one update
-     * for the rows already there and one insert per chunk for the rest,
-     * instead of two queries per target.
+     * Mark many targets read now, or unread, for one user ("mark all read",
+     * the list's right-click on checked rows): one update for the rows
+     * already there and one insert per chunk for the rest, instead of two
+     * queries per target.
      *
      * @param string $target_type
      * @param array<int, mixed> $target_ids
      * @param mixed $user_id
+     * @param bool $read
      * @return int how many targets were marked
      */
-    public static function markReadMany(string $target_type, array $target_ids, $user_id): int
+    public static function markReadMany(string $target_type, array $target_ids, $user_id, bool $read = true): int
     {
         $ids = array_values(array_unique(array_map('strval', $target_ids)));
         $now = \Carbon\Carbon::now();
+        $at = $read ? $now : null;
         foreach (array_chunk($ids, 500) as $chunk) {
             $base = static::where('star_type', self::TYPE_READ)
                 ->where('target_type', $target_type)
@@ -385,19 +388,19 @@ class Star extends ModelBase
             $have = (clone $base)->pluck('target_id')->map(function ($v) {
                 return strval($v);
             })->all();
-            (clone $base)->update(['updated_at' => $now]);
+            (clone $base)->update(['updated_at' => $at]);
             $missing = array_values(array_diff($chunk, $have));
             if (empty($missing)) {
                 continue;
             }
-            $rows = array_map(function ($id) use ($target_type, $user_id, $now) {
+            $rows = array_map(function ($id) use ($target_type, $user_id, $now, $at) {
                 return [
                     'star_type' => self::TYPE_READ,
                     'target_type' => $target_type,
                     'target_id' => $id,
                     'user_id' => $user_id,
                     'created_at' => $now,
-                    'updated_at' => $now,
+                    'updated_at' => $at,
                 ];
             }, $missing);
             try {
@@ -405,7 +408,7 @@ class Star extends ModelBase
             } catch (\Illuminate\Database\QueryException $e) {
                 // Another tab opened one of them meanwhile: go one by one.
                 foreach ($missing as $id) {
-                    static::markRead($target_type, $id, $user_id);
+                    static::markRead($target_type, $id, $user_id, $read);
                 }
             }
         }

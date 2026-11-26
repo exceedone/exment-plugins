@@ -68,6 +68,7 @@
             <label for="s-presolve">返事待ちを解決に</label><span class="its-inline"><input type="number" id="s-presolve" name="pending_resolve_days" value="{{ $s['pending_resolve_days'] }}" min="0"> 日たったら（0 でしない）</span>
             <label for="s-close">解決を完了に</label><span class="its-inline"><input type="number" id="s-close" name="resolved_close_days" value="{{ $s['resolved_close_days'] }}" min="0"> 日たったら（0 でしない）</span>
             <label for="s-asset">IT 資産の期限</label><span class="its-inline"><input type="number" id="s-asset" name="asset_notice_days" value="{{ $s['asset_notice_days'] }}" min="1"> 日前にチケットを作る</span>
+            <label for="s-problems">問題</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-problems" name="problems_enabled" value="1" @checked($s['problems_enabled'] === '1')> 同じ原因のチケットを「問題」にまとめる（原因・回避のしかた・まとめて解決）</label>
             <label for="s-csat">満足度を聞く</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-csat" name="csat_enabled" value="1" @checked($s['csat_enabled'] === '1')> 解決にしたとき、お客様に 5 段階で聞く</label>
         </div>
     </div>
