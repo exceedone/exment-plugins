@@ -4558,8 +4558,57 @@ window.PmPortalBoot = function () {
             (D.urls && D.urls.projects ? '<a href="' + esc(D.urls.projects) + '">' + esc(L.bc_root) + '</a><i class="fa fa-angle-right"></i>' : '') +
             '<a href="#home">' + esc(p.name || '') + '</a><i class="fa fa-angle-right"></i>' +
             '<a href="#issues">' + esc(L.tab_issues) + '</a><i class="fa fa-angle-right"></i>' +
+            crumbParents(crumbAncestors(i)) +
             '<span aria-current="page">' + esc(i.key) + '</span></nav>';
     }
+    // BC-1: the parents of the issue, root first - from the detail (the
+    // server reads them, readable or not) or, before it has come, from the
+    // list in memory.
+    function crumbAncestors(i) {
+        var det = own(DET, String(i.id));
+        if (det && Array.isArray(det.anc)) { return det.anc; }
+        var out = [];
+        var seen = {};
+        var p = i.parent;
+        while (p && !seen[p] && out.length < 5) {
+            seen[p] = true;
+            var row = issueById(p);
+            if (!row) { break; }
+            out.unshift({ id: row.id, key: row.key, s: row.subject, ok: true });
+            p = row.parent;
+        }
+        return out;
+    }
+    // Each parent a link with its key (and a short subject on a wide screen,
+    // the whole one in the tooltip); more than two fold their middle into
+    // 「…」, which opens them. A phone shows the direct parent only (CSS).
+    function crumbParents(anc) {
+        if (!anc || !anc.length) { return ''; }
+        var one = function (a, n) {
+            var last = n === anc.length - 1;
+            var cls = 'pp-crumb-anc' + (last ? ' last' : '') + (anc.length > 2 && n > 0 && !last ? ' mid' : '');
+            if (!a.ok) {
+                return '<span class="' + cls + ' no" title="' + esc(L.bc_hidden) + '">' + esc(L.bc_hidden) + '</span><i class="fa fa-angle-right ' + cls + '"></i>';
+            }
+            var sub = String(a.s || '');
+            return '<a class="' + cls + '" href="#' + esc(issueHash(a.id)) + '" title="' + esc(a.key + ' ' + sub) + '">' + esc(a.key) +
+                (sub ? '<span class="sj"> ' + esc(sub.length > 14 ? sub.slice(0, 14) + '…' : sub) + '</span>' : '') + '</a>' +
+                '<i class="fa fa-angle-right ' + cls + '"></i>';
+        };
+        var html = anc.map(one);
+        if (anc.length > 2) {
+            html.splice(1, 0, '<button type="button" class="pp-crumb-more" title="' + esc(L.bc_more) + '" aria-label="' + esc(L.bc_more) + '">…</button><i class="fa fa-angle-right pp-crumb-moresep"></i>');
+        }
+        return '<span class="pp-crumb-ancs' + (anc.length > 2 ? ' folded' : '') + '">' + html.join('') + '</span>';
+    }
+    document.addEventListener('click', function onPpCrumbMore(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpCrumbMore); return; }
+        var more = ev.target.closest && ev.target.closest('.pp-crumb-more');
+        if (!more) { return; }
+        ev.preventDefault();
+        var box = more.closest('.pp-crumb-ancs');
+        if (box) { box.classList.remove('folded'); }
+    });
     // The project's people a field may name: the assignee rule (members and
     // the manager) for a sub-assignee, everybody on the project otherwise.
     function qfOptions(key) {
@@ -6314,7 +6363,7 @@ window.PmPortalBoot = function () {
             (files.length ? '<span><i class="fa fa-paperclip"></i> ' + esc(L.wiki_files) + ' (' + files.length + ')</span>' : '') + '</div>' +
             (renderRichText(page.content) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>') +
             (files.length ? '<p>' + files.map(function (f) {
-                return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + ' ';
+                return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + attachTools(f, { editable: page.editable }, 'wiki:' + page.id) + ' ';
             }).join('') + '</p>' : '');
         linkifyIssueRefs(document.getElementById('pp-wbody'));
         // Opened from the pinned list half way down a long article, the next
@@ -6490,20 +6539,35 @@ window.PmPortalBoot = function () {
     // a time: a lock the server keeps, renewed while the editor is open. Only when the feature is
     // on (D.can.attach_edit); the server decides again on every call.
     function attachOn() { return !!(D.can && D.can.attach_edit); }
-    function attachBase(issueId, doc) { return D.urls.base + '/issue/' + issueId + '/file/' + doc; }
-    function attachTools(f, res) {
+    // whose attachment: "issue:<id>" or "wiki:<id>" (a page of the wiki); a bare id is an issue
+    function attachBase(own, doc) {
+        var m = /^(issue|wiki):(\d+)$/.exec(String(own));
+        return D.urls.base + '/' + (m ? m[1] : 'issue') + '/' + (m ? m[2] : own) + '/file/' + doc;
+    }
+    var ATTACH_OWN = null;
+    function attachOwner() { return ATTACH_OWN || ('issue:' + currentIssue); }
+    function attachTools(f, res, own) {
         if (!attachOn() || !f || !f.doc) { return ''; }
-        var out = ' <button type="button" class="pp-ver" data-doc="' + esc(f.doc) + '" title="' + esc(L.attach_versions) + '">' +
+        var o = own ? ' data-own="' + esc(own) + '"' : '';
+        var out = ' <button type="button" class="pp-ver" data-doc="' + esc(f.doc) + '"' + o + ' title="' + esc(L.attach_versions) + '">' +
             esc(attachFmt(L.attach_ver, f.ver || 1)) + '</button>';
         var canEdit = !!(res && res.editable);
         if (canEdit && f.ek === 'text') {
-            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '" data-kind="text"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
+            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '"' + o + ' data-kind="text"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
         } else if (canEdit && f.ek === 'office' && D.urls && D.urls.office_edit) {
-            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '" data-kind="office" data-url="' + esc(f.url) + '"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
+            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '"' + o + ' data-kind="office" data-url="' + esc(f.url) + '"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
         } else if (f.ek === 'text') {
-            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '" data-kind="text" data-ro="1"><i class="fa fa-file-text-o"></i> ' + esc(L.attach_read) + '</a>';
+            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '"' + o + ' data-kind="text" data-ro="1"><i class="fa fa-file-text-o"></i> ' + esc(L.attach_read) + '</a>';
         }
         return out;
+    }
+    function attachApply(r, epoch, seq) {
+        if (r.wiki) {
+            ((D.wiki || {}).pages || []).forEach(function (p) { if (String(p.id) === String(r.wiki.id)) { p.files = r.wiki.files; } });
+            renderWiki(r.wiki.id);
+            return;
+        }
+        applyDetail(r, epoch, true, seq);
     }
     function attachFmt(tpl, n) { return String(tpl || '').replace(/:n(?![A-Za-z0-9_])/g, String(n)); }
     function attachBox(title) {
@@ -6540,7 +6604,7 @@ window.PmPortalBoot = function () {
 
     // the versions of an attachment
     function attachVersions(doc) {
-        var issueId = currentIssue;
+        var issueId = attachOwner();
         var box = attachBox(L.attach_versions);
         box.querySelector('.bd').innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
         $.ajax({ url: attachBase(issueId, doc) + '/versions', dataType: 'json' }).done(function (res) {
@@ -6559,9 +6623,9 @@ window.PmPortalBoot = function () {
                     var epoch = detailEpoch, seq = ++DET_SEQ;
                     $.ajax({ url: attachBase(issueId, doc) + '/restore/' + a.getAttribute('data-id'), type: 'POST', dataType: 'json', headers: { 'X-CSRF-TOKEN': CSRF } })
                         .done(function (r) {
-                            if (!r || !r.ok || !r.issue) { toast(errText(null, r, L.attach_fail), true); return; }
+                            if (!r || !r.ok || !(r.issue || r.wiki)) { toast(errText(null, r, L.attach_fail), true); return; }
                             attachClose(true);
-                            applyDetail(r, epoch, true, seq);
+                            attachApply(r, epoch, seq);
                             toast(L.attach_restored);
                         }).fail(function (xhr) { toast(xhrErr(xhr, L.attach_fail), true); });
                 });
@@ -6578,7 +6642,7 @@ window.PmPortalBoot = function () {
 
     // a text attachment: an editor on this page (Markdown with a preview, CSV also as a table)
     function attachText(doc, readOnly) {
-        var issueId = currentIssue;
+        var issueId = attachOwner();
         var box = attachBox(L.attach_edit);
         var bd = box.querySelector('.bd');
         bd.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
@@ -6645,11 +6709,11 @@ window.PmPortalBoot = function () {
                             data: JSON.stringify({ text: ta.value, hash: res.hash }), headers: { 'X-CSRF-TOKEN': CSRF }
                         }).done(function (r) {
                             save.disabled = false;
-                            if (!r || !r.ok || !r.issue) { toast(errText(null, r, L.attach_fail), true); return; }
+                            if (!r || !r.ok || !(r.issue || r.wiki)) { toast(errText(null, r, L.attach_fail), true); return; }
                             ATTACH.dirty = false;
                             ATTACH.mine = false;
                             attachClose(true);
-                            applyDetail(r, epoch, true, seq);
+                            attachApply(r, epoch, seq);
                             toast(L.attach_saved);
                         }).fail(function (xhr) { save.disabled = false; toast(xhrErr(xhr, L.attach_fail), true); });
                     });
@@ -6687,7 +6751,7 @@ window.PmPortalBoot = function () {
 
     // an Office attachment: Groupware's page, after the lock
     function attachOffice(doc, url) {
-        var issueId = currentIssue;
+        var issueId = attachOwner();
         var m = /\/files\/([0-9a-f][0-9a-f-]{7,63})(?:[\/?#]|$)/i.exec(String(url || ''));
         if (!m || !D.urls.office_edit) { return; }
         attachLock(issueId, doc, function (lk) {
@@ -6708,10 +6772,11 @@ window.PmPortalBoot = function () {
         var t = ev.target;
         if (!t || !t.closest) { return; }
         var ver = t.closest('.pp-ver');
-        if (ver) { ev.preventDefault(); attachVersions(ver.getAttribute('data-doc')); return; }
+        if (ver) { ev.preventDefault(); ATTACH_OWN = ver.getAttribute('data-own'); attachVersions(ver.getAttribute('data-doc')); return; }
         var ed = t.closest('.pp-aedit');
         if (ed) {
             ev.preventDefault();
+            ATTACH_OWN = ed.getAttribute('data-own');
             if (ed.getAttribute('data-kind') === 'office') { attachOffice(ed.getAttribute('data-doc'), ed.getAttribute('data-url')); return; }
             attachText(ed.getAttribute('data-doc'), ed.getAttribute('data-ro') === '1');
         }

@@ -852,6 +852,50 @@ class Desk
         return null;
     }
 
+    // ---- the 受付箱 and their website forms (ISS02941) ------------------------
+
+    public function boxes()
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        $formsOn = WebForms::available() && Feature::on(Feature::WEB_FORM);
+        $boxes = [];
+        foreach (Tickets::boxes() as $id => $box) {
+            $box['tags'] = $formsOn ? WebForms::tagsOf(intval($id)) : null;
+            $boxes[] = $box;
+        }
+
+        return $this->view('boxes', [
+            'boxes' => $boxes,
+            'groups' => Queue::GROUPS,
+            'kinds' => Queue::kindLabels(),
+            'formsOn' => $formsOn,
+            'serviceOn' => WebForms::available(),
+        ]);
+    }
+
+    public function postBoxWebForm(Request $request, $id)
+    {
+        if ($r = $this->gate(true)) {
+            return $r;
+        }
+        if (!WebForms::available() || !Feature::on(Feature::WEB_FORM)) {
+            abort(404);
+        }
+        $box = ctype_digit(strval($id)) ? Tickets::boxOf(strval($id)) : null;
+        if (!isset($box) || empty($box['id'])) {
+            return $this->back(Its::url('boxes'), '受付箱が見つかりません。', true);
+        }
+        $result = WebForms::ensure($box);
+        $message = $result['message'];
+        if (!empty($result['dropped'])) {
+            $message .= '（フォームに出せない項目は外しました：' . implode('・', $result['dropped']) . '）';
+        }
+
+        return $this->back(Its::url('boxes'), $message, !$result['ok']);
+    }
+
     public function problems(Request $request)
     {
         if ($r = $this->problemGate()) {

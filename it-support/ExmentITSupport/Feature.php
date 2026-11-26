@@ -28,6 +28,8 @@ class Feature
     const PORTAL = 'exment_it_support.portal';
     /** 「ExmentPM の課題にする」 (ISS02941): new, off at first. */
     const PM_LINK = 'exment_it_support.pm_link';
+    /** The website forms of the 受付箱 (ISS02941): new, off at first. */
+    const WEB_FORM = 'exment_it_support.web_form';
 
     const CORE = '\\Exceedone\\Exment\\Services\\Features';
 
@@ -68,6 +70,15 @@ class Feature
             'requires' => static::DESK,
             'existing' => false,
         ]);
+        $core::register(static::WEB_FORM, [
+            'label' => $lang . 'web_form',
+            'description' => $lang . 'web_form_help',
+            // none: the boxes page says why there is no button, and the POST answers 404 itself
+            'endpoints' => [],
+            'plugin' => $plugin->plugin_name,
+            'requires' => static::DESK,
+            'existing' => false,
+        ]);
         $core::register(static::DESK, [
             'label' => $lang . 'desk',
             'description' => $lang . 'desk_help',
@@ -84,7 +95,7 @@ class Feature
             return true;
         }
         $core = static::CORE;
-        if ($key === static::PM_LINK && !$core::enabled(static::DESK)) {
+        if (in_array($key, [static::PM_LINK, static::WEB_FORM], true) && !$core::enabled(static::DESK)) {
             return false;
         }
         if ($key === static::PORTAL && !$core::enabled(static::DESK)) {

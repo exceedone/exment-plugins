@@ -2043,4 +2043,15 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-projhead .bl-projkey{padding:0 4px;font-size:10.5px;}
   .pmportal .bl-tabs .pp-tab-set{margin-left:0;}
 }
+/* BC-1: the parents in the trail; the middle folds into 「…」; a phone shows the direct parent */
+.pmportal .pp-crumbs .pp-crumb-ancs{display:contents;}
+.pmportal .pp-crumbs .pp-crumb-ancs.folded .mid{display:none;}
+.pmportal .pp-crumbs .pp-crumb-ancs:not(.folded) .pp-crumb-more,.pmportal .pp-crumbs .pp-crumb-ancs:not(.folded) .pp-crumb-moresep{display:none;}
+.pmportal .pp-crumbs .pp-crumb-more{border:0;background:none;padding:0 4px;color:var(--bl-accent-d,var(--bl-accent));cursor:pointer;font-size:inherit;}
+.pmportal .pp-crumbs .pp-crumb-anc.no{color:var(--bl-faint);}
+.pmportal .pp-crumbs .pp-crumb-anc .sj{color:var(--bl-sub);}
+@media (max-width:1199px){.pmportal .pp-crumbs .pp-crumb-anc .sj{display:none;}}
+@media (max-width:760px){
+  .pmportal .pp-crumbs .pp-crumb-anc:not(.last),.pmportal .pp-crumbs .pp-crumb-more,.pmportal .pp-crumbs .pp-crumb-moresep{display:none !important;}
+}
 </style>
