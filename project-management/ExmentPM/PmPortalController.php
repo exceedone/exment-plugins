@@ -541,7 +541,16 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::url('setup'));
         }
 
-        $project = $this->findProject($id);
+        try {
+            $project = $this->findProject($id);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            // not there, or not one of the caller's (ISS00395): said so, with the way back,
+            // instead of Exment's page of an error. Both answer alike.
+            if (!in_array($e->getStatusCode(), [403, 404], true)) {
+                throw $e;
+            }
+            return $this->notMemberPage($content);
+        }
         // ISS00440: the page's address is the project's code. An id, a code in
         // another case or an old code is sent on to it; the browser keeps the
         // part after the #, and the script rewrites an old #issue- there.
@@ -4044,6 +4053,21 @@ class PmPortalController extends AdminControllerBase
      * @param mixed $id
      * @return \Exceedone\Exment\Model\CustomValue
      */
+    /**
+     * The page of a project the caller cannot open: not a member, or no such project.
+     */
+    protected function notMemberPage(Content $content)
+    {
+        $title = strval(PortalDefinition::trans('not_member.title'));
+        $body = '<div class="box box-default" style="padding:24px;max-width:640px;">'
+            . '<h3 style="margin-top:0;">' . esc_html($title) . '</h3>'
+            . '<p>' . esc_html(strval(PortalDefinition::trans('not_member.body'))) . '</p>'
+            . '<p><a class="btn btn-default" href="' . esc_html(PortalDefinition::url()) . '">' . esc_html(strval(PortalDefinition::trans('not_member.back'))) . '</a></p>'
+            . '</div>';
+
+        return response($content->title($title)->body($body)->render(), 404);
+    }
+
     protected function findProject($id)
     {
         if (!isset($this->project_table) || !isset($this->issue_table)) {

@@ -18,6 +18,10 @@ parameters:
             # release, ^7.0) does not have yet: checked again from 7.3.0 on
             - ../../project-management/ExmentPMBacklog/BacklogConnector.php
             - ../../project-management/ExmentPMBacklog/SyncBridge.php
+            # also ExmentKintone, for the same reason
+            - ../../kintone/ExmentKintone
+            # its test reads KintoneApi from that folder
+            - ../../kintone/tools
     bootstrapFiles:
         - bootstrap.php
     # The baseline may list files that a branch does not have yet.
