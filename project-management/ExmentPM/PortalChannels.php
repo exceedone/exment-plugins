@@ -512,7 +512,15 @@ class PortalChannels
     {
         try {
             $user = \Exment::user();
-            return isset($user) ? strval($user->getUserName()) : '';
+            if (!isset($user)) {
+                return '';
+            }
+            // LoginUser: the name of its user (the accessor), else the label of the user row
+            $name = strval($user->user_name ?? '');
+            if ($name === '' && isset($user->base_user)) {
+                $name = strval($user->base_user->getLabel());
+            }
+            return $name;
         } catch (\Throwable $e) {
             return '';
         }
