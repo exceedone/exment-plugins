@@ -46,6 +46,18 @@
                 </div>
             </div>
 
+            @if(!empty($digest))
+            {{-- the morning digest (ISS02939): off unless the person asks for it --}}
+            <div class="box2">
+                <h4>{{ $n('digest') }}</h4>
+                <div class="mute">{{ $n('digest_help') }}</div>
+                <p style="margin-top:6px;">
+                    <label style="font-weight:400;"><input type="checkbox" name="digest[on]" value="1" @if($digest['on']) checked @endif> {{ $n('digest_on') }}</label>
+                    <input type="time" name="digest[time]" value="{{ $digest['time'] }}" aria-label="{{ $n('digest_time') }}">
+                </p>
+            </div>
+            @endif
+
             <div class="box2">
                 <details @if($open) open @endif>
                     <summary>{{ $n('details') }}</summary>

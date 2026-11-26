@@ -1617,6 +1617,9 @@ return [
         'remind' => '提醒：为 :issues 个问题发送了 :count 封（已发送而跳过 :skipped）。',
         'remind_dry' => '试运行：将为 :issues 个问题发送 :count 封（已发送而跳过 :skipped）。不发送任何内容。',
         'remind_off' => '未使用提醒（功能管理或插件设置）。',
+        'digest' => '早间摘要：已发送给 :people 人中的 :count 人（无内容 :empty 人）。',
+        'digest_dry' => '试运行：将发送给 :people 人中的 :count 人（无内容 :empty 人）。不发送任何内容。',
+        'digest_off' => '早间摘要未启用（功能管理）。',
         'recur_dry' => '试运行：将创建 :count 个重复任务。',
         'shares' => '查看了 :rows 个项目和问题，添加了 :count 个共享。',
         'shares_dry' => '试运行：查看 :rows 个项目和问题（不写入任何内容）。',
@@ -2087,6 +2090,23 @@ return [
     'act_edit_tip' => '更改标题、说明和所有项目（键 e）',
     'act_more_tip' => '添加子问题、置顶、收藏、关注、复制、移动、删除等',
     'act_watch_tip' => '关注后，此问题变更时会通知你',
+    // the morning digest of each person (ISS02939)
+    'digest' => [
+        'feature' => '项目管理：早间摘要',
+        'feature_help' => '每天早上，以邮件或 Teams 给每个人发送一条消息：今天到期或已逾期的问题、新分配给自己的问题、提到自己的评论、关注的问题的状态变更。是否接收以及时间，由每个人在通知设置中决定。请用 cron 每 15 分钟运行 php artisan exment:batch --name=ExmentPM --param1=digest（打开门户时也会发送）。',
+        'title' => '今日摘要（:day）',
+        'sec_due' => '■ 今天到期或已逾期（:n）',
+        'sec_assigned' => '■ 新分配给你的问题（:n）',
+        'sec_mention' => '■ 提到你的评论（:n）',
+        'sec_status' => '■ 你关注的问题的状态变更（:n）',
+        'today' => '（今天到期）',
+        'over' => '（已超过期限 :due）',
+        'status_to' => '（→ :to）',
+        'more' => '　另外 :n 条',
+        'ai_line' => 'AI 建议：先从 :key :subject 开始',
+        'ai_option' => '在早间摘要中加入 AI 建议',
+        'ai_option_help' => '把每个人的问题标题（隐藏个人信息）发送给 AI 自动填写所用的 AI（TypeSafe），由它选出最先处理的一项。没有 AI 密钥时，不含这一行发送。',
+    ],
     // how the notices reach a person (ISS02863, ISS02931)
     'nset' => [
         'menu' => '详细的接收方式…',

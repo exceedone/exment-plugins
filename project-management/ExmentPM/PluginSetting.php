@@ -189,6 +189,11 @@ class PluginSetting
         $form->switchbool('ai_severe_bump', $a('severe_bump'))
             ->help($a('severe_bump_help'))
             ->default("1");
+
+        // the AI's line in the morning digest (ISS02939): off at first
+        $form->switchbool('digest_ai', PortalDefinition::trans('digest.ai_option'))
+            ->help(PortalDefinition::trans('digest.ai_option_help'))
+            ->default("0");
     }
 
     /**

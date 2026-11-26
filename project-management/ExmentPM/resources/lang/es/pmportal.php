@@ -1617,6 +1617,9 @@ return [
         'remind' => 'Recordatorios: se enviaron :count para :issues incidencias (:skipped ya enviados, omitidos).',
         'remind_dry' => 'Prueba: se enviarían :count para :issues incidencias (:skipped ya enviados, omitidos). No envía nada.',
         'remind_off' => 'Los recordatorios están desactivados (gestión de funciones o configuración del plugin).',
+        'digest' => 'Resumen de la mañana: enviado a :count de :people personas (nada que decir para :empty).',
+        'digest_dry' => 'Simulación: se enviaría a :count de :people personas (nada que decir para :empty). No se envía nada.',
+        'digest_off' => 'El resumen de la mañana está desactivado (gestión de funciones).',
         'recur_dry' => 'Simulación: se crearían :count incidencias repetitivas.',
         'shares' => 'Se revisaron :rows proyectos e incidencias y se añadieron :count elementos compartidos.',
         'shares_dry' => 'Prueba: revisa :rows proyectos e incidencias (no escribe nada).',
@@ -2087,6 +2090,23 @@ return [
     'act_edit_tip' => 'Cambiar el título, la descripción y todos los campos (tecla e)',
     'act_more_tip' => 'Añadir una incidencia hija, destacar, favorita, seguir, copiar, mover, eliminar y más',
     'act_watch_tip' => 'Al seguirla, se le avisa cuando cambia esta incidencia',
+    // the morning digest of each person (ISS02939)
+    'digest' => [
+        'feature' => 'Gestión de proyectos: resumen de la mañana',
+        'feature_help' => 'Cada mañana, cada persona recibe un mensaje por correo o Teams: sus incidencias que vencen hoy o vencidas, las recién asignadas, las menciones y los cambios de estado de las incidencias que sigue. Cada persona decide en su configuración de avisos si lo recibe y a qué hora. Ejecute php artisan exment:batch --name=ExmentPM --param1=digest cada 15 minutos con cron (también se envía al abrir el portal).',
+        'title' => 'Hoy (:day)',
+        'sec_due' => '■ Vencen hoy o vencidas (:n)',
+        'sec_assigned' => '■ Recién asignadas a usted (:n)',
+        'sec_mention' => '■ Menciones a usted (:n)',
+        'sec_status' => '■ Cambios de estado de las que sigue (:n)',
+        'today' => ' (vence hoy)',
+        'over' => ' (vencida desde :due)',
+        'status_to' => ' (→ :to)',
+        'more' => '  y :n más',
+        'ai_line' => 'Sugerencia de la IA: empiece por :key :subject',
+        'ai_option' => 'Añadir una sugerencia de la IA al resumen de la mañana',
+        'ai_option_help' => 'Envía los asuntos de las incidencias de cada persona (con los datos personales ocultos) a la IA del autocompletado (TypeSafe), que elige por cuál empezar. Sin clave de IA, el resumen se envía sin esta línea.',
+    ],
     // how the notices reach a person (ISS02863, ISS02931)
     'nset' => [
         'menu' => 'Ajustes detallados…',

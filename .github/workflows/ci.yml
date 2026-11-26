@@ -155,6 +155,10 @@ jobs:
       - name: Simple by default (ExmentPM schema 30)
         run: php project-management/tools/test-pm-features.php
 
+      # The morning digest of each person (ExmentPM, plain PHP)
+      - name: Morning digest (ExmentPM)
+        run: php project-management/tools/test-pm-digest.php
+
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
         run: node project-management/tools/test-user-timezone.js

@@ -1617,6 +1617,9 @@ return [
         'remind' => 'Nhắc nhở: đã gửi :count cho :issues vấn đề (bỏ qua :skipped đã gửi).',
         'remind_dry' => 'Chạy thử: sẽ gửi :count cho :issues vấn đề (bỏ qua :skipped đã gửi). Không gửi gì.',
         'remind_off' => 'Nhắc nhở đang tắt (quản lý chức năng hoặc cài đặt plugin).',
+        'digest' => 'Tóm tắt buổi sáng: đã gửi cho :count / :people người (:empty người không có gì).',
+        'digest_dry' => 'Chạy thử: sẽ gửi cho :count / :people người (:empty người không có gì). Không gửi gì.',
+        'digest_off' => 'Tóm tắt buổi sáng đang tắt (quản lý chức năng).',
         'recur_dry' => 'Chạy thử: sẽ tạo :count vấn đề lặp lại.',
         'shares' => 'Đã xem :rows dự án và vấn đề, đã thêm :count chia sẻ.',
         'shares_dry' => 'Chạy thử: xem :rows dự án và vấn đề (không ghi gì).',
@@ -2087,6 +2090,23 @@ return [
     'act_edit_tip' => 'Thay đổi tiêu đề, mô tả và mọi mục (phím e)',
     'act_more_tip' => 'Thêm vấn đề con, ghim, yêu thích, theo dõi, sao chép, di chuyển, xóa...',
     'act_watch_tip' => 'Khi theo dõi, bạn sẽ được báo khi vấn đề này thay đổi',
+    // the morning digest of each person (ISS02939)
+    'digest' => [
+        'feature' => 'Quản lý dự án: tóm tắt buổi sáng',
+        'feature_help' => 'Mỗi sáng, mỗi người nhận một tin qua email hoặc Teams: vấn đề đến hạn hôm nay hoặc quá hạn, vấn đề mới được giao, các lần được nhắc đến, và thay đổi trạng thái của vấn đề đang theo dõi. Mỗi người tự chọn có nhận không và giờ nhận trong cài đặt thông báo. Hãy chạy php artisan exment:batch --name=ExmentPM --param1=digest mỗi 15 phút bằng cron (cũng gửi khi mở cổng).',
+        'title' => 'Hôm nay (:day)',
+        'sec_due' => '■ Đến hạn hôm nay hoặc quá hạn (:n)',
+        'sec_assigned' => '■ Mới được giao cho bạn (:n)',
+        'sec_mention' => '■ Nhắc đến bạn (:n)',
+        'sec_status' => '■ Thay đổi trạng thái của vấn đề bạn theo dõi (:n)',
+        'today' => ' (hạn hôm nay)',
+        'over' => ' (quá hạn từ :due)',
+        'status_to' => ' (→ :to)',
+        'more' => '  và :n mục khác',
+        'ai_line' => 'AI gợi ý: hãy bắt đầu với :key :subject',
+        'ai_option' => 'Thêm gợi ý của AI vào tóm tắt buổi sáng',
+        'ai_option_help' => 'Gửi tiêu đề vấn đề của từng người (đã che thông tin cá nhân) tới AI của tính năng tự điền (TypeSafe) để chọn việc nên làm trước. Không có khóa AI thì gửi không có dòng này.',
+    ],
     // how the notices reach a person (ISS02863, ISS02931)
     'nset' => [
         'menu' => 'Cách nhận chi tiết…',

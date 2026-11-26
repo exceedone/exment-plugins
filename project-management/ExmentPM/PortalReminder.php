@@ -383,7 +383,7 @@ class PortalReminder
     }
 
     /** @return array<int, string> the status rows that are done (every project's) */
-    protected static function doneStatusIds(array $def): array
+    public static function doneStatusIds(array $def): array
     {
         $table = CustomTable::getEloquent(array_get($def, 'status_table'));
         if (!isset($table)) {
