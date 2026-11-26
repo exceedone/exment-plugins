@@ -152,3 +152,8 @@ jobs:
       # The fields of the request catalog (ExmentITSupport, plain PHP).
       - name: Request catalog check (ExmentITSupport)
         run: php it-support/tools/test-catalog-spec.php
+
+      # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
+      # plain PHP)
+      - name: kintone API check (ExmentKintone)
+        run: php kintone/tools/test-kintone-api.php
