@@ -131,6 +131,8 @@ jobs:
         run: |
           node project-management/tools/test-pm-notify-to.js
           php project-management/tools/test-pm-notify-to.php
+      - name: Command palette (ExmentPM)
+        run: node project-management/tools/test-pm-palette.js
 
       - name: Recent updates pages (ExmentPM)
         run: php project-management/tools/test-pm-feed.php

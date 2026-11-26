@@ -1929,4 +1929,11 @@ return [
     'nt_others' => 'ウォッチしている人と担当者にも、その人の受け取り方で届きます',
     'nt_sent_mail' => 'メールで知らせた: %s',
     'nt_sent_teams' => 'Teams で知らせた: %s',
+    // L2
+    'pal_title' => 'コマンド',
+    'pal_ph' => '操作を探す・課題のキーや件名で探す',
+    'pal_none' => '見つかりません',
+    'pal_issues' => '課題へ行く',
+    'pal_assign_me' => '自分を担当者にする',
+    'kh_palette' => 'コマンドの窓（すべての操作とキー）',
 ];
