@@ -27,6 +27,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   参加していないプロジェクト（またはないプロジェクト）を開いたときは、Exment のエラーの画面でなく、そのことと、トップへ戻るボタンを出すようにしました。移行で「置き換え」を選ぶように出るメッセージを、画面の選択肢と同じ言葉にしました。
 - The tree of the issue list is easier to work: the ▼/▶ is a 28px target (36px on a touch screen); the right-click menu of a row in the tree opens or folds the row, everything below it, or the whole tree; on a focused ▼/▶, ← folds, → opens and ↑/↓ move to the next one.
   課題の一覧のツリーを使いやすくしました。▼／▶ の押せる範囲を 28px（タッチの画面は 36px）に広げました。ツリーの行の右クリックのメニューで、その行・その下のすべて・ツリー全体を開いたりたたんだりできます。▼／▶ を選んで ← でたたむ、→ で開く、↑／↓ でとなりへ動けます。
+- The Wiki tree folds too, with the same ▼/▶, right-click menu and keys; the folded pages are remembered, and the page shown is never hidden. The right-click menu of an issue row has 「子課題を追加」, 「親課題を変える（編集を開く）」 and 「課題のリンクをコピー」.
+  Wiki のツリーも、同じ ▼／▶・右クリックのメニュー・キーで開いたりたたんだりできます（たたんだページは覚えます。開いているページは隠れません）。課題の行の右クリックのメニューに「子課題を追加」「親課題を変える（編集を開く）」「課題のリンクをコピー」を足しました。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 

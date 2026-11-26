@@ -501,6 +501,13 @@
         if (moveDo) { issueMoveRun(currentIssue, moveDo); return; }
         var issueDel = ev.target.closest('.pp-issuedel');
         if (issueDel) { issueDelete(currentIssue, issueDel); return; }
+        var wtgl = ev.target.closest('.pp-wtgl');
+        if (wtgl) {
+            // a fold, not a way into the page (ISS00361)
+            ev.preventDefault();
+            wikiSet([wtgl.getAttribute('data-wtgl')], !wikiFolded(wtgl.getAttribute('data-wtgl')), wtgl.getAttribute('data-wtgl'));
+            return;
+        }
         var wikiNode = ev.target.closest('[data-wiki]');
         if (wikiNode) {
             ev.preventDefault();

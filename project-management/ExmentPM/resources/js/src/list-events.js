@@ -77,6 +77,16 @@
         if ((D.issues || []).some(function (i) { return !!i.unread; })) {
             items.push({ l: L.ctx_read_all, i: 'fa-check-square-o', f: readAll });
         }
+        // the issue itself (ISS00361): a child, its parent (in the edit form), its link
+        if (ids.length === 1) {
+            if (CAN_ADD_ISSUE) {
+                items.push({ l: L.ctx_add_child, i: 'fa-level-down', f: function () { openNcreate(D.issue_table, issuePrefill('child', id), 'child' + id); } });
+            }
+            if (row.editable !== false) {
+                items.push({ l: L.ctx_change_parent, i: 'fa-sitemap', f: function () { openNedit(D.issue_table, id); } });
+            }
+            items.push({ l: L.ctx_copy_link, i: 'fa-link', f: function () { copyText(issuePageUrl(id), L.link_copied); } });
+        }
         // the tree (ISS00361): this row, the rows under it, and all of them
         if (TREE_ON && ids.length === 1) {
             var below = treeBelow(id);
@@ -119,6 +129,46 @@
             if (next) { ev.preventDefault(); next.focus(); }
         }
     });
+    // The Wiki tree (ISS00361): the same menu and keys as the issue tree.
+    (function () {
+        var wtree = document.getElementById('pp-wtree');
+        if (!wtree) { return; }
+        wtree.addEventListener('contextmenu', function (ev) {
+            if (ev.shiftKey) { return; }
+            var nd = ev.target.closest('[data-wiki]');
+            if (!nd) { return; }
+            ev.preventDefault();
+            var wid = nd.getAttribute('data-wiki');
+            var below = wikiBelow(wid);
+            var items = [{ l: L.ctx_open, i: 'fa-external-link', f: function () { location.hash = 'wiki-' + wid; } }];
+            if (below.length) {
+                items.push(wikiFolded(wid)
+                    ? { l: L.tree_ctx_open_w, i: 'fa-caret-down', f: function () { wikiSet([wid], false, wid); } }
+                    : { l: L.tree_ctx_close_w, i: 'fa-caret-right', f: function () { wikiSet([wid], true, wid); } });
+                if (below.length > 1) {
+                    items.push({ l: L.tree_ctx_open_below, i: 'fa-angle-double-down', f: function () { wikiSet(below, false, wid); } });
+                    items.push({ l: L.tree_ctx_close_below, i: 'fa-angle-double-right', f: function () { wikiSet(below, true, wid); } });
+                }
+            }
+            items.push({ l: L.tree_ctx_open_all, i: 'fa-plus-square-o', f: function () { wikiSet(wikiBelow(null), false, wid); } });
+            items.push({ l: L.tree_ctx_close_all, i: 'fa-minus-square-o', f: function () { wikiSet(wikiBelow(null), true, wid); } });
+            ctxOpen(ev.clientX, ev.clientY, items);
+        });
+        wtree.addEventListener('keydown', function (ev) {
+            var tgl = ev.target.closest('.pp-wtgl');
+            if (!tgl || ev.altKey || ev.ctrlKey || ev.metaKey) { return; }
+            var wid = tgl.getAttribute('data-wtgl');
+            if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+                ev.preventDefault();
+                var fold = ev.key === 'ArrowLeft';
+                if (wikiFolded(wid) !== fold) { wikiSet([wid], fold, wid); }
+            } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+                var all = Array.prototype.slice.call(wtree.querySelectorAll('.pp-wtgl'));
+                var next = all[all.indexOf(tgl) + (ev.key === 'ArrowDown' ? 1 : -1)];
+                if (next) { ev.preventDefault(); next.focus(); }
+            }
+        });
+    })();
     // The parents under a row, the row included when it has children: who "open / close all
     // below" changes.
     function treeBelow(id) {

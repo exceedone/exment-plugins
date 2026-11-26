@@ -1,5 +1,41 @@
     /* ------------------------------------------------ wiki -------------- */
     var currentWiki = null;
+    // the folded pages of the Wiki tree, per person and project (ISS00361)
+    var WIKI_FOLD_KEY = userKey('wf');
+    var WIKI_FOLD = {};
+    try {
+        (JSON.parse(localStorage.getItem(WIKI_FOLD_KEY) || '[]') || []).forEach(function (id) { WIKI_FOLD['w' + id] = true; });
+    } catch (e) { /* ignore */ }
+    function wikiFolded(id) { return Object.prototype.hasOwnProperty.call(WIKI_FOLD, 'w' + id); }
+    function wikiFoldSave() {
+        try {
+            var ids = Object.keys(WIKI_FOLD).map(function (k) { return k.slice(1); });
+            if (ids.length) { localStorage.setItem(WIKI_FOLD_KEY, JSON.stringify(ids)); } else { localStorage.removeItem(WIKI_FOLD_KEY); }
+        } catch (e) { /* ignore */ }
+    }
+    // the pages with children under a page, the page included when it has some
+    function wikiBelow(id) {
+        var kids = {};
+        ((D.wiki || {}).pages || []).forEach(function (p) {
+            if (p.parent) { (kids['w' + p.parent] = kids['w' + p.parent] || []).push(String(p.id)); }
+        });
+        var out = [], seen = {}, todo = id === null ? Object.keys(kids).map(function (k) { return k.slice(1); }) : [String(id)];
+        while (todo.length) {
+            var k = todo.shift();
+            if (seen[k] || !kids['w' + k]) { continue; }
+            seen[k] = true;
+            out.push(k);
+            todo = todo.concat(kids['w' + k]);
+        }
+        return out;
+    }
+    function wikiSet(ids, fold, focusId) {
+        ids.forEach(function (k) { if (fold) { WIKI_FOLD['w' + k] = true; } else { delete WIKI_FOLD['w' + k]; } });
+        wikiFoldSave();
+        renderWiki(currentWiki);
+        var again = focusId && document.querySelector('#pp-wtree .pp-wtgl[data-wtgl="' + String(focusId).replace(/[^0-9A-Za-z_-]/g, '') + '"]');
+        if (again) { again.focus(); }
+    }
     function renderWiki(selectId) {
         var wiki = D.wiki || { enabled: false, pages: [] };
         // With no page to show, the article card is an empty frame: it steps
@@ -28,7 +64,10 @@
             (kids[parent] = kids[parent] || []).push(page);
         });
         var byId = {};
-        wiki.pages.forEach(function (p) { byId[p.id] = true; });
+        wiki.pages.forEach(function (p) { byId[p.id] = p; });
+        // the page shown is never inside a folded branch: its parents open for this drawing
+        var openNow = {};
+        for (var up = byId[selectId], guard = 0; up && up.parent && guard < 50; up = byId[up.parent], guard++) { openNow[up.parent] = true; }
         var drawn = {};
         // The nesting is unbounded; only the indent class is capped. Every
         // descendant used to be handed level 1, so a grandchild sat at exactly
@@ -42,9 +81,18 @@
             var has = !!kids[page.id];
             var cls = 'nd' + (level ? ' lv' + Math.min(level, 4) : '') + (orphan ? ' orphan' : '') +
                 (String(page.id) === String(selectId) ? ' on' : '');
-            var html = '<div class="' + cls + '" data-wiki="' + esc(page.id) + '">' +
-                '<i class="fa ' + (has ? 'fa-folder-o' : 'fa-file-text-o') + '"></i>' + esc(page.title) + '</div>';
-            (kids[page.id] || []).forEach(function (child) { html += node(child, level + 1, false); });
+            var folded = has && wikiFolded(page.id) && !openNow[page.id];
+            var tgl = has
+                ? '<a href="javascript:void(0);" role="button" class="pp-wtgl" data-wtgl="' + esc(page.id) + '" aria-expanded="' + (folded ? 'false' : 'true') +
+                    '" title="' + esc(folded ? L.tree_ctx_open : L.tree_ctx_close) + '">' + (folded ? '▶' : '▼') + '</a>'
+                : '<span class="pp-wtgl-sp"></span>';
+            var html = '<div class="' + cls + '" data-wiki="' + esc(page.id) + '">' + tgl +
+                '<i class="fa ' + (has ? (folded ? 'fa-folder-o' : 'fa-folder-open-o') : 'fa-file-text-o') + '"></i>' + esc(page.title) + '</div>';
+            if (has) {
+                var inner = '';
+                (kids[page.id] || []).forEach(function (child) { inner += node(child, level + 1, false); });
+                html += '<div class="pp-wkids"' + (folded ? ' hidden' : '') + '>' + inner + '</div>';
+            }
             return html;
         }
         var tree = (kids[0] || []).map(function (page) { return node(page, 0, false); }).join('');
