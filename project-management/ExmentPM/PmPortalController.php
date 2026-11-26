@@ -2982,7 +2982,8 @@ class PmPortalController extends AdminControllerBase
                 if ($d === null || !PortalAttributes::projectOn($project)) {
                     return [[], PortalDefinition::trans('message.invalid_params')];
                 }
-                if ($raw === '__none__') {
+                // "__none__" (the screen) or an empty value (the API) empties it
+                if ($raw === '__none__' || $raw === null || $raw === '' || $raw === []) {
                     $merge[strval($attrId)] = null;
                     continue;
                 }

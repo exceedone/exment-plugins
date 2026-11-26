@@ -68,6 +68,12 @@ class PluginEvent extends PluginEventBase
         // what the issue was, for its chat channels after the save (ISS02939)
         if ($model->custom_table->table_name === array_get(PortalDefinition::config(), 'issue_table')) {
             PortalChannels::issueSaving($model);
+            // the custom attributes as kept: rounded, in order (ISS02939)
+            try {
+                PortalAttributes::normalizeSaving($model);
+            } catch (\Throwable $e) {
+                Log::warning('pm_portal attributes: issue ' . $model->id . ' not normalised (' . get_class($e) . ')');
+            }
         }
     }
 
