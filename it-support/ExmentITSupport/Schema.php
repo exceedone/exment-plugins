@@ -37,8 +37,9 @@ class Schema
      * reached from the desk (see arrangeMenu()).
      * 4: the senders of alerts (its_intake_sources, ISS02928).
      * 5: the step of the SLA escalation told (sla_escalation).
+     * 6: problems (its_problem, the ticket's column problem).
      */
-    const VERSION = 5;
+    const VERSION = 6;
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -134,6 +135,23 @@ class Schema
                     ['note', 'メモ（社内）', 'textarea', ['help' => 'パスワードは書かないでください。']],
                 ],
             ],
+            Its::T_PROBLEM => [
+                'label' => '問題',
+                'icon' => 'fa-bug',
+                'description' => '同じ原因のチケットをまとめるもの。原因・回避のしかた・解決のしかたを書き、つないだチケットをまとめて解決にできます。',
+                'columns' => [
+                    ['problem_no', '問題の番号', 'auto_number', ['auto_number_type' => 'format', 'auto_number_format' => 'PRB-${id:5}', 'index_enabled' => '1', 'freeword_search' => '1']],
+                    ['title', '件名', 'text', ['required' => '1', 'use_label_flg' => '1', 'freeword_search' => '1']],
+                    ['status', '状態', 'select_valtext', ['valtext' => Its::PROBLEM_STATUSES, 'default' => 'open', 'required' => '1', 'index_enabled' => '1']],
+                    ['assignee', '担当者', 'user', ['index_enabled' => '1']],
+                    ['description', '起きていること', 'textarea', ['freeword_search' => '1']],
+                    ['root_cause', '原因', 'textarea', ['freeword_search' => '1']],
+                    ['workaround', '回避のしかた', 'textarea', ['freeword_search' => '1']],
+                    ['resolution', '解決のしかた', 'textarea', ['freeword_search' => '1']],
+                    ['knowledge_id', 'ナレッジの ID', 'integer', ['help' => 'この問題から作ったナレッジ。']],
+                    ['resolved_at', '解決した日時', 'datetime', []],
+                ],
+            ],
             Its::T_TICKET => [
                 'label' => 'チケット',
                 'icon' => 'fa-life-ring',
@@ -174,6 +192,7 @@ class Schema
                     ['occurrences', '発生回数', 'integer', ['default' => '0']],
                     ['last_occurred_at', '最後に発生した日時', 'datetime', []],
                     ['merged_into', 'まとめた先', 'select_table', ['select_target_table_name' => Its::T_TICKET]],
+                    ['problem', '問題', 'select_table', ['select_target_table_name' => Its::T_PROBLEM, 'index_enabled' => '1']],
                 ],
             ],
             Its::T_MESSAGE => [
@@ -274,7 +293,7 @@ class Schema
                 'tables' => [
                     Its::T_TICKET => $edit, Its::T_MESSAGE => $edit, Its::T_CUSTOMER => $edit,
                     Its::T_CONTACT => $edit, Its::T_ASSET => $edit, Its::T_KNOWLEDGE => $edit,
-                    Its::T_TEMPLATE => $edit, Its::T_CATEGORY => $view, Its::T_SLA => $view,
+                    Its::T_TEMPLATE => $edit, Its::T_CATEGORY => $view, Its::T_SLA => $view, Its::T_PROBLEM => $edit,
                 ],
             ],
             Its::ROLE_CUSTOMER => [
