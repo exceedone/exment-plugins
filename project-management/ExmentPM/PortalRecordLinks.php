@@ -49,7 +49,9 @@ class PortalRecordLinks
             return [];
         }
         return DB::table(static::TABLES)->where('project_id', $projectId)->orderBy('sort')->orderBy('id')
-            ->pluck('table_name')->map('strval')->all();
+            ->pluck('table_name')->map(function ($v) {
+                return strval($v);
+            })->all();
     }
 
     /**
@@ -63,7 +65,9 @@ class PortalRecordLinks
             return [];
         }
         return Cache::remember(static::CACHE_KEY, 300, function () {
-            return DB::table(static::TABLES)->distinct()->orderBy('table_name')->pluck('table_name')->map('strval')->all();
+            return DB::table(static::TABLES)->distinct()->orderBy('table_name')->pluck('table_name')->map(function ($v) {
+                return strval($v);
+            })->all();
         });
     }
 
@@ -87,7 +91,8 @@ class PortalRecordLinks
         $out = [];
         foreach (CustomTable::allRecords() as $table) {
             $name = strval($table->table_name);
-            if (isset($own[$name]) || isset($system[$name]) || $table->hasPermission() !== true) {
+            // the portal's, Exment's system tables (by name or by their flag: the safety check's too)
+            if (isset($own[$name]) || isset($system[$name]) || boolval($table->system_flg) || $table->hasPermission() !== true) {
                 continue;
             }
             $out[] = ['name' => $name, 'label' => strval($table->table_view_name)];
@@ -158,7 +163,8 @@ class PortalRecordLinks
                 'id' => intval($row->id),
                 'table' => $name,
                 'tl' => $labels[$name] ?? $name,
-                'rid' => intval($row->record_id),
+                // the id of a record the person may not read is not told either
+                'rid' => $r !== null ? intval($row->record_id) : null,
                 't' => $r['t'] ?? null,
                 'u' => $r['u'] ?? null,
                 'can' => $r !== null,
@@ -238,7 +244,14 @@ class PortalRecordLinks
         if (!static::exists() || !in_array($tableName, static::allTables(), true)) {
             return [];
         }
-        $ids = DB::table(static::LINKS)->where('table_name', $tableName)->where('record_id', $recordId)->pluck('issue_id')->map('intval')->all();
+        // a record this person may not read: its page says nothing of it
+        $recordTable = CustomTable::getEloquent($tableName);
+        if (!isset($recordTable) || $recordTable->getValueModel()->query()->find($recordId) === null) {
+            return [];
+        }
+        $ids = DB::table(static::LINKS)->where('table_name', $tableName)->where('record_id', $recordId)->pluck('issue_id')->map(function ($v) {
+                return intval($v);
+            })->all();
         if (empty($ids)) {
             return [];
         }
