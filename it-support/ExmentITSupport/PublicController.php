@@ -34,7 +34,7 @@ class PublicController extends Controller
     protected function page(string $view, array $data = [], int $status = 200)
     {
         return response()->view(Its::view('public.' . $view), array_merge([
-            'title' => Its::setting('portal_title', 'ITサポート窓口'),
+            'title' => Its::setting('portal_title', 'サポート窓口'),
         ], $data), $status)->header('X-Robots-Tag', 'noindex, nofollow')
             ->header('Referrer-Policy', 'no-referrer')
             ->header('X-Frame-Options', 'DENY')
@@ -341,7 +341,7 @@ class PublicController extends Controller
                         if (Its::isEmail($from)) {
                             $m->from($from, strval(Its::setting('support_name', '')) ?: null);
                         }
-                        $m->to($email)->subject('【' . Its::setting('portal_title', 'ITサポート窓口') . '】ご依頼の一覧のリンク');
+                        $m->to($email)->subject('【' . Its::setting('portal_title', 'サポート窓口') . '】ご依頼の一覧のリンク');
                     });
                 } catch (\Throwable $e) {
                     \Log::warning('ExmentITSupport mine mail failed: ' . $e->getMessage());
