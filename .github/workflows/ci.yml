@@ -144,3 +144,7 @@ jobs:
       # what they do to the tickets (ExmentITSupport, plain PHP).
       - name: Alert intake check (ExmentITSupport)
         run: php it-support/tools/test-alert-intake.php
+
+      # The steps of the SLA escalation (ExmentITSupport, plain PHP).
+      - name: SLA escalation check (ExmentITSupport)
+        run: php it-support/tools/test-sla-escalation.php
