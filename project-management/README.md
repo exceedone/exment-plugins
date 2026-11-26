@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- The comment dock's 「ほかの項目も変える」 also has 管理者 and レビュアー (the same picker as 担当者) and 難易度, beside 副担当者, each where the issue table has the column; saved with the comment, in the history like the other fields.
+  コメント欄の「ほかの項目も変える」に、副担当者に加えて、管理者・レビュアー（担当者と同じ選び方）と難易度を足しました。課題のテーブルにその列があるときだけ出します。コメントといっしょに保存し、履歴に残ります。
+
 **Changed in 1.7.19 / 1.7.19 で変わったこと**
 
 - The icons on the chips of 「知らせる人」 are read again when the comment dock opens (at most once a minute), so a person's quiet hours and muted projects show as they are now, not as they were when the page was opened (ISS02931). A small read (`GET {id}/notify-channels`, a new route); no issue is read.
