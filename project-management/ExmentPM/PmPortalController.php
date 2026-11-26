@@ -1847,6 +1847,47 @@ class PmPortalController extends AdminControllerBase
     }
 
     /**
+     * The people of a project the comment dock offers to tell: the manager,
+     * the members and viewers the columns name, and whoever the organization
+     * columns bring (PortalMembership::roles).
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     * @return array<int, int>
+     */
+    protected function notifyPeopleIds($project): array
+    {
+        $pj = $this->def['project'];
+        $ids = [intval(array_get($project->value, array_get($pj, 'manager')))];
+        foreach (['members', 'viewers'] as $key) {
+            foreach ((array) array_get($project->value, array_get($pj, $key), []) as $v) {
+                $ids[] = intval($v);
+            }
+        }
+        foreach (array_keys(PortalMembership::roles((array) $project->value)) as $v) {
+            $ids[] = intval($v);
+        }
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * GET {id}/notify-channels: where each person's notice arrives now, for
+     * the chips of the comment dock when it opens - a person's quiet hours
+     * and mutes (PortalNotifyPrefs) change with the time, and the page may
+     * have been open since the morning. Small: no issue is read.
+     */
+    public function projectNotifyChannels(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+
+        return response()->json([
+            'ok' => true,
+            'notify_by' => (object) PortalNotifyTo::channels($this->notifyPeopleIds($project), intval($project->id)),
+            'notify_teams' => PortalTeams::teamsAvailable(),
+        ]);
+    }
+
+    /**
      * Whether the writer ticked "also send by Teams" (ISS02931).
      */
     public function wantsTeams(Request $request): bool
@@ -3183,11 +3224,7 @@ class PmPortalController extends AdminControllerBase
             // ISS02931: where each person of the project gets a notice besides
             // the bell (user id => {mail, teams}), shown on the chips of the
             // comment dock; one query for all of them.
-            'notify_by' => (object) PortalNotifyTo::channels(array_merge(
-                [intval(array_get($project->value, array_get($pj, 'manager')))],
-                collect($member_ids)->all(),
-                collect($viewer_ids)->all()
-            ), intval($project->id)),
+            'notify_by' => (object) PortalNotifyTo::channels($this->notifyPeopleIds($project), intval($project->id)),
             'notify_teams' => PortalTeams::teamsAvailable(),
             'statuses' => $statuses,
             'types' => $type_meta,

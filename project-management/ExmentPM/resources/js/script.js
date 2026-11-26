@@ -3138,6 +3138,24 @@ window.PmPortalBoot = function () {
         line.textContent = parts.length ? parts.join(' ／ ') : L.nt_line_bell;
         line.setAttribute('title', L.nt_others);
     }
+    // When the dock opens: where each person's notice arrives now (quiet
+    // hours and mutes change with the time). At most once a minute; the
+    // chips keep what they had if the read fails.
+    var NT_FRESH = { at: 0, busy: false };
+    function ntRefreshDue(now, last, busy) { return !busy && (now - last) >= 60000; }
+    function ntRefresh() {
+        if (!D.notify_by || !D.urls || !D.urls.base) { return; }
+        var now = Date.now();
+        if (!ntRefreshDue(now, NT_FRESH.at, NT_FRESH.busy)) { return; }
+        NT_FRESH.busy = true;
+        $.ajax({ url: D.urls.base + '/notify-channels', type: 'GET', dataType: 'json' }).done(function (res) {
+            if (!alive() || !res || !res.ok) { return; }
+            D.notify_by = res.notify_by || {};
+            D.notify_teams = !!res.notify_teams;
+            NT_FRESH.at = Date.now();
+            ntRoutes();
+        }).always(function () { NT_FRESH.busy = false; });
+    }
     // What the server says it sent, for the toast after a post.
     // ISS02931: under a comment, who it was also sent to by mail / Teams.
     function ntLine(e) {
@@ -4196,6 +4214,7 @@ window.PmPortalBoot = function () {
         dock.classList.toggle('on', !!on);
         if (bar) { bar.setAttribute('aria-expanded', on ? 'true' : 'false'); }
         ppDockFit();
+        if (on) { ntRefresh(); }
         if (on) {
             var box = document.getElementById('pp-cmt-text');
             if (box) { try { box.focus(); } catch (e) { /* ignore */ } }

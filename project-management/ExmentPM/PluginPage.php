@@ -368,6 +368,12 @@ class PluginPage extends PluginPageBase
         return $this->portal()->projectFeed(request(), $id);
     }
 
+    // ISS02931: where each person's notice arrives now (quiet hours, mutes), when the dock opens.
+    public function projectNotifyChannels($id)
+    {
+        return $this->portal()->projectNotifyChannels(request(), $id);
+    }
+
     public function issueRead($id, $issue_id)
     {
         return $this->portal()->issueRead(request(), $id, $issue_id);
