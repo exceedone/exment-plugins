@@ -165,6 +165,16 @@ jobs:
       - name: Routes check (ExmentPM)
         run: php project-management/tools/test-pm-routes.php
 
+      # The dates of the recurring schedules, RRULE and days off (ExmentPM, ISS00432)
+      - name: Recurring schedule dates (ExmentPM)
+        run: php project-management/tools/test-pm-rrule.php
+
+      # The holidays, the business days and the dates of the reminders (ExmentPM, ISS00432)
+      - name: Business calendar and reminder dates (ExmentPM)
+        run: |
+          php project-management/tools/test-business-calendar.php
+          php project-management/tools/test-pm-reminder.php
+
       # The messages of ExmentPMBacklog have no secret (plain PHP)
       - name: Messages check (ExmentPMBacklog)
         run: php project-management/tools/test-pmbl-secrets.php

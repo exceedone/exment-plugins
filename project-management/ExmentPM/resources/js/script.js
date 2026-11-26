@@ -251,6 +251,10 @@ window.PmPortalBoot = function () {
         }
         var http = (L && L.http) || {};
         var said = http.messages || {};
+        // A 403 that is not Exment's: a firewall in front of the site (AWS WAF) refused what was
+        // sent - a body with localhost or ../ in it - and answered with its own page. Not a
+        // permission, so not said as one.
+        if (status === 403 && !body && own(said, 'blocked')) { return own(said, 'blocked'); }
         var known = typeof status === 'number' && isFinite(status);
         var key = known ? own(http.status, String(status)) : undefined;
         if (!key && known && status >= 500) { key = 'server'; }
@@ -268,6 +272,15 @@ window.PmPortalBoot = function () {
             var parsed = JSON.parse(String(xhr.responseText || ''));
             return (parsed && typeof parsed === 'object') ? parsed : null;
         } catch (e) { return null; }
+    }
+    // The longest body, comment and wiki page the portal takes (PortalDefinition::MAX_BODY).
+    function maxBody() {
+        var n = Number(((L && L.http) || {}).max_body);
+        return n > 0 ? n : 200000;
+    }
+    function tooLongText(max) {
+        var said = ((L && L.http) || {}).messages || {};
+        return String(own(said, 'too_long_text') || '').replace(':max', Number(max).toLocaleString());
     }
     function xhrErr(xhr, fallback) {
         return errText(xhr && typeof xhr.status === 'number' ? xhr.status : null, xhrBody(xhr), fallback);
@@ -1637,6 +1650,8 @@ window.PmPortalBoot = function () {
             Object.keys(D.categories || {}).sort(function (a, b) {
                 return cmpText(String(D.categories[a]), String(D.categories[b]));
             }).forEach(function (c) { document.getElementById('pp-f-cat').add(new Option(D.categories[c], c)); });
+            // the last option of each opens the picker of several (ISS00255)
+            MULTI_SELECTS.forEach(function (id) { document.getElementById(id).add(new Option(L.f_multi, '__multi')); });
         }
         syncFilterControls();
     }
@@ -1676,11 +1691,11 @@ window.PmPortalBoot = function () {
     }
     function syncFilterControls() {
         setVal('pp-f-kw', FILTER.kw);
-        setVal('pp-f-as', FILTER.as);
-        setVal('pp-f-ty', FILTER.ty);
-        setVal('pp-f-pr', FILTER.pr);
-        setVal('pp-f-ms', FILTER.ms);
-        setVal('pp-f-cat', FILTER.cat);
+        setFilterVal('pp-f-as', FILTER.as);
+        setFilterVal('pp-f-ty', FILTER.ty);
+        setFilterVal('pp-f-pr', FILTER.pr);
+        setFilterVal('pp-f-ms', FILTER.ms);
+        setFilterVal('pp-f-cat', FILTER.cat);
         setVal('pp-f-rd', FILTER.rd);
         setVal('pp-f-rl', FILTER.rl);
         setVal('pp-f-df', FILTER.df);
@@ -1704,6 +1719,12 @@ window.PmPortalBoot = function () {
     // The list exactly as the grid shows it - same sort, same filters. The
     // detail screen walks this, so "the next issue" means the next row the
     // user can see, not the next id in the table.
+    // A filter holds one value or several joined by commas (ISS00255): does a row's value, or
+    // one of its values, match one of them?
+    function fHas(filter, values) {
+        var want = String(filter).split(',');
+        return (values || []).some(function (v) { return want.indexOf(String(v)) >= 0; });
+    }
     function filteredIssues() {
         // Filtered first, sorted after. This runs on every keystroke in the
         // keyword box, and on a big project sorting three thousand rows to
@@ -1715,11 +1736,11 @@ window.PmPortalBoot = function () {
             if (i.ar && !AR.show) { return false; }
             if (quick && !quick(i)) { return false; }
             if (FILTER.st && !stMatch(i.st, FILTER.st)) { return false; }
-            if (FILTER.as && i.as.map(String).indexOf(String(FILTER.as)) < 0) { return false; }
-            if (FILTER.ty && i.ty !== FILTER.ty) { return false; }
-            if (FILTER.pr && String(i.pr) !== String(FILTER.pr)) { return false; }
-            if (FILTER.ms && i.ms !== FILTER.ms) { return false; }
-            if (FILTER.cat && i.cat.map(String).indexOf(String(FILTER.cat)) < 0) { return false; }
+            if (FILTER.as && !fHas(FILTER.as, i.as)) { return false; }
+            if (FILTER.ty && !fHas(FILTER.ty, [i.ty])) { return false; }
+            if (FILTER.pr && !fHas(FILTER.pr, [i.pr])) { return false; }
+            if (FILTER.ms && !fHas(FILTER.ms, [i.ms])) { return false; }
+            if (FILTER.cat && !fHas(FILTER.cat, i.cat)) { return false; }
             if (FILTER.rd === 'unread' && !i.unread) { return false; }
             if (FILTER.rd === 'read' && i.unread) { return false; }
             if (FILTER.rl && !rlMatch(i, FILTER.rl)) { return false; }
@@ -5565,6 +5586,10 @@ window.PmPortalBoot = function () {
         // comment, so it needs both. Said before anything is sent - the
         // server would post the comment and quietly ask nobody. The "next
         // status" button sends no comment and so asks nobody.
+        if (String(text).length > maxBody()) {
+            ppDockMsg(tooLongText(maxBody()), true);
+            return;
+        }
         var review = !statusOnly && rvAskOn();
         if (review && !document.querySelector('#pp-notify-chips .pp-notify:not(.off)')) {
             ppDockMsg(L.rv_need_people, true);
@@ -5635,7 +5660,10 @@ window.PmPortalBoot = function () {
                 url: base + '/issue/' + issueId + '/comment',
                 type: 'POST',
                 dataType: 'json',
-                data: data,
+                // as JSON: a Japanese character is 3 bytes there, 9 in a form (nginx stops at 1 MB)
+                contentType: 'application/json',
+                processData: false,
+                data: JSON.stringify(data),
                 headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
@@ -6378,13 +6406,16 @@ window.PmPortalBoot = function () {
             if (!detailCurrent(issueId) || !wrap.isConnected) { return; }
             var next = area.value.trim();
             if (!next || save.disabled) { return; }
+            if (next.length > maxBody()) { toast(tooLongText(maxBody()), true); return; }
             save.disabled = true;
             save.textContent = L.posting;
             var seq = ++DET_SEQ;
             $.ajax({
                 url: D.urls.base + '/comment/' + cid, type: 'PATCH',
                 dataType: 'json',
-                data: { comment: next }, headers: { 'X-CSRF-TOKEN': CSRF }
+                // as JSON, as the comment is posted (writes.js)
+                contentType: 'application/json', processData: false,
+                data: JSON.stringify({ comment: next }), headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {
                     if (detailCurrent(issueId)) {
@@ -9239,13 +9270,15 @@ window.PmPortalBoot = function () {
     }
 
     // Phase B: live char counter below the description textarea. The limit
-    // comes from col.max_length when present, or falls back to 2000 which
-    // matches the default Exment text-column length.
+    // comes from col.max_length when present, or is the portal's own
+    // (PortalDefinition::MAX_BODY, 200,000 - more than Backlog's 100,000): an
+    // editor or textarea column of Exment has no length of its own.
     function nedAttachCharCount(fg) {
         var ta = fg.querySelector('textarea.pp-ne-in');
         if (!ta) { return; }
         var col = NED.columns.filter(function (c) { return c.name === fg.dataset.fname; })[0];
-        var max = (col && col.max_length) ? col.max_length : 2000;
+        var max = (col && col.max_length) ? col.max_length : maxBody();
+        fg.dataset.max = String(max);
         var box = document.createElement('div');
         box.className = 'pp-ne-charcount';
         var n = document.createElement('span'); n.className = 'n'; n.textContent = String((ta.value || '').length);
@@ -9292,6 +9325,15 @@ window.PmPortalBoot = function () {
         var ok = true;
         NED.el.querySelectorAll('.pp-ne-fg').forEach(function (fg) {
             if (!nedValidateField(fg)) { ok = false; }
+            // too long: said here, before the server is asked
+            var ta = fg.dataset.max ? fg.querySelector('textarea.pp-ne-in') : null;
+            if (ta && (ta.value || '').length > Number(fg.dataset.max)) {
+                ok = false;
+                fg.classList.add('err');
+                nedRevealField(fg);
+                var errEl = fg.querySelector('.err');
+                if (errEl) { errEl.textContent = tooLongText(Number(fg.dataset.max)); errEl.hidden = false; }
+            }
         });
         return ok;
     }
@@ -12001,6 +12043,12 @@ window.PmPortalBoot = function () {
      ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change'],
      ['pp-f-rl', 'rl', 'change'], ['pp-f-df', 'df', 'change']].forEach(function (def) {
         document.getElementById(def[0]).addEventListener(def[2], function () {
+            // 「複数選ぶ…」: the picker sets the filter; the select shows what was there (ISS00255)
+            if (this.value === '__multi') {
+                setFilterVal(def[0], FILTER[def[1]]);
+                multiPick(this, def[1]);
+                return;
+            }
             FILTER[def[1]] = this.value;
             afterFilterChange();
         });
@@ -12123,6 +12171,76 @@ window.PmPortalBoot = function () {
         renderIssues();
         filterToUrl();
     });
+
+    /* ---- several values in one filter (ISS00255) ---- */
+    var MULTI_SELECTS = ['pp-f-as', 'pp-f-ty', 'pp-f-pr', 'pp-f-ms', 'pp-f-cat'];
+    // The select shows one value as itself, and several as one option of their own
+    // ("担当者: 3 件"), made when needed.
+    function setFilterVal(id, v) {
+        var el = document.getElementById(id);
+        if (!el) { return; }
+        var made = el.querySelector('option.pp-fmulti');
+        if (String(v).indexOf(',') >= 0) {
+            var head = (el.options[0] ? el.options[0].text.split(':')[0] : '');
+            if (!made) {
+                made = new Option('', v);
+                made.className = 'pp-fmulti';
+                el.add(made, el.options[1] || null);
+            }
+            made.value = v;
+            made.text = head + ': ' + String(L.f_multi_n).replace(':n', String(v.split(',').length));
+        } else if (made) {
+            made.remove();
+        }
+        if (el.value !== v) { el.value = v; }
+    }
+    function multiPick(sel, key) {
+        var old = document.getElementById('pp-fpick');
+        if (old) { old.remove(); }
+        var have = String(FILTER[key] || '').split(',').filter(Boolean);
+        var opts = Array.prototype.filter.call(sel.options, function (o) {
+            return o.value !== '' && o.value !== '__multi' && o.className !== 'pp-fmulti';
+        });
+        var box = document.createElement('div');
+        box.id = 'pp-fpick';
+        box.className = 'pp-fpick';
+        box.setAttribute('role', 'dialog');
+        box.innerHTML = (opts.length > 10 ? '<input type="search" class="s" placeholder="' + esc(L.f_multi_find) + '">' : '') +
+            '<div class="ls">' + opts.map(function (o) {
+                return '<label data-l="' + esc(o.text.toLowerCase()) + '"><input type="checkbox" value="' + esc(o.value) + '"' +
+                    (have.indexOf(o.value) >= 0 ? ' checked' : '') + '> ' + esc(o.text) + '</label>';
+            }).join('') + '</div>' +
+            '<div class="ft"><button type="button" class="bl-btn-sub" data-a="clear">' + esc(L.f_multi_clear) + '</button>' +
+            '<button type="button" class="bl-btn-main" data-a="ok">' + esc(L.f_multi_ok) + '</button></div>';
+        root.appendChild(box);
+        var r = sel.getBoundingClientRect();
+        box.style.left = Math.max(4, Math.min(r.left, window.innerWidth - box.offsetWidth - 4)) + 'px';
+        box.style.top = Math.min(r.bottom + 2, window.innerHeight - box.offsetHeight - 4) + 'px';
+        var s = box.querySelector('input.s');
+        if (s) {
+            s.addEventListener('input', function () {
+                var w = s.value.trim().toLowerCase();
+                box.querySelectorAll('label[data-l]').forEach(function (lb) { lb.hidden = w !== '' && lb.getAttribute('data-l').indexOf(w) < 0; });
+            });
+        }
+        (s || box.querySelector('input[type=checkbox]') || box).focus();
+        function close() {
+            box.remove();
+            document.removeEventListener('mousedown', away, true);
+            document.removeEventListener('keydown', esc1);
+        }
+        function away(ev) { if (!box.contains(ev.target)) { close(); } }
+        function esc1(ev) { if (ev.key === 'Escape') { close(); sel.focus(); } }
+        document.addEventListener('mousedown', away, true);
+        document.addEventListener('keydown', esc1);
+        box.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-a]');
+            if (!b) { return; }
+            FILTER[key] = b.getAttribute('data-a') === 'clear' ? '' : Array.prototype.map.call(box.querySelectorAll('input[type=checkbox]:checked'), function (x) { return x.value; }).join(',');
+            close();
+            afterFilterChange();
+        });
+    }
 
     /* ---- tree view ---- */
     // Folding changes which rows are listed, so the ticks go, the same as on

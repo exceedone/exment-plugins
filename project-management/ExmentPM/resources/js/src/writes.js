@@ -40,6 +40,10 @@
         // comment, so it needs both. Said before anything is sent - the
         // server would post the comment and quietly ask nobody. The "next
         // status" button sends no comment and so asks nobody.
+        if (String(text).length > maxBody()) {
+            ppDockMsg(tooLongText(maxBody()), true);
+            return;
+        }
         var review = !statusOnly && rvAskOn();
         if (review && !document.querySelector('#pp-notify-chips .pp-notify:not(.off)')) {
             ppDockMsg(L.rv_need_people, true);
@@ -110,7 +114,10 @@
                 url: base + '/issue/' + issueId + '/comment',
                 type: 'POST',
                 dataType: 'json',
-                data: data,
+                // as JSON: a Japanese character is 3 bytes there, 9 in a form (nginx stops at 1 MB)
+                contentType: 'application/json',
+                processData: false,
+                data: JSON.stringify(data),
                 headers: { 'X-CSRF-TOKEN': CSRF }
             }).done(function (res) {
                 if (!res || !res.ok || !res.issue || String(res.issue.id) !== String(issueId)) {

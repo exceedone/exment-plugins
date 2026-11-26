@@ -321,7 +321,7 @@ class PortalRecurrence
      *
      * @return array<string, mixed>
      */
-    protected static function copyValues(CustomTable $issue_table, $issue, $project, array $plan, array $def): array
+    public static function copyValues(CustomTable $issue_table, $issue, $project, array $plan, array $def): array
     {
         $is = (array) array_get($def, 'issue', []);
         $extra = (array) array_get($def, 'issue_extra', PortalSchema::ISSUE_COLUMNS);

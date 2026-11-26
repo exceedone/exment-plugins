@@ -106,6 +106,33 @@ class PluginSetting
             ->help(PortalDefinition::trans(PortalTeams::teamsAvailable() ? 'teams.setting_help' : 'teams.setting_unavailable'))
             ->default('bell');
 
+        // recurring schedules on an Exment without Feature management (ISS00432)
+        if (!class_exists(PortalSchedule::FEATURES)) {
+            $form->switchbool('schedule_on', PortalDefinition::trans('sched.on'))->help(PortalDefinition::trans('sched.on_help'))->default('0');
+        }
+
+        // reminders before the due date (ISS00432)
+        $r = function ($key) {
+            return PortalDefinition::trans('remind.' . $key);
+        };
+        $form->exmheader($r('header'))->hr();
+        $form->description($r(class_exists(PortalReminder::FEATURES) ? 'description' : 'description_old'));
+        if (!class_exists(PortalReminder::FEATURES)) {
+            $form->switchbool('reminder_on', $r('on'))->default('0');
+        }
+        $form->text('reminder_days', $r('days'))->help($r('days_help'))->default('1');
+        $form->switchbool('reminder_business', $r('business'))->help($r('business_help'))->default('0');
+        $form->switchbool('reminder_today', $r('today'))->default('1');
+        $form->switchbool('reminder_overdue', $r('overdue'))->help($r('overdue_help'))->default('0');
+        $form->text('reminder_overdue_max', $r('overdue_max'))->default('14');
+        $form->text('reminder_time', $r('time'))->help($r('time_help'))->default('09:00');
+        $form->checkbox('reminder_to', $r('to'))->options([
+            'assignees' => $r('to_assignees'),
+            'sub_assignees' => $r('to_sub_assignees'),
+            'managers' => $r('to_managers'),
+            'watchers' => $r('to_watchers'),
+        ])->default(['assignees']);
+
         $form->exmheader($a('header'))->hr();
         $form->description($a('description'));
 
