@@ -69,6 +69,27 @@
         </div>
     </div>
 
+    <div class="its-card" id="its-escalation">
+        <h2><i class="fa fa-level-up" aria-hidden="true"></i>SLA のエスカレーション</h2>
+        <input type="hidden" name="esc_form" value="1">
+        <div class="its-sub its-lead">期限が近づいたら担当者へ、過ぎたらリーダーへ、さらに過ぎたら管理者へ、段階を追って知らせます。それぞれ 1 回だけです。使うあいだは、上の「まもなく期限」「超過」の 1 回の知らせのかわりになります。</div>
+        <div class="its-form-grid">
+            <label for="s-esc-on">使う</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-esc-on" name="esc_enabled" value="1" @checked($s['esc_enabled'] === '1')> 段階を追って知らせる</label>
+            <label for="s-esc-pct">1. 担当者へ</label><span class="its-inline">期限までの時間の <input type="number" id="s-esc-pct" name="esc_warn_percent" value="{{ $s['esc_warn_percent'] }}" min="1" max="99"> % が過ぎたら（担当者がいないときは担当者みんな）</span>
+            <label for="s-esc-lead" class="top">2. 期限を過ぎたらリーダーへ</label>
+            <select id="s-esc-lead" name="esc_lead_users[]" multiple size="4">@foreach($agentOptions as $id => $name)<option value="{{ $id }}" @selected(in_array((string) $id, explode(',', $s['esc_lead_users']), true))>{{ $name }}</option>@endforeach</select>
+            <label for="s-esc-after">3. 管理者へ</label><span class="its-inline">期限から <input type="number" id="s-esc-after" name="esc_manager_after" value="{{ $s['esc_manager_after'] }}" min="0"> 分過ぎたら（0 でしない）</span>
+            <label for="s-esc-mgr" class="top">管理者</label>
+            <select id="s-esc-mgr" name="esc_manager_users[]" multiple size="4">@foreach($agentOptions as $id => $name)<option value="{{ $id }}" @selected(in_array((string) $id, explode(',', $s['esc_manager_users']), true))>{{ $name }}</option>@endforeach</select>
+            <span class="lbl">知らせ方</span>
+            <span class="its-days" role="group" aria-label="知らせ方">@foreach($escChannels as $k => $l)<label><input type="checkbox" name="esc_channels[]" value="{{ $k }}" @checked(in_array($k, explode(',', $s['esc_channels']), true))> {{ $l }}</label>@endforeach</span>
+            <label for="s-esc-teams">Teams のワークフローの URL</label><input type="url" id="s-esc-teams" name="esc_teams_url" value="" placeholder="{{ $s['esc_teams_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
+            <label for="s-esc-hook">Webhook の URL</label><input type="url" id="s-esc-hook" name="esc_webhook_url" value="" placeholder="{{ $s['esc_webhook_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
+            <label for="s-esc-lw">LINE WORKS のチャンネル ID</label><input type="text" id="s-esc-lw" name="esc_lineworks_channel" value="{{ $s['esc_lineworks_channel'] }}" placeholder="空なら、知らせる人の LINE WORKS へ">
+        </div>
+        <div class="its-sub its-foot">リーダー・管理者を選ばないときは、ひとつ前の段階の人に知らせます。LINE WORKS は Exment の「LINE WORKS」の設定を使います（Exment 7.3 以降）。Webhook には JSON（event・step・ticket_no・subject・priority・due・url）を送ります。</div>
+    </div>
+
     <div class="its-card">
         <h2><i class="fa fa-globe" aria-hidden="true"></i>お客様の窓口（ログインなし）</h2>
         @include($Its::view('_feature_note'))

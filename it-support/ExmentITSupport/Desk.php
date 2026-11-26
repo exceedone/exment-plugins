@@ -954,6 +954,8 @@ class Desk
             'mailFrom' => Mailer::fromAddress(),
             'portalDoorShut' => !Feature::on(Feature::PORTAL),
             'featureUrl' => Feature::manageUrl(),
+            'agentOptions' => Tickets::agentOptions(),
+            'escChannels' => Escalation::CHANNELS,
         ]);
     }
 
@@ -976,9 +978,33 @@ class Desk
             }
             if ($request->has($key)) {
                 $values[$key] = $request->get($key);
-            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled'], true)) {
+            } elseif (in_array($key, ['imap_enabled', 'csat_enabled', 'public_enabled', 'esc_enabled'], true)) {
                 $values[$key] = '0';
+            } elseif (in_array($key, ['esc_lead_users', 'esc_manager_users', 'esc_channels'], true) && $request->has('esc_form')) {
+                // lists left empty on the page
+                $values[$key] = '';
             }
+        }
+        foreach (['esc_teams_url', 'esc_webhook_url'] as $key) {
+            // empty means "keep the one saved"; "-" removes it
+            if (array_key_exists($key, $values) && strval($values[$key]) === '') {
+                unset($values[$key]);
+            } elseif (array_key_exists($key, $values) && strval($values[$key]) === '-') {
+                $values[$key] = '';
+            } elseif (array_key_exists($key, $values) && !preg_match('#^https://#i', strval($values[$key]))) {
+                return $this->back(Its::url('settings'), 'Teams・Webhook の送り先は https:// で始まる URL にしてください。', true);
+            }
+        }
+        foreach (['esc_lead_users', 'esc_manager_users'] as $key) {
+            if (isset($values[$key]) && is_array($request->get($key))) {
+                $values[$key] = implode(',', array_map('intval', array_filter((array) $request->get($key), 'is_numeric')));
+            }
+        }
+        if (isset($values['esc_warn_percent'])) {
+            $values['esc_warn_percent'] = strval(max(1, min(99, intval($values['esc_warn_percent']))));
+        }
+        if (isset($values['esc_manager_after'])) {
+            $values['esc_manager_after'] = strval(max(0, min(10080, intval($values['esc_manager_after']))));
         }
         if (isset($values['business_days']) && is_array($request->get('business_days'))) {
             $values['business_days'] = implode(',', array_map('intval', $request->get('business_days')));
