@@ -62,6 +62,9 @@ class Syncer
     /** @var \Exceedone\Exment\Model\CustomTable */
     protected $issueTable;
 
+    /** @var array<string, array<string, mixed>> Backlog custom field id => ExmentPM attribute (ISS02939) */
+    protected $attrMap = [];
+
     public function __construct(object $conn)
     {
         $this->conn = $conn;
@@ -144,6 +147,47 @@ class Syncer
         foreach ($this->issueTable->custom_columns as $c) {
             $this->cols[$c->column_name] = true;
         }
+        $this->prepareAttributes();
+    }
+
+    /**
+     * The Backlog project's custom fields as the Exment project's custom attributes (ISS02939),
+     * and the project's switch 「カスタム属性」 on. Once a run. A failure costs the attributes of
+     * this run, never the run: the fields' text (custom_fields) is still written.
+     */
+    protected function prepareAttributes(): void
+    {
+        $this->attrMap = [];
+        if (!Attributes::available($this->cols)) {
+            return;
+        }
+        $pid = intval($this->conn->exment_project_id);
+        try {
+            $fields = $this->bl->get('projects/' . intval($this->map['backlog_project_id']) . '/customFields');
+            $this->attrMap = Attributes::sync($pid, is_array($fields) ? $fields : [], 0, function ($line) {
+                $this->problem($line);
+            });
+            if (!empty($this->attrMap)) {
+                $this->attributesOn($pid);
+            }
+        } catch (\Throwable $e) {
+            $this->attrMap = [];
+            $this->problem(Lang::t('problem_attr_fields', ['reason' => mb_substr(Secrets::scrub($e->getMessage(), [Connections::apiKey($this->conn)]), 0, 200)]));
+        }
+    }
+
+    /** The project's switch 「カスタム属性」, on. */
+    protected function attributesOn(int $projectId): void
+    {
+        $projects = Pm::table('project_table');
+        if (!$projects || \Exceedone\Exment\Model\CustomColumn::getEloquent(Attributes::SWITCH, $projects) === null) {
+            return;
+        }
+        $project = $projects->getValueModel($projectId);
+        if (!$project || boolval(intval(array_get((array) $project->value, Attributes::SWITCH, 0)))) {
+            return;
+        }
+        $this->saveQuietly($project, [Attributes::SWITCH => '1']);
     }
 
     /**
@@ -401,6 +445,10 @@ class Syncer
             $value['progress'] = $value['progress'] ?? 0;
             $action = 'add';
         }
+        // the custom fields as the project's custom attributes; the others the issue has stay (ISS02939)
+        if (!empty($this->attrMap)) {
+            $value[Attributes::COLUMN] = Attributes::values($issue, $this->attrMap, $row->exists ? array_get((array) $row->value, Attributes::COLUMN) : '');
+        }
         $this->saveIssue($row, $value, $issue, $action === 'add');
 
         if (!$link) {
@@ -452,6 +500,13 @@ class Syncer
                     } else {
                         unset($value['assignees']);
                     }
+                    continue;
+                }
+                // ExmentPM refused the custom attributes (a value its rules do not take): the
+                // issue without them, said so (ISS02939)
+                if ($try < 3 && array_key_exists(Attributes::COLUMN, $value) && array_key_exists('value.' . Attributes::COLUMN, $errors)) {
+                    $this->problem(Lang::t('problem_attr_refused', ['key' => $issue['issueKey'], 'reason' => static::firstError($e)]));
+                    unset($value[Attributes::COLUMN]);
                     continue;
                 }
                 // The project has sub-issues switched off, or the parent is

@@ -204,6 +204,10 @@ jobs:
       - name: Messages check (ExmentPMBacklog)
         run: php project-management/tools/test-pmbl-secrets.php
 
+      # Backlog's custom fields as ExmentPM's custom attributes (ExmentPMBacklog, plain PHP)
+      - name: Backlog custom fields (ExmentPMBacklog)
+        run: php project-management/tools/test-pmbl-attributes.php
+
       # The alerts of Zabbix, Mackerel, Alertmanager and Azure Monitor, and
       # what they do to the tickets (ExmentITSupport, plain PHP).
       - name: Alert intake check (ExmentITSupport)
