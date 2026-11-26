@@ -6305,7 +6305,7 @@ window.PmPortalBoot = function () {
             (files.length ? '<span><i class="fa fa-paperclip"></i> ' + esc(L.wiki_files) + ' (' + files.length + ')</span>' : '') + '</div>' +
             (renderRichText(page.content) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>') +
             (files.length ? '<p>' + files.map(function (f) {
-                return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + ' ';
+                return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + attachTools(f, { editable: page.editable }, 'wiki:' + page.id) + ' ';
             }).join('') + '</p>' : '');
         linkifyIssueRefs(document.getElementById('pp-wbody'));
         // Opened from the pinned list half way down a long article, the next
@@ -6481,20 +6481,35 @@ window.PmPortalBoot = function () {
     // a time: a lock the server keeps, renewed while the editor is open. Only when the feature is
     // on (D.can.attach_edit); the server decides again on every call.
     function attachOn() { return !!(D.can && D.can.attach_edit); }
-    function attachBase(issueId, doc) { return D.urls.base + '/issue/' + issueId + '/file/' + doc; }
-    function attachTools(f, res) {
+    // whose attachment: "issue:<id>" or "wiki:<id>" (a page of the wiki); a bare id is an issue
+    function attachBase(own, doc) {
+        var m = /^(issue|wiki):(\d+)$/.exec(String(own));
+        return D.urls.base + '/' + (m ? m[1] : 'issue') + '/' + (m ? m[2] : own) + '/file/' + doc;
+    }
+    var ATTACH_OWN = null;
+    function attachOwner() { return ATTACH_OWN || ('issue:' + currentIssue); }
+    function attachTools(f, res, own) {
         if (!attachOn() || !f || !f.doc) { return ''; }
-        var out = ' <button type="button" class="pp-ver" data-doc="' + esc(f.doc) + '" title="' + esc(L.attach_versions) + '">' +
+        var o = own ? ' data-own="' + esc(own) + '"' : '';
+        var out = ' <button type="button" class="pp-ver" data-doc="' + esc(f.doc) + '"' + o + ' title="' + esc(L.attach_versions) + '">' +
             esc(attachFmt(L.attach_ver, f.ver || 1)) + '</button>';
         var canEdit = !!(res && res.editable);
         if (canEdit && f.ek === 'text') {
-            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '" data-kind="text"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
+            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '"' + o + ' data-kind="text"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
         } else if (canEdit && f.ek === 'office' && D.urls && D.urls.office_edit) {
-            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '" data-kind="office" data-url="' + esc(f.url) + '"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
+            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '"' + o + ' data-kind="office" data-url="' + esc(f.url) + '"><i class="fa fa-pencil"></i> ' + esc(L.attach_edit) + '</a>';
         } else if (f.ek === 'text') {
-            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '" data-kind="text" data-ro="1"><i class="fa fa-file-text-o"></i> ' + esc(L.attach_read) + '</a>';
+            out += ' <a href="javascript:void(0);" class="pp-aedit" data-doc="' + esc(f.doc) + '"' + o + ' data-kind="text" data-ro="1"><i class="fa fa-file-text-o"></i> ' + esc(L.attach_read) + '</a>';
         }
         return out;
+    }
+    function attachApply(r, epoch, seq) {
+        if (r.wiki) {
+            ((D.wiki || {}).pages || []).forEach(function (p) { if (String(p.id) === String(r.wiki.id)) { p.files = r.wiki.files; } });
+            renderWiki(r.wiki.id);
+            return;
+        }
+        applyDetail(r, epoch, true, seq);
     }
     function attachFmt(tpl, n) { return String(tpl || '').replace(/:n(?![A-Za-z0-9_])/g, String(n)); }
     function attachBox(title) {
@@ -6531,7 +6546,7 @@ window.PmPortalBoot = function () {
 
     // the versions of an attachment
     function attachVersions(doc) {
-        var issueId = currentIssue;
+        var issueId = attachOwner();
         var box = attachBox(L.attach_versions);
         box.querySelector('.bd').innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
         $.ajax({ url: attachBase(issueId, doc) + '/versions', dataType: 'json' }).done(function (res) {
@@ -6550,9 +6565,9 @@ window.PmPortalBoot = function () {
                     var epoch = detailEpoch, seq = ++DET_SEQ;
                     $.ajax({ url: attachBase(issueId, doc) + '/restore/' + a.getAttribute('data-id'), type: 'POST', dataType: 'json', headers: { 'X-CSRF-TOKEN': CSRF } })
                         .done(function (r) {
-                            if (!r || !r.ok || !r.issue) { toast(errText(null, r, L.attach_fail), true); return; }
+                            if (!r || !r.ok || !(r.issue || r.wiki)) { toast(errText(null, r, L.attach_fail), true); return; }
                             attachClose(true);
-                            applyDetail(r, epoch, true, seq);
+                            attachApply(r, epoch, seq);
                             toast(L.attach_restored);
                         }).fail(function (xhr) { toast(xhrErr(xhr, L.attach_fail), true); });
                 });
@@ -6569,7 +6584,7 @@ window.PmPortalBoot = function () {
 
     // a text attachment: an editor on this page (Markdown with a preview, CSV also as a table)
     function attachText(doc, readOnly) {
-        var issueId = currentIssue;
+        var issueId = attachOwner();
         var box = attachBox(L.attach_edit);
         var bd = box.querySelector('.bd');
         bd.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
@@ -6636,11 +6651,11 @@ window.PmPortalBoot = function () {
                             data: JSON.stringify({ text: ta.value, hash: res.hash }), headers: { 'X-CSRF-TOKEN': CSRF }
                         }).done(function (r) {
                             save.disabled = false;
-                            if (!r || !r.ok || !r.issue) { toast(errText(null, r, L.attach_fail), true); return; }
+                            if (!r || !r.ok || !(r.issue || r.wiki)) { toast(errText(null, r, L.attach_fail), true); return; }
                             ATTACH.dirty = false;
                             ATTACH.mine = false;
                             attachClose(true);
-                            applyDetail(r, epoch, true, seq);
+                            attachApply(r, epoch, seq);
                             toast(L.attach_saved);
                         }).fail(function (xhr) { save.disabled = false; toast(xhrErr(xhr, L.attach_fail), true); });
                     });
@@ -6678,7 +6693,7 @@ window.PmPortalBoot = function () {
 
     // an Office attachment: Groupware's page, after the lock
     function attachOffice(doc, url) {
-        var issueId = currentIssue;
+        var issueId = attachOwner();
         var m = /\/files\/([0-9a-f][0-9a-f-]{7,63})(?:[\/?#]|$)/i.exec(String(url || ''));
         if (!m || !D.urls.office_edit) { return; }
         attachLock(issueId, doc, function (lk) {
@@ -6699,10 +6714,11 @@ window.PmPortalBoot = function () {
         var t = ev.target;
         if (!t || !t.closest) { return; }
         var ver = t.closest('.pp-ver');
-        if (ver) { ev.preventDefault(); attachVersions(ver.getAttribute('data-doc')); return; }
+        if (ver) { ev.preventDefault(); ATTACH_OWN = ver.getAttribute('data-own'); attachVersions(ver.getAttribute('data-doc')); return; }
         var ed = t.closest('.pp-aedit');
         if (ed) {
             ev.preventDefault();
+            ATTACH_OWN = ed.getAttribute('data-own');
             if (ed.getAttribute('data-kind') === 'office') { attachOffice(ed.getAttribute('data-doc'), ed.getAttribute('data-url')); return; }
             attachText(ed.getAttribute('data-doc'), ed.getAttribute('data-ro') === '1');
         }
