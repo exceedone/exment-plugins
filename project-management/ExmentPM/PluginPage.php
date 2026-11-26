@@ -193,6 +193,15 @@ class PluginPage extends PluginPageBase
     public function exportIssues($id)
     {
         return $this->portal()->exportIssues(request(), $id);
+    // ISS00264: the issue list across the projects
+    public function allIssues()
+    {
+        return $this->respond($this->portal()->allIssues(request(), new Content()));
+    }
+
+    public function allIssuesData()
+    {
+        return $this->portal()->allIssuesData(request());
     }
 
     public function mailIssue($id, $issue_id)
