@@ -135,12 +135,21 @@ class PortalSchema
      * name and set the assignee once that person has a user, or is mapped
      * to one. Empty for anything not imported.
      *
+     * 30: simple by default (the button map). A new project starts with the
+     * basics only - issues, the board, comments, files; the Wiki and the
+     * chart (gantt, burndown) are switched on in 使うタブ when wanted. The
+     * two switches default to off; every project there already is keeps
+     * what it has (PortalUpgrade::quietNewProjects()).
+     *
      * 31: the custom attributes of a project's issues (ISS02939): the values on
      * the issue (pm_attributes, a JSON object keyed by the id of a row of
      * pm_portal_attributes), and the project's switch use_attributes, off at
      * first.
      */
     const VERSION = 31;
+
+    /** Schema 30: the per project switches a new project starts without. */
+    const QUIET_FEATURES = ['use_wiki', 'use_gantt'];
 
     /** Key holding the applied version inside plugins.options. */
     const STATE_KEY = 'portal_schema_version';
@@ -889,9 +898,10 @@ class PortalSchema
         $pc = self::PROJECT_COLUMNS;
         $flags = [
             [$pc['archived'], 'project.archived', '0', 30],
-            [$pc['use_wiki'], 'project.use_wiki', '1', 31],
+            // Schema 30: the Wiki and the chart are off for a new project
+            [$pc['use_wiki'], 'project.use_wiki', '0', 31],
             [$pc['use_file'], 'project.use_file', '1', 32],
-            [$pc['use_gantt'], 'project.use_gantt', '1', 33],
+            [$pc['use_gantt'], 'project.use_gantt', '0', 33],
             [$pc['use_git'], 'project.use_git', '0', 34],
             [$pc['subtasking'], 'project.subtasking', '1', 35],
             // Schema 14. Off: the issue text goes to a third party's server

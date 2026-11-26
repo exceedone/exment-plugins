@@ -576,6 +576,10 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
   border-color:var(--bl-accent);color:var(--bl-accent-d,var(--bl-accent-ink,#2c6e5b));}
 .pmportal .bl-dockbody .bl-chip:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
 .pmportal #pp-notify-chips{display:flex;flex-wrap:wrap;gap:5px;}
+/* ISS02931: where a person's notice arrives besides the bell (mail, Teams), small after the name */
+.pmportal #pp-notify-chips .pp-nb{display:inline-flex;gap:3px;margin-left:4px;font-size:11px;opacity:.75;}
+.pmportal #pp-notify-chips .pp-nb .fa{margin:0;}
+.pmportal .pp-notify-route{margin-top:6px;font-size:12px;color:var(--bl-sub);}
 /* ---- dock cards: quieter heads, the room goes to the fields ---- */
 .pmportal .bl-dockbody .bl-card-box>.bl-boxhead{display:flex;align-items:center;flex-wrap:wrap;gap:2px 0;padding:7px 12px;font-size:13px;}
 .pmportal .bl-dockbody .bl-card-box>.bl-boxbody{padding:10px 12px 12px;}
@@ -585,6 +589,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 /* Two ticks on the head (確認を依頼する, メールでも知らせる): the first one takes
    the push to the right, the second sits beside it. */
 .pmportal .bl-dockbody .bl-boxhead .pp-notify-rv + .pp-notify-mail{margin-left:0;}
+.pmportal .bl-dockbody .bl-boxhead .pp-notify-mail + .pp-notify-teams{margin-left:0;}
 /* With 確認を依頼する ticked the picked people are being asked, not only told:
    each picked chip carries the tick, so what the post will do is on screen. */
 .pmportal #pp-notify-chips.rv .bl-chip:not(.off)::after{content:"\f046";font-family:FontAwesome;font-size:12px;margin-left:2px;}
@@ -1927,4 +1932,23 @@ body.pp-ib-open{overflow:hidden;}
   border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);font-size:12.5px;}
 .pp-nedit .pp-ne-more-find:focus{border-color:var(--bl-accent);outline:none;box-shadow:var(--bl-focus);}
 .pp-nedit .pp-ne-more .pp-ne-nomatch{display:none !important;}
+/* Button map: かんたん / くわしく on an issue. Simple keeps the subject, the
+   status, the assignees, the due date, the text and the comments. */
+.pmportal .pp-dmode-wrap{margin-left:auto;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.pmportal .pp-dmode-hint{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 9px;border-radius:var(--bl-radius-s,4px);
+  background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));color:var(--bl-accent-d,var(--bl-ink));font-size:12px;}
+.pmportal .pp-dmode-hint .x{border:0;background:none;font-size:16px;line-height:1;color:inherit;cursor:pointer;min-width:24px;min-height:24px;}
+.pmportal .pp-dmode{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bl-line);background:var(--bl-box);
+  border-radius:var(--bl-radius-s,4px);padding:3px 10px;min-height:28px;font-size:12px;color:var(--bl-sub);cursor:pointer;}
+.pmportal .pp-dmode:hover{background:var(--bl-hover);color:var(--bl-ink);}
+.pmportal .bl-detail.pp-simple .bl-props .row:not([data-top="top"]),
+.pmportal .bl-detail.pp-simple .pp-qf-unset,
+.pmportal .bl-detail.pp-simple #pp-d-childbox,
+.pmportal .bl-detail.pp-simple #pp-d-filebox,
+.pmportal .bl-detail.pp-simple #pp-d-relbox,
+.pmportal .bl-detail.pp-simple .bl-dsum [data-sum="pr"],
+.pmportal .bl-detail.pp-simple .bl-dsum [data-sum="role"],
+.pmportal .bl-detail.pp-simple .bl-dsum .pp-reads{display:none !important;}
+.pmportal .bl-detail.pp-simple:not(.pp-two) #pp-d-propbox{display:none !important;}
+@media (max-width:1199px){.pmportal .bl-detail.pp-simple #pp-d-propbox{display:none !important;}}
 </style>

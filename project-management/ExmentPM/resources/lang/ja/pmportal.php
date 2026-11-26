@@ -1963,4 +1963,25 @@ return [
     ],
     // UX-H: the issue form (S6, M11, M12)
     'ned_more_find' => '項目を探す',
+    // SIMPLE-1
+    'dm_more' => 'くわしく',
+    'dm_less' => 'かんたん',
+    'dm_more_tip' => 'ほかの項目・子課題・添付・関連課題も出します',
+    'dm_less_tip' => '状態・担当者・期限・本文・コメントだけにします',
+    'dm_hint' => '表示を かんたん にできます',
+    // FEAT-1
+    'feat_upgrade_step' => '新しいプロジェクトは Wiki とガントなしで始まるようにしました（今あるプロジェクトはそのまま。:count 件の空の設定を ON で保存しました）。',
+    // NOTIFY-TO
+    'nt_teams' => 'Teams でも知らせる',
+    'nt_teams_hint' => 'この登録で通知（ベル）を受け取る人に、同じ内容を Teams でも送ります',
+    'nt_bell' => 'ベル',
+    'nt_mail' => 'メール',
+    'nt_by_teams' => 'Teams',
+    'nt_tip' => '%s に届く所：%s',
+    'nt_line_mail' => 'メールでも届く人：%s',
+    'nt_line_teams' => 'Teams でも届く人：%s',
+    'nt_line_bell' => '選んだ人にはベルだけで届きます',
+    'nt_others' => 'ウォッチしている人と担当者にも、その人の受け取り方で届きます',
+    'nt_sent_mail' => 'メールで知らせた: %s',
+    'nt_sent_teams' => 'Teams で知らせた: %s',
 ];

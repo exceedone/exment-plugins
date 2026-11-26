@@ -213,12 +213,14 @@
             qfSummary(i, res) +
             '<span class="it" data-sum="dd"><span class="k">' + esc(L.col_dd) + '</span>' + dueCell(i) + '</span>' +
             '<span class="it pp-reads"><span class="k"><i class="fa fa-check"></i> ' + esc(L.reads) + '</span>' + readsHtml(res.reads) + '</span>' +
-            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a></div>' +
+            '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>' +
+            dmodeButton() + '</div>' +
             '<div class="bl-desc bl-md">' + (res.description === null ? skel(3)
                 : (renderRichText(res.description) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>')) + '</div>' +
             '<div class="pp-rxrow">' + rxBar(D.issue_table, i.id, res.reactions) + '</div>';
         document.getElementById('pp-d-main').innerHTML = head;
         ppDbarFill(i);
+        dmodeApply();
         linkifyIssueRefs(document.querySelector('#pp-d-main .bl-desc'));
         // The quote button carries the description as words, not markup, and
         // the rendered block is the shortest way to those words.
@@ -383,6 +385,53 @@
             .sort(function (a, b) { return a.r - b.r || a.n - b.n; })
             .map(function (e) { return e.u; });
     }
+    /* ------------------------------------------------ simple / full ----- */
+    // The button map: an issue can show only the basics - subject, status,
+    // assignees, due date, the text and the comments (かんたん) - or
+    // everything (くわしく): the other fields, children, attachments, related
+    // issues. くわしく unless the person chose かんたん, so nobody loses what
+    // they see today; a one-time hint beside the switch says it is there.
+    // Each person's choice, kept in this browser per user.
+    function dmodeKey() { return 'pmportal.dmode.u' + String(D.me || 0); }
+    function dmodeHintKey() { return 'pmportal.dmode.hint.u' + String(D.me || 0); }
+    function dmodeSimple() {
+        try { return localStorage.getItem(dmodeKey()) === 'simple'; } catch (e) { return false; }
+    }
+    function dmodeHintShown() {
+        try { return localStorage.getItem(dmodeHintKey()) !== '1' && localStorage.getItem(dmodeKey()) === null; } catch (e) { return false; }
+    }
+    function dmodeHintDone() {
+        try { localStorage.setItem(dmodeHintKey(), '1'); } catch (e) { /* shown again next time */ }
+    }
+    function dmodeButton() {
+        var simple = dmodeSimple();
+        return '<span class="pp-dmode-wrap"><button type="button" class="pp-dmode" aria-pressed="' + (simple ? 'true' : 'false') + '" title="' + esc(simple ? L.dm_more_tip : L.dm_less_tip) + '">' +
+            '<i class="fa ' + (simple ? 'fa-plus-square-o' : 'fa-minus-square-o') + '"></i> ' + esc(simple ? L.dm_more : L.dm_less) + '</button>' +
+            (dmodeHintShown() ? '<span class="pp-dmode-hint" role="note">' + esc(L.dm_hint) +
+                ' <button type="button" class="x" aria-label="' + esc(L.m_close) + '" title="' + esc(L.m_close) + '">&times;</button></span>' : '') +
+            '</span>';
+    }
+    function dmodeApply() {
+        var box = document.querySelector('#pmportal .bl-detail') || document.querySelector('.bl-detail');
+        if (box) { box.classList.toggle('pp-simple', dmodeSimple()); }
+    }
+    function dmodeSet(simple) {
+        try { localStorage.setItem(dmodeKey(), simple ? 'simple' : 'full'); } catch (e) { /* the class still changes */ }
+        dmodeHintDone();
+        dmodeRedraw();
+    }
+    function dmodeRedraw() {
+        var wrap = document.querySelector('#pp-d-main .pp-dmode-wrap');
+        if (wrap) { wrap.outerHTML = dmodeButton(); }
+        dmodeApply();
+    }
+    document.addEventListener('click', function onPpDmode(ev) {
+        if (!alive()) { document.removeEventListener('click', onPpDmode); return; }
+        var x = ev.target.closest && ev.target.closest('.pp-dmode-hint .x');
+        if (x) { ev.preventDefault(); dmodeHintDone(); dmodeRedraw(); return; }
+        var btn = ev.target.closest && ev.target.closest('.pp-dmode');
+        if (btn) { ev.preventDefault(); dmodeSet(!dmodeSimple()); }
+    });
     /* ------------------------------------------------ quick edit -------- */
     // Backlog changes an issue from the same form the comment is written in:
     // the fields that move day to day sit under the comment box, and one
@@ -466,7 +515,79 @@
         var c = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
         n.textContent = c ? String(c) : '';
         n.hidden = !c;
+        ntRoutes();
     }
+    /* ------------------------------------------------ where it arrives -- */
+    // ISS02931: where each person's notice arrives besides the bell, which
+    // always rings: their own channels (D.notify_by: {mail, teams}) plus what
+    // the writer ticked for this one notice ("also by mail", "also by
+    // Teams"). Small icons on each chip with the words in its title, and one
+    // line under the chips for the people switched on. A payload without the
+    // channels (an older server) shows nothing.
+    function ntRoute(own, mailAll, teamsAll, teamsOn) {
+        if (!own || typeof own !== 'object') { return null; }
+        return {
+            mail: !!mailAll || !!own.mail,
+            teams: !!teamsOn && (!!teamsAll || !!own.teams)
+        };
+    }
+    function ntWords(r) {
+        return [L.nt_bell].concat(r.mail ? [L.nt_mail] : [], r.teams ? [L.nt_by_teams] : []).join('・');
+    }
+    function ntTicked(id) {
+        var box = document.getElementById(id);
+        return !!(box && box.checked);
+    }
+    function ntRoutes() {
+        var chips = document.querySelectorAll('#pp-notify-chips .pp-notify');
+        var line = document.getElementById('pp-notify-route');
+        var mailAll = ntTicked('pp-notify-mail');
+        var teamsAll = ntTicked('pp-notify-teams');
+        var byMail = [];
+        var byTeams = [];
+        var any = false;
+        Array.prototype.forEach.call(chips, function (c) {
+            var u = c.getAttribute('data-user');
+            var r = ntRoute(own(D.notify_by || {}, String(u)), mailAll, teamsAll, D.notify_teams);
+            var old = c.querySelector('.pp-nb');
+            if (old) { old.parentNode.removeChild(old); }
+            if (!r) { c.removeAttribute('title'); return; }
+            any = true;
+            c.setAttribute('title', fmt(L.nt_tip, user(u).n, ntWords(r)));
+            if (r.mail || r.teams) {
+                var s = document.createElement('span');
+                s.className = 'pp-nb';
+                s.setAttribute('aria-hidden', 'true');
+                s.innerHTML = (r.mail ? '<i class="fa fa-envelope-o"></i>' : '') + (r.teams ? '<i class="fa fa-commenting-o"></i>' : '');
+                c.appendChild(s);
+            }
+            if (!c.classList.contains('off')) {
+                if (r.mail) { byMail.push(user(u).n); }
+                if (r.teams) { byTeams.push(user(u).n); }
+            }
+        });
+        if (!line) { return; }
+        var on = document.querySelectorAll('#pp-notify-chips .pp-notify:not(.off)').length;
+        line.hidden = !any || !on;
+        if (line.hidden) { line.textContent = ''; return; }
+        var parts = [];
+        if (byMail.length) { parts.push(fmt(L.nt_line_mail, byMail.join('、'))); }
+        if (byTeams.length) { parts.push(fmt(L.nt_line_teams, byTeams.join('、'))); }
+        line.textContent = parts.length ? parts.join(' ／ ') : L.nt_line_bell;
+        line.setAttribute('title', L.nt_others);
+    }
+    // What the server says it sent, for the toast after a post.
+    function ntSentText(to) {
+        if (!to) { return ''; }
+        var parts = [];
+        if (to.mail && to.mail.length) { parts.push(fmt(L.nt_sent_mail, to.mail.join('、'))); }
+        if (to.teams && to.teams.length) { parts.push(fmt(L.nt_sent_teams, to.teams.join('、'))); }
+        return parts.join(' ／ ');
+    }
+    document.addEventListener('change', function (ev) {
+        var id = ev.target && ev.target.id;
+        if (id === 'pp-notify-mail' || id === 'pp-notify-teams') { ntRoutes(); }
+    });
     function qeSelect(name, options, value, blank) {
         var sel = document.createElement('select');
         sel.className = 'bl-qe-in';
