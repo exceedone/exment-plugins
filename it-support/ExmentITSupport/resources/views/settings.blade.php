@@ -37,6 +37,9 @@
     <div class="its-card">
         <h2><i class="fa fa-paper-plane" aria-hidden="true"></i>メールを送る</h2>
         <div class="its-sub its-lead">送信は Exment の「システム設定 → メール」の設定を使います。いま送る元のアドレス: <code>{{ $mailFrom ?: '（未設定）' }}</code></div>
+        @if($mailFrom === '')
+        <div class="its-flash error" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"></i><div>送る元のアドレスがありません。このままでは、お客様へのメールも担当者への知らせのメールも送れません。下の「窓口のアドレス」か、Exment の「システム設定 → メール」の送信元を入れてください。</div></div>
+        @endif
         <div class="its-form-grid">
             <label for="s-addr">窓口のアドレス</label><input type="email" id="s-addr" name="support_address" value="{{ $s['support_address'] }}" placeholder="support@example.co.jp（返信先になります）">
             <label for="s-name">差出人の名前</label><input type="text" id="s-name" name="support_name" value="{{ $s['support_name'] }}">

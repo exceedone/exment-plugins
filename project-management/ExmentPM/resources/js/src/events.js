@@ -624,12 +624,37 @@
         afterFilterChange();
     });
     [['pp-f-kw', 'kw', 'input'], ['pp-f-as', 'as', 'change'], ['pp-f-ty', 'ty', 'change'],
-     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change']].forEach(function (def) {
+     ['pp-f-pr', 'pr', 'change'], ['pp-f-ms', 'ms', 'change'], ['pp-f-cat', 'cat', 'change'], ['pp-f-rd', 'rd', 'change'],
+     ['pp-f-rl', 'rl', 'change'], ['pp-f-df', 'df', 'change']].forEach(function (def) {
         document.getElementById(def[0]).addEventListener(def[2], function () {
             FILTER[def[1]] = this.value;
             afterFilterChange();
         });
     });
+    // The optional columns: the menu opens under its button, a tick shows or
+    // hides one column and is remembered for the next visit.
+    (function () {
+        var btn = document.getElementById('pp-oc-btn');
+        var menu = document.getElementById('pp-oc-menu');
+        if (!btn || !menu) { return; }
+        btn.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            menu.hidden = !menu.hidden;
+            btn.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+        });
+        menu.addEventListener('click', function (ev) { ev.stopPropagation(); });
+        menu.addEventListener('change', function (ev) {
+            var k = ev.target && ev.target.getAttribute('data-ocol');
+            if (!k) { return; }
+            if (ev.target.checked) { OCOL_ON[k] = true; } else { delete OCOL_ON[k]; }
+            ocolSave();
+            renderIssues();
+        });
+        document.addEventListener('click', function onPpOc() {
+            if (!alive()) { document.removeEventListener('click', onPpOc); return; }
+            if (!menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+        });
+    })();
     // Clicking the column already in charge turns it around; clicking any
     // other one takes over, ascending, which is the direction a reader means
     // by "sort by this".
