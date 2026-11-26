@@ -968,7 +968,7 @@
             [c.start || null, c.due || null],
             // the time of the due date, under it: folded away it was not found when an
             // issue was added (ISS02923)
-            [x.due_time || null, null]
+            [null, x.due_time || null]
         ].filter(keep);
         var more = [
             // Schema 27: the other people, beside the assignees.
