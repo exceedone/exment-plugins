@@ -60,6 +60,9 @@ class PmPortalController extends AdminControllerBase
      * user table; ids past it are ignored rather than refused, the same way an
      * id that cannot read the issue is.
      */
+    /** The mails of "mail this issue" a person sends in an hour at most. */
+    private const MAIL_ISSUE_PER_HOUR = 30;
+
     private const NOTIFY_PICK_LIMIT = 100;
 
     /**
@@ -1594,6 +1597,13 @@ class PmPortalController extends AdminControllerBase
         $project = $this->findProject($id);
         $issue = $this->findIssue($project, $issue_id);
         $me = intval(\Exment::getUserId());
+
+        // a person sends a few of these an hour, not a stream
+        $limitKey = 'exment_pm_mail_issue:' . $me;
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($limitKey, self::MAIL_ISSUE_PER_HOUR)) {
+            return $this->messageError(429, 'mail_too_many', ['n' => strval(self::MAIL_ISSUE_PER_HOUR)]);
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($limitKey, 3600);
 
         $picked = collect((array) $request->get('users', []))
             ->filter(function ($v) {

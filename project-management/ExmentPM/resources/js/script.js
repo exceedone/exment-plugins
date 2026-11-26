@@ -3946,7 +3946,8 @@ window.PmPortalBoot = function () {
     // Only addresses a browser can be pointed at without running anything.
     // "javascript:" survives escaping untouched, so it is stopped here.
     function safeHref(url) {
-        return /^(https?:\/\/|\/|\.{1,2}\/|#)/i.test(String(url || ''));
+        // a path of this site starts with one "/": "//host" and "/\host" go to another site
+        return /^(https?:\/\/|\/(?![\/\\])|\.{1,2}\/|#)/i.test(String(url || ''));
     }
     // An address for a link the page writes itself; anything that is not a
     // safe one points nowhere.
