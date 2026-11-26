@@ -124,6 +124,11 @@ class Desk
                 'open' => $openId !== null ? intval($openId) : null,
                 'queue' => isset(static::QUEUES[$request->get('queue')]) ? strval($request->get('queue')) : 'todo',
                 'queues' => static::QUEUES,
+                // a link of the report (?category= / ?customer=): the list opens filtered
+                'filter' => [
+                    'category' => ctype_digit(strval($request->get('category'))) ? strval($request->get('category')) : '',
+                    'customer' => ctype_digit(strval($request->get('customer'))) ? strval($request->get('customer')) : '',
+                ],
                 'statuses' => Its::STATUSES,
                 'statusColors' => Its::STATUS_COLORS,
                 'priorities' => Its::PRIORITIES,
