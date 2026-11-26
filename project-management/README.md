@@ -19,6 +19,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 - The portal speaks the language of each user (Exment 7.2.5): its strings are now also in English, Vietnamese, Simplified Chinese, Korean, German and Spanish (`ExmentPM/resources/lang/<locale>/pmportal.php`, the same keys as `ja`). A language the plugin does not ship reads English, and a line missing in a language reads English, then Japanese. The names the setup and the upgrade write into the data (statuses, issue types, priorities, resolutions, notifications, column help, menu — the `schema` lines) stay Japanese, because the upgrade finds its rows again by those names. `project-management/tools/test-languages.php` checks the files (keys and placeholders as in `ja`) and the language each line is read in.
   ポータルが、ユーザーごとの言語で出るようになりました（Exment 7.2.5）。文言に、英語・ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`ExmentPM/resources/lang/<言語>/pmportal.php`、キーは `ja` と同じ）。プラグインにない言語は英語で、ある言語で足りない文言は英語、その次に日本語で出ます。セットアップとアップグレードがデータに書く名前（状態・種別・優先度・完了理由・通知・列の説明・メニュー。`schema` の文言）は、今までどおり日本語です。アップグレードはその名前で行を探し直すためです。`project-management/tools/test-languages.php` で、ファイル（キーと置き換えの印が `ja` と同じか）と、どの言語で読むかを試せます。
+- Tighter checks: the type templates of a new issue only for a project the user may read; the filters of the pickers only by a column that points at another table; "mail this issue" at most 30 times an hour a person; a link of the body that starts with "//" is not taken as a page of this site.
+  チェックを強めました：新しい課題の種別のテンプレートは、見られるプロジェクトの分だけ。選ぶ画面の絞り込みは、ほかのテーブルを指す列だけ。「この課題をメールで送る」は 1 人 1 時間に 30 回まで。本文の「//」で始まるリンクは、このサイトのページとして扱わない。
 
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 

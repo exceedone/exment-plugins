@@ -647,6 +647,7 @@ return [
     'message' => [
         'comment_empty' => 'コメントを入力するか、状態を選択してください。',
         'mail_no_target' => 'メールを送れる相手がいません（この課題を見る権限がある人を選んでください）。',
+        'mail_too_many' => 'メールは 1 時間に :n 回までです。しばらくしてから送ってください。',
         'status_changed_body' => '状態を :from から :to に変更しました。',
         'review_request_body' => '【確認依頼】:names さんに確認をお願いしています。',
         'review_done_body' => '確認依頼のあったコメントを確認しました。',
