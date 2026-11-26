@@ -88,10 +88,18 @@ class PmLink
             return ['url' => '', 'subject' => '（消された課題）', 'status' => ''];
         }
 
+        // the status only for someone who may read the issue (else Exment's 「(No Permission)」)
+        $readable = false;
+        try {
+            $readable = $issue->enableAccess() === true;
+        } catch (\Throwable $e) {
+            $readable = false;
+        }
+
         return [
             'url' => static::url($ids[0], $ids[1]),
             'subject' => strval(array_get($issue->value, 'subject')),
-            'status' => strval($issue->getValue('status', true) ?? ''),
+            'status' => $readable ? strval($issue->getValue('status', true) ?? '') : '',
         ];
     }
 
