@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.18 / 1.7.18 で変わったこと**
 
 - A viewer of a project (somebody who may not add an issue there) no longer gets an error in the browser console each time the project page opens: the form to add an issue was fetched ahead to open faster, and refused. It is no longer fetched for somebody who may not add an issue. The label 「子の進捗」 of the second progress number of a parent issue (list and issue detail) was missing; it is shown again. The Files tab of a project with no workspace of the file server yet (or one the user may not open) showed only a folder icon; it shows its message again ("no workspace yet" and who makes one, or "no permission").
   プロジェクトを見るだけの人（課題を追加できない人）がプロジェクトの画面を開くたびに、ブラウザーの console にエラーが出ていました。課題の追加のフォームを先に読み込もうとして、断られていたためです。課題を追加できない人には、先に読み込まないようにしました。子課題がある課題の 2 つめの進捗の数字に、見出し「子の進捗」が出ていなかったのを直しました（一覧と課題の詳しい画面）。ファイルサーバーのワークスペースがまだないプロジェクト（または開く権限がないとき）の「ファイル」タブに、フォルダーのアイコンしか出ていなかったのを直し、メッセージ（まだワークスペースがないこと・だれが作るか、または権限がないこと）を出すようにしました。
