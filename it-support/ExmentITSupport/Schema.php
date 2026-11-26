@@ -148,7 +148,7 @@ class Schema
                     ['priority', '優先度', 'select_valtext', ['valtext' => Its::PRIORITIES, 'default' => 'normal']],
                     ['fields', '項目', 'textarea', ['help' => '1 行に 1 つ、「項目名|種類|必須|選択肢」。種類は text・textarea・date・select・yesno・email・number。例：権限|select|必須|見るだけ,変える']],
                     ['needs_approval', '承認がいる', 'yesno', ['default' => '0']],
-                    ['approver', '承認する人', 'user', ['help' => '承認がいるとき。ITサポートのプラグインを使える役割グループに入れてください。']],
+                    ['approver', '承認する人', 'user', ['help' => '承認がいるとき。ITサポートの担当者でなくてかまいません（メールのリンクから、Exment にログインして承認します）。']],
                     ['public', '窓口に出す', 'yesno', ['default' => '1']],
                     ['display_order', '並び順', 'integer', ['default' => '0']],
                 ],

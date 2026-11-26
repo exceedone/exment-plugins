@@ -122,7 +122,7 @@ class Catalog
         Tickets::addMessage($ticket, ['kind' => 'system', 'body' => '承認を待っています。承認されると、対応を始めます。', 'via' => 'staff']);
         Automation::notifyUsers($ticket, [strval(array_get($ticket->value, 'approver'))],
             '【承認のお願い】' . array_get($ticket->value, 'ticket_no') . ' ' . array_get($ticket->value, 'subject'),
-            "次の申請の承認をお願いします。\n承認の画面: " . Its::url('approval', strval($ticket->id)) . "\n\n" . mb_substr(strval(array_get($ticket->value, 'description')), 0, 3000));
+            "次の申請の承認をお願いします。\n承認の画面: " . Its::publicUrl('approval', strval($ticket->id)) . "\n\n" . mb_substr(strval(array_get($ticket->value, 'description')), 0, 3000));
     }
 
     /** Whether the login user may decide this request: its approver, or a system administrator. */

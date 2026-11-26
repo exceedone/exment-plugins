@@ -70,8 +70,12 @@ class PublicController extends Controller
     public function requestForm(Request $request)
     {
         $this->guard();
-        // the request catalog (Catalog): the menu, or the form of one item
+        // the request catalog (Catalog): the menu, or the form of one item; an item
+        // not there (or the catalog not used) is not found, as the post says
         $item = $request->has('item') ? Catalog::item($request->get('item')) : null;
+        if ($request->has('item') && !isset($item)) {
+            return $this->notFound();
+        }
 
         return $this->page('request', [
             'catalog' => Catalog::publicItems(),
@@ -175,6 +179,73 @@ class PublicController extends Controller
                 ? '確認のメールを ' . $data['email'] . ' にお送りしました。進み具合は、メールにあるリンクからいつでも見られます（ログインは要りません）。メールが届かないときは、アドレスをお確かめのうえ、もう一度お送りください。'
                 : 'いま確認のメールをお送りできませんでした。担当者から ' . $data['email'] . ' にご連絡します。'),
             'warnPassword' => Its::looksLikePassword($data['body']),
+        ]);
+    }
+
+    // ---- the approval of a request (Catalog) -----------------------------
+
+    /**
+     * The page the approver opens from the mail. Here, not among the plugin's pages: an
+     * approver is often no agent of IT Support (a manager), and the plugin's pages ask for its
+     * role group. The Exment login is asked for still, and only the approver (or a system
+     * administrator) may decide.
+     *
+     * @return mixed
+     */
+    protected function approvalTicket(Request $request, $id)
+    {
+        if (!Catalog::enabled()) {
+            return $this->notFound();
+        }
+        if (\Exment::user() === null) {
+            session()->put('url.intended', $request->fullUrl());
+
+            return redirect(admin_url('auth/login'));
+        }
+        $ticket = Tickets::find($id);
+        if (!isset($ticket) || empty(array_get($ticket->value, 'catalog')) || !Catalog::mayDecide($ticket)) {
+            return $this->page('message', [
+                'heading' => 'この申請は承認できません',
+                'text' => '承認できるのは、申請メニューで決めた「承認する人」と、システム管理者だけです。',
+            ], 403);
+        }
+
+        return $ticket;
+    }
+
+    public function approvalPage(Request $request, $id)
+    {
+        $this->guard();
+        $ticket = $this->approvalTicket($request, $id);
+        if (!$ticket instanceof CustomValue) {
+            return $ticket;
+        }
+
+        return $this->page('approval', ['ticket' => $ticket, 'states' => Catalog::APPROVAL_STATES]);
+    }
+
+    public function postApproval(Request $request, $id)
+    {
+        $this->guard();
+        if (!Tokens::allow('approval', 20)) {
+            return $this->tooMany();
+        }
+        $ticket = $this->approvalTicket($request, $id);
+        if (!$ticket instanceof CustomValue) {
+            return $ticket;
+        }
+        $decision = strval($request->get('decision'));
+        if (!in_array($decision, ['approve', 'reject'], true)) {
+            return redirect(Its::publicUrl('approval', strval($ticket->id)));
+        }
+        $approve = $decision === 'approve';
+        if (!Catalog::decide($ticket, $approve, strval($request->get('comment', '')))) {
+            return $this->page('message', ['heading' => 'この申請は、もう承認待ちではありません', 'text' => 'ほかの人が先に決めたか、取り下げられました。']);
+        }
+
+        return $this->page('message', [
+            'heading' => $approve ? '承認しました' : '却下しました',
+            'text' => $approve ? '担当者が対応を始めます。' : '依頼した人にメールで知らせました。',
         ]);
     }
 

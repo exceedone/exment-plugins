@@ -753,32 +753,18 @@ class Desk
      * The approval page of a request: for its approver (and the system administrators), who
      * need not be agents. Exment's login and the plugin's role group still apply.
      */
+    /**
+     * The approval page moved to /support/approval/{id} (PublicController): an approver need not
+     * be in the plugin's role group. A link of the plugin's address goes there.
+     */
     public function approval(Request $request, $id)
     {
-        $ticket = Its::isInstalled() && Catalog::enabled() ? Tickets::find($id) : null;
-        if (!isset($ticket) || !Catalog::mayDecide($ticket)) {
-            return response($this->view('denied')->render(), 403);
-        }
-
-        return $this->view('approval', ['ticket' => $ticket, 'states' => Catalog::APPROVAL_STATES]);
+        return redirect(Its::publicUrl('approval', strval(intval($id))));
     }
 
     public function postApproval(Request $request, $id)
     {
-        $ticket = Its::isInstalled() && Catalog::enabled() ? Tickets::find($id) : null;
-        if (!isset($ticket) || !Catalog::mayDecide($ticket)) {
-            return response($this->view('denied')->render(), 403);
-        }
-        $url = Its::url('approval', strval($ticket->id));
-        $approve = $request->get('decision') === 'approve';
-        if (!in_array($request->get('decision'), ['approve', 'reject'], true)) {
-            return $this->back($url, '承認か却下を選んでください。', true);
-        }
-        if (!Catalog::decide($ticket, $approve, strval($request->get('comment', '')))) {
-            return $this->back($url, 'この申請は、もう承認待ちではありません。', true);
-        }
-
-        return $this->back($url, $approve ? '承認しました。担当者が対応を始めます。' : '却下しました。依頼した人にメールで知らせました。');
+        return redirect(Its::publicUrl('approval', strval(intval($id))));
     }
 
     // ---- problems (Problems) ---------------------------------------------
