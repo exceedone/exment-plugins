@@ -63,6 +63,13 @@ class PmPortalController extends AdminControllerBase
     private const NOTIFY_PICK_LIMIT = 100;
 
     /**
+     * Issues one "mark read / unread" request may name. The list marks up to
+     * 100 checked rows at once; a page going away sends whatever it had not
+     * sent yet, which is fewer still.
+     */
+    private const READ_MANY_LIMIT = 500;
+
+    /**
      * Revisions the burndown reads at most, newest first.
      *
      * The chart is worked out from the state every issue was in when its
@@ -1522,6 +1529,37 @@ class PmPortalController extends AdminControllerBase
         }
 
         return response($body, 200, $headers);
+    }
+
+    /**
+     * Mark several issues of the project read or unread for the signed-in
+     * user: the list's right-click on checked rows, and the marks a page
+     * sends with navigator.sendBeacon as it goes away (ids as "1,2,3").
+     * Issues of other projects, or ones the user cannot see, are skipped.
+     */
+    public function issueReadMany(Request $request, $id)
+    {
+        $project = $this->findProject($id);
+        $flag = $request->get('read', '1');
+        $read = !in_array(is_scalar($flag) ? strval($flag) : '1', ['0', 'false'], true);
+        $raw = $request->get('ids', '');
+        $raw = is_array($raw) ? $raw : explode(',', is_scalar($raw) ? strval($raw) : '');
+        $wanted = [];
+        foreach ($raw as $v) {
+            if (is_scalar($v) && ctype_digit(trim(strval($v)))) {
+                $wanted[intval(trim(strval($v)))] = true;
+            }
+        }
+        $wanted = array_slice(array_keys($wanted), 0, self::READ_MANY_LIMIT);
+        $ids = empty($wanted) ? [] : $this->issue_table->getValueModel()
+            ->where('parent_id', $project->id)
+            ->where('parent_type', $this->project_table->table_name)
+            ->whereIn('id', $wanted)
+            ->pluck('id')
+            ->all();
+        $count = Star::markReadMany($this->issue_table->table_name, $ids, \Exment::getUserId(), $read);
+
+        return response()->json(['ok' => true, 'read' => $read, 'count' => $count]);
     }
 
     /**

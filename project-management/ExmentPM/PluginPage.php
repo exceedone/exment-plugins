@@ -230,6 +230,11 @@ class PluginPage extends PluginPageBase
         return $this->portal()->issueRead(request(), $id, $issue_id);
     }
 
+    public function issueReadMany($id)
+    {
+        return $this->portal()->issueReadMany(request(), $id);
+    }
+
     public function uploadIssueFile($id, $issue_id)
     {
         return $this->portal()->uploadIssueFile(request(), $id, $issue_id);
