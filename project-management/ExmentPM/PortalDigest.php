@@ -7,7 +7,7 @@ use Exceedone\Exment\Enums\SystemTableName;
 use Exceedone\Exment\Model\CustomColumn;
 use Exceedone\Exment\Model\CustomTable;
 use Exceedone\Exment\Model\System;
-use Exceedone\Exment\Services\MailSender;
+use Exceedone\Exment\Notifications\MailSender;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -108,7 +108,7 @@ class PortalDigest
     /**
      * Send the digests whose time has come.
      *
-     * @return array{people: int, sent: int, empty: int}
+     * @return array{people: int, sent: int, empty: int, failed?: int}
      */
     public static function run(bool $dry = false, ?string $today = null, ?string $nowHM = null): array
     {
@@ -135,9 +135,11 @@ class PortalDigest
                 $result['empty']++;
                 continue;
             }
-            $result['sent']++;
-            if (!$dry) {
-                static::send($user, $mine, $today);
+            // counted when it went out by at least one way (a dry run: would go)
+            if ($dry || static::send($user, $mine, $today)) {
+                $result['sent']++;
+            } else {
+                $result['failed'] = ($result['failed'] ?? 0) + 1;
             }
         }
 
@@ -363,7 +365,7 @@ class PortalDigest
     /**
      * @param array<string, array<int, array<string, mixed>>> $mine
      */
-    protected static function send($user, array $mine, string $today): void
+    protected static function send($user, array $mine, string $today): bool
     {
         $def = PortalDefinition::config();
         $is = (array) array_get($def, 'issue', []);
@@ -394,6 +396,7 @@ class PortalDigest
         if (empty($prefs['mail']) && empty($prefs['teams'])) {
             $prefs['mail'] = true;
         }
+        $sent = false;
         if (!empty($prefs['mail']) && !is_nullorempty($user->getValue('email'))) {
             try {
                 $html = !isMatchString(System::system_mail_body_type(), MailBodyType::PLAIN);
@@ -401,6 +404,7 @@ class PortalDigest
                     ->subject($m['title'])
                     ->body($html ? PortalTeams::mailHtml($m['title'], '', $m['lines'], $url) : PortalTeams::mailText($m['title'], '', $m['lines'], $url))
                     ->send();
+                $sent = true;
             } catch (\Throwable $e) {
                 Log::warning('pm_portal digest mail to user ' . $user->id . ' failed: ' . get_class($e));
             }
@@ -414,10 +418,13 @@ class PortalDigest
                     'body' => PortalTeams::body('', $m['lines']),
                     'url' => $url,
                 ]);
+                $sent = true;
             } catch (\Throwable $e) {
                 Log::warning('pm_portal digest teams to user ' . $user->id . ' failed: ' . get_class($e));
             }
         }
+
+        return $sent;
     }
 
     protected static function statusLabel($issue, string $column, string $value): string
