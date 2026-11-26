@@ -4048,11 +4048,30 @@ class PmPortalController extends AdminControllerBase
         return response($content->title($title)->body($body)->render(), 404);
     }
 
+    /**
+     * Some routes (stamp, feed, read) skip Exment's admin.morph middleware to
+     * stay light. Without the morph map a row's shares are looked up under the
+     * class name instead of the table name, so enableAccess() refuses a person
+     * who is in the project only through a share (a role group). Define the map
+     * here when it is missing, as PluginPage::apiCall does for the lightapi.
+     */
+    protected function ensureMorphMap()
+    {
+        if (!isset($this->project_table)
+            || \Illuminate\Database\Eloquent\Relations\Relation::getMorphedModel($this->project_table->table_name) !== null) {
+            return;
+        }
+        $lazy = method_exists(\Exceedone\Exment\Services\ClassBuilder::class, 'autoloaderRegistered')
+            && \Exceedone\Exment\Services\ClassBuilder::autoloaderRegistered();
+        \Exceedone\Exment\Middleware\Morph::defineMorphMap($lazy);
+    }
+
     protected function findProject($id)
     {
         if (!isset($this->project_table) || !isset($this->issue_table)) {
             abort(404);
         }
+        $this->ensureMorphMap();
         $ref = trim(strval($id));
         if (!ctype_digit($ref)) {
             // By code (ISS00440). Not there and not allowed answer alike.
@@ -4081,6 +4100,7 @@ class PmPortalController extends AdminControllerBase
      */
     protected function findIssue($project, $issue_id)
     {
+        $this->ensureMorphMap();
         $issue = $this->issue_table->getValueModel()->find($issue_id);
         if (!isset($issue) || intval($issue->parent_id) != intval($project->id)
             || $issue->parent_type != $this->project_table->table_name) {

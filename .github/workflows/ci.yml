@@ -147,6 +147,10 @@ jobs:
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php
 
+      # The project routes without admin.morph still find a project the same way as the others.
+      - name: Morph-less routes check (ExmentPM)
+        run: php project-management/tools/test-pm-morph-routes.php
+
       # Every locale has the keys and placeholders of ja (ExmentPM) or en (the others).
       # A warning only: a new ja key waits for its translations in a later PR.
       - name: Lang keys check (warning only)
