@@ -3109,6 +3109,14 @@ window.PmPortalBoot = function () {
         line.setAttribute('title', L.nt_others);
     }
     // What the server says it sent, for the toast after a post.
+    // ISS02931: under a comment, who it was also sent to by mail / Teams.
+    function ntLine(e) {
+        var nt = e && e.nt;
+        if (!nt) { return ''; }
+        var names = function (ids) { return (ids || []).map(function (u) { return user(u).n; }); };
+        var text = ntSentText({ mail: names(nt.mail), teams: names(nt.teams) });
+        return text ? '<div class="pp-ntline"><i class="fa fa-paper-plane-o"></i> ' + esc(text) + '</div>' : '';
+    }
     function ntSentText(to) {
         if (!to) { return ''; }
         var parts = [];
@@ -4249,7 +4257,7 @@ window.PmPortalBoot = function () {
                 // Only the author may rewrite or remove what they wrote; the
                 // address of a comment is public to everyone who can read it.
                 var mine = !!e.del;
-                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) +
+                body = '<div class="txt bl-md">' + renderCommentText(e.text) + '</div>' + rvBar(e) + ntLine(e) +
                     '<div class="act">' + rxBar('comment', e.cid, e.rx) + starBtn('star', 'comment', e.cid, e.star, e.my_star, 'as-link') +
                     '<a href="javascript:void(0);" class="pp-quote" data-text="' + esc(e.text) + '"><i class="fa fa-quote-right"></i> ' + esc(L.quote) + '</a>' +
                     // ISS02931: each comment's own address, one click away

@@ -104,11 +104,15 @@ class BusinessCalendar
             return null;
         }
         $company = $this->companyDays[$date] ?? null;
+        $holiday = $this->holidayName($date);
         if (isset($company)) {
-            return $company['name'];
+            // a company day off on a holiday says both (夏季休暇・山の日)
+            $names = array_values(array_filter([strval($company['name']), strval($holiday ?? '')], 'strlen'));
+
+            return implode('・', array_unique($names));
         }
 
-        return $this->holidayName($date) ?? '';
+        return $holiday ?? '';
     }
 
     /**

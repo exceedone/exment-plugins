@@ -1991,4 +1991,7 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal #pp-issue-rows tr .pp-ikcopy{opacity:0;transition:opacity .12s;}
   .pmportal #pp-issue-rows tr:hover .pp-ikcopy,.pmportal #pp-issue-rows tr:focus-within .pp-ikcopy,.pmportal #pp-issue-rows .pp-ikcopy:focus-visible{opacity:1;}
 }
+/* ISS02931: under a comment, who it was also sent to by mail / Teams */
+.pmportal .pp-ntline{margin:4px 0 0;font-size:11.5px;color:var(--bl-faint);}
+.pmportal .pp-ntline .fa{margin-right:3px;}
 </style>

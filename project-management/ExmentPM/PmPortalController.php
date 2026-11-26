@@ -883,6 +883,8 @@ class PmPortalController extends AdminControllerBase
         $issue_reactions = Star::reactions($issue_name, $ids);
         // Review requests (ISS00341): who was asked to confirm each comment.
         $comment_reviews = Star::reviews('comment', $comment_ids);
+        // ISS02931: who each comment was also sent to by mail / Teams
+        $comment_notices = Star::notices('comment', $comment_ids);
         $comments = [];
         foreach ($comment_rows as $comment) {
             $comments[intval($comment->parent_id)][] = $comment;
@@ -982,6 +984,9 @@ class PmPortalController extends AdminControllerBase
                     // An archived project takes no confirmation (see
                     // reviewComment), so the button is not offered there.
                     $entry['rv_on'] = !$archived;
+                }
+                if (!empty($comment_notices[strval($comment->id)])) {
+                    $entry['nt'] = $comment_notices[strval($comment->id)];
                 }
                 $timeline[] = $entry;
             }
@@ -1187,6 +1192,7 @@ class PmPortalController extends AdminControllerBase
         // The address the bells, the mail and Teams link to: the comment
         // itself once there is one (the screen scrolls to it), else the issue.
         $notice_url = $this->issueUrl($project, $issue);
+        $comment_id = null;
         if ($comment !== '') {
             try {
                 $model = CustomTable::getEloquent(SystemTableName::COMMENT)->getValueModel();
@@ -1207,6 +1213,7 @@ class PmPortalController extends AdminControllerBase
             // Exment's refreshdata empties the comment table. A comment this
             // new cannot have been starred yet.
             Star::purge('comment', $model->id);
+            $comment_id = $model->id;
             $notice_url = static::commentUrl($notice_url, $model->id);
 
             // Review request (ISS00341): the picked people are asked to
@@ -1309,7 +1316,7 @@ class PmPortalController extends AdminControllerBase
         // ISS02931: with who got a mail and who a Teams message, which the
         // writer is told (「メールで知らせた: 山田」).
         return response()->json(array_merge(
-            ['ok' => true, 'notice_to' => $this->noticeTo($issue_name, $issue, $bell_mark, $request, intval($project->id))],
+            ['ok' => true, 'notice_to' => $this->noticeTo($issue_name, $issue, $bell_mark, $request, intval($project->id), $comment_id)],
             $this->issueDetailBody($project, $issue->id)
         ));
     }
@@ -1322,11 +1329,16 @@ class PmPortalController extends AdminControllerBase
      * @param \Exceedone\Exment\Model\CustomValue $issue
      * @return array{mail: array<int, string>, teams: array<int, string>}
      */
-    protected function noticeTo(string $issue_name, $issue, int $bell_mark, Request $request, int $project_id): array
+    protected function noticeTo(string $issue_name, $issue, int $bell_mark, Request $request, int $project_id, $comment_id = null): array
     {
         try {
             $targets = PortalMail::bellTargets($issue_name, intval($issue->id), $bell_mark, \Exment::getUserId());
             $plan = PortalNotifyTo::plan($targets, $this->wantsMail($request), $this->wantsTeams($request), $project_id);
+            // ISS02931: kept under the comment (「メールで知らせた: 山田」), read back with the
+            // detail drawn after this. A post with no comment has no line to keep it on.
+            if (!is_null($comment_id) && (!empty($plan['mail']) || !empty($plan['teams']))) {
+                Star::noticeLog('comment', $comment_id, $plan['mail'], $plan['teams']);
+            }
             $names = $this->usersFor(array_merge($plan['mail'], $plan['teams']));
             $name = function ($id) use ($names) {
                 return strval(array_get($names, strval($id) . '.n', ''));
@@ -1900,6 +1912,10 @@ class PmPortalController extends AdminControllerBase
         $reviewers = collect(array_get($detail, 'timeline', []))->flatMap(function ($row) {
             return array_column((array) array_get($row, 'rv', []), 'by');
         });
+        // ...and the people a comment was also sent to by mail or Teams (ISS02931)
+        $reviewers = $reviewers->merge(collect(array_get($detail, 'timeline', []))->flatMap(function ($row) {
+            return array_merge((array) array_get($row, 'nt.mail', []), (array) array_get($row, 'nt.teams', []));
+        }));
 
         return collect(array_get($detail, 'timeline', []))->pluck('by')
             ->merge(collect(array_get($detail, 'reads', []))->pluck('by'))

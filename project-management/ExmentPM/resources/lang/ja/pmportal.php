@@ -506,6 +506,9 @@ return [
     'read_all_done' => ':count 件を既読にしました',
     'read_all_fail' => '既読にできませんでした',
     'ctx_open' => '開く',
+    'feat_site_on' => 'サイトで使っています（機能の管理）',
+    'feat_site_off' => 'サイトでは使っていません（管理者が「機能の管理」で使うにできます）',
+    'feat_site_open' => 'このプロジェクトの設定を開く',
     'tree_ctx_open' => '子課題を表示する',
     'tree_ctx_close' => '子課題をたたむ',
     'tree_ctx_open_below' => 'この下をすべて開く',
@@ -1887,6 +1890,7 @@ return [
         'err_rule' => 'くり返し方を正しく選んでください（毎週なら曜日を、RRULE なら読める形で）。',
         'err_start' => '始まりの日を入れてください。',
         'err_dates' => '「決まった日付だけ」のときは、足す日付を入れてください。',
+        'err_not_dates' => '日付として読めないものがあります：:dates（2027-01-15 のように書いてください）',
         // stage 2b
         'cal_title' => '予定のカレンダー',
         'cal_month' => '月',
