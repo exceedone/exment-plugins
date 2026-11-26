@@ -402,7 +402,10 @@
             </div>
 
             <section class="pp-panel">
-                <div class="pp-ph"><i class="fa fa-user-circle-o"></i> {{ $t('mine') }}</div>
+                <div class="pp-ph"><i class="fa fa-user-circle-o"></i> {{ $t('mine') }}
+                    {{-- ISS00264 --}}
+                    <span class="pp-ph-right"><a href="{{ PortalDefinition::url('issues') }}"><i class="fa fa-list-ul"></i> {{ PortalDefinition::trans('all.link') }}</a></span>
+                </div>
                 <div class="pp-tabs" role="tablist">
                     @foreach($tabList as $key => $label)
                     <button type="button" role="tab" data-tab="{{ $key }}"

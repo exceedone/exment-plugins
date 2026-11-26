@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- A new page lists the issues of every project the user can read (「すべてのプロジェクトの課題」, linked from the head of 「自分の課題」 on the top page): filters by project, assignee (「自分」 too), status (「完了以外」 too), priority, type — each with several values — the due date and words of the subject; sorted by due date, priority, update or number; 50 a page, filtered and paged on the server; the conditions are in the address and can be saved by name in the browser.
+  見られるすべてのプロジェクトの課題を 1 つの一覧で見られるページを足しました（トップの「自分の課題」の見出しから）。プロジェクト・担当者（「自分」も）・状態（「完了以外」も）・優先度・種別をそれぞれ複数選んで、期限・件名のことばでも絞り込めます。期限・優先度・更新日時・番号で並べ替えられます。1 ページ 50 件で、絞り込みとページ分けはサーバーで行います。条件はアドレスに入り、名前を付けてブラウザーに保存できます。
+
 **Changed in 1.7.18 / 1.7.18 で変わったこと**
 
 - The issue screen and the list, after trying them out (ISS02931). **Project settings**: a 「プロジェクトの設定」 button beside the project's name opens the settings tab, for the people who may change them (the same rule as the tab). **Sub-assignees, managers, reviewers and difficulty** (schema 27) are on the issue's summary row beside the assignees, set or not, each with a pencil to change it in place; before, they were shown only once set, in the side box, and set only in the form under "more". The list can show them as columns (表示する列, off at first, kept per browser) and filter by them (役割: a person in one role, and 難易度; in the URL and the saved filters like the other filters). **Hours and notices on the issue side**: the side box always shows 予定 / 実績 and 通知 (お知らせ先, the watch count, メールで知らせる), and the hours and お知らせ先 have a pencil too. The pencils save through the same row API as the comment box, with the same checks. **Comment links**: every comment has a リンク button that copies its address (`#issue-KEY?c=<id>`; a bare `#comment-<id>` works too and is turned into it); opening it scrolls to the comment and marks it, and the bells, mails and Teams cards of a new comment link to the comment itself. New route `GET {id}/comment/{comment_id}`. Works on Exment 7.2 and 7.3; an install without the schema 27 columns simply does not show them.

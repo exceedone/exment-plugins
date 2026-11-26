@@ -36,6 +36,8 @@
         { "method": "get", "uri": "lightapi/card/{kind}/{id}", "function": "apiCard", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
 
         { "method": "get", "uri": "search", "function": "searchIssues" },
+        { "method": "get", "uri": "issues", "function": "allIssues" },
+        { "method": "get", "uri": "issues/data", "function": "allIssuesData" },
         { "method": "get", "uri": "projects", "function": "topbarProjects" },
         { "method": "get", "uri": "ranking", "function": "ranking" },
         { "method": "get", "uri": "view/{key}", "function": "viewIssue" },
