@@ -169,6 +169,8 @@ trait PortalTopbarTrait
             // ISS02863: how the user gets the notices of the issues (mail, Teams)
             'notify_by' => PortalTeams::choiceOf(\Exment::user()),
             'notify_by_url' => PortalDefinition::url('notify-by'),
+            // the page of the details: per event, projects muted, quiet hours
+            'notify_settings_url' => PortalDefinition::url('notify-settings'),
             'notify_choices' => array_values(array_filter(PortalTeams::CHOICES, function ($choice) {
                 return PortalTeams::teamsAvailable() || !in_array($choice, ['teams', 'both'], true);
             })),
