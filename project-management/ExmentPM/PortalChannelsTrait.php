@@ -75,7 +75,7 @@ trait PortalChannelsTrait
     /** The project, when its manager asks and the feature is on; 404 otherwise. */
     protected function channelsProject($id)
     {
-        if (!PortalChannels::enabled()) {
+        if (!PortalChannels::pageOn()) {
             abort(404);
         }
         $project = $this->findProject($id);

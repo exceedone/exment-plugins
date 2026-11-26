@@ -1720,6 +1720,7 @@ return [
         'ev_created' => 'Vấn đề mới',
         'ev_status' => 'Thay đổi trạng thái',
         'ev_comment' => 'Bình luận',
+        'ev_reminder' => 'Nhắc hạn',
         'enabled' => 'Bật',
         'save' => 'Lưu',
         'add' => 'Thêm',

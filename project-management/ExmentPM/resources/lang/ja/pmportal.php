@@ -1788,6 +1788,7 @@ return [
         'ev_created' => '課題の登録',
         'ev_status' => '状態の変更',
         'ev_comment' => 'コメント',
+        'ev_reminder' => '期限のリマインド',
         'enabled' => '使う',
         'save' => '保存',
         'add' => '追加',
@@ -1817,6 +1818,7 @@ return [
         'msg_bulk' => '1 回の操作で、課題 :n 件が変わりました。プロジェクトを開いて見てください。',
         'msg_test_title' => 'ExmentPM のためしのメッセージ（:project）',
         'msg_test' => 'このチャンネルに、プロジェクトのお知らせが届きます。',
+    ],
     // recurring schedules (ISS00432, stage 2)
     'sched' => [
         'feature' => 'プロジェクト管理：繰り返しの予定',
@@ -1946,6 +1948,7 @@ return [
         'own_header' => 'このプロジェクトの決まり',
         'channels' => 'チャンネルにも送る',
         'channels_help' => 'Slack・Teams のチャンネル（受信 Webhook の URL）、LINE WORKS のチャンネルにも、同じリマインドを送ります。URL は暗号にして保存し、画面には出しません。サーバー自身や社内のアドレスには送れません。',
+        'channels_moved' => 'リマインドを送るチャンネルは、プロジェクトの設定の「チャットへのお知らせ」で決めます（いま :n 個）。そこで「期限のリマインド」にチェックを入れたチャンネルに送ります。',
         'ch_type' => '送り先の種類',
         'ch_none' => '（使わない）',
         'ch_url' => 'https://… の Webhook の URL',

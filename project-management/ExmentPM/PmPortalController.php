@@ -3070,7 +3070,7 @@ class PmPortalController extends AdminControllerBase
             // the Files tab with the file server (ISS02825): off unless the feature is on
             'fileserver' => $features['file'] ? PortalFiles::state($project, $can['manage']) : ['on' => false],
             // the chat channels, for the manager while the feature is on (ISS02939)
-            'channels' => ($can['manage'] && PortalChannels::enabled()) ? PortalChannels::state(intval($project->id)) : ['on' => false],
+            'channels' => ($can['manage'] && PortalChannels::pageOn()) ? PortalChannels::state(intval($project->id)) : ['on' => false],
             // Whether the issue form shows the AI button, and the numbers it
             // labels the answers with. Never the key.
             'ai' => $this->aiPayload($project),

@@ -1720,6 +1720,7 @@ return [
         'ev_created' => '新建问题',
         'ev_status' => '状态变更',
         'ev_comment' => '评论',
+        'ev_reminder' => '截止日期提醒',
         'enabled' => '启用',
         'save' => '保存',
         'add' => '添加',

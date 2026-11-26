@@ -100,6 +100,22 @@ class PortalChannels
     /** @var bool|null */
     protected static $exists = null;
 
+    /** The settings tab: for the events of this feature, or for the reminders (Feature management). */
+    public static function pageOn(): bool
+    {
+        return static::exists() && (static::enabled() || PortalReminder::enabled());
+    }
+
+    /** @return array<int, string> the events a channel can be given now */
+    public static function shownEvents(): array
+    {
+        $out = static::enabled() ? static::EVENTS : [];
+        if (PortalReminder::enabled()) {
+            $out[] = 'reminder';
+        }
+        return $out;
+    }
+
     public static function exists(): bool
     {
         if (static::$exists === null) {
@@ -165,6 +181,7 @@ class PortalChannels
             'sign_secret' => strval($row->sign_secret ?? ''),
             'events' => array_values(array_intersect(is_array($events) ? $events : [], static::allEvents())),
             'enabled' => boolval($row->enabled),
+            'legacy_index' => isset($row->legacy_index) ? intval($row->legacy_index) : null,
         ];
     }
 
@@ -196,9 +213,9 @@ class PortalChannels
         }
 
         return [
-            'on' => static::enabled(),
+            'on' => static::pageOn(),
             'types' => static::types(),
-            'events' => static::EVENTS,
+            'events' => static::shownEvents(),
             'max' => static::MAX_CHANNELS,
             'channels' => $rows,
         ];
@@ -238,7 +255,12 @@ class PortalChannels
             return [null, 'type'];
         }
         $label = mb_substr(trim(strval($input['label'] ?? '')), 0, 40);
-        $events = array_values(array_intersect((array) ($input['events'] ?? []), static::allEvents()));
+        // the events shown now as asked; one not shown (its feature off) kept as it was
+        $shown = static::shownEvents();
+        $events = array_values(array_unique(array_merge(
+            array_intersect((array) ($input['events'] ?? []), $shown),
+            array_diff((array) ($old['events'] ?? []), $shown)
+        )));
         $values = [
             'type' => $type,
             'label' => $label,

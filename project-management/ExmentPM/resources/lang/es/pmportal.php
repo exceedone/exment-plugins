@@ -1720,6 +1720,7 @@ return [
         'ev_created' => 'Incidencias nuevas',
         'ev_status' => 'Cambios de estado',
         'ev_comment' => 'Comentarios',
+        'ev_reminder' => 'Recordatorios de vencimiento',
         'enabled' => 'Activo',
         'save' => 'Guardar',
         'add' => 'Añadir',

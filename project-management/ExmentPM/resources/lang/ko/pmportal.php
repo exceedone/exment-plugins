@@ -1720,6 +1720,7 @@ return [
         'ev_created' => '과제 등록',
         'ev_status' => '상태 변경',
         'ev_comment' => '코멘트',
+        'ev_reminder' => '기한 리마인드',
         'enabled' => '사용',
         'save' => '저장',
         'add' => '추가',

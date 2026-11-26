@@ -1720,6 +1720,7 @@ return [
         'ev_created' => 'New issues',
         'ev_status' => 'Status changes',
         'ev_comment' => 'Comments',
+        'ev_reminder' => 'Due date reminders',
         'enabled' => 'On',
         'save' => 'Save',
         'add' => 'Add',

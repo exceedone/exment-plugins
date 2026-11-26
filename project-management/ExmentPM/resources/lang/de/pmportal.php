@@ -1720,6 +1720,7 @@ return [
         'ev_created' => 'Neue Aufgaben',
         'ev_status' => 'Statusänderungen',
         'ev_comment' => 'Kommentare',
+        'ev_reminder' => 'Fälligkeitserinnerungen',
         'enabled' => 'Aktiv',
         'save' => 'Speichern',
         'add' => 'Hinzufügen',
