@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.20 / 1.7.20 で変わったこと**
 
 - The comment dock's 「ほかの項目も変える」 also has 管理者 and レビュアー (the same picker as 担当者) and 難易度, beside 副担当者, each where the issue table has the column; saved with the comment, in the history like the other fields.
   コメント欄の「ほかの項目も変える」に、副担当者に加えて、管理者・レビュアー（担当者と同じ選び方）と難易度を足しました。課題のテーブルにその列があるときだけ出します。コメントといっしょに保存し、履歴に残ります。
