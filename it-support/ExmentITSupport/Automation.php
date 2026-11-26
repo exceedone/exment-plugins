@@ -23,7 +23,7 @@ class Automation
     public static function run(): array
     {
         $out = [];
-        foreach (['mail' => [Inbox::class, 'fetch'], 'sla' => [static::class, 'checkSla'], 'pending' => [static::class, 'chasePending'],
+        foreach (['mail' => [Inbox::class, 'fetch'], 'sla' => [static::class, 'checkSla'], 'escalation' => [Escalation::class, 'run'], 'pending' => [static::class, 'chasePending'],
             'close' => [static::class, 'closeResolved'], 'assets' => [static::class, 'assetExpiry']] as $name => $step) {
             try {
                 $out[$name] = call_user_func($step);
@@ -53,7 +53,8 @@ class Automation
             $ticket->setValue(['sla_state' => $new]);
             $ticket->save();
             $changed++;
-            if (in_array($new, ['warning', 'breached'], true)) {
+            // the steps of the escalation take the place of these two notices when it is on
+            if (in_array($new, ['warning', 'breached'], true) && !Escalation::enabled()) {
                 $no = array_get($ticket->value, 'ticket_no');
                 $title = $new === 'breached' ? "【SLA 超過】{$no} " : "【SLA まもなく期限】{$no} ";
                 static::notifyAgents($ticket, $title . array_get($ticket->value, 'subject'),
@@ -171,8 +172,14 @@ class Automation
      * A solved ticket asks the customer for a rating, through a link. One
      * click is the rating; the comment is optional.
      */
+    /** @var bool set while tickets are resolved without telling the customer (Problems::resolveAll) */
+    public static $quiet = false;
+
     public static function askForRating(CustomValue $ticket): void
     {
+        if (static::$quiet) {
+            return;
+        }
         if (Its::setting('csat_enabled', '1') !== '1' || !Its::portalOn()
             || !boolval(array_get($ticket->value, 'customer_visible', '1')) || !empty(array_get($ticket->value, 'csat'))) {
             return;
@@ -200,21 +207,24 @@ class Automation
     {
         $assignee = array_get($ticket->value, 'assignee');
         $ids = !empty($assignee) ? [strval($assignee)] : Tickets::agentIds();
+        static::notifyUsers($ticket, array_map('strval', $ids), $subject, $body);
+    }
+
+    /**
+     * The bell and a mail (each when asked) for these users, about a ticket.
+     *
+     * @param array<int, string> $ids
+     */
+    public static function notifyUsers(CustomValue $ticket, array $ids, string $subject, string $body, bool $bell = true, bool $mail = true): void
+    {
         $users = CustomTable::getEloquent(SystemTableName::USER);
         $url = Its::url('ticket', strval($ticket->id));
         foreach (array_slice($ids, 0, 50) as $id) {
-            try {
-                $navbar = new NotifyNavbar();
-                $navbar->notify_id = 0;
-                $navbar->parent_type = Its::T_TICKET;
-                $navbar->parent_id = $ticket->id;
-                $navbar->target_user_id = $id;
-                $navbar->trigger_user_id = null;
-                $navbar->notify_subject = mb_substr($subject, 0, 200);
-                $navbar->notify_body = $body . "\n" . $url;
-                $navbar->save();
-            } catch (\Throwable $e) {
-                Log::warning('ExmentITSupport navbar notify failed: ' . $e->getMessage());
+            if ($bell) {
+                static::bell($ticket, strval($id), $subject, $body . "\n" . $url);
+            }
+            if (!$mail) {
+                continue;
             }
             $user = $users->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($id);
             $email = isset($user) ? strval(array_get($user->value, 'email')) : '';
@@ -227,6 +237,23 @@ class Automation
                     Log::warning('ExmentITSupport agent mail failed: ' . $e->getMessage());
                 }
             }
+        }
+    }
+
+    protected static function bell(CustomValue $ticket, string $id, string $subject, string $body): void
+    {
+        try {
+            $navbar = new NotifyNavbar();
+            $navbar->notify_id = 0;
+            $navbar->parent_type = Its::T_TICKET;
+            $navbar->parent_id = $ticket->id;
+            $navbar->target_user_id = $id;
+            $navbar->trigger_user_id = null;
+            $navbar->notify_subject = mb_substr($subject, 0, 200);
+            $navbar->notify_body = $body;
+            $navbar->save();
+        } catch (\Throwable $e) {
+            Log::warning('ExmentITSupport navbar notify failed: ' . $e->getMessage());
         }
     }
 }

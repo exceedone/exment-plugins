@@ -1531,4 +1531,16 @@ return [
         'summary' => 'La AI evaluó :scored incidencias y completó :written. Errores: :errors, omitidas por no haber cambiado desde la última vez: :unchanged, filas de registro limpiadas: :swept.',
         'summary_dry' => 'Simulación: se preguntaría a la AI sobre :scored incidencias y se completarían :written. Errores: :errors, omitidas por no haber cambiado desde la última vez: :unchanged.',
     ],
+    // ISS02931
+    'cmt_link' => 'Enlace',
+    'cmt_link_tip' => 'Copiar la URL de este comentario',
+    'cmt_not_found' => 'No se encontró el comentario. Se eliminó o no tiene permiso para verlo.',
+    'proj_settings' => 'Configuración del proyecto',
+    'qf_edit' => 'Cambiar',
+    'qf_save' => 'Guardar',
+    'qf_stale' => 'Otra persona actualizó primero esta incidencia. Se cargó el contenido más reciente. Vuelva a cambiarla.',
+    'lbl_notify' => 'Avisos',
+    'lbl_notified' => 'Avisados',
+    'f_rl' => 'Rol',
+    'oc_menu' => 'Columnas que se muestran',
 ];

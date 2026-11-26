@@ -1531,4 +1531,16 @@ return [
         'summary' => 'AI evaluated :scored issues and filled in :written. Errors: :errors, skipped as unchanged since last time: :unchanged, log rows cleaned up: :swept.',
         'summary_dry' => 'Dry run: would ask AI about :scored issues and fill in :written. Errors: :errors, skipped as unchanged since last time: :unchanged.',
     ],
+    // ISS02931
+    'cmt_link' => 'Link',
+    'cmt_link_tip' => 'Copy the URL of this comment',
+    'cmt_not_found' => 'The comment was not found. It was deleted, or you may not see it.',
+    'proj_settings' => 'Project settings',
+    'qf_edit' => 'Change',
+    'qf_save' => 'Save',
+    'qf_stale' => 'Someone else updated this issue first. The latest content was loaded. Please change it again.',
+    'lbl_notify' => 'Notices',
+    'lbl_notified' => 'Notified',
+    'f_rl' => 'Role',
+    'oc_menu' => 'Columns to show',
 ];

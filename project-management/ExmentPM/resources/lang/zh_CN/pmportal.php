@@ -1531,4 +1531,16 @@ return [
         'summary' => 'AI 评估了 :scored 个任务，填写了 :written 个。错误：:errors，因自上次以来未更改而跳过：:unchanged，清理的日志行：:swept。',
         'summary_dry' => '试运行：将向 AI 询问 :scored 个任务，并填写 :written 个。错误：:errors，因自上次以来未更改而跳过：:unchanged。',
     ],
+    // ISS02931
+    'cmt_link' => '链接',
+    'cmt_link_tip' => '复制此评论的 URL',
+    'cmt_not_found' => '找不到评论。可能已被删除，或你没有查看权限。',
+    'proj_settings' => '项目设置',
+    'qf_edit' => '更改',
+    'qf_save' => '保存',
+    'qf_stale' => '其他人先更新了此问题。已读取最新内容，请重新更改。',
+    'lbl_notify' => '通知',
+    'lbl_notified' => '通知对象',
+    'f_rl' => '角色',
+    'oc_menu' => '显示的列',
 ];

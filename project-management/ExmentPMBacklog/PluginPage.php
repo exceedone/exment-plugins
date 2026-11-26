@@ -13,6 +13,64 @@ use Illuminate\Support\Facades\Schema;
  */
 class PluginPage extends PluginPageBase
 {
+    /**
+     * Exment builds the class of a page plugin on every request (and the data sync of Exment 7.3
+     * asks for it in a worker and a command): the connector of the data sync is registered here.
+     *
+     * @param \Exceedone\Exment\Model\Plugin $plugin
+     */
+    public function __construct($plugin)
+    {
+        parent::__construct($plugin);
+        static::registerConnector();
+    }
+
+    /**
+     * Whether the Exment it runs on has the data sync with connectors that write themselves
+     * (Exment 7.3.0 or later).
+     */
+    public static function hasSync(): bool
+    {
+        return interface_exists('\Exceedone\Exment\Services\Sync\SyncWriter')
+            && interface_exists('\Exceedone\Exment\Services\Sync\SyncFinisher')
+            && class_exists('\Exceedone\Exment\Services\Sync\SyncConnectors');
+    }
+
+    public static function registerConnector(): void
+    {
+        if (!static::hasSync()) {
+            return;
+        }
+        // the classes of the data sync implement the interfaces of Exment 7.3: loaded only here
+        require_once __DIR__ . '/BacklogConnector.php';
+        require_once __DIR__ . '/SyncBridge.php';
+        // by name: on Exment 7.2 (and in its static analysis) these classes do not exist
+        $connector = (new \ReflectionClass(__NAMESPACE__ . '\BacklogConnector'))->newInstance();
+        call_user_func(['\Exceedone\Exment\Services\Sync\SyncConnectors', 'register'], $connector);
+    }
+
+    /**
+     * Move the connections of this plugin to the data sync of Exment (once each).
+     */
+    public function postToSync()
+    {
+        if ($deny = $this->deny()) {
+            return $deny;
+        }
+        if (!static::hasSync()) {
+            return redirect($this->url());
+        }
+        try {
+            $user = \Exment::user();
+            /** @var array{moved: int, kept: int, lines: array<int, string>} $r */
+            $r = call_user_func([__NAMESPACE__ . '\SyncBridge', 'move'], $user ? intval($user->getUserId()) : null);
+            return redirect($this->url())->with('pmbl_ok', Lang::t('sync_moved', ['moved' => strval($r['moved']), 'kept' => strval($r['kept'])]) . (empty($r['lines']) ? '' : ' ' . implode(' / ', $r['lines'])));
+        } catch (\Throwable $e) {
+            \Log::warning('pm_backlog move to the data sync: ' . get_class($e));
+            return redirect($this->url())->with('pmbl_error', $e instanceof \RuntimeException ? mb_substr($e->getMessage(), 0, 300) : get_class($e));
+        }
+    }
+
     /** A manual run stays short enough for a web request. */
     const MANUAL_LIMIT = 100;
 
@@ -121,9 +179,10 @@ class PluginPage extends PluginPageBase
 
             return redirect($this->url($id))->with('pmbl_ok', $msg);
         } catch (\Throwable $e) {
-            \Log::warning('pm_backlog mapping ' . $id . ': ' . $e->getMessage());
+            $error = Secrets::scrub($e->getMessage(), [Connections::apiKey($conn)]);
+            \Log::warning('pm_backlog mapping ' . $id . ': ' . $error);
 
-            return redirect($this->url($id))->with('pmbl_error', mb_substr($e->getMessage(), 0, 500));
+            return redirect($this->url($id))->with('pmbl_error', mb_substr($error, 0, 500));
         }
     }
 
@@ -177,9 +236,10 @@ class PluginPage extends PluginPageBase
 
             return redirect($this->url($id))->with('pmbl_ok', Lang::t('import_done', $n));
         } catch (\Throwable $e) {
-            \Log::warning('pm_backlog import ' . $id . ': ' . $e->getMessage());
+            $error = Secrets::scrub($e->getMessage(), [Connections::apiKey($conn)]);
+            \Log::warning('pm_backlog import ' . $id . ': ' . $error);
 
-            return redirect($this->url($id))->with('pmbl_error', mb_substr($e->getMessage(), 0, 500));
+            return redirect($this->url($id))->with('pmbl_error', mb_substr($error, 0, 500));
         }
     }
 
@@ -209,6 +269,9 @@ class PluginPage extends PluginPageBase
             'ok' => session('pmbl_ok'),
             'error' => session('pmbl_error'),
             'manualLimit' => static::MANUAL_LIMIT,
+            // Exment 7.3: the data sync, and the page of it
+            'hasSync' => static::hasSync(),
+            'syncUrl' => static::hasSync() ? admin_url('sync') : null,
         ], $data);
     }
 
@@ -236,7 +299,7 @@ class PluginPage extends PluginPageBase
      */
     public static function ensureTables(): void
     {
-        if (Schema::hasTable('pmbl_runs') && Schema::hasColumn('pmbl_links', 'parent_backlog_id')) {
+        if (Schema::hasTable('pmbl_runs') && Schema::hasColumn('pmbl_links', 'parent_backlog_id') && Schema::hasColumn('pmbl_connections', 'sync_mapping_id')) {
             return;
         }
         // Each migration looks before it creates, so running them all again is safe.

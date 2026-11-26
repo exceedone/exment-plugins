@@ -13,6 +13,7 @@
         { "method": "get", "uri": "", "function": "index" },
         { "method": "get", "uri": "new", "function": "create" },
         { "method": "post", "uri": "new", "function": "store" },
+        { "method": "post", "uri": "to-sync", "function": "postToSync" },
         { "method": "get", "uri": "{id}", "function": "edit" },
         { "method": "post", "uri": "{id}", "function": "update" },
         { "method": "post", "uri": "{id}/mapping", "function": "postMapping" },

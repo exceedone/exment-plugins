@@ -9,6 +9,9 @@
         <a href="{{ $Its::url('dashboard') }}" class="{{ ($tab ?? '') === 'dashboard' ? 'on' : '' }}" @if(($tab ?? '') === 'dashboard') aria-current="page" @endif><i class="fa fa-bar-chart" aria-hidden="true"></i>レポート</a>
         <span class="sep" aria-hidden="true"></span>
         <a href="{{ $Its::dataUrl($Its::T_TICKET) }}" title="チケットのテーブル（かんばん・Excel 出力など）"><i class="fa fa-table" aria-hidden="true"></i>チケット表</a>
+        @if(\App\Plugins\ExmentITSupport\Problems::enabled())
+        <a href="{{ $Its::url('problems') }}" class="{{ ($tab ?? '') === 'problems' ? 'on' : '' }}" @if(($tab ?? '') === 'problems') aria-current="page" @endif><i class="fa fa-bug" aria-hidden="true"></i>問題</a>
+        @endif
         <a href="{{ $Its::dataUrl($Its::T_KNOWLEDGE) }}"><i class="fa fa-book" aria-hidden="true"></i>ナレッジ</a>
         <a href="{{ $Its::dataUrl($Its::T_CUSTOMER) }}"><i class="fa fa-building-o" aria-hidden="true"></i>お客様</a>
         <a href="{{ $Its::dataUrl($Its::T_CONTACT) }}" title="お客様の担当者"><i class="fa fa-address-book-o" aria-hidden="true"></i>連絡先</a>

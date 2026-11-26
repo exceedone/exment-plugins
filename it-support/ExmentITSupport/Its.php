@@ -35,6 +35,15 @@ class Its
     const T_KNOWLEDGE = 'its_knowledge';
     const T_TEMPLATE = 'its_template';
     const T_ASSET = 'its_asset';
+    const T_PROBLEM = 'its_problem';
+
+    /** The states of a problem (Problems). */
+    const PROBLEM_STATUSES = [
+        'open' => '調べ中',
+        'known_error' => '原因がわかった',
+        'resolved' => '解決',
+        'closed' => '完了',
+    ];
 
     /** Role groups made by the setup. */
     const ROLE_AGENT = 'its_agent_group';
@@ -160,6 +169,18 @@ class Its
         'asset_notice_days' => '30',
         'auto_assign' => 'category',
         'csat_enabled' => '1',
+        // Problems: the tickets of one cause together (Problems): off at first.
+        'problems_enabled' => '0',
+        // The SLA escalation in steps (Escalation): off at first.
+        'esc_enabled' => '0',
+        'esc_warn_percent' => '75',
+        'esc_manager_after' => '60',
+        'esc_lead_users' => '',
+        'esc_manager_users' => '',
+        'esc_channels' => 'bell,mail',
+        'esc_teams_url' => '',
+        'esc_webhook_url' => '',
+        'esc_lineworks_channel' => '',
         // No-login sharing.
         'public_enabled' => '1',
         'link_days_after_close' => '30',
@@ -178,7 +199,7 @@ class Its
     ];
 
     /** Settings stored encrypted. */
-    const SECRET_SETTINGS = ['imap_password', 'intake_key'];
+    const SECRET_SETTINGS = ['imap_password', 'intake_key', 'esc_teams_url', 'esc_webhook_url'];
 
     /** @var array<string, mixed>|null */
     protected static $settings;

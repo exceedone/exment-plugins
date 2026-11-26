@@ -1531,4 +1531,16 @@ return [
         'summary' => 'Die KI hat :scored Tickets bewertet und :written ausgefüllt. Fehler: :errors, übersprungen wegen keiner Änderung seit dem letzten Mal: :unchanged, bereinigte Protokollzeilen: :swept.',
         'summary_dry' => 'Probelauf: Die KI würde zu :scored Tickets befragt und :written ausfüllen. Fehler: :errors, übersprungen wegen keiner Änderung seit dem letzten Mal: :unchanged.',
     ],
+    // ISS02931
+    'cmt_link' => 'Link',
+    'cmt_link_tip' => 'URL dieses Kommentars kopieren',
+    'cmt_not_found' => 'Der Kommentar wurde nicht gefunden. Er wurde gelöscht, oder Sie dürfen ihn nicht sehen.',
+    'proj_settings' => 'Projekteinstellungen',
+    'qf_edit' => 'Ändern',
+    'qf_save' => 'Speichern',
+    'qf_stale' => 'Jemand anderes hat diesen Vorgang zuerst aktualisiert. Der neueste Inhalt wurde geladen. Bitte ändern Sie ihn erneut.',
+    'lbl_notify' => 'Benachrichtigungen',
+    'lbl_notified' => 'Benachrichtigt',
+    'f_rl' => 'Rolle',
+    'oc_menu' => 'Angezeigte Spalten',
 ];

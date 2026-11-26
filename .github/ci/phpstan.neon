@@ -14,6 +14,10 @@ parameters:
             - ../../.github
             - ../../vendor (?)
             - ../../*.blade.php
+            # the data sync of Exment 7.3.0 (Services\Sync), which the Exment installed here (the
+            # release, ^7.0) does not have yet: checked again from 7.3.0 on
+            - ../../project-management/ExmentPMBacklog/BacklogConnector.php
+            - ../../project-management/ExmentPMBacklog/SyncBridge.php
     bootstrapFiles:
         - bootstrap.php
     # The baseline may list files that a branch does not have yet.

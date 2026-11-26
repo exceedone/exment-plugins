@@ -1531,4 +1531,16 @@ return [
         'summary' => 'AI가 이슈 :scored건을 평가하여 :written건에 입력했습니다. 오류: :errors건, 이전과 동일하여 건너뜀: :unchanged건, 정리된 로그 행: :swept.',
         'summary_dry' => '시험 실행: 이슈 :scored건을 AI에 문의하여 :written건에 입력할 예정입니다. 오류: :errors건, 이전과 동일하여 건너뜀: :unchanged건.',
     ],
+    // ISS02931
+    'cmt_link' => '링크',
+    'cmt_link_tip' => '이 댓글의 URL 복사',
+    'cmt_not_found' => '댓글을 찾을 수 없습니다. 삭제되었거나 볼 권한이 없습니다.',
+    'proj_settings' => '프로젝트 설정',
+    'qf_edit' => '변경',
+    'qf_save' => '저장',
+    'qf_stale' => '다른 사람이 이 과제를 먼저 갱신했습니다. 최신 내용을 불러왔습니다. 다시 변경하십시오.',
+    'lbl_notify' => '알림',
+    'lbl_notified' => '알림 대상',
+    'f_rl' => '역할',
+    'oc_menu' => '표시할 열',
 ];

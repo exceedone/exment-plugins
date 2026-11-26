@@ -1639,4 +1639,23 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-tablewrap{max-height:calc(100vh - 70px);}
 }
 
+/* ISS02931: the project's settings beside its name */
+.pmportal .bl-projset{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:1px 8px;border:1px solid var(--bl-line);
+  border-radius:var(--bl-radius-pill, 999px);color:var(--bl-faint);font-size:12px;font-weight:400;text-decoration:none;vertical-align:middle;}
+.pmportal .bl-projset:hover,.pmportal .bl-projset:focus{color:var(--bl-accent-d);border-color:var(--bl-accent);}
+/* ISS02931: set the roles, the hours and the people told on the issue itself */
+.pmportal .pp-qf-pen{border:0;background:none;padding:0 2px;margin-left:2px;color:var(--bl-faint);cursor:pointer;font-size:12px;line-height:1;}
+.pmportal .pp-qf-pen:hover,.pmportal .pp-qf-pen:focus{color:var(--bl-accent-d);}
+.pmportal .pp-qf{flex-basis:100%;display:block;margin:6px 0 8px;padding:8px 10px;border:1px solid var(--bl-line);border-radius:6px;background:var(--bl-box);}
+.pmportal .pp-qf-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:6px;}
+.pmportal .pp-qf-msg{margin-right:auto;font-size:12px;color:#c0392b;}
+.pmportal .pp-qf-sub{color:var(--bl-faint);font-size:11.5px;margin-right:6px;}
+.pmportal .pp-qf-mail{font-size:12px;margin-left:6px;white-space:nowrap;}
+/* ISS02931: the optional columns of the issue list */
+.pmportal .pp-oc-wrap{position:relative;display:inline-block;}
+.pmportal .pp-oc-btn{border:0;background:none;padding:0;cursor:pointer;}
+.pmportal .pp-oc-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:170px;padding:6px 10px;
+  background:var(--bl-box);border:1px solid var(--bl-line);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.12);}
+.pmportal .pp-oc-menu label{display:block;margin:4px 0;font-weight:400;white-space:nowrap;cursor:pointer;}
+
 </style>

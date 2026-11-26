@@ -1531,4 +1531,16 @@ return [
         'summary' => 'AI đã đánh giá :scored vấn đề và điền :written. Lỗi: :errors, bỏ qua do không thay đổi so với lần trước: :unchanged, số dòng nhật ký đã dọn: :swept.',
         'summary_dry' => 'Chạy thử: sẽ hỏi AI về :scored vấn đề và điền :written. Lỗi: :errors, bỏ qua do không thay đổi so với lần trước: :unchanged.',
     ],
+    // ISS02931
+    'cmt_link' => 'Liên kết',
+    'cmt_link_tip' => 'Sao chép URL của bình luận này',
+    'cmt_not_found' => 'Không tìm thấy bình luận. Bình luận đã bị xóa hoặc bạn không có quyền xem.',
+    'proj_settings' => 'Cài đặt dự án',
+    'qf_edit' => 'Thay đổi',
+    'qf_save' => 'Lưu',
+    'qf_stale' => 'Người khác đã cập nhật vấn đề này trước. Đã tải nội dung mới nhất. Hãy thay đổi lại.',
+    'lbl_notify' => 'Thông báo',
+    'lbl_notified' => 'Người được báo',
+    'f_rl' => 'Vai trò',
+    'oc_menu' => 'Cột hiển thị',
 ];
