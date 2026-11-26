@@ -89,6 +89,7 @@ test('every action presses what is on the screen, and the forms keep the key', (
     assert.ok(/det\.editable/.test(functionSource(pal, 'palAssignMe')), 'take it: only where the reader may edit');
     assert.ok(/qfApply\(issueId, \{ as: /.test(functionSource(pal, 'palAssignMe')), 'take it: the same save as the info box, with its undo');
     assert.ok(/FM\.el && !FM\.el\.hidden\) \|\| \(NED\.el && !NED\.el\.hidden/.test(pal));
+    assert.ok(/addEventListener\('mousemove'[\s\S]*?PAL\.at = n;/.test(functionSource(pal, 'palOpen')), 'the pointer moves the selection');
 });
 test('built in, listed in the keys, the words in ja', () => {
     assert.ok(/'palette\.js',/.test(build) && build.indexOf("'palette.js'") < build.indexOf("'boot.js'"));

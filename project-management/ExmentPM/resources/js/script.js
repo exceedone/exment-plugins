@@ -13043,6 +13043,17 @@ window.PmPortalBoot = function () {
             if (it) { palRun(parseInt(it.getAttribute('data-n'), 10)); }
         });
         var input = box.querySelector('input');
+        // The pointer moves the selection too, so Enter runs what is under it.
+        box.addEventListener('mousemove', function (ev) {
+            var it = ev.target.closest && ev.target.closest('.it');
+            var n = it ? parseInt(it.getAttribute('data-n'), 10) : -1;
+            if (n < 0 || n === PAL.at) { return; }
+            Array.prototype.forEach.call(box.querySelectorAll('.it.on'), function (x) { x.classList.remove('on'); x.setAttribute('aria-selected', 'false'); });
+            it.classList.add('on');
+            it.setAttribute('aria-selected', 'true');
+            PAL.at = n;
+            input.setAttribute('aria-activedescendant', it.id);
+        });
         input.addEventListener('input', function () { PAL.at = 0; palRender(); });
         input.addEventListener('keydown', function (ev) {
             if (ev.isComposing) { return; }
