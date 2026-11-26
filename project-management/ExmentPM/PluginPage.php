@@ -216,6 +216,12 @@ class PluginPage extends PluginPageBase
         return $this->portal()->allIssuesExport(request());
     }
 
+    // ISS00244: the issues of every project in one gantt, a project per group
+    public function allGantt()
+    {
+        return $this->respond($this->portal()->allGantt(request(), new Content()));
+    }
+
     public function exportIssues($id)
     {
         return $this->portal()->exportIssues(request(), $id);

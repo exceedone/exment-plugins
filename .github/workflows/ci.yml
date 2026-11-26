@@ -146,6 +146,9 @@ jobs:
       # The custom attributes of a project's issues (ExmentPM, plain PHP)
       - name: Custom attributes check (ExmentPM server)
         run: php project-management/tools/test-pm-attributes.php
+      - name: Every project in one gantt (ExmentPM)
+        run: php project-management/tools/test-pm-all-gantt.php
+
       # The messages of the chat channels of a project (ExmentPM, plain PHP)
       - name: Chat channels (ExmentPM)
         run: php project-management/tools/test-pm-channels.php
@@ -207,6 +210,10 @@ jobs:
       # The messages of ExmentPMBacklog have no secret (plain PHP)
       - name: Messages check (ExmentPMBacklog)
         run: php project-management/tools/test-pmbl-secrets.php
+
+      # Backlog's custom fields as ExmentPM's custom attributes (ExmentPMBacklog, plain PHP)
+      - name: Backlog custom fields (ExmentPMBacklog)
+        run: php project-management/tools/test-pmbl-attributes.php
 
       # The alerts of Zabbix, Mackerel, Alertmanager and Azure Monitor, and
       # what they do to the tickets (ExmentITSupport, plain PHP).
