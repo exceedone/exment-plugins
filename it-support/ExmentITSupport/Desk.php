@@ -1103,7 +1103,9 @@ class Desk
         }
         $month = preg_match('/^\d{4}-\d{2}$/', strval($request->get('month'))) ? strval($request->get('month')) : Carbon::now()->format('Y-m');
 
-        return $this->view('dashboard', array_merge(Report::build($month), ['month' => $month]));
+        $group = isset(Queue::GROUPS[$request->get('group')]) ? strval($request->get('group')) : '';
+
+        return $this->view('dashboard', array_merge(Report::build($month, $group), ['month' => $month, 'group' => $group, 'groups' => Queue::GROUPS, 'kinds' => Queue::kindLabels()]));
     }
 
     public function reportCsv(Request $request)

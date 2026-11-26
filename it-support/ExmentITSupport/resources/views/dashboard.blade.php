@@ -8,6 +8,7 @@
     <span class="its-sub">チケットからその場で計算しています（更新ボタンは要りません）。</span>
     <form method="get" action="{{ $Its::url('dashboard') }}" class="act">
         <input type="month" name="month" value="{{ $month }}" aria-label="月">
+        <select name="group" aria-label="受付箱のまとまり"><option value="">すべての受付箱</option>@foreach($groups as $gk => $gl)<option value="{{ $gk }}" @if($group === $gk) selected @endif>{{ $gl }}</option>@endforeach</select>
         <button class="its-btn" type="submit">表示</button>
         <a class="its-btn" href="{{ $Its::url('report.csv') }}?month={{ $month }}"><i class="fa fa-download" aria-hidden="true"></i>お客様別 CSV</a>
     </form>
@@ -22,6 +23,32 @@
     <div class="its-kpi" style="--k:#7c5cf0"><div class="l">最初の返事まで</div><div class="n">{{ $R::minutesText($kpi['first_median']) }}</div><div class="h">中央値</div><i class="i fa fa-reply" aria-hidden="true"></i></div>
     <div class="its-kpi" style="--k:#f08c2b"><div class="l">満足度</div><div class="n">@if($kpi['csat'] === null)—@else{{ $kpi['csat'] }}<small>/ 5</small>@endif</div><div class="h">{{ $kpi['csat_n'] }} 件の平均・5 点満点</div><i class="i fa fa-star" aria-hidden="true"></i></div>
     <div class="its-kpi" style="--k:#d6409f"><div class="l">FAQ が読まれた回数</div><div class="n">{{ $kpi['faq_views'] }}<small>回</small></div><div class="h">累計</div><i class="i fa fa-book" aria-hidden="true"></i></div>
+</div>
+
+<div class="its-card">
+    <h3><i class="fa fa-inbox" aria-hidden="true"></i>受付箱ごと</h3>
+    @if(count($byBox))
+    <div class="its-scroll">
+    <table class="its-table">
+        <thead><tr><th>受付箱</th><th class="r">受付</th><th class="r">解決</th><th class="r">いま対応中</th><th class="r">進捗率（平均）</th><th class="r">最初の返事まで</th><th class="r">SLA</th><th class="r">受注率</th></tr></thead>
+        <tbody>
+        @foreach($byBox as $b)
+        <tr>
+            <td>@if($b['id'] !== '0')<a href="{{ $Its::url() }}?queue=all&category={{ $b['id'] }}"><b>{{ $b['name'] }}</b></a>@else<span class="its-sub" style="font-size:inherit">{{ $b['name'] }}</span>@endif <span class="its-sub">{{ $kinds[$b['kind']] ?? '' }}</span></td>
+            <td class="r">{{ $b['created'] }}</td><td class="r">{{ $b['resolved'] }}</td><td class="r">{{ $b['open'] }}</td>
+            <td class="r">{{ $b['progress'] === null ? '—' : $b['progress'] . '%' }}</td>
+            <td class="r">{{ $R::minutesText($b['first_median']) }}</td>
+            <td class="r">{{ $b['sla'] === null ? '—' : $b['sla'] . '%' }}</td>
+            <td class="r">@if($b['win_rate'] === null)—@else{{ $b['win_rate'] }}%<span class="its-sub">（{{ $b['won'] }} / {{ $b['won'] + $b['lost'] }}）</span>@endif</td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    <div class="its-sub" style="margin-top:10px">受付・解決・SLA・最初の返事はこの月、いま対応中と進捗率はいまの数です。受注率は見積の受付箱で、この月に終わったもの（受注 ÷（受注＋失注））です。</div>
+    @else
+    <div class="its-emptybox"><i class="fa fa-inbox" aria-hidden="true"></i>この月のチケットはありません。</div>
+    @endif
 </div>
 
 <div class="its-grid3">
@@ -76,7 +103,7 @@
     </div>
 </section>
 <aside>
-    @foreach(['byChannel' => ['受付の方法', $Its::CHANNELS, 'fa-sign-in'], 'byPriority' => ['優先度', $Its::PRIORITIES, 'fa-flag-o'], 'byCategory' => ['種類', null, 'fa-tags'], 'byAgent' => ['いま対応中（担当者ごと）', null, 'fa-users']] as $key => [$title, $labelMap, $icon])
+    @foreach(['byChannel' => ['受付の方法', $Its::CHANNELS, 'fa-sign-in'], 'byPriority' => ['優先度', $Its::PRIORITIES, 'fa-flag-o'], 'byCategory' => ['受付箱', null, 'fa-inbox'], 'byAgent' => ['いま対応中（担当者ごと）', null, 'fa-users']] as $key => [$title, $labelMap, $icon])
     @php($rows = array_filter($$key ?: [], function ($n) { return $n > 0; }))
     @php($top = max(1, max(array_values($rows ?: [0]))))
     @php($sum = max(1, array_sum($rows)))
