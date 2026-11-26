@@ -184,6 +184,13 @@ class Its
         'esc_teams_url' => '',
         'esc_webhook_url' => '',
         'esc_lineworks_channel' => '',
+        // what happens to the tickets, told to a chat (ISS02941): off at first
+        'chat_enabled' => '0',
+        'chat_events' => 'new,customer,stage',
+        'chat_boxes' => '',
+        'chat_teams_url' => '',
+        'chat_slack_url' => '',
+        'chat_webhook_url' => '',
         // No-login sharing.
         'public_enabled' => '1',
         'link_days_after_close' => '30',
@@ -202,7 +209,7 @@ class Its
     ];
 
     /** Settings stored encrypted. */
-    const SECRET_SETTINGS = ['imap_password', 'intake_key', 'esc_teams_url', 'esc_webhook_url'];
+    const SECRET_SETTINGS = ['imap_password', 'intake_key', 'esc_teams_url', 'esc_webhook_url', 'chat_teams_url', 'chat_slack_url', 'chat_webhook_url'];
 
     /** @var array<string, mixed>|null */
     protected static $settings;

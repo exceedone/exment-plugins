@@ -96,6 +96,23 @@
     </div>
 
     <div class="its-card">
+        <h2><i class="fa fa-comments" aria-hidden="true"></i>チャットへの知らせ</h2>
+        <div class="its-sub its-lead">新しいチケット・お客様からの返事・段階の動きを、Teams・Slack・Webhook に知らせます。受付箱を選ばないときは、すべての受付箱です。</div>
+        <input type="hidden" name="chat_form" value="1">
+        <div class="its-form-grid">
+            <label for="s-chat-on">使う</label><label class="its-check"><input type="checkbox" class="its-sw" id="s-chat-on" name="chat_enabled" value="1" @checked($s['chat_enabled'] === '1')> チャットに知らせる</label>
+            <span class="lbl">知らせること</span>
+            <span class="its-days" role="group" aria-label="知らせること">@foreach($chatEvents as $k => $l)<label><input type="checkbox" name="chat_events[]" value="{{ $k }}" @checked(in_array($k, explode(',', $s['chat_events']), true))> {{ $l }}</label>@endforeach</span>
+            <span class="lbl">受付箱</span>
+            <span class="its-days" role="group" aria-label="知らせる受付箱">@foreach($chatBoxes as $bid => $bx)<label><input type="checkbox" name="chat_boxes[]" value="{{ $bid }}" @checked(in_array((string) $bid, explode(',', $s['chat_boxes']), true))> {{ $bx['name'] }}</label>@endforeach</span>
+            <label for="s-chat-teams">Teams のワークフローの URL</label><input type="url" id="s-chat-teams" name="chat_teams_url" value="" placeholder="{{ $s['chat_teams_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
+            <label for="s-chat-slack">Slack の Incoming Webhook の URL</label><input type="url" id="s-chat-slack" name="chat_slack_url" value="" placeholder="{{ $s['chat_slack_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://hooks.slack.com/...' }}" autocomplete="off">
+            <label for="s-chat-hook">Webhook の URL</label><input type="url" id="s-chat-hook" name="chat_webhook_url" value="" placeholder="{{ $s['chat_webhook_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
+        </div>
+        <div class="its-sub its-foot">URL は暗号化して保存します。保存したあと <button type="submit" class="its-btn small" formaction="{{ $Its::url('settings', 'chat-test') }}"><i class="fa fa-paper-plane" aria-hidden="true"></i>試しに送る</button> で届くか確かめられます。Webhook には JSON（event・ticket_no・subject・box・title・lines・url）を送ります。</div>
+    </div>
+
+    <div class="its-card">
         <h2><i class="fa fa-globe" aria-hidden="true"></i>お客様の窓口（ログインなし）</h2>
         @include($Its::view('_feature_note'))
         <div class="its-form-grid">

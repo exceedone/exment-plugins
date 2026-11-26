@@ -239,6 +239,10 @@ jobs:
       - name: Help desk boxes (IT Support)
         run: php it-support/tools/test-queue.php
 
+      # what the help desk tells a chat, and Slack's marks kept as text (ISS02941)
+      - name: Help desk chat notices (IT Support)
+        run: php it-support/tools/test-chat-notices.php
+
       # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
       # plain PHP)
       - name: kintone API check (ExmentKintone)
