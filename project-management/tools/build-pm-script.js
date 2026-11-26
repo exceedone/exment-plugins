@@ -35,6 +35,7 @@ const FILES = [
     'issue-detail.js',     // issue detail, quick edit, related issues
     'wiki.js',
     'files.js',            // files, Office view
+    'attach-edit.js',      // attachments edited in place, their versions (ISS02938)
     'read-receipts.js',
     'writes.js',
     'typeahead.js',

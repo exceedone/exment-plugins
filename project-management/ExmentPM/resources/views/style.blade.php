@@ -193,6 +193,21 @@
   border-radius:var(--bl-radius-s,4px);}
 .pmportal .bl-list .pp-tgl:hover{color:var(--bl-accent-d);background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));}
 .pmportal .bl-list .pp-tgl .n{font-weight:700;}
+/* ISS02938: an attachment edited in place, its versions */
+.pmportal .pp-ver{margin-left:6px;padding:0 6px;border-radius:9px;background:var(--bl-chip,#eef1f4);font-size:11px;color:var(--bl-sub);cursor:pointer;border:0;}
+.pmportal .pp-aedit{margin-left:6px;font-size:12px;}
+.pp-aed{position:fixed;inset:0;z-index:1080;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px;}
+.pp-aed .box{background:var(--bl-box,#fff);border-radius:8px;width:min(1000px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 10px 32px rgba(0,0,0,.25);}
+.pp-aed .hd{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bl-line,#dfe5ea);font-weight:700;}
+.pp-aed .hd .sp{flex:1 1 auto;}
+.pp-aed .bd{padding:10px 14px;overflow:auto;flex:1 1 auto;}
+.pp-aed textarea{width:100%;min-height:55vh;font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5;border:1px solid var(--bl-line,#dfe5ea);border-radius:4px;padding:8px;resize:vertical;}
+.pp-aed .ft{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:10px 14px;border-top:1px solid var(--bl-line,#dfe5ea);}
+.pp-aed .ft .msg{margin-right:auto;color:var(--bl-sub);font-size:12px;}
+.pp-aed .lock{color:#c27c0e;font-weight:700;font-size:12px;}
+.pp-aed table{border-collapse:collapse;font-size:12.5px;}
+.pp-aed td,.pp-aed th{border:1px solid var(--bl-line,#dfe5ea);padding:3px 6px;white-space:pre;}
+.pp-aed .vl td{white-space:nowrap;}
 /* ISS00248: the alias */
 .pmportal .bl-list td.pp-al{white-space:nowrap;font-family:Menlo,Consolas,monospace;font-size:12px;}
 .pmportal .pp-al-d{margin-left:8px;padding:1px 7px;border-radius:9px;background:color-mix(in srgb, var(--bl-accent) 12%, var(--bl-box));font-family:Menlo,Consolas,monospace;font-size:12px;}

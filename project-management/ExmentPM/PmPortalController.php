@@ -40,6 +40,7 @@ class PmPortalController extends AdminControllerBase
     use PortalAiTrait;
     use PortalRankingTrait;
     use PortalNotifySettingsTrait;
+    use PortalAttachTrait;
     use PortalExportTrait;
     use PortalAllIssuesTrait;
     use PortalFeedTrait;
@@ -996,6 +997,11 @@ class PmPortalController extends AdminControllerBase
             // screenshot pasted into a comment has to be findable without
             // scrolling back through the whole conversation.
             $files = [];
+            // ISS02938: the number of each attachment's newest version, when attachments are edited here
+            $attachOn = $attachOn ?? PortalAttachEdit::enabled();
+            $versionNos = $attachOn ? PortalAttachEdit::numbers(array_map(function ($d) {
+                return intval($d->id);
+            }, $documents[intval($issue->id)] ?? [])) : [];
             foreach (($documents[intval($issue->id)] ?? []) as $doc) {
                 $name = strval(array_get($doc->value, 'document_name', ''));
                 $url = admin_url('files', [array_get($doc->value, 'file_uuid')]);
@@ -1013,6 +1019,10 @@ class PmPortalController extends AdminControllerBase
                     'by' => intval($doc->created_user_id),
                     'at' => $this->fmtAt($doc->created_at),
                     'img' => static::isImageName($name),
+                    // ISS02938: which attachment, its version, and how it is edited here
+                    'doc' => $attachOn ? intval($doc->id) : null,
+                    'ver' => $attachOn ? intval($versionNos[intval($doc->id)] ?? 1) : null,
+                    'ek' => $attachOn ? PortalAttachEdit::kindOf($name) : null,
                 ];
             }
 
@@ -3139,7 +3149,7 @@ class PmPortalController extends AdminControllerBase
                 // routes refuse, so the screen can say so before anyone types.
                 'archived' => $archived,
             ],
-            'can' => array_merge((array) $can, ['alias' => PortalIssueAliases::exists()]),
+            'can' => array_merge((array) $can, ['alias' => PortalIssueAliases::exists(), 'attach_edit' => PortalAttachEdit::enabled()]),
             // The settings tab's server-known bits; withheld from people the
             // tab is hidden from anyway.
             'git' => $can['manage'] ? $this->gitState($project) : null,
@@ -3260,6 +3270,8 @@ class PmPortalController extends AdminControllerBase
                     : null,
                 // ISS00416: Word, Excel and PowerPoint attachments shown in place
                 'office_view' => $this->officeViewBase(),
+                // ISS02938: Groupware's page that edits an Office attachment (0.4.0 or later)
+                'office_edit' => PortalAttachEdit::enabled() ? PortalAttachEdit::officeEditBase() : null,
                 'temp_image_upload' => admin_url('tmpimages'),
                 'mention' => admin_url('webapi/mention/users'),
                 'form_style' => PortalDefinition::url('form-style'),
