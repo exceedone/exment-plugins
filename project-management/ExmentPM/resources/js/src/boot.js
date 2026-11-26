@@ -103,13 +103,25 @@
     // on a desktop, 100px on a phone where it wraps), measured when the box
     // opens. 0 where there is no fixed header.
     function ppTopSafe() {
-        var head = document.querySelector('.main-header');
-        if (!head) { return 0; }
-        var pos = '';
-        try { pos = window.getComputedStyle(head).position; } catch (e) { pos = ''; }
-        if (pos !== 'fixed' && pos !== 'sticky') { return 0; }
-        var r = head.getBoundingClientRect();
-        return r.bottom > 0 ? Math.round(r.bottom) : 0;
+        // Whatever is fixed (or sticky) at the very top of the window, found
+        // from the point there rather than by a class name: the header is
+        // built differently by Exment's classic and modern designs.
+        var out = 0;
+        [0.5, 0.1, 0.9].forEach(function (fx) {
+            var el = null;
+            try { el = document.elementFromPoint(Math.round(window.innerWidth * fx), 2); } catch (e) { el = null; }
+            while (el && el !== document.body && el !== document.documentElement) {
+                var pos = '';
+                try { pos = window.getComputedStyle(el).position; } catch (e) { pos = ''; }
+                if (pos === 'fixed' || pos === 'sticky') {
+                    var r = el.getBoundingClientRect();
+                    if (r.top <= 2 && r.bottom > out) { out = Math.round(r.bottom); }
+                    break;
+                }
+                el = el.parentElement;
+            }
+        });
+        return out;
     }
     function keyHelp(show) {
         var box = document.getElementById('pp-keyhelp');

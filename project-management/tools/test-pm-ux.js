@@ -462,7 +462,7 @@ test('HELP-1: the ? box says what the buttons of this screen do', () => {
 
 test('HELP-1 fix: the ? box and the palette start under the fixed header', () => {
     const bootSrc = read('boot.js');
-    assert.ok(/querySelector\('\.main-header'\)/.test(functionSource(bootSrc, 'ppTopSafe')));
+    assert.ok(/elementFromPoint\(/.test(functionSource(bootSrc, 'ppTopSafe')), 'the fixed header found from the top of the window');
     assert.ok(/--pp-top-safe', ppTopSafe\(\)/.test(functionSource(bootSrc, 'keyHelp')));
     assert.ok(/--pp-top-safe', ppTopSafe\(\)/.test(functionSource(read('palette.js'), 'palOpen')));
     assert.ok(style.indexOf('.pmportal .pp-keyhelp{align-items:flex-start;padding:calc(var(--pp-top-safe, 0px) + 8px) 16px 16px;}') > 0);
