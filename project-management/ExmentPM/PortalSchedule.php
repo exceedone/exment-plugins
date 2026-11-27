@@ -3,6 +3,7 @@
 namespace App\Plugins\ExmentPM;
 
 use Exceedone\Exment\Model\CustomTable;
+use Exceedone\Exment\Model\CustomValueModelScope;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,12 +18,15 @@ use Illuminate\Support\Facades\Log;
  * two. A date that is a day off moves as the schedule says (before, after, keep, skip).
  *
  * Off until an administrator turns it on (Feature management: exment_pm.schedule; without it, the
- * plugin setting "schedule_on"). Run by the batch, from cron every 5 minutes:
+ * plugin setting "schedule_on"). Run by the batch every 5 minutes: Exment's schedule:run calls
+ * it on the plugin's batch_cron, which config.json ships (PluginBatch). Without schedule:run, a
+ * cron line of the server's own does the same:
  *
  *   0-59/5 * * * * cd /path/to/exment && php artisan exment:batch --name=ExmentPM --param1=schedule
  *
- * Page loads run them too, but only when the batch has not run for FALLBACK_MINUTES (or never
- * did), every TICK_MINUTES at most. Either way an issue is made as the schedule's owner
+ * Page loads of the portal (its top page and a project's page: PmPortalController index and
+ * show) run them too, but only when the batch has not run for FALLBACK_MINUTES (or never did),
+ * every TICK_MINUTES at most. Either way an issue is made as the schedule's owner
  * (PortalRunOwner), never as the visitor; a schedule that cannot run as anyone says so on the
  * schedule screen (run_error) and in the log, once.
  */
@@ -186,7 +190,22 @@ class PortalSchedule
     }
 
     /**
-     * Save a schedule from the form (a new one when $id is null).
+     * Whether a user may save a schedule of the project: they can add issues to it themselves (a
+     * role that edits the issue table, and the project editable for them, as Exment asks before a
+     * row is added under it). The schedule's issues are made later with no one asked, so a user
+     * who may only manage the project row must not be able to have them made.
+     *
+     * @param \Exceedone\Exment\Model\CustomValue $project
+     */
+    public static function saverMayAdd($project, int $userId, CustomTable $issueTable): bool
+    {
+        return $userId > 0 && PortalRunOwner::canWrite($userId, $issueTable)
+            && PortalDefinition::enableEdit($project, true) === true;
+    }
+
+    /**
+     * Save a schedule from the form (a new one when $id is null). The template is looked for
+     * as the user sees it: one they may not read, or one in the trash, is refused.
      *
      * @return array{0: ?int, 1: array<int, string>} the id, or the errors
      */
@@ -201,7 +220,7 @@ class PortalSchedule
             $errors[] = $t('err_name');
         }
         $template = intval($f['template'] ?? 0);
-        $tpl = $template > 0 ? $issueTable->getValueModel()->query()->withoutGlobalScopes()->find($template) : null;
+        $tpl = $template > 0 ? $issueTable->getValueModel()->query()->find($template) : null;
         if (!isset($tpl) || intval($tpl->parent_id) !== $projectId) {
             $errors[] = $t('err_template');
         }
@@ -383,7 +402,11 @@ class PortalSchedule
         return $now === null ? 'clear' : 'log';
     }
 
-    /** Whether the schedules table has the columns of why a schedule cannot run (a migration). */
+    /**
+     * Whether the schedules table has the columns of why a schedule cannot run (a migration).
+     * Kept for the life of the process: a queue worker started before the migration ran keeps
+     * the cache-key fallback of setBlocked() until it restarts, which is harmless.
+     */
     protected static function hasBlockColumns(): bool
     {
         static $has = null;
@@ -486,6 +509,7 @@ class PortalSchedule
         if (!static::enabled()) {
             return $made;
         }
+        PortalRunOwner::forget();
         $def = PortalDefinition::config();
         $issueTable = CustomTable::getEloquent(array_get($def, 'issue_table'));
         $projectTable = CustomTable::getEloquent(array_get($def, 'project_table'));
@@ -495,11 +519,11 @@ class PortalSchedule
         $today = $today ?? PortalTime::today();
         $cal = PortalCalendarDays::calendar();
         foreach (DB::table(static::TABLE)->where('enabled', 1)->orderBy('id')->get() as $s) {
-            $project = $projectTable->getValueModel()->query()->withoutGlobalScopes()->find(intval($s->project_id));
+            $project = $projectTable->getValueModel()->query()->withoutGlobalScope(CustomValueModelScope::class)->find(intval($s->project_id));
             if (!isset($project) || boolval(array_get($project->value, 'archived'))) {
                 continue;
             }
-            $tpl = $issueTable->getValueModel()->query()->withoutGlobalScopes()->find(intval($s->template_issue_id));
+            $tpl = $issueTable->getValueModel()->query()->withoutGlobalScope(CustomValueModelScope::class)->find(intval($s->template_issue_id));
             if (!isset($tpl) || intval($tpl->parent_id) !== intval($project->id)) {
                 continue;
             }

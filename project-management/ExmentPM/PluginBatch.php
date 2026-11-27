@@ -13,12 +13,31 @@ use Illuminate\Support\Facades\Log;
  *   php artisan exment:batch --name=ExmentPM --param1=<project id|all> --param2=<limit> --param3=dry
  *
  *   param1  one project's id, or "all" for every project that has the AI
- *           switched on (default: all). Archived projects are never filled.
+ *           switched on. Archived projects are never filled. Without param1
+ *           the batch runs the recurring schedules instead (see below), never
+ *           the AI back-fill.
  *   param2  how many AI calls this run may make (default: 100). A call that
  *           failed counts: it was still an attempt.
  *           "recur" makes the recurring issues whose turn has come instead
  *   param3  "dry" prints what would be asked and written, and neither calls
  *           the AI nor writes anything
+ *
+ * The recurring schedules (PortalSchedule):
+ *
+ *   php artisan exment:batch --name=ExmentPM                      (as Exment calls it)
+ *   php artisan exment:batch --name=ExmentPM --param1=schedule    (the same)
+ *
+ *   Exment's scheduler calls a batch plugin with no params. exment:schedule (hourly)
+ *   takes the plugins whose options.batch_hour is the hour, which ExmentPM never is
+ *   (batch_hour -1, PortalSchema::BATCH_HOUR_OFF). schedule:run (the cron line every
+ *   Exment needs, every minute) runs "exment:batch <id>" for each plugin with an
+ *   options.batch_cron, on that cron. config.json ships batch_cron every 5 minutes
+ *   and Exment's installer copies it onto the plugin row at every upload, so where
+ *   schedule:run runs, the schedules are made every 5 minutes with no cron line of
+ *   their own; another cron set on the row goes back to that at the next upload.
+ *   Where schedule:run does not run, page loads of the portal (its top page and a
+ *   project's page) run them, every 5 minutes at most, once the batch has not run
+ *   for 30 minutes.
  *
  *   --param1=schedule_shares lists the creator's shares that runs of the recurring
  *           schedules and issues gave on their issues to people outside the project (a dry
@@ -79,9 +98,17 @@ class PluginBatch extends PluginBatchBase
     public function execute()
     {
         $options = (array) ($this->pluginOptions->command_options ?? []);
-        $target = strval(array_get($options, 'param1') ?? 'all');
+        $target = static::target(array_get($options, 'param1'));
         $limit = max(1, intval(array_get($options, 'param2') ?: 100));
         $dry = strtolower(strval(array_get($options, 'param3') ?? '')) === 'dry';
+
+        // No param1: how Exment's own scheduler calls a batch plugin (exment:schedule hourly, or
+        // a cron set on the plugin: exment:batch <id> / --uuid=, with no params). That runs the
+        // recurring schedules, the same as --param1=schedule; the AI back-fill spends paid calls
+        // and is run by hand only (--param1=all or a project's id, PortalSchema::BATCH_HOUR_OFF).
+        if ($target === '') {
+            return $this->schedules($dry);
+        }
 
         // --param1=recur: make the recurring issues whose turn has come
         // (PortalRecurrence). Page loads do this too; this is for a server
@@ -114,20 +141,7 @@ class PluginBatch extends PluginBatchBase
 
         // --param1=schedule: the issues of the recurring schedules (ISS00432), from cron every 5 minutes
         if ($target === 'schedule') {
-            \Exceedone\Exment\Middleware\Morph::defineMorphMap();
-            if (!PortalSchedule::enabled()) {
-                $this->say('schedule_off');
-
-                return 0;
-            }
-            if (!$dry) {
-                // page loads leave the schedules to the batch while it runs (PortalSchedule::tick)
-                PortalSchedule::batchRan();
-            }
-            $made = PortalSchedule::run($dry);
-            $this->say($dry ? 'schedule_dry' : 'schedule', ['count' => count($made)]);
-
-            return 0;
+            return $this->schedules($dry);
         }
 
         // --param1=schedule_shares: list the creator's shares that runs of the schedules gave on the
@@ -343,6 +357,38 @@ class PluginBatch extends PluginBatchBase
      * @param array<string, string> $labels column name => label
      * @return string one of the STEP_* values
      */
+    /**
+     * What a run is asked to do: param1 as given, '' when there is none (Exment's scheduler).
+     *
+     * @param mixed $param1
+     */
+    public static function target($param1): string
+    {
+        return is_scalar($param1) ? trim(strval($param1)) : '';
+    }
+
+    /**
+     * The recurring schedules (--param1=schedule, or no param1): the time of the run is kept, so
+     * page loads leave the schedules to the batch while it runs (PortalSchedule::tick).
+     */
+    protected function schedules(bool $dry): int
+    {
+        \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+        if (!PortalSchedule::enabled()) {
+            $this->say('schedule_off');
+
+            return 0;
+        }
+        $made = PortalSchedule::run($dry);
+        if (!$dry) {
+            // only after a run that got through: a batch that keeps failing leaves the page loads on
+            PortalSchedule::batchRan();
+        }
+        $this->say($dry ? 'schedule_dry' : 'schedule', ['count' => count($made)]);
+
+        return 0;
+    }
+
     protected function step(IssueAutofill $autofill, $project, string $key, $issue, bool $dry, array $is, array $labels): string
     {
         $before = $autofill->callsMade();

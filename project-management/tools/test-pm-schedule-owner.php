@@ -56,13 +56,64 @@ ok(strpos($run, 'PortalRunOwner::check($project, intval($s->created_user_id ?? 0
 ok(strpos($run, 'getUserId') === false && strpos($run, 'Exment::user') === false, 'the run never reads the visitor');
 $owner = file_get_contents(__DIR__ . '/../ExmentPM/PortalRunOwner.php');
 ok(strpos($owner, '$row->saving_users = false;') !== false && strpos($owner, '$row->created_user_id = $owner;') !== false, 'the owner is written as the creator, Exment does not stamp the visitor');
-ok(strpos($owner, "update(['create_user_id' => \$owner])") !== false, 'the history of the save names the owner');
-ok(strpos($owner, 'PortalRules::onBehalf($row,') !== false, 'the portal\'s rules do not ask the visitor about this row');
+$saveAs = substr($owner, strpos($owner, 'public static function saveAs('), 1800);
+ok(strpos($saveAs, "update(['create_user_id' => \$owner])") !== false, 'the history of the save names the owner');
+ok(strpos($saveAs, "->where('created_at', '>=', \$from)") !== false && strpos($saveAs, "\$q->whereNull('create_user_id');") !== false
+    && strpos($saveAs, "\$q->orWhere('create_user_id', \$visitor);") !== false, 'only the history this save wrote: by the visitor or by nobody (the batch), from its start on');
+ok(strpos($saveAs, 'if ($visitor > 0 && $visitor !== $owner') === false, 'the batch\'s history is repointed too');
+ok(strpos($saveAs, 'PortalRules::onBehalf($row, function () use ($row) {') !== false && strpos($saveAs, '}, $owner);') !== false, 'the portal\'s rules do not ask the visitor about this row, and know whom it is by');
+$canWrite = substr($owner, strpos($owner, 'public static function canWrite('), 900);
+ok(strpos($canWrite, 'PortalRoleUsers::editors($issueTable)') !== false && strpos($canWrite, 'getRoleUserAndOrgBelongsUserQueryTable') === false, 'canWrite asks for a role that edits, not for who may see the table');
+ok(strpos($canWrite, 'static::$editors[$key]') !== false && strpos($sched, 'PortalRunOwner::forget();') !== false, 'one read of the roles per run');
+$roleUsers = file_get_contents(__DIR__ . '/../ExmentPM/PortalRoleUsers.php');
+ok(strpos($roleUsers, 'Permission::AVAILABLE_EDIT_CUSTOM_VALUE') !== false && strpos($roleUsers, 'allUserAccessable') === false && strpos($roleUsers, 'getRoleUserOrgId($table, SystemTableName::USER') !== false, 'the editors: Exment\'s role groups with an edit permission, no "everyone may see it" shortcut');
+
+// the portal's notices name the owner, not the visitor (PortalChannels)
+if (!class_exists('Exceedone\Exment\Model\CustomValue')) {
+    eval('namespace Exceedone\Exment\Model; class CustomValue {}');
+}
+require_once __DIR__ . '/../ExmentPM/PortalRules.php';
+// a stand-in row (Exment's own CustomValue is abstract and needs Laravel)
+// @phpstan-ignore-next-line
+$rowA = new \Exceedone\Exment\Model\CustomValue();
+// @phpstan-ignore-next-line
+$rowB = new \Exceedone\Exment\Model\CustomValue();
+$seen = \App\Plugins\ExmentPM\PortalRules::onBehalf($rowA, function () use ($rowA, $rowB) {
+    return [\App\Plugins\ExmentPM\PortalRules::behalfOf($rowA), \App\Plugins\ExmentPM\PortalRules::behalfOf($rowB)];
+}, 5);
+ok($seen === [5, null], 'behalfOf: the owner for the row being made, nothing for another row', json_encode($seen));
+ok(\App\Plugins\ExmentPM\PortalRules::behalfOf($rowA) === null, 'behalfOf: nothing once the save is done');
+try {
+    \App\Plugins\ExmentPM\PortalRules::onBehalf($rowA, function () {
+        throw new \RuntimeException('x');
+    }, 5);
+} catch (\RuntimeException $e) {
+}
+ok(\App\Plugins\ExmentPM\PortalRules::behalfOf($rowA) === null, 'behalfOf: nothing after a save that threw');
+$channels = file_get_contents(__DIR__ . '/../ExmentPM/PortalChannels.php');
+ok(strpos($channels, "static::\$pending[\$id]['by'] = static::actorName(\$issue);") !== false
+    && strpos($channels, '$owner = PortalRules::behalfOf($issue);') !== false && strpos($channels, 'PortalRunOwner::nameOf($owner)') !== false, 'the chat channel notice is by the owner');
+ok(strpos($owner, 'LOGIN_USER') !== false && strpos($owner, 'Teams notice') !== false, 'what may still name the visitor is written down');
+
+// saving a schedule: the saver must be able to add issues and see the template
+$trait = file_get_contents(__DIR__ . '/../ExmentPM/PortalSchedulePageTrait.php');
+$saveFn = substr($trait, strpos($trait, 'public function schedulesSave('), 1800);
+ok(strpos($saveFn, 'if (!PortalSchedule::saverMayAdd($project, intval(\Exment::getUserId()), $this->issue_table)) {') !== false
+    && strpos($saveFn, 'saverMayAdd') < strpos($saveFn, 'PortalSchedule::split(') && strpos($saveFn, 'saverMayAdd') < strpos($saveFn, 'PortalSchedule::save('), 'a save or a split is refused to a user who may not add issues');
+$mayAdd = substr($sched, strpos($sched, 'public static function saverMayAdd('), 500);
+ok(strpos($mayAdd, 'PortalRunOwner::canWrite($userId, $issueTable)') !== false && strpos($mayAdd, 'PortalDefinition::enableEdit($project, true) === true') !== false, 'may add: a role that edits issues, and the project editable for them');
+$saveSched = substr($sched, strpos($sched, 'public static function save(int $projectId'), 900);
+ok(strpos($saveSched, '$issueTable->getValueModel()->query()->find($template)') !== false && strpos($saveSched, 'withoutGlobalScopes') === false, 'the template as the saver sees it: hidden or in the trash is refused');
+ok(strpos($run, '$issueTable->getValueModel()->query()->withoutGlobalScope(CustomValueModelScope::class)->find(intval($s->template_issue_id))') !== false, 'a run skips a template in the trash');
+foreach (['ja', 'en'] as $lang) {
+    $t = include __DIR__ . '/../ExmentPM/resources/lang/' . $lang . '/pmportal.php';
+    ok(!empty($t['sched']['err_no_right']), 'the refusal in ' . $lang);
+}
 ok(strpos($owner, 'setUser(') === false && strpos($owner, 'Auth::') === false, 'Exment is not switched to another user mid-request');
 $rules = file_get_contents(__DIR__ . '/../ExmentPM/PortalRules.php');
 $placement = substr($rules, strpos($rules, 'protected static function placement('), 3000);
 ok(strpos($placement, 'if (static::nobodyAsks($model)) {') !== false, 'placement: the visitor is not asked about a row made on behalf');
-ok(strpos($rules, 'isset(static::$onBehalf[spl_object_id($model)])') !== false, 'onBehalf is for that row only');
+ok(strpos($rules, 'return static::behalfOf($model) !== null || \Exment::user() === null;') !== false, 'onBehalf is for that row only');
 
 // --- when it cannot run: once in the log, on the screen ---------------------------------------
 $logs = [];
@@ -108,9 +159,30 @@ ok(!S::batchFresh('x', $now) && !S::batchFresh(0, $now), 'a value that is not a 
 $tickSrc = substr($sched, strpos($sched, 'public static function tick('), 800);
 ok(strpos($tickSrc, 'static::batchFresh(Cache::get(static::batchKey()), time())') !== false && strpos($tickSrc, 'Cache::add($key, 1, now()->addMinutes(self::TICK_MINUTES))') !== false, 'tick: skipped while the batch runs, every few minutes at most otherwise');
 $batch = file_get_contents(__DIR__ . '/../ExmentPM/PluginBatch.php');
-$branch = substr($batch, strpos($batch, "if (\$target === 'schedule') {"), 600);
-ok(strpos($branch, 'PortalSchedule::batchRan();') !== false && strpos($branch, 'PortalSchedule::batchRan();') < strpos($branch, 'PortalSchedule::run($dry);'), 'the batch says it ran before it runs them');
+$branch = substr($batch, strpos($batch, 'protected function schedules(bool $dry): int'), 700);
+ok(strpos($branch, 'PortalSchedule::batchRan();') !== false && strpos($branch, 'PortalSchedule::batchRan();') > strpos($branch, 'PortalSchedule::run($dry);'), 'the batch says it ran only after a run that got through (one that throws leaves the page loads on)');
+// schedule:run calls "exment:batch <id>" with no params on the plugin's batch_cron, which the
+// installer copies from config.json at every upload
+$config = json_decode(file_get_contents(__DIR__ . '/../ExmentPM/config.json'), true);
+ok(($config['batch_cron'] ?? null) === '*/5 * * * *' && ($config['batch_hour'] ?? null) === -1, 'config.json: batch_cron every 5 minutes, batch_hour still off');
+ok(preg_match('/^(\*|\*\/\d+|\d+(-\d+)?(\/\d+)?)( (\*|\d+)){4}$/', $config['batch_cron']) === 1, 'the cron has five fields');
+ok(strpos($batch, 'page loads of the portal (its top page and a') !== false && strpos($sched, 'PmPortalController index and') !== false, 'which page loads tick is written down');
 ok(strpos($branch, 'if (!$dry) {') !== false, 'a dry batch does not hold the page loads back');
+ok(preg_match("/if \\(\\\$target === 'schedule'\\) \\{\\s*return \\\$this->schedules\\(\\\$dry\\);/", $batch) === 1, '--param1=schedule runs them');
+
+// Exment's own scheduler: exment:batch --uuid=<plugin> or exment:batch <id>, with no param1
+$exec = substr($batch, strpos($batch, 'public function execute()'));
+$noParam = strpos($exec, "if (\$target === '') {");
+ok($noParam !== false && preg_match("/if \\(\\\$target === ''\\) \\{\\s*return \\\$this->schedules\\(\\\$dry\\);/", $exec) === 1, 'no param1 (Exment\'s scheduler): the schedules, with the time of the run kept');
+ok($noParam < strpos($exec, "if (\$target === 'shares')") && $noParam < strpos($exec, '$autofill = $this->autofill();'), 'no param1 returns before anything else, the AI back-fill included');
+ok(strpos($exec, "static::target(array_get(\$options, 'param1'))") !== false && strpos($exec, "?? 'all')") === false, 'param1 is read as given: no default to the AI back-fill');
+// PluginBatch::target, as written (the class needs Exment to load)
+$targetSrc = substr($batch, strpos($batch, 'public static function target($param1): string'));
+$targetSrc = substr($targetSrc, strpos($targetSrc, '{') + 1, strpos($targetSrc, "\n    }") - strpos($targetSrc, '{') - 1);
+$target = eval('return function ($param1) {' . $targetSrc . '};');
+ok($target(null) === '' && $target('') === '' && $target('  ') === '' && $target(['x']) === '', 'no param1, an empty one, or not a word: the scheduler\'s call');
+ok($target('schedule') === 'schedule' && $target(' all ') === 'all' && $target(12) === '12', 'a param1 given is kept');
+ok(strpos($batch, 'options.batch_cron') !== false && strpos($batch, 'BATCH_HOUR_OFF') !== false, 'the setting Exment\'s scheduler needs is documented');
 ok(strpos($sched, '0-59/5 * * * *') !== false, 'the cron line is documented');
 
 // --- no date made twice when the batch and a page load run at once ------------------------------

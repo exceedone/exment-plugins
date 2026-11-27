@@ -71,7 +71,7 @@ class PortalRules
      * Whether the save is the plugin's own, made on behalf of a project's user who was checked
      * already (PortalRunOwner): the rules then do not ask the visitor whose request it is.
      *
-     * @var array<int, bool> the rows, by object id
+     * @var array<int, int> the owner (user id) of each row, by object id
      */
     protected static $onBehalf = [];
 
@@ -110,16 +110,18 @@ class PortalRules
      * itself (a recurring schedule's, the copy of a recurring issue) on behalf of a user
      * PortalRunOwner has checked; never for what a person asked for.
      *
-     * Only the saves of $row: another row saved meanwhile is asked about as always.
+     * Only the saves of $row: another row saved meanwhile is asked about as always. $owner is
+     * whom the save is by, for the portal's own notices about it (behalfOf()).
      *
      * @param CustomValue $row
      * @param callable $work
+     * @param int $owner
      * @return mixed whatever $work returns
      */
-    public static function onBehalf(CustomValue $row, callable $work)
+    public static function onBehalf(CustomValue $row, callable $work, int $owner = 0)
     {
         $key = spl_object_id($row);
-        static::$onBehalf[$key] = true;
+        static::$onBehalf[$key] = $owner;
         try {
             return $work();
         } finally {
@@ -127,10 +129,21 @@ class PortalRules
         }
     }
 
+    /**
+     * Whom a save running in onBehalf() is by: the owner's user id, 0 when none was given, null
+     * when the row is not being saved on anyone's behalf (then the request's user is who saves).
+     */
+    public static function behalfOf(CustomValue $row): ?int
+    {
+        $key = spl_object_id($row);
+
+        return array_key_exists($key, static::$onBehalf) ? intval(static::$onBehalf[$key]) : null;
+    }
+
     /** Whether there is nobody to ask about: a batch, the schema upgrade, or onBehalf() for this row. */
     protected static function nobodyAsks(CustomValue $model): bool
     {
-        return isset(static::$onBehalf[spl_object_id($model)]) || \Exment::user() === null;
+        return static::behalfOf($model) !== null || \Exment::user() === null;
     }
 
     /**

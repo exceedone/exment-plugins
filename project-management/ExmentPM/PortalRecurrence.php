@@ -75,6 +75,7 @@ class PortalRecurrence
      */
     public static function run(bool $dry = false, ?Carbon $today = null): array
     {
+        PortalRunOwner::forget();
         $def = PortalDefinition::config();
         $issue_table = CustomTable::getEloquent(array_get($def, 'issue_table'));
         $project_table = CustomTable::getEloquent(array_get($def, 'project_table'));
