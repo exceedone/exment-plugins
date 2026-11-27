@@ -490,13 +490,17 @@
   display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;box-sizing:border-box;
   background:var(--bl-box);border-bottom:1px solid var(--bl-line);box-shadow:0 2px 6px rgba(0,0,0,.06);font-size:13px;}
 .pmportal .pp-dbar[hidden]{display:none;}
-/* A phone has no height to spare; the comment dock is enough there. */
-@media (max-width:760px){.pmportal .pp-dbar{display:none !important;}}
+/* BACK-3: on a phone the bar holds only the way back (a 44px ←), the key and
+   the title: the status and 「コメントへ」 are left out, as there is no room. */
+@media (max-width:760px){
+  .pmportal .pp-dbar{height:52px;padding:0 8px;gap:8px;}
+  .pmportal .pp-dbar .bl-pill,.pmportal .pp-dbar .pp-tocmt{display:none;}
+}
 .pmportal .pp-dbar .bl-key{flex:none;}
 .pmportal .pp-dbar .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;cursor:pointer;color:var(--bl-ink);}
-/* A jump to a comment or a heading must not land under the pinned line
-   (wide screens only - a phone has no pinned line). */
+/* A jump to a comment or a heading must not land under the pinned line. */
 @media (min-width:761px){.pmportal #pp-issue [id]{scroll-margin-top:calc(var(--pp-stick-top,0px) + 56px);}}
+@media (max-width:760px){.pmportal #pp-issue [id]{scroll-margin-top:calc(var(--pp-stick-top,0px) + 64px);}}
 .pmportal .pp-dbar .t:focus-visible{outline:2px solid var(--bl-accent);outline-offset:2px;border-radius:3px;}
 @media print{
   .pmportal .pp-dbar{display:none !important;}

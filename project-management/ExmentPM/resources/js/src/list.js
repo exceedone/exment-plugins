@@ -526,10 +526,30 @@
     // replaceState, not pushState: the list filters as you type, and a history
     // entry per keystroke would bury the back button.
     function filterToUrl() {
-        if (!history.replaceState) { return; }
         if (parseHash().path !== 'issues') { return; }
         var q = filterToQuery();
+        listLastSave(q);
+        if (!history.replaceState) { return; }
         history.replaceState(null, '', '#issues' + (q ? '?' + q : ''));
+    }
+    // BACK-3: the list as it was last left (filters, sort, page), per person
+    // and per project, so that 「← 課題一覧」 on an issue opened by a reload, in
+    // a new tab or from a link goes back to that list rather than to page 1
+    // with no filter. Kept apart from the personal default (FILTER_KEY, 「次回も
+    // この条件で開く」), which still decides what a bare #issues opens with.
+    var LIST_LAST_KEY = userKey('lq');
+    // Set once the list has been on screen in this page: from then on the
+    // conditions in memory are the last ones, and a bare #issues keeps them.
+    var LIST_SEEN = false;
+    function listLastSave(q) {
+        LIST_SEEN = true;
+        try { localStorage.setItem(LIST_LAST_KEY, String(q || '')); } catch (e) { /* storage unavailable: page 1 as before */ }
+    }
+    function listLastQuery() {
+        var q = null;
+        try { q = localStorage.getItem(LIST_LAST_KEY); } catch (e) { q = null; }
+
+        return (typeof q === 'string' && q.length <= 4000) ? q : null;
     }
 
     // #issue-4821 said nothing about what it pointed at, and 4821 is the global
@@ -930,7 +950,6 @@
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
         hintList(matched.length, savedList().length);
-        backFlash();
         ppListFit();
     }
 
