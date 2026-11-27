@@ -2287,4 +2287,10 @@ return [
     'hint_remind_go' => 'Cài đặt nhắc nhở',
     'hint_saved' => 'Bộ lọc hay dùng có thể giữ lại với một tên trong "Điều kiện đã lưu".',
     'hint_saved_go' => 'Mở điều kiện đã lưu',
+    // BACK-1
+    'back_list' => 'Danh sách vấn đề',
+    'back_board' => 'Bảng Kanban',
+    'back_gantt' => 'Gantt',
+    'back_home' => 'Trang chủ',
+    'back_tip' => 'Quay lại %s',
 ];

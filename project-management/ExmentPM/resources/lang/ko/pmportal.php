@@ -2287,4 +2287,10 @@ return [
     'hint_remind_go' => '리마인드 설정',
     'hint_saved' => '자주 쓰는 필터는 "저장한 조건"에 이름을 붙여 남길 수 있습니다.',
     'hint_saved_go' => '저장한 조건 열기',
+    // BACK-1
+    'back_list' => '이슈 목록',
+    'back_board' => '보드',
+    'back_gantt' => '간트',
+    'back_home' => '홈',
+    'back_tip' => '%s(으)로 돌아가기',
 ];

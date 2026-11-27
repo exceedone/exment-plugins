@@ -79,7 +79,7 @@
         'issue_move', 'move_title', 'move_pick', 'move_note', 'move_do', 'move_cancel', 'move_loading',
         'move_none', 'move_fail', 'issue_delete', 'issue_del_ask', 'issue_del_fail',
         // UX-C
-        'bc_label', 'bc_root', 'bc_hidden', 'bc_more', 'qf_click', 'qf_unset', 'qf_undo', 'qf_undone', 'qf_today', 'qf_tomorrow', 'qf_next_week', 'qf_assign_me',
+        'back_list', 'back_board', 'back_gantt', 'back_home', 'back_tip', 'bc_label', 'bc_root', 'bc_hidden', 'bc_more', 'qf_click', 'qf_unset', 'qf_undo', 'qf_undone', 'qf_today', 'qf_tomorrow', 'qf_next_week', 'qf_assign_me',
         // UX-D
         'pj_switch', 'proj_info',
         // UX-E

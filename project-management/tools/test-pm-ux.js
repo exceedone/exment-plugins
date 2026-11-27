@@ -557,6 +557,24 @@ test('tree view: a child that was read does not look unread (the unread mark is 
     assert.ok(/tr\.pp-unread > td:first-child\{box-shadow:inset 3px 0 0 #2f80ed;\}/.test(style), 'the unread edge is still there');
 });
 
+test('BACK-1: an issue goes back where it was opened from', () => {
+    const routing = read('routing.js');
+    const f = new Function("var L = { back_list: '課題一覧', back_board: 'ボード', back_gantt: 'ガント', back_home: 'ホーム', back_tip: '%s に戻る' };" +
+        functionSource(routing, 'backFrom') + functionSource(routing, 'backTarget') + 'return { from: backFrom, target: backTarget };')();
+    assert.strictEqual(f.from('board'), 'board');
+    assert.strictEqual(f.from('wiki'), 'issues', 'elsewhere: the list');
+    assert.strictEqual(f.from(null), 'issues', 'opened from a link or another page: the list');
+    assert.deepStrictEqual(f.target('gantt'), { hash: '#gantt', label: 'ガント', tip: 'ガント に戻る' });
+    assert.strictEqual(f.target('issue').hash, '#issues');
+    const show = functionSource(routing, 'show');
+    assert.ok(/if \(scr === 'issue' && currentScreen !== 'issue'\) \{ BACK\.from = backFrom\(currentScreen\); \}/.test(show), 'kept across ‹ › between issues');
+    assert.ok(/BACK\.flash = String\(currentIssue\)/.test(show));
+    assert.ok(/backFlash\(\);/.test(functionSource(listSrc, 'renderIssues')), 'the issue lit up in the list');
+    assert.ok(/backButton\(''\) \+ crumbs\(i\)/.test(detail) && /backButton\('pp-dbar-back'\)/.test(detail), 'before the trail and in the bar on scroll');
+    ['back_list', 'back_board', 'back_gantt', 'back_home', 'back_tip'].forEach((k) => { assert.ok(ja(k), k); assert.ok(index.indexOf("'" + k + "'") > 0, k); });
+    assert.ok(langJa.indexOf('// BACK-1') > 0);
+});
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

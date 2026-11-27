@@ -930,6 +930,7 @@
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
         hintList(matched.length, savedList().length);
+        backFlash();
         ppListFit();
     }
 
