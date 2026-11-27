@@ -221,6 +221,14 @@
     .pp-top .pp-top-gear>button>span{display:none;}
     .pp-top .pp-top-gear>button{padding:0 10px;}
 }
+/* ISS02939 item 6, step 1b: on a phone, Exment's line under its title (the page's description)
+   gives way to the content, and the + of the bar is 44px. */
+@media (max-width:760px){
+    .content-header > h1 > small{display:none;}
+    .content-header{padding-top:6px;padding-bottom:0;}
+    .content-header > h1{font-size:18px;margin:0;}
+    .pp-top .pp-top-addwrap>button,.pp-top .pp-top-addwrap.split>.pp-top-addmain{min-width:44px;min-height:40px;}
+}
 /* the phone-only controls */
 .pp-top .pp-top-burger,.pp-top .pp-top-stgl,.pp-top .pp-top-curpj{display:none;}
 .pp-top .pp-top-bell[hidden]{display:none;}
@@ -251,7 +259,7 @@
 @media (max-width:760px){
     .pp-top{padding:0 4px;gap:0;align-items:center;}
     .pp-top .pp-top-burger,.pp-top .pp-top-stgl,.pp-top .pp-top-bell{display:flex;align-items:center;justify-content:center;
-        flex:none;width:40px;height:44px;border:0;background:none;color:inherit;font-size:16px;cursor:pointer;padding:0;}
+        flex:none;width:44px;height:44px;border:0;background:none;color:inherit;font-size:16px;cursor:pointer;padding:0;}
     .pp-top .pp-top-bell[hidden]{display:none;}
     /* the bell's list on a phone: the whole screen, above the home bar */
     .pp-top .pp-top-belldd{order:3;flex:none;}
