@@ -447,6 +447,24 @@
                 "admin.bootstrap",
                 "admin.pjax"
             ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/room/{id}/mute",
+            "function": "chatMute",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/room/{id}/settings",
+            "function": "chatRoomSettings",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
         }
     ]
 }

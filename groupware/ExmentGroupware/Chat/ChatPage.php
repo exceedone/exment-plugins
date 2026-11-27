@@ -52,6 +52,8 @@ class ChatPage
     public function page()
     {
         $uid = $this->uid();
+        // older messages of the rooms that keep them a while: once a day, after the answer
+        ChatRetention::maybe();
         $view = view('exment_exment_groupware::chat', [
             'boot' => [
                 'me' => $uid,
@@ -78,10 +80,13 @@ class ChatPage
                     'projects' => $this->url('api/projects'),
                     'issue' => $this->url('api/message/__ID__/issue'),
                     'search' => $this->url('api/search'),
+                    'mute' => $this->url('api/room/__ID__/mute'),
+                    'settings' => $this->url('api/room/__ID__/settings'),
                 ],
                 'max_file' => ChatService::MAX_FILE_BYTES,
                 'reactions' => ChatText::REACTIONS,
                 'pm' => ChatTasks::pmAvailable() && ChatTasks::pmCanCreate(),
+                'retention' => ChatRetention::CHOICES,
                 'jump' => intval(request()->query('message', 0)) ?: null,
             ],
         ]);
@@ -122,6 +127,7 @@ class ChatPage
 
             return ['room' => [
                 'id' => intval($room->id), 'kind' => $room->kind, 'name' => strval($room->name ?? ''),
+                'retention_days' => $room->retention_days !== null ? intval($room->retention_days) : 0,
                 'owner' => $me->role === 'owner', 'members' => array_keys(ChatService::memberNames(intval($id))),
             ]];
         });
@@ -177,8 +183,11 @@ class ChatPage
             }
 
             $reply = intval($request->input('reply_to', 0)) ?: null;
+            $message = ChatService::post($uid, intval($id), strval($request->input('body', '')), $files, $reply);
+            // the bell, and mail or Teams as each one chose, after the answer
+            ChatNotify::note(intval($id), $message, $this->url('') . '?room=' . intval($id) . '&message=' . intval($message['id']));
 
-            return ['message' => ChatService::post($uid, intval($id), strval($request->input('body', '')), $files, $reply)];
+            return ['message' => $message];
         });
     }
 
@@ -250,6 +259,24 @@ class ChatPage
             $room = intval($request->query('room', 0)) ?: null;
 
             return ChatTasks::search($this->uid(), strval($request->query('q', '')), $room);
+        });
+    }
+
+    public function postMute(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            ChatService::setMuted($this->uid(), intval($id), boolval($request->input('muted', true)));
+
+            return ['rooms' => ChatService::rooms($this->uid())];
+        });
+    }
+
+    public function postRoomSettings(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            ChatService::setRoom($this->uid(), intval($id), $request->has('name') ? strval($request->input('name')) : null, $request->input('retention_days'));
+
+            return ['rooms' => ChatService::rooms($this->uid())];
         });
     }
 

@@ -161,6 +161,35 @@ class ChatService
         });
     }
 
+    /** No bell, mail or Teams from a room (the unread count still shows). */
+    public static function setMuted(int $uid, int $roomId, bool $muted): void
+    {
+        static::room($uid, $roomId);
+        DB::table('gw_chat_members')->where('room_id', $roomId)->where('user_id', $uid)->update(['muted' => $muted]);
+    }
+
+    /** The owner names a group room and sets how long it keeps its messages. */
+    public static function setRoom(int $uid, int $roomId, ?string $name, $retention): void
+    {
+        $room = static::room($uid, $roomId);
+        $me = static::member($uid, $roomId);
+        if ($room->kind !== 'group' || $me->role !== 'owner') {
+            abort(403);
+        }
+        $values = ['retention_days' => ChatRetention::clean($retention), 'updated_at' => now()];
+        if ($name !== null) {
+            $name = ChatText::cleanName($name);
+            if ($name === '') {
+                throw new \InvalidArgumentException('ルームの名前を入れてください。');
+            }
+            $values['name'] = $name;
+        }
+        if (intval($room->retention_days) !== intval($values['retention_days'])) {
+            ChatRetention::log('plugins/exment_groupware/chat/room/' . $roomId . '/retention', ['room' => $roomId, 'days' => $values['retention_days']]);
+        }
+        DB::table('gw_chat_rooms')->where('id', $roomId)->update($values);
+    }
+
     /** The owner adds or removes members; anyone may leave (a direct room stays). */
     public static function setMembers(int $uid, int $roomId, array $add, array $remove): void
     {

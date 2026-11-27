@@ -87,7 +87,7 @@
     <div class="gwc-rooms" id="gwc-rooms" role="list"></div>
   </aside>
   <section class="gwc-main">
-    <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-tasks"><i class="fa fa-check-square-o"></i> タスク</button> <button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
+    <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-mute" hidden></button> <button type="button" class="b" id="gwc-tasks"><i class="fa fa-check-square-o"></i> タスク</button> <button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
     <div class="gwc-list" id="gwc-list" aria-live="polite"><div class="gwc-empty">左のルームを選ぶか、新しいルームを作ってください。</div></div>
     <div class="off" id="gwc-off" hidden>しばらく何もしていないので、新しいメッセージの確かめを止めています。ページを動かすとまた確かめます。</div>
     <div class="gwc-replybar" id="gwc-replybar" hidden><i class="fa fa-reply"></i><span class="t" id="gwc-replyt"></span><button type="button" class="b" id="gwc-replyx" aria-label="返信をやめる"><i class="fa fa-times"></i></button></div>
@@ -132,7 +132,7 @@ function textHtml(s) {
 function renderRooms() {
     var h = S.rooms.map(function (r) {
         return '<div class="gwc-room' + (S.room === r.id ? ' on' : '') + '" role="listitem" tabindex="0" data-id="' + r.id + '">' +
-            '<i class="fa ' + (r.kind === 'direct' ? 'fa-user' : 'fa-users') + '" aria-hidden="true"></i><span class="nm"><b>' + esc(r.name || '（名前なし）') + '</b><small>' + esc(r.last) + '</small></span>' +
+            '<i class="fa ' + (r.kind === 'direct' ? 'fa-user' : 'fa-users') + '" aria-hidden="true"></i>' + (r.muted ? '<i class="fa fa-bell-slash-o" title="知らせを止めています" style="color:var(--faint)"></i>' : '') + '<span class="nm"><b>' + esc(r.name || '（名前なし）') + '</b><small>' + esc(r.last) + '</small></span>' +
             (r.unread > 0 ? '<span class="un" aria-label="未読 ' + r.unread + '">' + (r.unread > 99 ? '99+' : r.unread) + '</span>' : '') + '</div>';
     }).join('');
     $('gwc-rooms').innerHTML = h || '<div class="gwc-empty">ルームはまだありません。</div>';
@@ -193,6 +193,7 @@ function openRoom(id, then) {
     var r = S.rooms.filter(function (x) { return x.id === id; })[0];
     $('gwc-title').textContent = r ? (r.name || '（名前なし）') : '';
     $('gwc-mem').hidden = !(r && r.kind === 'group');
+    showMute();
     $('gwc-comp').hidden = false;
     renderRooms();
     $('gwc-list').innerHTML = '<div class="gwc-empty"><i class="fa fa-spinner fa-spin"></i></div>';
@@ -442,6 +443,19 @@ $('gwc-q').addEventListener('input', function () {
     }, 300);
 });
 
+// a room's notices: on or off for oneself
+function showMute() {
+    var r = S.rooms.filter(function (x) { return x.id === S.room; })[0];
+    var b = $('gwc-mute');
+    b.hidden = !r;
+    if (r) { b.innerHTML = r.muted ? '<i class="fa fa-bell"></i> 知らせる' : '<i class="fa fa-bell-slash-o"></i> 知らせを止める'; }
+}
+$('gwc-mute').addEventListener('click', function () {
+    var r = S.rooms.filter(function (x) { return x.id === S.room; })[0];
+    if (!r) { return; }
+    api(u('mute', S.room), { muted: !r.muted }).then(function (d) { if (d && d.rooms) { S.rooms = d.rooms; renderRooms(); showMute(); } });
+});
+
 // rooms
 $('gwc-rooms').addEventListener('click', function (ev) { var r = ev.target.closest('.gwc-room'); if (r) { openRoom(parseInt(r.getAttribute('data-id'), 10)); } });
 $('gwc-rooms').addEventListener('keydown', function (ev) { var r = ev.target.closest('.gwc-room'); if (r && ev.key === 'Enter') { openRoom(parseInt(r.getAttribute('data-id'), 10)); } });
@@ -497,10 +511,15 @@ $('gwc-mem').addEventListener('click', function () {
         var now = '<div class="users">' + rm.members.map(function (id) {
             return '<label>' + esc(name(id)) + (rm.owner && id !== B.me ? ' <input type="checkbox" name="rm" value="' + id + '"> 外す' : '') + (id === B.me ? '（自分）' : '') + '</label>';
         }).join('') + '</div>';
-        var w = dialog('メンバー', now + (rm.owner ? '<b>足す</b>' + userChecks('checkbox', rm.members) : '') + '<label style="font-weight:400"><input type="checkbox" class="leave"> このルームから出る</label>', function (w, close) {
+        var keep = rm.owner ? '<p style="margin:8px 0 2px"><b>メッセージを残す期間</b></p><select class="ret">' + B.retention.map(function (d) {
+            return '<option value="' + d + '"' + (d === (rm.retention_days || 0) ? ' selected' : '') + '>' + (d ? d + ' 日' : 'ずっと') + '</option>';
+        }).join('') + '</select>' : '';
+        var w = dialog('メンバー', now + (rm.owner ? '<b>足す</b>' + userChecks('checkbox', rm.members) : '') + keep + '<label style="font-weight:400"><input type="checkbox" class="leave"> このルームから出る</label>', function (w, close) {
             var add = Array.prototype.map.call(w.querySelectorAll('input[name=u]:checked'), function (c) { return c.value; });
             var remove = Array.prototype.map.call(w.querySelectorAll('input[name=rm]:checked'), function (c) { return c.value; });
             if (w.querySelector('.leave').checked) { remove.push(String(B.me)); }
+            var ret = w.querySelector('.ret');
+            if (ret && parseInt(ret.value, 10) !== (rm.retention_days || 0)) { api(u('settings', S.room), { retention_days: ret.value }); }
             api(u('members', S.room), { add: add, remove: remove }).then(function (r) {
                 if (!r || r.ok === false) { alert((r && r.message) || 'できませんでした'); return; }
                 close(); S.rooms = r.rooms;
