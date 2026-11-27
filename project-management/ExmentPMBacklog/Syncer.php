@@ -486,7 +486,7 @@ class Syncer
     {
         for ($try = 0; ; $try++) {
             try {
-                $this->saveQuietly($row, $value);
+                $this->saveQuietly($row, $value, $isNew);
 
                 return;
             } catch (ValidationException $e) {
@@ -534,12 +534,40 @@ class Syncer
 
     /**
      * @param array<string, mixed> $value
+     * @param bool $isNew a new issue: saved by newIssueSaver() when there is one
      */
-    protected function saveQuietly($row, array $value): void
+    protected function saveQuietly($row, array $value, bool $isNew = false): void
     {
         $row->saved_notify(false);
         $row->setValue($value);
+        $save = $isNew ? static::newIssueSaver() : null;
+        if ($save !== null) {
+            $save($row);
+
+            return;
+        }
         $row->save();
+    }
+
+    /** ExmentPM's save of a row a run makes by itself (ExmentPM 1.7.26 or later). */
+    const RUN_SHARES = 'App\\Plugins\\ExmentPM\\PortalRunShares';
+
+    /**
+     * How a new issue is saved. A run of 「今すぐ同期」 happens in the request of the admin who
+     * pressed it, and Exment gives the user of the request (and, by the setting of the automatic
+     * share, their organizations) a share on every row made in it. An imported issue is Backlog's,
+     * not theirs: ExmentPM's PortalRunShares::saveNew() keeps that share off, so the issue gets the
+     * shares of its share settings, the same as when the batch imports it with nobody logged in.
+     * The project's members reach it through the project. With an older ExmentPM: a plain save.
+     */
+    public static function newIssueSaver(): ?callable
+    {
+        $class = static::RUN_SHARES;
+        if (class_exists($class) && method_exists($class, 'saveNew')) {
+            return [$class, 'saveNew'];
+        }
+
+        return null;
     }
 
     /**
