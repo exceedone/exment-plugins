@@ -170,7 +170,7 @@
    the tabs; the column captions wrap instead of being cut (「自分の担当」). */
 @media (max-width:760px){
     .pp-dash .pp-star{min-width:36px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
-    .pp-dash .pp-pj-more{width:44px;height:44px;}
+    .pp-dash .pp-pj-more,.pp-dash .pp-pjlist .pp-pj-more{width:44px;height:44px;}
     .pp-dash .pp-ph-right a,.pp-dash .pp-dfold a{display:inline-flex;align-items:center;min-height:44px;}
     .pp-dash .pp-tabs button{min-height:44px;}
     .pp-dash .pp-pjh span{white-space:normal;line-height:1.15;overflow-wrap:anywhere;}

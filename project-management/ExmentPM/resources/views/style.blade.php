@@ -2150,6 +2150,8 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-dockbar{min-height:44px;}
   .pmportal .bl-dockclose{min-width:44px;min-height:44px;}
   .pmportal .pp-ed-hint{margin:6px 8px 0;padding:4px 8px;font-size:12px;}
+  .pmportal .pp-dmode-hint{font-size:11.5px;padding:0 0 0 7px;}
+  .pmportal .pp-dmode-hint .x{min-width:44px;min-height:44px;}
 }
 @media (max-width:760px) and (max-height:620px){
   .pmportal .bl-cmtdock{max-height:calc(100dvh - 8px);}
