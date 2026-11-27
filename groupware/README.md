@@ -178,7 +178,7 @@ The tables `gw_cal_links` and `gw_cal_feeds` are made when the zip is uploaded (
 - **No session, no IP filter.** The export address has no session (a calendar program keeps no cookies). It follows Exment's maintenance mode as Exment's public pages do (and, on Exment SaaS, the tenant's expiry). It is not behind the web IP filter of the admin pages (Admin setting → IP filter), since Google's or Microsoft's servers read it from outside: whoever has the address can read it, so keep it to yourself and make a new one if it leaks.
 - **Many events in one window.** A view of the calendar (and the export) reads the repeats and the one-time events of a window separately, at most 5000 of each: with more one-time events than that in one window (many outside calendars), the earliest 5000 are shown. A window has at most 20000 occurrences: the person's own events first, then each outside calendar an equal share of the rest (the smaller ones first, what one leaves goes to the next), so one calendar of many repeats pushes out neither (a warning goes to the log).
 - **A slow calendar server.** A link read after the answer of a calendar page keeps that PHP worker (PHP-FPM) busy until it is read, 15 seconds at most (plus 10 for a large calendar), at most once a minute for the site. The page itself is already sent.
-- **Cached routes.** The ICS export address is a route the plugin adds while Exment boots (like ExmentITSupport's pages without login). When Laravel's routes are cached (`php artisan route:cache`), it is not there and answers 404. Do not cache the routes on a site that uses it (`php artisan route:clear` undoes it).
+- **Cached routes.** The ICS export address is a route the plugin adds while Exment boots (like ExmentSupportDesk's pages without login). When Laravel's routes are cached (`php artisan route:cache`), it is not there and answers 404. Do not cache the routes on a site that uses it (`php artisan route:clear` undoes it).
 
 <a id="calendar-google-microsoft"></a>
 ### Google and Microsoft 365 calendars (read only)
@@ -401,7 +401,7 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 - **セッションなし・IP フィルターなし**：書き出しの URL はセッションを使いません（カレンダーのソフトはクッキーを持たないため）。Exment のメンテナンスモードには、Exment の公開のページと同じように従います（Exment SaaS では、テナントの期限にも）。管理画面の Web の IP フィルター（管理者設定 → IP フィルター）はかかりません。Google や Microsoft のサーバーが外から読むためです。URL を知っている人はだれでも読めるので、人に教えず、もれたときは作りなおしてください。
 - **1 つの期間にたくさんの予定**：カレンダーの画面（と書き出し）は、期間のくりかえしの予定と 1 回だけの予定を別々に、それぞれ 5000 件まで読みます。1 つの期間に 1 回だけの予定がそれより多いとき（ほかのカレンダーがたくさんあるときなど）は、早いほうから 5000 件を出します。1 つの期間に出すのは 20000 回までです。その人自身の予定が先で、残りをほかのカレンダーで同じだけ分けます（小さいほうから。使わなかった分は次のカレンダーへ）。くりかえしの多いカレンダーが 1 つあっても、自分の予定やほかのカレンダーの予定はおし出されません（ログに警告を残します）。
 - **おそいカレンダーのサーバー**：カレンダーの画面の答えのあとに読むリンクは、読み終わるまでその PHP のワーカー（PHP-FPM）を使います。15 秒まで（大きなカレンダーではさらに 10 秒まで）、サイトで 1 分に 1 回までです。画面はもう送ってあります。
-- **ルートのキャッシュ**：ICS の書き出しの URL は、Exment が起動するときにプラグインが足すルートです（ExmentITSupport のログインなしのページと同じ）。Laravel のルートをキャッシュしている（`php artisan route:cache`）と、この URL はなく 404 になります。使うサイトではルートをキャッシュしないでください（`php artisan route:clear` で元に戻ります）。
+- **ルートのキャッシュ**：ICS の書き出しの URL は、Exment が起動するときにプラグインが足すルートです（ExmentSupportDesk のログインなしのページと同じ）。Laravel のルートをキャッシュしている（`php artisan route:cache`）と、この URL はなく 404 になります。使うサイトではルートをキャッシュしないでください（`php artisan route:clear` で元に戻ります）。
 
 <a id="calendar-google-microsoft-ja"></a>
 ### Google カレンダー・Microsoft 365 の予定表（読むだけ）

@@ -29,9 +29,9 @@ parameters:
             - ../../groupware/tools/test-gw-calendar-ics.php
             # and its test of the Google and Microsoft calendars (part 6)
             - ../../groupware/tools/test-gw-calendar-cloud.php
-            # IT Support's connectors of the data sync (7.3.0), and their test in an Exment 7.3
-            - ../../it-support/ExmentITSupport/Sync
-            - ../../it-support/tools/test-asset-sync-db.php
+            # Support Desk's connectors of the data sync (7.3.0), and their test in an Exment 7.3
+            - ../../support-desk/ExmentSupportDesk/Sync
+            - ../../support-desk/tools/test-asset-sync-db.php
     bootstrapFiles:
         - bootstrap.php
     # The baseline may list files that a branch does not have yet.
