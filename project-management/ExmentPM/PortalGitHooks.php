@@ -238,9 +238,9 @@ class PortalGitHooks
         $keyCol = strval(array_get($def, 'issue.key', 'issue_key'));
         $aliases = static::aliasesOf(intval($project->id), $projects->table_name, $issues);
         $n = 0;
-        foreach ($items as $it) {
+        $resolve = function (string $text) use ($projectKey, $aliases, $issues, $projects, $project, $keyCol): array {
             $ids = [];
-            foreach (PortalGitParse::keys($it['text'], $projectKey, array_keys($aliases)) as $k) {
+            foreach (PortalGitParse::keys($text, $projectKey, array_keys($aliases)) as $k) {
                 if (str_starts_with($k, '@')) {
                     $id = $aliases[substr($k, 1)] ?? null;
                 } else {
@@ -256,7 +256,7 @@ class PortalGitHooks
                 }
             }
             // the issue's own key (the key column: what the screen shows and the branch name copies)
-            $words = PortalGitParse::keyWords($it['text']);
+            $words = PortalGitParse::keyWords($text);
             if (!empty($words) && count($ids) < PortalGitParse::MAX_ISSUES) {
                 $rows = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
                     ->where('parent_type', $projects->table_name)->where('parent_id', $project->id)
@@ -267,17 +267,85 @@ class PortalGitHooks
                     }
                 }
             }
+
+            return $ids;
+        };
+        foreach ($items as $it) {
+            $ids = $resolve($it['text']);
+            // 「fixes / closes KEY」 of a merged PR, when the hook says so (step 2): only issues it links
+            $closing = [];
+            if ($it['kind'] === 'pr' && $it['merged'] && boolval($hook->close_on_merge)) {
+                $words = PortalGitParse::closeWords($it['text']);
+                $closing = empty($words) ? [] : array_intersect_key($resolve(implode(' ', $words)), $ids);
+            }
             foreach (array_keys($ids) as $issueId) {
+                $before = DB::table(static::EVENTS)->where(['hook_id' => $hook->id, 'kind' => $it['kind'], 'ref' => $it['ref'], 'issue_id' => $issueId])->value('state');
                 DB::table(static::EVENTS)->updateOrInsert(
                     ['hook_id' => $hook->id, 'kind' => $it['kind'], 'ref' => $it['ref'], 'issue_id' => $issueId],
                     ['project_id' => $hook->project_id, 'title' => $it['title'], 'author' => $it['author'], 'url' => $it['url'],
                         'branch' => $it['branch'], 'state' => $it['state'], 'occurred_at' => $it['at'], 'updated_at' => now(), 'created_at' => now()]
                 );
                 $n++;
+                // once, when the PR becomes merged: an issue opened again later is left alone
+                if (isset($closing[$issueId]) && $before !== 'merged') {
+                    static::closeIssue($def, $issues, $project, $issueId, $hook, $it);
+                }
             }
         }
 
         return $n;
+    }
+
+    /**
+     * Move an issue to the first done status of its project, with a line in its history. Never
+     * an issue already done (any done status), never when the statuses are still a word list.
+     */
+    protected static function closeIssue(array $def, CustomTable $issues, $project, int $issueId, object $hook, array $it): void
+    {
+        try {
+            $statusTable = CustomTable::getEloquent(strval(array_get($def, 'status_table')));
+            $statusCol = strval(array_get($def, 'issue.status', 'status'));
+            if (!isset($statusTable) || $statusCol === '') {
+                return;
+            }
+            $doneCol = strval(array_get($def, 'status_row.done', 'is_done'));
+            $orderCol = strval(array_get($def, 'status_row.order', 'display_order'));
+            $rows = $statusTable->getValueModel()->query()->withoutGlobalScopes()->where(function ($w) use ($project) {
+                $w->where('parent_id', $project->id)->orWhereNull('parent_id');
+            })->orderBy('id')->get();
+            $doneIds = [];
+            foreach ($rows as $r) {
+                if (boolval(array_get($r->value, $doneCol))) {
+                    $doneIds[] = strval($r->id);
+                }
+            }
+            $issue = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($issueId);
+            if (!isset($issue) || empty($doneIds)) {
+                return;
+            }
+            $now = array_get($issue->value, $statusCol);
+            $now = is_array($now) ? strval(reset($now)) : strval($now ?? '');
+            if (in_array($now, $doneIds, true)) {
+                return;
+            }
+            // the project's own statuses when it has any (as the settings tab shows them), else the shared ones
+            $own = $rows->filter(function ($r) {
+                return !is_null($r->parent_id);
+            });
+            $list = ($own->isNotEmpty() ? $own : $rows)->filter(function ($r) use ($doneCol) {
+                return boolval(array_get($r->value, $doneCol));
+            })->sortBy(function ($r) use ($orderCol) {
+                return intval(array_get($r->value, $orderCol, 0));
+            })->values();
+            if ($list->isEmpty()) {
+                return;
+            }
+            $issue->setValue($statusCol, strval($list->first()->id));
+            $issue->save();
+            PortalAttachEdit::note($issue, strval(PortalDefinition::trans('gitlink.closed_note', ['pr' => '#' . $it['ref'], 'repo' => strval($hook->repo)])));
+        } catch (\Throwable $e) {
+            Log::warning('pm_portal git hook ' . $hook->id . ': issue ' . $issueId . ' could not be moved to done: ' . $e->getMessage());
+        }
     }
 
     /** The issue's id when it is an issue of the project, else null. */

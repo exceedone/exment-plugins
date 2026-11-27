@@ -227,18 +227,25 @@ class PortalGitParse
         return array_keys($out);
     }
 
-    /** The keys a merged PR closes: fixes / closes / resolves KEY (and their forms). */
-    public static function closes(string $text, string $projectKey): array
+    /**
+     * The key-like words a text says it fixes: fix / fixes / fixed / close(s/d) / resolve(s/d),
+     * then a key ("Fixes PROJ-12", "closes: ISS00001"), any case. At most 20.
+     *
+     * @return array<int, string>
+     */
+    public static function closeWords(string $text): array
     {
         $out = [];
-        $pk = preg_quote($projectKey, '/');
-        if ($projectKey !== '' && preg_match_all('/\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\b[\s:]+' . $pk . '-(\d{1,10})(?![A-Za-z0-9_])/i', $text, $m)) {
-            foreach ($m[1] as $n) {
-                $out[strtoupper($projectKey) . '-' . intval($n)] = true;
+        if (preg_match_all('/\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\b[\s:]+([A-Za-z0-9][A-Za-z0-9._~\-]{0,59})/i', $text, $m)) {
+            foreach ($m[1] as $w) {
+                $w = rtrim($w, '.~-_');
+                if ($w !== '') {
+                    $out[$w] = true;
+                }
             }
         }
 
-        return array_keys($out);
+        return array_slice(array_keys($out), 0, static::MAX_ISSUES);
     }
 
     /** A branch name: the key, then the subject's ASCII words (lower case, with -), at most 60. */

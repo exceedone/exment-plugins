@@ -64,8 +64,11 @@ $check('keys: another project not', G::keys('OTHER-1 and XEXMENT_AI-2', 'EXMENT_
 $check('keys: an alias', G::keys('see login-bug here', 'P', ['login-bug']) === ['@login-bug']);
 $check('keys: not inside a word', G::keys('mylogin-bugs', 'P', ['login-bug']) === []);
 $check('keys: at most 20', count(G::keys(implode(' ', array_map(function ($n) { return 'P-' . $n; }, range(1, 30))), 'P')) === 20);
-$check('closes: fixes / closes / resolved', G::closes($it['text'], 'EXMENT_AI') === ['EXMENT_AI-439', 'EXMENT_AI-440'], G::closes($it['text'], 'EXMENT_AI'));
-$check('closes: "see KEY" does not', G::closes('see EXMENT_AI-1, refs EXMENT_AI-2', 'EXMENT_AI') === []);
+$check('close words: fixes / closes', G::closeWords($it['text']) === ['EXMENT_AI-439', 'exment_ai-440'], G::closeWords($it['text']));
+$check('close words: "see KEY" / "refs KEY" do not', G::closeWords('see EXMENT_AI-1, refs EXMENT_AI-2') === []);
+$check('close words: resolved, a colon, a full stop', G::closeWords('Resolved: ISS00001. fixed PROJ-3') === ['ISS00001', 'PROJ-3'], G::closeWords('Resolved: ISS00001. fixed PROJ-3'));
+$check('close words: an alias with -', G::closeWords('closes login-bug, thanks') === ['login-bug'], G::closeWords('closes login-bug, thanks'));
+$check('close words: not "prefixes" / "disclosed"', G::closeWords('prefixes PROJ-1 disclosed PROJ-2') === []);
 
 // the issue's own key (the key column), as the branch name button copies it
 $check('key words: the copied branch name', in_array('ISS00001', G::keyWords('ISS00001-pm101-issue-1'), true));

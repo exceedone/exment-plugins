@@ -1839,7 +1839,7 @@ return [
         'last' => 'Last delivery:',
         'never' => 'Nothing delivered yet.',
         'error' => 'error',
-        'close_on_merge' => 'Mark done on merge (fixes / closes KEY)',
+        'close_on_merge' => 'Mark done on merge (a merged pull request that says "fixes KEY" or "closes KEY")',
         'new_secret' => 'New secret',
         'new_secret_ask' => 'Make a new secret? Deliveries with the current one will be refused.',
         'remove' => 'Remove',
@@ -1848,6 +1848,7 @@ return [
         'add' => 'Connect',
         'err_repo' => 'Write the repository as owner/name.',
         'err_many' => 'A project can connect at most 20 repositories.',
+        'closed_note' => 'Marked done by the merge of pull request :pr (:repo).',
     ],
     'channels' => [
         'feature' => 'Project management: chat notifications',
