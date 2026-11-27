@@ -13,7 +13,7 @@ namespace App\Plugins\ExmentSupportDesk;
 class ManualLink
 {
     const BASE = 'https://exment.net/docs/';
-    const PAGE = 'plugin_it_support';
+    const PAGE = 'plugin_support_desk';
     const LOCALES = ['ja', 'vi'];
 
     public static function url(?string $locale = null): string

@@ -14,7 +14,7 @@ require $base . '/groupware/ExmentGroupware/ManualLink.php';
 
 $want = [
     'App\\Plugins\\ExmentPM\\ManualLink' => 'plugin_pm',
-    'App\\Plugins\\ExmentSupportDesk\\ManualLink' => 'plugin_it_support',
+    'App\\Plugins\\ExmentSupportDesk\\ManualLink' => 'plugin_support_desk',
     'App\\Plugins\\ExmentGroupware\\ManualLink' => 'plugin_groupware',
 ];
 $failed = 0;
