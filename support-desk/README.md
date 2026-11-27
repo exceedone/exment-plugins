@@ -14,7 +14,7 @@ IT サポートと問い合わせの窓口を 1 つにまとめる Exment プラ
 
 | フォルダ | プラグイン | ダウンロード |
 |---|---|---|
-| [`ExmentSupportDesk/`](ExmentSupportDesk/) | Exment Plugin Support Desk（サポートデスク） — 内部名 `ExmentSupportDesk`・URL `/admin/plugins/exment_support_desk` | 新しい名前ではまだリリースしていません（次は ExmentSupportDesk-1.1.0） |
+| [`ExmentSupportDesk/`](ExmentSupportDesk/) | Exment Plugin Support Desk（サポートデスク） — 内部名 `ExmentSupportDesk`・URL `/admin/plugins/exment_support_desk` | 1.1.0（新しい名前で最初の版） |
 
 - 動く Exment: 7.0 以上（PHP 8.2）
 - 追加の PHP 拡張は要りません（IMAP もメールの解析もプラグインの中で行います）
