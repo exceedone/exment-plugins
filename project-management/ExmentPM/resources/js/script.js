@@ -2140,10 +2140,30 @@ window.PmPortalBoot = function () {
     // replaceState, not pushState: the list filters as you type, and a history
     // entry per keystroke would bury the back button.
     function filterToUrl() {
-        if (!history.replaceState) { return; }
         if (parseHash().path !== 'issues') { return; }
         var q = filterToQuery();
+        listLastSave(q);
+        if (!history.replaceState) { return; }
         history.replaceState(null, '', '#issues' + (q ? '?' + q : ''));
+    }
+    // BACK-3: the list as it was last left (filters, sort, page), per person
+    // and per project, so that 「← 課題一覧」 on an issue opened by a reload, in
+    // a new tab or from a link goes back to that list rather than to page 1
+    // with no filter. Kept apart from the personal default (FILTER_KEY, 「次回も
+    // この条件で開く」), which still decides what a bare #issues opens with.
+    var LIST_LAST_KEY = userKey('lq');
+    // Set once the list has been on screen in this page: from then on the
+    // conditions in memory are the last ones, and a bare #issues keeps them.
+    var LIST_SEEN = false;
+    function listLastSave(q) {
+        LIST_SEEN = true;
+        try { localStorage.setItem(LIST_LAST_KEY, String(q || '')); } catch (e) { /* storage unavailable: page 1 as before */ }
+    }
+    function listLastQuery() {
+        var q = null;
+        try { q = localStorage.getItem(LIST_LAST_KEY); } catch (e) { q = null; }
+
+        return (typeof q === 'string' && q.length <= 4000) ? q : null;
     }
 
     // #issue-4821 said nothing about what it pointed at, and 4821 is the global
@@ -2544,7 +2564,6 @@ window.PmPortalBoot = function () {
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
         hintList(matched.length, savedList().length);
-        backFlash();
         ppListFit();
     }
 
@@ -13079,6 +13098,8 @@ window.PmPortalBoot = function () {
             if (scr === 'issue') { ppDockFit(); }
             ppPinFit();
             ppListFit();
+            // BACK-3: after the scroll above, or it would move the row away again
+            if (scr === 'issues') { backFlash(); }
         });
     }
     // Coming out of a ticket used to land you at the top of the issue list
@@ -13106,7 +13127,17 @@ window.PmPortalBoot = function () {
     function backTarget(from) {
         var to = backFrom(from);
         var names = { issues: L.back_list, board: L.back_board, gantt: L.back_gantt, home: L.back_home };
-        return { hash: '#' + to, label: names[to] || L.back_list, tip: String(L.back_tip || '%s').replace('%s', names[to] || L.back_list) };
+        return { hash: '#' + to + (to === 'issues' ? backListQuery() : ''), label: names[to] || L.back_list, tip: String(L.back_tip || '%s').replace('%s', names[to] || L.back_list) };
+    }
+    // BACK-3: the list not on screen yet in this page (a reload, a new tab, a
+    // link): the conditions it was last left with. A link's query is applied
+    // whole (route), so a list left with none says p=1, which clears them.
+    function backListQuery() {
+        if (LIST_SEEN) { return ''; }
+        var q = listLastQuery();
+        if (q === null) { return ''; }
+
+        return '?' + (q || 'p=1');
     }
     function backButton(cls) {
         var t = backTarget(BACK.from);
@@ -13114,6 +13145,8 @@ window.PmPortalBoot = function () {
             '<i class="fa fa-arrow-left"></i><span class="tx"> ' + esc(t.label) + '</span></a>';
     }
     // Back in the list: the issue just left, lit up for a moment and in view.
+    // Called by show() once the list is on screen (BACK-3: it used to wait
+    // for the list's next render, which going back does not do).
     function backFlash() {
         if (!BACK.flash) { return; }
         var id = BACK.flash;
@@ -13121,7 +13154,13 @@ window.PmPortalBoot = function () {
         var row = document.querySelector('#pp-issue-rows tr[data-issue="' + String(id).replace(/[^0-9]/g, '') + '"]');
         if (!row) { return; }
         row.classList.add('pp-back-flash');
-        try { row.scrollIntoView({ block: 'nearest' }); } catch (e) { row.scrollIntoView(false); }
+        // Moved only when it is not already in sight below the pinned header,
+        // and to the middle, where no sticky header or pager covers it.
+        var r = row.getBoundingClientRect();
+        var top = ppStickTop();
+        if (r.top < top + 40 || r.bottom > (window.innerHeight || document.documentElement.clientHeight)) {
+            try { row.scrollIntoView({ block: 'center' }); } catch (e) { row.scrollIntoView(false); }
+        }
         setTimeout(function () { row.classList.remove('pp-back-flash'); }, 1600);
     }
     function scrollBucket(scr, issueId) {

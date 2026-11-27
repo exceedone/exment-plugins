@@ -568,7 +568,7 @@ test('ROW-1: child rows are white, unread is ● + bold + edge, hover and ticked
 
 test('BACK-1: an issue goes back where it was opened from', () => {
     const routing = read('routing.js');
-    const f = new Function("var L = { back_list: '課題一覧', back_board: 'ボード', back_gantt: 'ガント', back_home: 'ホーム', back_tip: '%s に戻る' };" +
+    const f = new Function("var L = { back_list: '課題一覧', back_board: 'ボード', back_gantt: 'ガント', back_home: 'ホーム', back_tip: '%s に戻る' }; function backListQuery() { return ''; }" +
         functionSource(routing, 'backFrom') + functionSource(routing, 'backTarget') + 'return { from: backFrom, target: backTarget };')();
     assert.strictEqual(f.from('board'), 'board');
     assert.strictEqual(f.from('wiki'), 'issues', 'elsewhere: the list');
@@ -578,7 +578,7 @@ test('BACK-1: an issue goes back where it was opened from', () => {
     const show = functionSource(routing, 'show');
     assert.ok(/if \(scr === 'issue' && currentScreen !== 'issue'\) \{ BACK\.from = backFrom\(currentScreen\); \}/.test(show), 'kept across ‹ › between issues');
     assert.ok(/BACK\.flash = String\(currentIssue\)/.test(show));
-    assert.ok(/backFlash\(\);/.test(functionSource(listSrc, 'renderIssues')), 'the issue lit up in the list');
+    assert.ok(/if \(scr === 'issues'\) \{ backFlash\(\); \}/.test(show), 'the issue lit up in the list once it is on screen');
     assert.ok(/backButton\(''\) \+ crumbs\(i\)/.test(detail) && /backButton\('pp-dbar-back'\)/.test(detail), 'before the trail and in the bar on scroll');
     ['back_list', 'back_board', 'back_gantt', 'back_home', 'back_tip'].forEach((k) => { assert.ok(ja(k), k); assert.ok(index.indexOf("'" + k + "'") > 0, k); });
     assert.ok(langJa.indexOf('// BACK-1') > 0);
@@ -591,6 +591,63 @@ test('BACK-2: the back button is filled with the accent, darker on hover, a circ
     assert.ok(/\.bl-btn-sub\.pp-back\{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:50%;\}/.test(style), 'a filled circle on a phone');
     assert.ok(/--bl-on-accent:var\(--exm-ui-on-accent,#fff\)/.test(style));
     assert.ok(/backButton\(''\) \+ crumbs\(i\)/.test(detail), 'left of the trail');
+});
+
+test('BACK-3: back to the list: the issue lit up, the last conditions after a reload, the ← on a phone', () => {
+    const routing = read('routing.js');
+    // (a) lit up when the list is shown again, not on its next render (going back does not render it)
+    assert.ok(!/backFlash\(\);/.test(functionSource(listSrc, 'renderIssues')), 'not left waiting for a render');
+    const show = functionSource(routing, 'show');
+    assert.ok(show.indexOf('window.scrollTo(0, want);') < show.indexOf("if (scr === 'issues') { backFlash(); }"), 'after the scroll back to where the list was');
+    // the row: lit up, and moved only when it is out of sight
+    const rows = {};
+    let scrolled = null;
+    const mkRow = (top) => ({ cls: [], classList: { add(c) { this.o.cls.push(c); }, remove(c) { this.o.cls = this.o.cls.filter((x) => x !== c); } },
+        getBoundingClientRect() { return { top: top, bottom: top + 30 }; }, scrollIntoView(o) { scrolled = o; } });
+    rows.inView = mkRow(300); rows.inView.classList.o = rows.inView;
+    rows.above = mkRow(10); rows.above.classList.o = rows.above;
+    let pick = 'inView';
+    const timers = [];
+    const fb = new Function('BACK', 'document', 'window', 'setTimeout', 'ppStickTop', functionSource(routing, 'backFlash') + 'return backFlash;');
+    const doc = { querySelector: (q) => { assert.ok(/tr\[data-issue="12"\]/.test(q), q); return rows[pick]; }, documentElement: { clientHeight: 800 } };
+    const B = { flash: '12' };
+    fb(B, doc, { innerHeight: 800 }, (fn) => timers.push(fn), () => 50)();
+    assert.deepStrictEqual(rows.inView.cls, ['pp-back-flash']);
+    assert.strictEqual(scrolled, null, 'in sight: not moved');
+    assert.strictEqual(B.flash, null, 'once');
+    timers[0]();
+    assert.deepStrictEqual(rows.inView.cls, [], 'the light goes');
+    pick = 'above'; B.flash = '12';
+    fb(B, doc, { innerHeight: 800 }, (fn) => timers.push(fn), () => 50)();
+    assert.deepStrictEqual(scrolled, { block: 'center' }, 'under the pinned header: brought to the middle');
+    // (b) the last conditions, per person and per project
+    assert.ok(/var LIST_LAST_KEY = userKey\('lq'\);/.test(listSrc));
+    assert.ok(/listLastSave\(q\);/.test(functionSource(listSrc, 'filterToUrl')), 'saved whenever the list writes its address');
+    const store = {};
+    const ls = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+    const mk = (storage) => new Function('localStorage', "var LIST_LAST_KEY = 'pmportal.lq.u1.5'; var LIST_SEEN = false;" +
+        functionSource(listSrc, 'listLastSave') + functionSource(listSrc, 'listLastQuery') + functionSource(routing, 'backListQuery') +
+        'return { save: listLastSave, query: backListQuery, seen: function () { return LIST_SEEN; } };')(storage);
+    let b = mk(ls);
+    assert.strictEqual(b.query(), '', 'nothing kept: the list as before');
+    b.save('st=3&so=pr&sd=desc&p=2');
+    assert.strictEqual(store['pmportal.lq.u1.5'], 'st=3&so=pr&sd=desc&p=2');
+    assert.strictEqual(b.query(), '', 'the list seen in this page: what is in memory');
+    b = mk(ls);
+    assert.strictEqual(b.query(), '?st=3&so=pr&sd=desc&p=2', 'a reload or a new tab: the last conditions');
+    b.save('');
+    b = mk(ls);
+    assert.strictEqual(b.query(), '?p=1', 'left with no conditions: none, not the personal default');
+    const broken = { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } };
+    b = mk(broken);
+    assert.strictEqual(b.query(), '', 'storage refused: the list as before');
+    b.save('st=1');
+    assert.strictEqual(b.seen(), true);
+    assert.ok(/hash: '#' \+ to \+ \(to === 'issues' \? backListQuery\(\) : ''\)/.test(functionSource(routing, 'backTarget')), 'only the list takes the conditions');
+    // (c) the bar that stays on scroll is on a phone too, with the ← in it
+    assert.ok(style.indexOf('@media (max-width:760px){.pmportal .pp-dbar{display:none !important;}}') < 0, 'not hidden on a phone');
+    assert.ok(/\.pmportal \.pp-dbar \.bl-pill,\.pmportal \.pp-dbar \.pp-tocmt\{display:none;\}/.test(style), 'only the ←, the key and the title there');
+    assert.ok(/\.pmportal \.pp-dbar\{height:52px;/.test(style), 'room for the 44px circle');
 });
 
 if (failed) {
