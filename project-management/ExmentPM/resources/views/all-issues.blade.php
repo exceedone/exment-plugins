@@ -53,6 +53,8 @@
   .pp-all .pp-a-head .pp-a-dl a{white-space:normal;overflow-wrap:anywhere;}
   .pp-all #pp-a-list tbody tr{position:relative;}
   .pp-all #pp-a-list td.sub a::after{content:"";position:absolute;inset:0;}
+  /* iOS zooms into a field under 16px: the keyword, the selects and the pickers' search */
+  .pp-all .pp-a-bar input.q,.pp-all .pp-a-bar select,.pp-all .pp-a-pop input[type=search]{font-size:16px;}
 }
 @media (max-width: 767px){
   .pp-all .pp-a-wrap{padding:8px;}

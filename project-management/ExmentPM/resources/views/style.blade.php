@@ -2161,18 +2161,25 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-cmtdock .bl-cmttools .pp-md-tabs{flex:none;position:sticky;right:0;background:var(--bl-box);}
   .pmportal .pp-md-tabs > button{min-height:44px;padding:0 12px;}
   .pmportal .bl-cmtdock .bl-qe-in{height:44px;font-size:16px;}
+  /* iOS zooms into a field under 16px: the comment box too */
+  .pmportal .bl-cmtform textarea{font-size:16px;}
   .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail{min-height:44px;}
   .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail input{width:20px;height:20px;}
   .pmportal .bl-dockfoot .bl-btn-main,.pmportal .bl-dockfoot .bl-btn-sub{min-height:44px;}
   /* the trail: one line beside the ← (it wrapped to two or three), scrolled sideways when long */
   .pmportal .pp-backrow{min-height:44px;margin-bottom:6px;}
-  .pmportal .pp-backrow .pp-crumbs{flex:1 1 auto;flex-wrap:nowrap;margin:0;white-space:nowrap;overflow-x:auto;scrollbar-width:none;}
+  .pmportal .pp-backrow .pp-crumbs{flex:1 1 auto;flex-wrap:nowrap;margin:0;white-space:nowrap;overflow-x:auto;scrollbar-width:none;padding-right:18px;}
   .pmportal .pp-backrow .pp-crumbs::-webkit-scrollbar{display:none;}
-  .pmportal .pp-backrow .pp-crumbs a{flex:none;display:inline-block;min-height:44px;line-height:44px;}
+  /* each link gives way first and ends in "…" (the project's full name is in its tooltip), so the key
+     stays in view; the right end fades while there is more to scroll */
+  .pmportal .pp-backrow .pp-crumbs a{flex:0 1 auto;min-width:3em;max-width:11em;display:inline-block;min-height:44px;line-height:44px;
+    overflow:hidden;text-overflow:ellipsis;vertical-align:top;}
+  .pmportal .pp-backrow .pp-crumbs,.pmportal .bl-pillrow{
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);}
   .pmportal .pp-backrow .pp-crumbs .fa,.pmportal .pp-backrow .pp-crumbs [aria-current]{flex:none;}
   /* the project's issue list: the status tabs and the chips in one row that scrolls sideways;
      the keyword and the selects */
-  .pmportal .bl-pillrow{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-bottom:6px;}
+  .pmportal .bl-pillrow{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-bottom:6px;padding-right:18px;}
   .pmportal .bl-pillrow::-webkit-scrollbar{display:none;}
   .pmportal .bl-pillrow .bl-sttab,.pmportal .bl-pillrow .bl-qchip{flex:none;display:inline-flex;align-items:center;min-height:44px;
     box-sizing:border-box;border-radius:22px;}

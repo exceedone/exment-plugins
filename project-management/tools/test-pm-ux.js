@@ -77,7 +77,7 @@ const ux = load(detail, ['qfField', 'qfKeys', 'qfValue', 'qfDayFrom', 'propsShow
 test('S19: the trail names the portal, the project and its issues, each a link', () => {
     const html = ux.crumbs({ key: 'WEB-1' });
     assert.ok(html.indexOf('href="/admin/plugins/exment_pm">プロジェクト管理</a>') > 0);
-    assert.ok(html.indexOf('href="#home">Web &lt;b&gt;</a>') > 0, 'the project name is escaped');
+    assert.ok(html.indexOf('href="#home" title="Web &lt;b&gt;">Web &lt;b&gt;</a>') > 0, 'the project name is escaped, in full in its tooltip');
     assert.ok(html.indexOf('href="#issues">課題</a>') > 0);
     assert.ok(/aria-current="page">WEB-1</.test(html));
     assert.ok(functionSource(detail, 'buildDetail').indexOf('crumbs(i)') > 0, 'drawn above the issue');
@@ -692,9 +692,13 @@ test('PHONE-2: the taps left under 44px on a phone, less height above the conten
     has(/\.bl-dockfoot \.bl-btn-main,\.pmportal \.bl-dockfoot \.bl-btn-sub\{min-height:44px;\}/, 'cancel and send');
     // the trail: one line, beside the ←
     has(/\.pp-backrow \.pp-crumbs\{[^}]*flex-wrap:nowrap;[^}]*overflow-x:auto;/, 'the trail in one line');
-    has(/\.pp-backrow \.pp-crumbs a\{[^}]*min-height:44px;line-height:44px;\}/, 'its links');
+    has(/\.pp-backrow \.pp-crumbs a\{flex:0 1 auto;min-width:3em;max-width:11em;[^}]*min-height:44px;line-height:44px;[^}]*overflow:hidden;text-overflow:ellipsis;/, 'its links: they give way and end in "…", so the key stays in view');
+    has(/\.pp-backrow \.pp-crumbs\{[^}]*padding-right:18px;\}/, 'room to scroll past the fade');
+    has(/\.pp-backrow \.pp-crumbs,\.pmportal \.bl-pillrow\{\s*-webkit-mask-image:linear-gradient\(to right,#000 calc\(100% - 18px\),transparent\);mask-image:/, 'the right end fades: there is more');
+    has(/\.bl-cmtform textarea\{font-size:16px;\}/, 'no iOS zoom on the comment box');
     // the project's list
     has(/\.bl-pillrow\{flex-wrap:nowrap;overflow-x:auto;/, 'the status tabs and chips in one row');
+    has(/\.bl-pillrow\{[^}]*padding-right:18px;\}/, 'room to scroll past the fade');
     has(/\.bl-pillrow \.bl-sttab,\.pmportal \.bl-pillrow \.bl-qchip\{[^}]*min-height:44px;/, 'the status tabs and chips');
     has(/\.bl-filters > select,\.pmportal \.bl-filters > input,[^{]*\{min-height:44px;/, 'the keyword and the selects');
     // what is already there stays: the 44px ← circle (BACK-2) and the 52px bar (BACK-3)
@@ -704,6 +708,7 @@ test('PHONE-2: the taps left under 44px on a phone, less height above the conten
     const top = view('_topbar.blade.php');
     const m2 = block(top, '/* M2: a phone keeps one line');
     assert.ok(/\/\* phone polish 2: [^*]*\*\/\s*\.pp-top\{margin-bottom:6px;\}/.test(m2), 'a smaller gap under the top bar, on a phone');
+    assert.ok(/\.pp-top \.pp-top-search input\{font-size:16px;\}/.test(m2), 'no iOS zoom on the search box');
     const dash = block(view('list.blade.php'), '/* Phone polish 2:');
     assert.ok(dash.startsWith('@media (max-width:760px){'));
     assert.ok(/\.pp-dash \.pp-ph\{flex-wrap:wrap;/.test(dash), 'the panel heads wrap');
@@ -714,7 +719,9 @@ test('PHONE-2: the taps left under 44px on a phone, less height above the conten
     assert.ok(/#pp-a-clear,\.pp-all #pp-a-save\{min-height:44px;/.test(all), '条件を消す / 条件を保存');
     assert.ok(/\.pp-a-dl a\{white-space:normal;/.test(all), 'a long download name wraps');
     assert.ok(/td\.sub a::after\{content:"";position:absolute;inset:0;\}/.test(all) && /tbody tr\{position:relative;\}/.test(all), 'the whole row opens the issue');
+    assert.ok(/\.pp-all \.pp-a-bar input\.q,\.pp-all \.pp-a-bar select,\.pp-all \.pp-a-pop input\[type=search\]\{font-size:16px;\}/.test(all), 'no iOS zoom on the keyword, the selects and the pickers');
 });
+
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);
