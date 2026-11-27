@@ -165,6 +165,34 @@ class Events
     }
 
     /**
+     * What a call of an event needs (the chat's call, ISS02946): its title, its people (the owner
+     * and the attendees, Exment user ids) and its times (UTC), or null when the person may not see
+     * it in full (not there, deleted, or only 「予定あり」 for them).
+     *
+     * @return array{title: string, attendees: array<int, int>, starts_at: string, ends_at: string}|null
+     */
+    public static function callInfo(int $eventId, int $uid): ?array
+    {
+        if (!static::ready()) {
+            return null;
+        }
+        $e = static::get($eventId, $uid);
+        if ($e === null) {
+            return null;
+        }
+        $people = array_merge([intval($e['owner'])], array_map(function ($a) {
+            return intval($a['user']);
+        }, $e['attendees']));
+
+        return [
+            'title' => $e['title'],
+            'attendees' => array_values(array_unique(array_filter($people))),
+            'starts_at' => $e['starts_at'],
+            'ends_at' => $e['ends_at'],
+        ];
+    }
+
+    /**
      * An event's fields from a form, checked (no database: the CI checks it).
      *
      * @param array<string, mixed> $in
