@@ -25,6 +25,8 @@ parameters:
             # ExmentPM's test of the chat channels declares a stand-in PortalDefinition
             - ../../project-management/tools/test-pm-channels.php
             - ../../project-management/tools/test-pm-digest.php
+            # Groupware's test of the calendar's ICS declares stand-ins of Laravel's facades (DB, Crypt...)
+            - ../../groupware/tools/test-gw-calendar-ics.php
             # IT Support's connectors of the data sync (7.3.0), and their test in an Exment 7.3
             - ../../it-support/ExmentITSupport/Sync
             - ../../it-support/tools/test-asset-sync-db.php

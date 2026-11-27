@@ -23,6 +23,8 @@ class FeatureGate
     const MAIL = 'exment_groupware.mail';
     const OFFICE = 'exment_groupware.office';
     const CALENDAR = 'exment_groupware.calendar';
+    /** Outside calendars and the ICS export of the calendar (ISS02947 part 5): off at first, with the calendar. */
+    const CALENDAR_LINKS = 'exment_groupware.calendar_links';
     /** The chat (ISS02945): new, off at first. */
     const CHAT = 'exment_groupware.chat';
     /** Calls from a chat room (ISS02946): new, off at first, with the chat. */
@@ -217,5 +219,52 @@ class FeatureGate
             'endpoints' => [$plugin->getRouteUri('cal')],
             'plugin' => $plugin->plugin_name,
         ]);
+    }
+
+    /**
+     * The calendar's outside calendars (ISS02947, part 5): a person's ICS export address and
+     * the ICS addresses read into their calendar. A row of its own, off at first, with the
+     * calendar. Its API is under the calendar's pages (cal/api/link..., cal/api/feed...), which
+     * check it themselves; the export address checks it for the person it belongs to.
+     *
+     * @param \Exceedone\Exment\Model\Plugin $plugin
+     */
+    public static function registerCalendarLinks($plugin): void
+    {
+        if (!static::available()) {
+            return;
+        }
+        call_user_func([static::FEATURES, 'register'], static::CALENDAR_LINKS, [
+            'label' => static::text('feature_calendar_links', 'カレンダーの連携（ICS）'),
+            'description' => static::text('feature_calendar_links_help', '自分のカレンダーを ICS の URL でほかのカレンダーに見せる・ほかのカレンダー（ICS の URL）を読みこむ（Exment Plugin Groupware）。'),
+            'endpoints' => [],
+            'plugin' => $plugin->plugin_name,
+            'requires' => static::CALENDAR,
+            'existing' => false,
+        ]);
+    }
+
+    /**
+     * Whether a person (an Exment user id, not the login user) may use the feature: for an
+     * address read without login (the calendar's ICS export). True without Feature management;
+     * false when the person has no login.
+     */
+    public static function allowedFor(string $key, int $userId): bool
+    {
+        if (!static::available()) {
+            return true;
+        }
+        if (!static::allowedOnSite($key)) {
+            return false;
+        }
+        try {
+            $login = \Exceedone\Exment\Model\LoginUser::where('base_user_id', $userId)->first();
+        } catch (\Throwable $e) {
+            return false;
+        }
+        if (!isset($login)) {
+            return false;
+        }
+        return boolval(call_user_func([static::FEATURES, 'allowed'], $key, $login));
     }
 }
