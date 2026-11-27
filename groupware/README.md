@@ -6,7 +6,7 @@
 
 <a id="english"></a>
 
-**Unreleased**
+**Changed in 0.5.0**
 
 - The README says that a picture cannot be pasted into Office (ibisOffice 0.8.9 in the browser takes only text), and what to do instead: [Pasting a picture into Office](#pasting-a-picture-into-office).
 - Calendar: ExmentPM's issues on the calendar (ISS02947, part 4). The new choice in the toolbar (off at first) shows **My issues**, **My projects** or one project: the issues with a start and a due date as a bar, the ones with a due date only as a mark on it, the milestones, and the dates of ExmentPM's recurring schedules that have no issue yet, as 「予定（まだ課題になっていない）」, with their moved and skipped dates. Each project has its own colour. An issue opens in ExmentPM; a date of a schedule gives **この回だけ変える** (ExmentPM's schedule page, for the project's manager). Read only, through Exment's permissions on the project and issue tables: a person sees only what they may read. Shown only when the site has ExmentPM's tables; the schedules only while ExmentPM makes their issues (its Feature management).

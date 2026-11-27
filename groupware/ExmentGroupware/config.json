@@ -4,7 +4,7 @@
     "plugin_view_name": "Exment Plugin Groupware",
     "description": "グループウェアの機能。Web メール（Xserver・KAGOYA・Microsoft 365・Gmail などの今のメールサーバーに IMAP・SMTP でつなぎ、ブラウザーで読む・書く・送る）と、ファイル共有の Word・Excel・PowerPoint をブラウザーの Office（ibisOffice）で開いて編集・保存する機能。データに添付した Word・Excel・PowerPoint をその場で表示・編集する機能（Exment Plugin PM などから）。",
     "author": "Exceedone",
-    "version": "0.4.7",
+    "version": "0.5.0",
     "plugin_type": "page,batch",
     "batch_cron": "*/5 * * * *",
     "uri": "exment_groupware",
