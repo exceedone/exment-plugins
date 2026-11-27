@@ -127,8 +127,8 @@ return [
         'err_expired' => '페이지가 만료되었습니다. 페이지를 새로 고치세요.',
         'err_network' => '서버에 연결할 수 없습니다.',
     ],
-    'feature_chat' => 'Chat',
-    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
-    'feature_call' => 'Calls',
-    'feature_call_help' => 'Call from a chat room, up to 4 people, with voice, camera and a shared screen (browser to browser, not recorded).',
+    'feature_chat' => '채팅',
+    'feature_chat_help' => '그룹과 1:1 룸에서 이야기합니다. @멘션·읽은 사람 수·파일(Exment Plugin Groupware).',
+    'feature_call' => '통화',
+    'feature_call_help' => '채팅 룸에서 4명까지 음성·카메라·화면 공유로 통화합니다(브라우저끼리 직접 연결, 녹음하지 않음).',
 ];

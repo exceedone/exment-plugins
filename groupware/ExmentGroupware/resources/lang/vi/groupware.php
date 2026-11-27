@@ -127,8 +127,8 @@ return [
         'err_expired' => 'Trang đã hết hạn. Hãy tải lại trang.',
         'err_network' => 'Không kết nối được với máy chủ.',
     ],
-    'feature_chat' => 'Chat',
-    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
-    'feature_call' => 'Calls',
-    'feature_call_help' => 'Call from a chat room, up to 4 people, with voice, camera and a shared screen (browser to browser, not recorded).',
+    'feature_chat' => 'Trò chuyện',
+    'feature_chat_help' => 'Trò chuyện trong phòng nhóm và phòng 1-1, có @nhắc tên, số người đã đọc và tệp (Exment Plugin Groupware).',
+    'feature_call' => 'Cuộc gọi',
+    'feature_call_help' => 'Gọi từ phòng trò chuyện, tối đa 4 người, bằng giọng nói, camera và chia sẻ màn hình (kết nối trực tiếp giữa các trình duyệt, không ghi âm).',
 ];
