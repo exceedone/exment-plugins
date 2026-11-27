@@ -60,6 +60,13 @@ namespace Illuminate\Support\Facades {
     }
 }
 
+namespace Illuminate\Contracts\Cache {
+    // what a cache lock throws when it is still held after the wait
+    class LockTimeoutException extends \Exception
+    {
+    }
+}
+
 namespace Illuminate\Queue\Jobs {
     // the job of the sync queue (run inside the request) and one of a worker
     class SyncJob
@@ -458,6 +465,81 @@ namespace {
         $check($status . ' six times: the subscription is kept, no failure counted, logged', count($store->subs) === 1 && $store->forUser(7)[0]['failures'] === 0
             && $res['refused'] === 1 && strpos(implode("\n", Illuminate\Support\Facades\Log::$lines), 'VAPID') !== false, [$res, Illuminate\Support\Facades\Log::$lines]);
     }
+
+    // a 403 forever (a subscription of an older key): logged once a flush a row, not on every bell
+    $store->subs = [];
+    P::subscribe(7, $sub($e1, $ua1, $ua1Auth), '');
+    $answers = [403, 403, 403, 403, 403, 403];
+    $vapidLines = function () {
+        return count(array_filter(Illuminate\Support\Facades\Log::$lines, function ($l) {
+            return strpos($l, 'VAPID') !== false;
+        }));
+    };
+    Illuminate\Support\Facades\Log::$lines = [];
+    $sent = [];
+    foreach ([1, 2, 3] as $i) {
+        P::bellCreated((object) ['target_user_id' => 7, 'notify_subject' => 'r' . $i]);
+    }
+    P::flush($fake);
+    $check('403 on three bells of one flush: logged once', count($sent) === 3 && $vapidLines() === 1, Illuminate\Support\Facades\Log::$lines);
+    foreach ([1, 2, 3] as $i) {
+        P::bellCreated((object) ['target_user_id' => 7, 'notify_subject' => 'r' . $i]);
+    }
+    P::flush($fake);
+    $check('the next flush: logged once more, the row still kept', $vapidLines() === 2 && count($store->subs) === 1);
+
+    // the lock of the key pair: still held after 10 s, or no lock at all: run anyway (no 500)
+    class LockStore extends PortalPushStore
+    {
+        public $mode = 'ok';
+        public $waited = false;
+
+        protected function lock()
+        {
+            if ($this->mode === 'none') {
+                throw new \BadMethodCallException('This cache store does not support locks.');
+            }
+            $store = $this;
+
+            return new class ($store) {
+                private $store;
+
+                public function __construct($store)
+                {
+                    $this->store = $store;
+                }
+
+                public function block($seconds, $f)
+                {
+                    $this->store->waited = $seconds;
+                    if ($this->store->mode === 'timeout') {
+                        throw new \Illuminate\Contracts\Cache\LockTimeoutException();
+                    }
+
+                    return $f();
+                }
+            };
+        }
+    }
+    $ls = new LockStore();
+    $check('the lock: waited for at most 10 s, then run', $ls->locked(function () {
+        return 'ran';
+    }) === 'ran' && $ls->waited === 10);
+    $ls->mode = 'timeout';
+    $threw = null;
+    try {
+        $got = $ls->locked(function () {
+            return 'ran anyway';
+        });
+    } catch (\Throwable $e) {
+        $threw = get_class($e);
+        $got = null;
+    }
+    $check('the lock still held after 10 s: run anyway, no exception', $threw === null && $got === 'ran anyway', $threw);
+    $ls->mode = 'none';
+    $check('a cache without locks: run as it is', $ls->locked(function () {
+        return 'no lock';
+    }) === 'no lock');
 
     // the VAPID subject must be https (Apple and Mozilla refuse an http one)
     $check('https: APP_URL when it is https', P::httpsOf(['https://a.invalid/', 'https://b.invalid']) === 'https://a.invalid');

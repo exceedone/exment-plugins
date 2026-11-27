@@ -76,19 +76,29 @@ class PortalPushStore
 
     /**
      * Run $f under the lock of the key pair (Laravel's cache lock), so two requests do not make
-     * two pairs. A cache without locks: run as it is (putKeys keeps one row either way).
+     * two pairs. A cache without locks, or a lock still held after 10 s: run as it is (putKeys
+     * keeps one row either way), rather than an error for the person.
      *
      * @return mixed what $f gives
      */
     public function locked(callable $f)
     {
         try {
-            $lock = \Illuminate\Support\Facades\Cache::lock('pm_portal_push_keys', 30);
+            $lock = $this->lock();
         } catch (\Throwable $e) {
             return $f();
         }
+        try {
+            return $lock->block(10, $f);
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+            return $f();
+        }
+    }
 
-        return $lock->block(10, $f);
+    /** @return \Illuminate\Contracts\Cache\Lock */
+    protected function lock()
+    {
+        return \Illuminate\Support\Facades\Cache::lock('pm_portal_push_keys', 30);
     }
 
     /** One pair only: the old one goes. */

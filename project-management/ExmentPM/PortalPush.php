@@ -59,6 +59,9 @@ class PortalPush
     /** @var bool */
     protected static $registered = false;
 
+    /** @var array<int, bool> rows whose 401 / 403 was logged in this flush */
+    protected static $refusedLogged = [];
+
     /** @var string|null the public key, read once a request */
     protected static $publicKey = null;
 
@@ -437,7 +440,11 @@ class PortalPush
             return 'sent';
         }
         if ($status === 401 || $status === 403) {
-            Log::warning('pm_portal web push: the push service refused the site\'s VAPID signature (' . $status . '); check that the site\'s address is https, or make new keys');
+            // once a flush a row: a subscription of an older key would say so on every bell
+            if (!isset(static::$refusedLogged[$id])) {
+                static::$refusedLogged[$id] = true;
+                Log::warning('pm_portal web push: the push service refused the site\'s VAPID signature (' . $status . '); check that the site\'s address is https, or make new keys');
+            }
 
             return 'refused';
         }
@@ -563,6 +570,7 @@ class PortalPush
     public static function flush(?callable $post = null): void
     {
         $pending = static::$pending;
+        static::$refusedLogged = [];
         static::$pending = [];
         $deadline = static::now() + static::DEADLINE;
         $byUser = [];
