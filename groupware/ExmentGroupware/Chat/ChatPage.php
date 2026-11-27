@@ -121,7 +121,14 @@ class ChatPage
     public function postCallSignal(Request $request, $id)
     {
         return $this->json(function () use ($request, $id) {
-            ChatCall::signal($this->uid(), intval($id), strval($request->input('type')), $request->input('payload'));
+            // the description as one JSON text: Exment trims every input string (TrimStrings), and an
+            // SDP must end with its line break
+            $json = $request->input('payload_json');
+            $payload = is_string($json) && $json !== '' ? json_decode($json, true) : null;
+            if (is_string($json) && $json !== '' && !is_array($payload)) {
+                throw new \InvalidArgumentException('合図を読めませんでした。');
+            }
+            ChatCall::signal($this->uid(), intval($id), strval($request->input('type')), $payload);
 
             return [];
         });

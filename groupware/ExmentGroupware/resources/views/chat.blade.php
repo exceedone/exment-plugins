@@ -471,6 +471,9 @@ var CALL = null;
 function callJoinHtml(m, mine) {
     var c = !m.deleted && /^📞 通話 #(\d+) を始めました$/.exec(String(m.body || ''));
     if (!c || mine || !B.call) { return ''; }
+    // a call that is over: no 「参加」
+    var over = S.msgs.some(function (x) { return x.room === m.room && new RegExp('^📞 通話 #' + c[1] + ' (を終えました|はつながりませんでした)').test(String(x.body || '')); });
+    if (over) { return ''; }
     return '<div class="join"><button type="button" class="p" data-join="' + c[1] + '"><i class="fa fa-phone"></i> 参加</button></div>';
 }
 function callBox() {
@@ -486,7 +489,8 @@ function callBox() {
 function callStatus(t) { if (CALL) { CALL.box.querySelector('.st').textContent = t; } }
 function callSend(type, payload) {
     if (!CALL) { return; }
-    return api(u('call_signal', CALL.id), { type: type, payload: payload === undefined ? null : payload });
+    // one JSON text, so the server's trimming of input strings cannot cut the SDP's last line break
+    return api(u('call_signal', CALL.id), { type: type, payload_json: payload == null ? '' : JSON.stringify(payload) });
 }
 function callSetup(id, polite) {
     if (CALL) { alert('もう通話中です。'); return null; }
@@ -578,7 +582,10 @@ function callOn(s) {
         var clash = s.type === 'offer' && (CALL.making || pc.signalingState !== 'stable');
         CALL.ignore = !CALL.polite && clash;
         if (CALL.ignore) { return; }
-        return pc.setRemoteDescription(s.payload).then(function () {
+        // an SDP must end with CRLF (a server between may have trimmed it)
+        var desc = s.payload || {};
+        if (desc.sdp && !/\r\n$/.test(desc.sdp)) { desc = { type: desc.type, sdp: desc.sdp + '\r\n' }; }
+        return pc.setRemoteDescription(desc).then(function () {
             CALL.ready = true;
             if (s.type === 'offer') {
                 return pc.setLocalDescription().then(function () { return callSend('answer', pc.localDescription.toJSON()); });
