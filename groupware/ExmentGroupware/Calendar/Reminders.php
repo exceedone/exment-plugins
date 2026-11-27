@@ -107,7 +107,7 @@ class Reminders
                 if ($logged === 0) {
                     continue;
                 }
-                static::send($uid, $d['event'], $d['occ'], $d['minutes'], $url);
+                static::send($uid, $d['event'], $d['occ'], $d['minutes'], $url, static::siteHM($now));
                 $result['sent']++;
             }
             $result['people'] += count($people);
@@ -197,7 +197,17 @@ class Reminders
      * @param array<string, mixed> $e
      * @param array<string, mixed> $occ
      */
-    protected static function send(int $uid, array $e, array $occ, int $minutes, string $url): void
+    /** The run's time as the site's clock reads it ("23:10"), for the quiet hours. */
+    protected static function siteHM(\DateTimeImmutable $now): string
+    {
+        try {
+            return $now->setTimezone(new \DateTimeZone(strval(config('app.timezone') ?: 'Asia/Tokyo')))->format('H:i');
+        } catch (\Throwable $e) {
+            return $now->format('H:i');
+        }
+    }
+
+    protected static function send(int $uid, array $e, array $occ, int $minutes, string $url, string $nowHM): void
     {
         $words = (array) trans('exment_exment_groupware::groupware.cal');
         $title = strval($occ['title'] ?? $e['title']);
@@ -219,7 +229,7 @@ class Reminders
             Log::warning('gw_calendar reminder bell to user ' . $uid . ' failed (' . get_class($ex) . ')');
         }
         [$choice, $prefs] = static::settingsOf($uid);
-        $ch = static::channels($choice, $prefs, now()->format('H:i'));
+        $ch = static::channels($choice ?? static::defaultChoice(), $prefs, $nowHM);
         $user = getModelName(SystemTableName::USER)::withoutGlobalScopes()->find($uid);
         if (!isset($user)) {
             return;
@@ -249,6 +259,31 @@ class Reminders
                 Log::warning('gw_calendar reminder teams to user ' . $uid . ' failed (' . get_class($ex) . ')');
             }
         }
+    }
+
+    /** @var string|null */
+    protected static $default = null;
+
+    /**
+     * The choice of a person who has made none: ExmentPM's default of the site (its setting
+     * notify_by_default, 'bell' when not set) when ExmentPM is there, as ExmentPM itself does;
+     * without ExmentPM, the bell and the mail.
+     */
+    protected static function defaultChoice(): string
+    {
+        if (static::$default === null) {
+            static::$default = 'mail';
+            try {
+                $pm = \Exceedone\Exment\Model\Plugin::where('plugin_name', 'ExmentPM')->first();
+                if (isset($pm)) {
+                    $v = strval($pm->getCustomOption('notify_by_default') ?? 'bell');
+                    static::$default = in_array($v, ['bell', 'mail', 'teams', 'both'], true) ? $v : 'bell';
+                }
+            } catch (\Throwable $e) {
+                // the bell and the mail
+            }
+        }
+        return static::$default;
     }
 
     /** @return array{0: mixed, 1: mixed} ExmentPM's choice and prefs of a person */

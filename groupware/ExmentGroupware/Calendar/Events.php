@@ -160,8 +160,18 @@ class Events
             'owner' => intval($e['owner_user_id']),
             'attendees' => $att,
             'editable' => $viewer === intval($e['owner_user_id']) && strval($e['source']) === 'local',
-            'reminder' => Reminders::ready() ? DB::table(Reminders::TABLE)->where('event_id', $id)->min('minutes_before') : null,
+            'reminder' => static::reminderOf($id),
         ];
+    }
+
+    /** The minutes of an event's reminder, or null. */
+    protected static function reminderOf(int $id): ?int
+    {
+        if (!Reminders::ready()) {
+            return null;
+        }
+        $m = DB::table(Reminders::TABLE)->where('event_id', $id)->min('minutes_before');
+        return $m === null ? null : intval($m);
     }
 
     /**
@@ -253,7 +263,9 @@ class Events
         }
         // the reminder (part 2): one of the choices, or none
         $reminder = $in['reminder'] ?? '';
-        if ($reminder !== '' && $reminder !== null && !in_array(intval($reminder), Reminders::CHOICES, true)) {
+        // digits only: intval('abc') is 0, "at the start"
+        if ($reminder !== '' && $reminder !== null
+            && (!(is_int($reminder) || (is_string($reminder) && ctype_digit($reminder))) || !in_array(intval($reminder), Reminders::CHOICES, true))) {
             return [null, 'reminder'];
         }
 
