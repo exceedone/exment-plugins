@@ -43,6 +43,13 @@ class PluginPage extends PluginPageBase
         PortalAttachEdit::registerFeature();
         // recurring schedules: a feature of Feature management, off at first (ISS00432)
         PortalSchedule::registerFeature();
+        // Git linked to the issues by webhook: a feature, off at first, and its own route (ISS02939)
+        PortalGitHooks::registerFeature();
+        try {
+            PortalGitHooks::registerRoutes();
+        } catch (\Throwable $e) {
+            \Log::error('ExmentPM could not add the Git webhook route: ' . $e->getMessage());
+        }
         // reminders before the due date: a feature of Feature management, off at first (ISS00432)
         PortalReminder::registerFeature();
         // the morning digest of each person: a feature of Feature management, off at first (ISS02939)
@@ -522,6 +529,32 @@ class PluginPage extends PluginPageBase
     public function ranking()
     {
         return $this->respond($this->portal()->ranking(request(), new Content()));
+    }
+
+    // ISS02939 item 5: the repositories of a project connected by webhook
+    public function gitHooks($id)
+    {
+        return $this->portal()->gitHooks(request(), $id);
+    }
+
+    public function postGitHook($id)
+    {
+        return $this->portal()->postGitHook(request(), $id);
+    }
+
+    public function postGitHookSecret($id, $hook)
+    {
+        return $this->portal()->postGitHookSecret(request(), $id, $hook);
+    }
+
+    public function postGitHookUpdate($id, $hook)
+    {
+        return $this->portal()->postGitHookUpdate(request(), $id, $hook);
+    }
+
+    public function postGitHookDelete($id, $hook)
+    {
+        return $this->portal()->postGitHookDelete(request(), $id, $hook);
     }
 
     public function gitRepo($id)

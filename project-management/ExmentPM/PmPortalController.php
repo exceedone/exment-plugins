@@ -40,6 +40,7 @@ class PmPortalController extends AdminControllerBase
     use PortalAiTrait;
     use PortalRankingTrait;
     use PortalNotifySettingsTrait;
+    use PortalGitHooksTrait;
     use PortalAttachTrait;
     use PortalExportTrait;
     use PortalAllIssuesTrait;
@@ -1118,6 +1119,12 @@ class PmPortalController extends AdminControllerBase
                     'ver' => $attachOn ? intval($versionNos[intval($doc->id)] ?? 1) : null,
                     'ek' => $attachOn ? PortalAttachEdit::kindOf($name) : null,
                 ];
+            }
+
+            // ISS02939 item 5: the commits and pull requests that named the issue
+            $gitOn = $gitOn ?? (PortalGitHooks::enabled() && $this->projectFlag($project, 'use_git', false));
+            if ($gitOn) {
+                $timeline = array_merge($timeline, PortalGitHooks::timeline(intval($issue->id)));
             }
 
             usort($timeline, function ($a, $b) {
@@ -3350,7 +3357,9 @@ class PmPortalController extends AdminControllerBase
                 // routes refuse, so the screen can say so before anyone types.
                 'archived' => $archived,
             ],
-            'can' => array_merge((array) $can, ['alias' => PortalIssueAliases::exists(), 'attach_edit' => PortalAttachEdit::enabled()]),
+            'can' => array_merge((array) $can, ['alias' => PortalIssueAliases::exists(), 'attach_edit' => PortalAttachEdit::enabled(),
+                // ISS02939 item 5: Git linked by webhook (the branch name button)
+                'git_link' => PortalGitHooks::enabled() && $this->projectFlag($project, 'use_git', false)]),
             // The settings tab's server-known bits; withheld from people the
             // tab is hidden from anyway.
             'git' => $can['manage'] ? $this->gitState($project) : null,
@@ -3497,6 +3506,7 @@ class PmPortalController extends AdminControllerBase
                 'git_keys' => PortalDefinition::url($project->id, 'git_keys'),
                 'git_key_remove' => PortalDefinition::url($project->id, 'git_key_remove'),
                 'git_token' => PortalDefinition::url($project->id, 'git_token'),
+                'git_hooks' => PortalGitHooks::enabled() ? PortalDefinition::url($project->id, 'git_hooks') : null,
                 'file_workspace' => PortalDefinition::url($project->id, 'file_workspace'),
                 'link_tables' => PortalDefinition::url($project->id, 'link_tables'),
                 'link_search' => PortalDefinition::url($project->id, 'links', 'search'),

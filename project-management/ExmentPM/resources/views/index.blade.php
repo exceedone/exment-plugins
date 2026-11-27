@@ -37,7 +37,7 @@
         'lbl_eh_only', 'lbl_ah_only',
         'ta_user', 'ta_issue', 'ta_file', 'ta_none', 'ta_hint',
         'cmt_ph', 'quote', 'del', 'file_added', 'people', 'empty',
-        'box_files', 'tl_all', 'tl_cmt', 'child_add', 'issue_copy', 'link_copy', 'link_copied', 'ik_copied', 'ik_key_copied', 'ik_copy_tip', 'office_view', 'office_view_tip', 'office_close', 'office_newtab', 'office_unsaved', 'desc_quote',
+        'box_files', 'tl_all', 'tl_cmt', 'child_add', 'issue_copy', 'link_copy', 'link_copied', 'branch_copy', 'branch_copied', 'git_pr', 'git_commit', 'git_open', 'git_merged', 'git_closed', 'ik_copied', 'ik_key_copied', 'ik_copy_tip', 'office_view', 'office_view_tip', 'office_close', 'office_newtab', 'office_unsaved', 'desc_quote',
         'nav_prev', 'nav_next', 'nav_pos', 'tl_expand', 'tl_collapse', 'cmt_more', 'cmt_less', 'ct_emoji',
         'cmt_hint', 'cmt_drop', 'ct_attach', 'ct_bold', 'ct_italic', 'ct_strike',
         'ct_ul', 'ct_ol', 'ct_quote', 'ct_code', 'ct_link', 'ct_preview', 'ct_write',

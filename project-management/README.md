@@ -351,6 +351,14 @@ Data migration was the separate PmMigrate plugin until 1.2.0; it is now part of 
   The data migration feature was originally written by TTM (as the PmMigrate plugin).
   データ移行の機能は、もとは TTM さんが（PmMigrate プラグインとして）作りました。
 
+## Git link (webhook) / Git とつなぐ
+
+Off at first: turn on **Git link (webhook)** in **Admin settings → Feature management**, and **Git** in the project's features. Then the manager connects a repository in **project settings → Git**: GitHub, GitLab or Gitea, `owner/name`. Put the webhook address and the secret shown there into the repository's webhook (events: push and pull / merge requests; content type JSON). Commits and pull requests that name an issue key (`PROJ-12`, or the issue's own key such as `ISS00001`, as **Copy branch name** makes it) or an issue's alias then show on that issue. Nothing is sent to the Git server; the secret is shown once only (make a new one if it is lost).
+最初は使いません。**管理者設定 → 機能の管理** で **Git とつなぐ（Webhook）** を、プロジェクトの機能で **Git** をオンにします。プロジェクトの管理者が **プロジェクトの設定 → Git** でリポジトリー（GitHub・GitLab・Gitea、`owner/name`）をつなぎ、出てきた Webhook のアドレスと秘密の文字を、リポジトリーの Webhook に入れます（イベントは push とプルリクエスト／マージリクエスト、形式は JSON）。課題のキー（`PROJ-12`、または `ISS00001` のような課題の番号。「ブランチ名をコピー」もこれを使います）や別名を書いたコミット・プルリクエストが、その課題の履歴に出ます。Git のサーバーへは何も送りません。秘密の文字は 1 回だけ出します（なくしたら作り直します）。
+
+The webhook is `POST /pm-git/hook/<key>`, outside the admin pages. A firewall in front of the site may refuse its bodies (commit messages and links): on **Exment SaaS**, the AWS WAF needs one exception for the path `/pm-git/hook/` (the operator adds it).
+Webhook は管理画面の外の `POST /pm-git/hook/<キー>` です。サイトの前のファイアウォールが本文（コミットのメッセージやリンク）でことわることがあります。**Exment SaaS** では、AWS WAF に `/pm-git/hook/` の例外が 1 つ要ります（運営側が足します）。
+
 ## Install / 入れ方
 
 1. Download `ExmentPM-<version>.zip` from **[Releases](https://github.com/exceedone/exment-plugins/releases)**. Do not unzip it. (PmMigrate is no longer needed.)

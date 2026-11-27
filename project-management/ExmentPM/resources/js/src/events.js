@@ -501,6 +501,8 @@
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
         var linkCopy = ev.target.closest('.pp-linkcopy');
         if (linkCopy) { issueCopyLink(); return; }
+        var branchCopy = ev.target.closest('.pp-branchcopy');
+        if (branchCopy) { issueCopyBranch(); return; }
         var mailBtn = ev.target.closest('.pp-mailbtn');
         if (mailBtn) { mailOpen(currentIssue); return; }
         var issueCopy = ev.target.closest('.pp-issuecopy');
