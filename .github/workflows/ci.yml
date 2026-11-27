@@ -158,6 +158,8 @@ jobs:
       # The messages of the chat channels of a project (ExmentPM, plain PHP)
       - name: Chat channels (ExmentPM)
         run: php project-management/tools/test-pm-channels.php
+      - name: ExmentPM Git link (webhook parsing, signatures, keys)
+        run: php project-management/tools/test-pm-git.php
       - name: Simple by default (ExmentPM schema 30)
         run: php project-management/tools/test-pm-features.php
 
