@@ -2,6 +2,8 @@
 
 namespace App\Plugins\ExmentGroupware;
 
+use Illuminate\Support\Facades\Crypt;
+
 /**
  * A secret among the plugin's settings (custom_options), such as the client secret of an OAuth
  * app: kept encrypted, read decrypted only by the code that sends it (the token request).
@@ -11,7 +13,7 @@ namespace App\Plugins\ExmentGroupware;
  *
  *   enc:v1:<key id>:<...>   Exment's data keys (Exceedone\Exment\Services\Encryption, 7.3.0 and
  *                           later), when the site has a data key;
- *   app:<...>               else the app key (APP_KEY, Laravel's encrypt()).
+ *   app:<...>               else the app key (APP_KEY, Crypt::encrypt(), as Laravel's encrypt()).
  *
  * A value that Exment's own encpassword field saved (Laravel's encrypt() payload, without a
  * prefix) is read as well, so other settings may use this class too.
@@ -69,11 +71,13 @@ class SecretOption
 
     /**
      * The plain text of a stored value: null when there is none or it cannot be decrypted (for
-     * example under another key). A value stored before it was encrypted is given as it is.
+     * example under another key). A value stored before it was encrypted is given as it is,
+     * unless $plain is false (a setting that was always saved encrypted, as the calendar's: a
+     * value that is not encrypted counts as none).
      *
      * @param mixed $value
      */
-    public static function reveal($value): ?string
+    public static function reveal($value, bool $plain = true): ?string
     {
         if (!is_scalar($value) || strval($value) === '') {
             return null;
@@ -81,7 +85,7 @@ class SecretOption
         $value = strval($value);
         try {
             if (strpos($value, static::APP_PREFIX) === 0) {
-                return static::plainOrNull(decrypt(substr($value, strlen(static::APP_PREFIX))));
+                return static::plainOrNull(Crypt::decrypt(substr($value, strlen(static::APP_PREFIX))));
             }
             if (strpos($value, static::DATA_PREFIX) === 0) {
                 if (!class_exists(static::ENCRYPTED)) {
@@ -90,10 +94,13 @@ class SecretOption
                 return static::plainOrNull(call_user_func([static::ENCRYPTED, 'decrypt'], $value));
             }
             if (static::isLaravelPayload($value)) {
-                return static::plainOrNull(decrypt($value));
+                return static::plainOrNull(Crypt::decrypt($value));
             }
         } catch (\Throwable $e) {
             static::warn();
+            return null;
+        }
+        if (!$plain) {
             return null;
         }
         $value = trim($value);
@@ -161,7 +168,7 @@ class SecretOption
             }
         }
 
-        return static::APP_PREFIX . encrypt($plain);
+        return static::APP_PREFIX . Crypt::encrypt($plain);
     }
 
     /** Laravel's encrypt() payload: base64 of a JSON with iv, value and mac. */

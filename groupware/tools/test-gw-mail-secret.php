@@ -3,8 +3,9 @@
 // SecretField, Mail\OAuth, the migration 2026_11_29_000000_encrypt_gw_mail_client_secrets),
 // without Exment: the value saved is encrypted (the data keys when the site has one, else the app
 // key), the form never writes it into the page, an empty field keeps it, "remove" removes it, the
-// token request gets it decrypted, and the migration of a plain value gives the same result when
-// it runs twice. Stand-ins of Laravel and of the form field; nothing is sent anywhere (the HTTP
+// token request gets it decrypted (and is never sent with an empty secret), the migration of a
+// plain value gives the same result when it runs twice, and the calendar's secrets use the same
+// field. Stand-ins of Laravel and of the form field; nothing is sent anywhere (the HTTP
 // client is a fake).
 //
 //   php groupware/tools/test-gw-mail-secret.php
@@ -94,6 +95,21 @@ namespace Illuminate\Support\Facades {
         public static function decryptString($v)
         {
             return strrev(base64_decode(substr($v, 6)));
+        }
+
+        // a payload like Laravel's encrypt(): base64 of {iv, value, mac}
+        public static function encrypt($value)
+        {
+            return base64_encode(json_encode(['iv' => 'aXY=', 'value' => base64_encode(strrev(serialize($value))), 'mac' => 'fake', 'tag' => '']));
+        }
+
+        public static function decrypt($payload)
+        {
+            $json = json_decode(strval(base64_decode($payload, true)), true);
+            if (!is_array($json) || !isset($json['value'])) {
+                throw new \RuntimeException('The payload is invalid.');
+            }
+            return unserialize(strrev(base64_decode($json['value'])));
         }
     }
 
@@ -262,6 +278,16 @@ namespace ExmentAdminCore\Admin\Form\Field {
             return $value;
         }
 
+        protected $append;
+
+        public function append($string)
+        {
+            if ($this->append === null) {
+                $this->append = $string;
+            }
+            return $this;
+        }
+
         public function render()
         {
             $attrs = $this->attributes + ['type' => 'password', 'name' => $this->elementName, 'value' => strval($this->value), 'placeholder' => $this->placeholder];
@@ -269,26 +295,25 @@ namespace ExmentAdminCore\Admin\Form\Field {
             foreach ($attrs as $k => $v) {
                 $html .= ' ' . $k . '="' . htmlspecialchars(strval($v)) . '"';
             }
-            return '<label>' . htmlspecialchars($this->label) . '</label><input' . $html . ' /><span class="help-block">' . $this->helpText . '</span>';
+            // as admin-core 2.x: the help goes through html_clean (markup such as a check box is
+            // removed); the append is written as it is, in the input group (1.x and 2.x)
+            return '<label>' . htmlspecialchars($this->label) . '</label><div class="input-group"><input' . $html . ' />'
+                . ($this->append ? '<span class="input-group-addon clearfix">' . $this->append . '</span>' : '')
+                . '</div><span class="help-block">' . strip_tags($this->helpText) . '</span>';
         }
     }
 }
 
 namespace {
     // ---- Laravel's helpers -------------------------------------------------------------
-    function encrypt($value)
+    $GLOBALS['gwSession'] = [];
+    function session($key = null, $default = null)
     {
-        // a payload like Laravel's: base64 of {iv, value, mac}
-        return base64_encode(json_encode(['iv' => 'aXY=', 'value' => base64_encode(strrev(serialize($value))), 'mac' => 'fake', 'tag' => '']));
-    }
-
-    function decrypt($payload)
-    {
-        $json = json_decode(strval(base64_decode($payload, true)), true);
-        if (!is_array($json) || !isset($json['value'])) {
-            throw new \RuntimeException('The payload is invalid.');
+        if (is_array($key)) {
+            $GLOBALS['gwSession'] = array_merge($GLOBALS['gwSession'], $key);
+            return null;
         }
-        return unserialize(strrev(base64_decode($json['value'])));
+        return $GLOBALS['gwSession'][$key] ?? $default;
     }
 
     function e($v)
@@ -450,6 +475,38 @@ namespace {
     $plugin->custom_options['ms_client_secret'] = 'app:broken';
     $check('oauth: undecryptable is not configured', !$oauth->configured(Providers::MICROSOFT));
 
+    // the secret removed (or never set): no token request with an empty secret, refused at once
+    foreach ([Providers::MICROSOFT => 'ms_client_secret', Providers::GMAIL => 'google_client_secret'] as $provider => $key) {
+        $cleared = new GwFakePlugin();
+        $cleared->custom_options = ['ms_client_id' => 'ms-app', 'google_client_id' => 'g-app', $key => null];
+        $o = new OAuth($cleared);
+        $check("cleared $provider: not configured", !$o->configured($provider));
+        $refused = function (callable $f): bool {
+            Http::$sent = [];
+            try {
+                $f();
+            } catch (\App\Plugins\ExmentGroupware\Mail\MailException $e) {
+                return count(Http::$sent) === 0 && strpos($e->getMessage(), 'クライアント シークレット') !== false;
+            }
+            return false;
+        };
+        $check("cleared $provider: authorizeUrl refused, nothing sent", $refused(function () use ($o, $provider) {
+            $o->authorizeUrl($provider, []);
+        }));
+        $GLOBALS['gwSession'] = ['gw_mail_oauth' => ['st1' => ['provider' => $provider, 'verifier' => 'v', 'then' => [], 'at' => time()]]];
+        $check("cleared $provider: finish refused, no token request", $refused(function () use ($o) {
+            $o->finish('st1', 'code-1');
+        }));
+        $check("cleared $provider: refresh refused, no token request", $refused(function () use ($o, $provider) {
+            $o->accessToken((object) ['id' => 7, 'provider' => $provider, 'token_expires_at' => null,
+                'secret_enc' => \Illuminate\Support\Facades\Crypt::encryptString(json_encode(['access_token' => '', 'refresh_token' => 'fake-refresh']))]);
+        }));
+    }
+    $set = new GwFakePlugin();
+    $set->custom_options = ['google_client_id' => 'g-app', 'google_client_secret' => S::seal($google)];
+    $url = (new OAuth($set))->authorizeUrl(Providers::GMAIL, []);
+    $check('set: authorizeUrl given, without the secret', strpos($url, 'https://accounts.google.com/') === 0 && strpos($url, $google) === false && strpos($url, 'client_secret') === false);
+
     // ---- the form never contains the secret --------------------------------------------
     foreach (['ja', 'en'] as $locale) {
         $GLOBALS['gwLocale'] = $locale;
@@ -457,13 +514,31 @@ namespace {
             $html = $field('ms_client_secret', ['ms_client_secret' => $stored])->render();
             $check("$locale form ($kind): no secret", strpos($html, $ms) === false && strpos($html, strval(S::seal($ms))) === false && strpos($html, strval($stored)) === false);
             $check("$locale form ($kind): the value is empty", preg_match('/ value=""/', $html) === 1 && substr_count($html, ' value="') === 2); // the input and the check box
-            $check("$locale form ($kind): says it is set", strpos($html, $locale === 'ja' ? '設定済み' : '>Set<') !== false);
+            $check("$locale form ($kind): says it is set", strpos($html, $locale === 'ja' ? '設定済み' : 'Set:') !== false);
             $check("$locale form ($kind): the remove box", strpos($html, 'name="custom_options[ms_client_secret_clear]"') !== false);
+            $check("$locale form ($kind): the remove box is a check box after the input", preg_match('#<input type="checkbox" name="custom_options\[ms_client_secret_clear\]" value="1"[^>]*>#', $html) === 1
+                && strpos($html, 'input-group-addon') < strpos($html, 'custom_options[ms_client_secret_clear]') && strpos($html, $locale === 'ja' ? '値を消す' : 'Remove the value') !== false);
         }
         $html = $field('google_client_secret', ['ms_client_secret' => S::seal($ms)])->render();
         $check("$locale form (none): not set, no remove box", strpos($html, $locale === 'ja' ? '未設定' : 'Not set') !== false && strpos($html, '_clear') === false && strpos($html, $ms) === false);
     }
     $GLOBALS['gwLocale'] = 'ja';
+    // the calendar's secrets: the same field (part 6)
+    foreach (['cal_google_client_secret', 'cal_ms_client_secret'] as $key) {
+        $calStored = [$key => S::seal('cal-secret-value')];
+        $html = $field($key, $calStored)->render();
+        $check("calendar $key: not shown, set, a remove box", strpos($html, 'cal-secret-value') === false && strpos($html, strval($calStored[$key])) === false && strpos($html, '設定済み') !== false && strpos($html, 'name="custom_options[' . $key . '_clear]"') !== false);
+        $check("calendar $key: empty keeps it", $field($key, $calStored)->prepare(null) === $calStored[$key]);
+        $GLOBALS['gwRequest'] = ['custom_options' => [$key . '_clear' => '1']];
+        $check("calendar $key: removed", $field($key, $calStored)->prepare(null) === null);
+        $GLOBALS['gwRequest'] = [];
+        $old = \Illuminate\Support\Facades\Crypt::encrypt('enc-pass-value');
+        $check("calendar $key: a value Exment's encpassword saved is kept and read", $field($key, [$key => $old])->prepare('') === $old && S::reveal($old, false) === 'enc-pass-value');
+    }
+    $check('calendar: a plain value is none (reveal without plain)', S::reveal('plain-value', false) === null && S::reveal('plain-value') === 'plain-value');
+    $src = file_get_contents(__DIR__ . '/../ExmentGroupware/PluginSetting.php');
+    $check('settings: all four secrets use SecretField', substr_count($src, 'new SecretField(') === 4 && strpos($src, 'gwSettingSecret') === false && !preg_match("/->(enc)?password\('/", $src));
+    $check('settings: SettingSecretField removed', !file_exists(__DIR__ . '/../ExmentGroupware/SettingSecretField.php'));
 
     // ---- an empty submit keeps the value; "remove" removes it; a new value replaces it --
     $stored = ['ms_client_secret' => S::seal($ms)];
@@ -511,7 +586,7 @@ namespace {
     $check('sealOptions: empty values stay empty', S::sealOptions(['ms_client_secret' => '', 'google_client_secret' => null]) === ['ms_client_secret' => null, 'google_client_secret' => null]);
 
     // ---- Exment's encpassword value (Laravel's encrypt() payload) is read, not encrypted again
-    $enc = encrypt('enc-pass-value');
+    $enc = \Illuminate\Support\Facades\Crypt::encrypt('enc-pass-value');
     $check('encpassword: sealed', S::isSealed($enc) && S::seal($enc) === $enc);
     $check('encpassword: read', S::reveal($enc) === 'enc-pass-value');
     $check('a plain value is not taken for encrypted', !S::isSealed($ms) && !S::isSealed($google) && !S::isSealed('abc'));

@@ -65,6 +65,22 @@ class OAuth
         return !empty($c['client_id']) && !empty($c['client_secret']);
     }
 
+    /**
+     * No token request without the app's secret (not set, removed in the settings, or not
+     * readable under this site's keys): refused before anything is sent.
+     *
+     * @param array<string, string> $c the config of the provider
+     */
+    protected function assertSecret(string $provider, array $c): void
+    {
+        if (empty($c['client_id'])) {
+            throw new MailException('OAuth のアプリがまだ設定されていません。システム管理者に、プラグインの設定（' . (Providers::get($provider)['short'] ?? $provider) . ' のクライアント ID）を頼んでください。');
+        }
+        if (empty($c['client_secret'])) {
+            throw new MailException('OAuth のアプリのクライアント シークレットが設定されていません。システム管理者に、プラグインの設定（' . (Providers::get($provider)['short'] ?? $provider) . ' のクライアント シークレット）を頼んでください。');
+        }
+    }
+
     public function redirectUri(): string
     {
         return $this->plugin->getFullUrl('mail/oauth/callback');
@@ -79,9 +95,7 @@ class OAuth
     public function authorizeUrl(string $provider, array $then, ?string $loginHint = null): string
     {
         $c = $this->config($provider);
-        if (empty($c['client_id'])) {
-            throw new MailException('OAuth のアプリがまだ設定されていません。システム管理者に、プラグインの設定（' . Providers::get($provider)['short'] . ' のクライアント ID）を頼んでください。');
-        }
+        $this->assertSecret($provider, $c);
         $state = bin2hex(random_bytes(16));
         $verifier = rtrim(strtr(base64_encode(random_bytes(48)), '+/', '-_'), '=');
         $pending = (array) session('gw_mail_oauth', []);
@@ -129,6 +143,7 @@ class OAuth
         }
         $provider = strval($entry['provider']);
         $c = $this->config($provider);
+        $this->assertSecret($provider, $c);
         $res = Http::asForm()->timeout(20)->post($c['token'], [
             'client_id' => $c['client_id'],
             'client_secret' => $c['client_secret'],
@@ -176,6 +191,7 @@ class OAuth
             throw new MailException('サインインの期限が切れました。アカウントの設定から、もう一度サインインしてください。');
         }
         $c = $this->config(strval($account->provider));
+        $this->assertSecret(strval($account->provider), $c);
         $form = [
             'client_id' => $c['client_id'],
             'client_secret' => $c['client_secret'],

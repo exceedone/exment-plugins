@@ -7,7 +7,8 @@ use ExmentAdminCore\Admin\Form\Field\Password;
 /**
  * A secret of the plugin's settings form (SecretOption): the stored value is never written into
  * the page, neither decrypted nor encrypted. The field is always empty; its help says whether a
- * value is set (「設定済み」 / "Set"), with a check box to remove it.
+ * value is set (「設定済み」 / "Set"), and a value that is set has a check box after the input to
+ * remove it.
  *
  *   typed in              the new value, encrypted (SecretOption::seal)
  *   left empty            the stored value is kept (and encrypted, if it was not yet)
@@ -51,22 +52,31 @@ class SecretField extends Password
         $this->attribute('value', '');
         $this->attribute('autocomplete', 'new-password');
         $this->placeholder(static::t($this->isSet ? 'placeholder_set' : 'placeholder_not_set'));
-        $this->help(static::helpHtml($this->isSet, $this->clearName()), $this->isSet ? 'fa-check' : 'fa-info-circle');
+        // the help is plain words (the admin cleans its markup); the check box goes after the input
+        $this->help(static::helpText($this->isSet), $this->isSet ? 'fa-check' : 'fa-info-circle');
+        if ($this->isSet) {
+            $this->append(static::clearBoxHtml($this->clearName()));
+        }
 
         return parent::render();
     }
 
-    /**
-     * The help under the field: set or not, and the check box to remove a value that is set.
-     */
-    public static function helpHtml(bool $isSet, string $clearName): string
+    /** The help under the field: set or not, in words only. */
+    public static function helpText(bool $isSet): string
     {
-        if (!$isSet) {
-            return e(static::t('not_set')) . ' ' . e(static::t('help_not_set'));
-        }
+        return $isSet
+            ? static::t('set') . ': ' . static::t('help_set')
+            : static::t('not_set') . ': ' . static::t('help_not_set');
+    }
 
-        return '<strong>' . e(static::t('set')) . '</strong> ' . e(static::t('help_set'))
-            . ' <label style="font-weight:normal;margin-left:1em;"><input type="checkbox" name="' . e($clearName) . '" value="1"> '
+    /**
+     * The check box to remove a value that is set: written after the input, in the input group
+     * (the admin writes it as it is, in admin-core 1.x and 2.x).
+     */
+    public static function clearBoxHtml(string $clearName): string
+    {
+        return '<label style="font-weight:normal;margin:0;white-space:nowrap;cursor:pointer;">'
+            . '<input type="checkbox" name="' . e($clearName) . '" value="1" style="margin:0 .3em 0 0;vertical-align:middle;">'
             . e(static::t('clear')) . '</label>';
     }
 
