@@ -1335,3 +1335,7 @@ load();
 })();
 </script>
 @endverbatim
+{{-- the outside calendars and the ICS export (part 5): its button and dialog, for a person allowed them --}}
+@if (!empty($gwcalLinks))
+@include('exment_exment_groupware::calendar_links', ['links' => $gwcalLinks])
+@endif

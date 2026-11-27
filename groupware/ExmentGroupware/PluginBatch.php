@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * The plugin's scheduled work (config.json batch_cron: every 5 minutes with Exment's scheduler):
  *
  *   php artisan exment:batch --name=ExmentGroupware                     everything below
- *   php artisan exment:batch --name=ExmentGroupware --param1=calendar   the calendar's reminders (ISS02947)
+ *   php artisan exment:batch --name=ExmentGroupware --param1=calendar   the calendar's reminders and outside calendars (ISS02947)
  *   php artisan exment:batch --name=ExmentGroupware --param1=chat       the chat's retention (ISS02945)
  *
  * Each part runs only when its tables are there, and a failure of one does not stop the other.
@@ -44,6 +44,17 @@ class PluginBatch extends PluginBatchBase
             }
         } catch (\Throwable $e) {
             Log::error('ExmentGroupware batch, calendar: ' . get_class($e) . ': ' . $e->getMessage());
+        }
+        // the outside calendars whose time has come (part 5): a failure is kept on its link
+        try {
+            if (class_exists(Calendar\Links::class) && Calendar\Links::ready()
+                && FeatureGate::allowedOnSite(FeatureGate::CALENDAR) && FeatureGate::allowedOnSite(FeatureGate::CALENDAR_LINKS)) {
+                Mail\HostGuard::allowPrivate(boolval($this->plugin->getCustomOption('mail_allow_private')));
+                $r = Calendar\Links::run(Calendar\Links::BATCH_LINKS, null, 240);
+                $this->line('calendar: ' . $r['read'] . ' outside calendar(s) read, ' . $r['failed'] . ' failed');
+            }
+        } catch (\Throwable $e) {
+            Log::error('ExmentGroupware batch, calendar links: ' . get_class($e));
         }
     }
 

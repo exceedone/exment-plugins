@@ -8,3 +8,13 @@ foreach (['Rrule', 'Occurrences', 'Visibility', 'JapaneseHolidays', 'Holidays', 
     require_once __DIR__ . '/' . $gwCalClass . '.php';
 }
 unset($gwCalClass);
+// the outside calendars and the ICS export (part 5), with the address check of the mail
+foreach (['MailException', 'HostGuard'] as $gwCalClass) {
+    if (!class_exists('App\\Plugins\\ExmentGroupware\\Mail\\' . $gwCalClass, false)) {
+        require_once __DIR__ . '/../Mail/' . $gwCalClass . '.php';
+    }
+}
+foreach (['Ics', 'IcsFetchError', 'IcsFetch', 'Links', 'Feeds', 'LinksPage'] as $gwCalClass) {
+    require_once __DIR__ . '/' . $gwCalClass . '.php';
+}
+unset($gwCalClass);

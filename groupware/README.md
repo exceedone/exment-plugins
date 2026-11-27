@@ -14,6 +14,7 @@
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
 - Web mail: the dates of the mails are shown in the time zone the user chose in Exment (Exment 7.2.4; a user who chose none gets the time zone of the site). On an older Exment they are shown in the time zone of the browser, as before.
 - The names and descriptions in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5). Another language reads English.
+- Calendar: the ICS export address and outside calendars (ISS02947, part 5; Feature management → **カレンダーの連携（ICS）**, off at first). A person can make an ICS address of their calendar for Google Calendar or Outlook (events open to all with their title, any other as 「予定あり」 only), and read ICS addresses of other calendars into theirs every 15 minutes. See [Calendar: the ICS export and outside calendars](#calendar-links).
 
 **Changed in 0.4.7**
 
@@ -145,6 +146,32 @@ Exment does not run a mail server. Like Outlook, it connects to the server the c
 
 The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrations`).
 
+<a id="calendar-links"></a>
+
+## Calendar: the ICS export and outside calendars
+
+Part 5 of the calendar (ISS02947). Off at first: Admin setting → Feature management → **カレンダーの連携（ICS）** (`exment_groupware.calendar_links`, needs the calendar). A person allowed it gets **連携** in the calendar's toolbar.
+
+**The ICS export address.** **URL を作る** makes an address `https://<site>/gw-calendar/ics/<token>.ics` that a calendar program (Google Calendar "From URL", Outlook, the iPhone) reads without logging in. The token is 64 random hex characters; only its SHA-256 is kept, so the address is shown once, when it is made. **作りなおす** makes a new one and stops the old; **止める** stops it. A stopped or unknown address, or a person no longer allowed the feature, answers 404.
+
+- It has the person's events and the events they attend, from 30 days back to 365 days ahead.
+- **Who sees what**: the export is what somebody who is not logged in sees of that person's calendar, by the same rules as the page (Visibility, with no viewer). An event open to all (「全員」) has its title and place. Any other event (部署, 参加者だけ, 予定ありだけ, and an outside calendar shown busy) is a VEVENT of its time only: SUMMARY 「予定あり」, CLASS:PRIVATE, no UID of the event, no place. No event has its notes or attendees.
+- **Repeats are expanded**: each occurrence is one VEVENT in the window (no RRULE, EXDATE or RECURRENCE-ID in the export), so what a calendar program shows is exactly the calendar's own occurrences, moved and cancelled ones included. Times are in UTC; an all-day event is written with its dates (VALUE=DATE, the end the day after its last day). Text is escaped and lines are folded at 75 octets (RFC 5545).
+- At most 30 reads a minute for one address.
+
+**Outside calendars (ICS addresses).** **カレンダーを足す**: a name, the ICS address (`https://`, `http://` or `webcal://`) and what the others see: 「予定あり」 only (the default) or the title and the place. Up to 10 per person.
+
+- The address is encrypted with `APP_KEY` and never shown again: the page shows its host only. To change it, type a new one.
+- It is read every 15 minutes, each link a little later than the others, by the plugin's batch (`php artisan exment:batch --name=ExmentGroupware --param1=calendar`) and after the answer of a calendar page (3 links at most, after the page is sent). **今すぐ読む** reads it now (once a minute).
+- Read: GET with `If-None-Match` / `If-Modified-Since` (304: nothing changes), 15 seconds and 5 MB at most, up to 4 redirects. VEVENTs from 30 days back to 180 days ahead, with RRULE (the part the calendar reads; another rule shows its first occurrence), EXDATE, RDATE, RECURRENCE-ID (moved or cancelled occurrences), all day, TZID (IANA names, the common Windows names, a VTIMEZONE's X-LIC-LOCATION; else the site's time zone) and STATUS:CANCELLED. An event removed there is removed here. At most 5000 events a calendar.
+- The events are the person's (source=link) and cannot be changed here. The others see them as the link says.
+- A failure is kept on the link (shown as words, never the address) and the next try waits longer (up to 4 hours). A calendar it cannot read is never an error of the page.
+- **The address check**: the same as the web mail's (HostGuard). Only public addresses on the ports 80, 443, 8080 and 8443; each redirect is checked again, and the connection goes to the address checked (no second lookup of the name). With **社内のネットワークのメールサーバーを許可する** the internal network (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7) and other ports are allowed too; loopback, link-local (169.254/16, fe80::/10: the cloud's metadata), 0/8 and multicast never.
+
+The tables `gw_cal_links` and `gw_cal_feeds` are made when the zip is uploaded (`database/migrations`).
+
+Coming: Google and Microsoft calendars read only (part 6), CalDAV (part 7), both ways (part 8).
+
 ---
 
 <a id="japanese"></a>
@@ -155,6 +182,7 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
 - 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
+- カレンダー：ICS の書き出しの URL と、ほかのカレンダーの読みこみ（ISS02947 の 5。機能の管理 → **カレンダーの連携（ICS）**、初めは使わない）。自分のカレンダーの ICS の URL を作って Google カレンダーや Outlook で見られます（「全員」の予定は件名と場所、それ以外は「予定あり」だけ）。ほかのカレンダーの ICS の URL を、15 分ごとに自分のカレンダーに読みこめます。[カレンダー：ICS の書き出しとほかのカレンダー](#calendar-links-ja) を参照。
 
 **0.4.7 で変わったこと**
 
@@ -315,3 +343,29 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 - **通話**（ISS02946、機能の管理 → **通話**、初めは使わない）：ルームの「通話」で 4 人までの声の通話を始めます。だれでもカメラを使ったり、画面を共有したりできます。ブラウザーどうしで直接つなぎ（WebRTC、暗号化）、録音はしません。サーバーに残るのは、つなぐための合図だけです。プラグインの設定「通話のサーバー（STUN / TURN）」：空なら、直接つながる PC どうし（同じ LAN・VPN）だけ話せます。公開の STUN を入れると多くのネットでつながります（ブラウザーはそのサーバーに IP アドレスを知らせます）。きびしい会社のネットには、自社の TURN が要ります。
 - カレンダーの予定から通話：予定の「通話」で、その予定のチャットのルーム（はじめてのときに出席者で作る）を開き、そこで続いている通話に入るか、新しく始めます。予定を見られる出席者だけです。
 - これから：すぐ届くつなぎ（WebSocket）。[docs/chat-design.md](docs/chat-design.md)。
+
+<a id="calendar-links-ja"></a>
+
+## カレンダー：ICS の書き出しとほかのカレンダー
+
+カレンダーの 5 つめ（ISS02947）です。初めは使いません：管理者設定 → 機能の管理 → **カレンダーの連携（ICS）**（`exment_groupware.calendar_links`。カレンダーが要ります）。使える人には、カレンダーのツールバーに **連携** が出ます。
+
+**ICS の書き出しの URL**：**URL を作る** で `https://<サイト>/gw-calendar/ics/<トークン>.ics` を作ります。カレンダーのソフト（Google カレンダーの「URL で追加」・Outlook・iPhone）が、ログインなしで読みます。トークンはランダムな 16 進 64 文字で、残すのはその SHA-256 だけです。なので URL は、作ったときに 1 度だけ出ます。**作りなおす** で新しい URL になり、前の URL は止まります。**止める** で止まります。止めた URL・ない URL・機能を使えなくなった人の URL は 404 です。
+
+- その人の予定と、その人が参加する予定を、30 日前から 365 日先まで出します。
+- **だれに何が見えるか**：ログインしていない人がその人のカレンダーを見たときと同じです（画面と同じ決まり、Visibility）。「全員」の予定は件名と場所が出ます。それ以外（部署・参加者だけ・予定ありだけ・「予定あり」と見せるほかのカレンダー）は時間だけの VEVENT です：SUMMARY は「予定あり」、CLASS:PRIVATE、予定の ID も場所もありません。メモと参加者は、どの予定でも出ません。
+- **くりかえしは展開します**：期間の中の 1 回ずつが 1 つの VEVENT です（RRULE・EXDATE・RECURRENCE-ID は書きません）。なので、動かした回・やめた回も、カレンダーの画面と同じに出ます。時刻は UTC、終日の予定は日付（VALUE=DATE、終わりは最後の日の次の日）です。文字はエスケープし、行は 75 オクテットで折り返します（RFC 5545）。
+- 1 つの URL を読めるのは 1 分に 30 回までです。
+
+**ほかのカレンダー（ICS の URL）**：**カレンダーを足す** で、名前・ICS の URL（`https://`・`http://`・`webcal://`）・ほかの人への見せ方（「予定あり」とだけ（はじめ）か、件名と場所も）を入れます。1 人 10 個までです。
+
+- URL は `APP_KEY` で暗号化し、二度と表示しません。画面に出るのはホスト名だけです。変えるときは新しい URL を入れます。
+- 15 分ごとに、リンクごとに少しずつずらして読みます。プラグインのバッチ（`php artisan exment:batch --name=ExmentGroupware --param1=calendar`）と、カレンダーの画面の答えのあと（ページを送ってから、3 つまで）です。**今すぐ読む** ですぐ読みます（1 分に 1 回）。
+- 読み方：GET で `If-None-Match`・`If-Modified-Since` を付けます（304 なら何も変えません）。15 秒・5 MB まで、転送は 4 回まで。30 日前から 180 日先までの VEVENT を、RRULE（カレンダーが読める範囲。ほかの決まりは 1 回目だけ）・EXDATE・RDATE・RECURRENCE-ID（動かした回・やめた回）・終日・TZID（IANA の名前、よくある Windows の名前、VTIMEZONE の X-LIC-LOCATION。わからなければサイトのタイムゾーン）・STATUS:CANCELLED ごと読みます。あちらで消えた予定はこちらでも消えます。1 つのカレンダーで 5000 件までです。
+- 読んだ予定はその人のもの（source=link）で、ここでは変えられません。ほかの人には、リンクの見せ方のとおりに見えます。
+- 読めなかったときは、そのリンクに残し（URL ではなく、ことばで出ます）、次はもっと待ってから読みます（4 時間まで）。読めないカレンダーで、画面がエラーになることはありません。
+- **URL のチェック**：Web メールと同じ HostGuard です。インターネットのアドレスの 80・443・8080・8443 番ポートだけです。転送のたびにもう一度たしかめ、たしかめたアドレスにつなぎます（名前を引きなおしません）。**社内のネットワークのメールサーバーを許可する** をオンにすると、社内のネットワーク（10/8・172.16/12・192.168/16・100.64/10・fc00::/7）とほかのポートも使えます。ループバック・リンクローカル（169.254/16・fe80::/10。クラウドのメタデータ）・0/8・マルチキャストは、どのときも使えません。
+
+テーブル `gw_cal_links`・`gw_cal_feeds` は zip をアップロードしたときに作られます（`database/migrations`）。
+
+これから：Google・Microsoft のカレンダーを読む（6）、CalDAV（7）、両方向（8）。

@@ -63,6 +63,10 @@ class CalendarPage
     protected function remind(): void
     {
         Reminders::afterResponse($this->url());
+        // the outside calendars whose time has come (part 5), while that feature is on
+        if (FeatureGate::allowedOnSite(FeatureGate::CALENDAR_LINKS)) {
+            Links::afterResponse(boolval($this->plugin->getCustomOption('mail_allow_private')));
+        }
     }
 
     public function page()
@@ -71,6 +75,8 @@ class CalendarPage
             return response($this->t('not_ready'), 503);
         }
         $this->remind();
+        // the settings of the outside calendars and the ICS export (part 5), for the person allowed them
+        view()->share('gwcalLinks', FeatureGate::allowed(FeatureGate::CALENDAR_LINKS) ? (new LinksPage($this->plugin))->cfg() : null);
         $me = $this->me();
         $orgs = [];
         foreach (Events::orgsOf($me) as $id) {

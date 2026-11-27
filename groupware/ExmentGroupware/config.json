@@ -552,6 +552,69 @@
             "method": "get",
             "uri": "chat/call/new",
             "function": "chatCallNew"
+        },
+        {
+            "method": "get",
+            "uri": "cal/api/links",
+            "function": "calLinkList",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/link",
+            "function": "calLinkCreate",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/link/{id}",
+            "function": "calLinkSave",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/link/{id}/delete",
+            "function": "calLinkDelete",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/link/{id}/sync",
+            "function": "calLinkSync",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/feed",
+            "function": "calFeedCreate",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/feed/revoke",
+            "function": "calFeedRevoke",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
         }
     ]
 }
