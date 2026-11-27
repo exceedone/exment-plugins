@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- A site whose `plugins.plugin_types` lists one type only (files replaced without uploading the zip) no longer fails on every page: `Plugin` is now the page itself (the same as `PluginPage`, with the settings form of `PluginSetting`) instead of an empty class. The other types (validator, event, batch, script) still need the row updated: upload the zip in **Admin settings → Plugins** rather than replacing the files, or follow the manual.
+  `plugins.plugin_types` が 1 つの種類だけのサイト（zip をアップロードせずにファイルを入れかえたサイト）で、すべての画面がエラーになることがなくなりました。`Plugin` が空のクラスではなく、ページそのもの（`PluginPage` と同じで、設定の画面は `PluginSetting` のもの）になりました。ほかの種類（検証・イベント・バッチ・スクリプト）には行の更新が要ります。ファイルを入れかえるのではなく、**管理者設定 → プラグイン** で zip をアップロードするか、マニュアルのとおりにしてください。
+
 **Changed in 1.7.26 / 1.7.26 で変わったこと**
 
 - 「← 課題一覧」: back in the list, the issue just left now lights up and is brought into view (it waited for the list to be drawn again, which going back does not do). After a reload, in a new tab or from a link, it goes back to the list as it was last left in that project (filters, sort and page, kept in this browser per person and per project), not to page 1 with no filter. On a phone the bar that stays on scroll is shown too, with the ←, the key and the title.
