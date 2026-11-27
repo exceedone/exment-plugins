@@ -76,6 +76,14 @@ $check('key words: in a message', in_array('ISS00001', G::keyWords('touch ISS000
 $check('key words: not inside a word', !in_array('ISS00001', G::keyWords('xISS00001 ISS00001x'), true));
 $check('key words: at most 50', count(G::keyWords(implode(' ', array_map(function ($n) { return 'A' . $n; }, range(1, 80))))) === 50);
 
+// in the order written: what is linked first is the first named
+$h = G::hits('see ISS00034 then fixes PMD-2 and login-bug, x', 'PMD', ['login-bug']);
+$check('hits: in the order written', array_map(function ($x) { return $x['type'] . ':' . $x['k']; }, $h) === ['word:ISS00034', 'key:PMD-2', 'word:PMD-2', 'alias:login-bug'], $h);
+$neg = "not fixes PMD-1, doesn't fix PMD-2, never closes PMD-3, fixes PMD-4";
+$check('close words: not / n\'t / never', G::closeWords($neg) === ['PMD-4'], G::closeWords($neg));
+$many = implode(' ', array_map(function ($n) { return 'fixes ISS000' . $n; }, range(34, 58)));
+$check('close words: the first 20 written', G::closeWords($many)[0] === 'ISS00034' && count(G::closeWords($many)) === 20);
+
 // branch names
 $check('branch: key and words', G::branchName('EXMENT_AI-439', 'Login fails on Safari') === 'EXMENT_AI-439-login-fails-on-safari');
 $check('branch: Japanese only: the key', G::branchName('EXMENT_AI-439', 'ログインできない') === 'EXMENT_AI-439');

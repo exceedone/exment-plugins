@@ -212,6 +212,47 @@ class PortalGitParse
      *
      * @return array<int, string>
      */
+    /**
+     * Everything in a text that may name an issue, in the order it is written (the first 20 issues
+     * found are the ones linked, the same way for linking and for closing): the project's keys
+     * ("key"), the aliases ("alias") and the words that may be an issue's own key ("word").
+     *
+     * @param array<int, string> $aliases
+     * @return array<int, array{k: string, type: string, pos: int}>
+     */
+    public static function hits(string $text, string $projectKey, array $aliases = []): array
+    {
+        $out = [];
+        $add = function (string $k, string $type, int $pos) use (&$out) {
+            $id = $type . ':' . $k;
+            if (!isset($out[$id]) || $out[$id]['pos'] > $pos) {
+                $out[$id] = ['k' => $k, 'type' => $type, 'pos' => $pos];
+            }
+        };
+        if ($projectKey !== '' && preg_match_all('/(?<![A-Za-z0-9_])' . preg_quote($projectKey, '/') . '-(\d{1,10})(?![A-Za-z0-9_])/i', $text, $m, PREG_OFFSET_CAPTURE)) {
+            foreach ($m[1] as $i => $n) {
+                $add(strtoupper($projectKey) . '-' . intval($n[0]), 'key', intval($m[0][$i][1]));
+            }
+        }
+        foreach ($aliases as $a) {
+            $a = trim(strval($a));
+            if ($a !== '' && preg_match('/(?<![A-Za-z0-9_\-])' . preg_quote($a, '/') . '(?![A-Za-z0-9_\-])/i', $text, $m, PREG_OFFSET_CAPTURE)) {
+                $add(strtolower($a), 'alias', intval($m[0][1]));
+            }
+        }
+        if (preg_match_all('/(?<![A-Za-z0-9_])([A-Za-z][A-Za-z0-9_]{0,40}-?\d{1,12})(?![A-Za-z0-9_])/', $text, $m, PREG_OFFSET_CAPTURE)) {
+            foreach ($m[1] as $w) {
+                $add($w[0], 'word', intval($w[1]));
+            }
+        }
+        $out = array_values($out);
+        usort($out, function ($x, $y) {
+            return $x['pos'] <=> $y['pos'] ?: strcmp($x['type'], $y['type']);
+        });
+
+        return array_slice($out, 0, 100);
+    }
+
     public static function keyWords(string $text): array
     {
         $out = [];
@@ -236,9 +277,15 @@ class PortalGitParse
     public static function closeWords(string $text): array
     {
         $out = [];
-        if (preg_match_all('/\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\b[\s:]+([A-Za-z0-9][A-Za-z0-9._~\-]{0,59})/i', $text, $m)) {
-            foreach ($m[1] as $w) {
-                $w = rtrim($w, '.~-_');
+        if (preg_match_all('/\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\b[\s:]+([A-Za-z0-9][A-Za-z0-9._~\-]{0,59})/i', $text, $m, PREG_OFFSET_CAPTURE)) {
+            foreach ($m[1] as $i => $hit) {
+                // "not fixes KEY", "doesn't fix KEY", "never closes KEY", "no fix for": not a close
+                $at = intval($m[0][$i][1]);
+                $before = substr($text, max(0, $at - 16), min(16, $at));
+                if (preg_match('/(?:\bnot|n\'t|\bnever|\bno|\bwithout)\s+$/i', $before)) {
+                    continue;
+                }
+                $w = rtrim($hit[0], '.~-_');
                 if ($w !== '') {
                     $out[$w] = true;
                 }

@@ -207,6 +207,11 @@ class PortalGitHooks
             return response()->json(['ok' => false], 403);
         }
         try {
+            // outside the admin middleware: Exment's names of the tables (the history, the
+            // comments) are not set yet; without them a save is kept under the bare class name
+            if (class_exists(\Exceedone\Exment\Middleware\Morph::class)) {
+                \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            }
             $n = static::store($hook, PortalGitParse::items(strval($hook->provider), $event, $payload));
         } catch (\Throwable $e) {
             Log::warning('pm_portal git hook ' . $hook->id . ': ' . $e->getMessage());
@@ -238,33 +243,45 @@ class PortalGitHooks
         $keyCol = strval(array_get($def, 'issue.key', 'issue_key'));
         $aliases = static::aliasesOf(intval($project->id), $projects->table_name, $issues);
         $n = 0;
+        // the issues a text names, in the order written, at most 20 (linking and closing alike)
         $resolve = function (string $text) use ($projectKey, $aliases, $issues, $projects, $project, $keyCol): array {
+            $hits = PortalGitParse::hits($text, $projectKey, array_keys($aliases));
+            $words = [];
+            foreach ($hits as $h) {
+                if ($h['type'] === 'word' && count($words) < 50) {
+                    $words[] = $h['k'];
+                }
+            }
+            // the issue's own key (the key column: what the screen shows and the branch name copies)
+            $byWord = [];
+            if (!empty($words)) {
+                $rows = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
+                    ->where('parent_type', $projects->table_name)->where('parent_id', $project->id)
+                    ->whereIn('value->' . $keyCol, $words)->limit(100)->get(['id', 'value']);
+                foreach ($rows as $row) {
+                    $byWord[strval(array_get($row->value, $keyCol))] = intval($row->id);
+                }
+            }
             $ids = [];
-            foreach (PortalGitParse::keys($text, $projectKey, array_keys($aliases)) as $k) {
-                if (str_starts_with($k, '@')) {
-                    $id = $aliases[substr($k, 1)] ?? null;
+            foreach ($hits as $h) {
+                if (count($ids) >= PortalGitParse::MAX_ISSUES) {
+                    break;
+                }
+                $id = null;
+                if ($h['type'] === 'alias') {
+                    $id = $aliases[$h['k']] ?? null;
+                } elseif ($h['type'] === 'word') {
+                    $id = $byWord[$h['k']] ?? null;
                 } else {
                     // the key on screen is "<PROJECT KEY>-<the issue's id>"; an issue moved here
                     // from another project is found by its old key too
-                    $id = intval(substr($k, strrpos($k, '-') + 1));
+                    $k = $h['k'];
                     $old = PortalIssueAliases::exists() ? PortalIssueAliases::issueOf($k) : null;
-                    $id = static::ofProject($issues, $projects->table_name, intval($project->id), $id)
+                    $id = static::ofProject($issues, $projects->table_name, intval($project->id), intval(substr($k, strrpos($k, '-') + 1)))
                         ?? ($old !== null ? static::ofProject($issues, $projects->table_name, intval($project->id), $old) : null);
                 }
                 if ($id !== null) {
                     $ids[$id] = true;
-                }
-            }
-            // the issue's own key (the key column: what the screen shows and the branch name copies)
-            $words = PortalGitParse::keyWords($text);
-            if (!empty($words) && count($ids) < PortalGitParse::MAX_ISSUES) {
-                $rows = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
-                    ->where('parent_type', $projects->table_name)->where('parent_id', $project->id)
-                    ->whereIn('value->' . $keyCol, $words)->limit(PortalGitParse::MAX_ISSUES)->pluck('id');
-                foreach ($rows as $rid) {
-                    if (count($ids) < PortalGitParse::MAX_ISSUES) {
-                        $ids[intval($rid)] = true;
-                    }
                 }
             }
 
@@ -318,6 +335,10 @@ class PortalGitHooks
                 if (boolval(array_get($r->value, $doneCol))) {
                     $doneIds[] = strval($r->id);
                 }
+            }
+            // an issue table with a workflow: its steps are the way to done, never skipped here
+            if (class_exists(\Exceedone\Exment\Model\Workflow::class) && !empty(\Exceedone\Exment\Model\Workflow::getWorkflowByTable($issues))) {
+                return;
             }
             $issue = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($issueId);
             if (!isset($issue) || empty($doneIds)) {
