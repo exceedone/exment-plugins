@@ -83,7 +83,7 @@ class GuestCall
             }
             $scheme = $m[1];
             $host = strtolower(trim($m[2], '[]'));
-            if ($host === '' || in_array($host, $site, true)) {
+            if ($host === '' || in_array($host, $site, true) || static::isLocalHost($host)) {
                 continue;
             }
             $tls = str_ends_with($scheme, 's');
@@ -96,6 +96,24 @@ class GuestCall
         }
 
         return array_values($out);
+    }
+
+    /**
+     * A server that is not outside: this machine (localhost) or an address of a private, loopback
+     * or link-local network (10/8, 172.16/12, 192.168/16, 127/8, 169.254/16, ::1, fc00::/7,
+     * fe80::/10). A browser reaching it does not leave the company's network.
+     */
+    public static function isLocalHost(string $host): bool
+    {
+        $host = strtolower(trim($host, '[] '));
+        if ($host === 'localhost' || str_ends_with($host, '.localhost')) {
+            return true;
+        }
+        if (filter_var($host, FILTER_VALIDATE_IP) === false) {
+            return false;
+        }
+
+        return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
     }
 
     /**
