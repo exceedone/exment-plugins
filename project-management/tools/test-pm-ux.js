@@ -588,7 +588,7 @@ test('BACK-2: the back button is filled with the accent, darker on hover, a circ
     assert.ok(/\.pmportal \.pp-back,\.pmportal \.bl-btn-sub\.pp-back\{background:var\(--bl-accent\);border:1px solid var\(--bl-accent\);color:var\(--bl-on-accent\);/.test(style));
     assert.ok(/\.pp-back:hover,\.pmportal \.bl-btn-sub\.pp-back:hover\{background:var\(--bl-accent-d\)/.test(style));
     assert.ok(/\.pp-back:focus-visible,\.pmportal \.bl-btn-sub\.pp-back:focus-visible\{outline:2px solid var\(--bl-accent-d\)/.test(style), 'a focus ring');
-    assert.ok(/\.bl-btn-sub\.pp-back\{width:32px;height:32px;min-height:32px;padding:0;justify-content:center;border-radius:50%;\}/.test(style), 'a filled circle on a phone');
+    assert.ok(/\.bl-btn-sub\.pp-back\{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:50%;\}/.test(style), 'a filled circle on a phone');
     assert.ok(/--bl-on-accent:var\(--exm-ui-on-accent,#fff\)/.test(style));
     assert.ok(/backButton\(''\) \+ crumbs\(i\)/.test(detail), 'left of the trail');
 });

@@ -2124,7 +2124,7 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-back .fa{color:inherit;}
 .pmportal #pp-issue-rows tr.pp-back-flash > td{background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));transition:background .6s;}
 @media (max-width:760px){
-  .pmportal .pp-back,.pmportal .bl-btn-sub.pp-back{width:32px;height:32px;min-height:32px;padding:0;justify-content:center;border-radius:50%;}
+  .pmportal .pp-back,.pmportal .bl-btn-sub.pp-back{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:50%;}
   .pmportal .pp-back .tx{display:none;}
 }
 /* The Wiki on a phone: the list of pages above the page (it was 260px beside a squeezed page),
