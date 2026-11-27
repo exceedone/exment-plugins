@@ -24,6 +24,7 @@ $check('ice: empty', C::iceServers('') === [] && C::iceServers(null) === []);
 $check('ice: at most 5', count(C::iceServers(implode("\n", array_fill(0, 8, 'stun:a.invalid:1')))) === 5);
 
 $check('the line of a call', sprintf(C::LINE, 12) === '📞 通話 #12 を始めました');
+$check('a call: up to 4 people', C::MAX_PEOPLE === 4);
 $check('signal types', C::TYPES === ['join', 'offer', 'answer', 'ice', 'hangup']);
 
 echo "\n", $bad === 0 ? "all passed ($ok)" : "$bad failed, $ok passed", "\n";

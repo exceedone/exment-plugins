@@ -130,5 +130,5 @@ return [
     'feature_chat' => 'チャット',
     'feature_chat_help' => 'グループと 1 対 1 のルームで話す。@メンション・既読の人数・ファイル（Exment Plugin Groupware）。',
     'feature_call' => '通話',
-    'feature_call_help' => 'チャットの 1 対 1 のルームから、声と画面の共有で通話する（ブラウザーどうしで直接つなぐ。録音はしない）。',
+    'feature_call_help' => 'チャットのルームから、4 人までの声・カメラ・画面の共有で通話する（ブラウザーどうしで直接つなぐ。録音はしない）。',
 ];
