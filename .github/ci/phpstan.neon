@@ -25,6 +25,8 @@ parameters:
             # ExmentPM's test of the chat channels declares a stand-in PortalDefinition
             - ../../project-management/tools/test-pm-channels.php
             - ../../project-management/tools/test-pm-digest.php
+            # Groupware's test of the web mail's client secrets declares stand-ins of Laravel and of the form field
+            - ../../groupware/tools/test-gw-mail-secret.php
             # Groupware's test of the calendar's ICS declares stand-ins of Laravel's facades (DB, Crypt...)
             - ../../groupware/tools/test-gw-calendar-ics.php
             # and its test of the Google and Microsoft calendars (part 6)

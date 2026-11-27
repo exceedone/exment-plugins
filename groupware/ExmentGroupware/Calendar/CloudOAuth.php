@@ -2,6 +2,7 @@
 
 namespace App\Plugins\ExmentGroupware\Calendar;
 
+use App\Plugins\ExmentGroupware\SecretOption;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  *
  * The site's own app: its client ID and secret are the plugin's settings (cal_google_client_id,
  * cal_google_client_secret, cal_ms_client_id, cal_ms_client_secret, cal_ms_tenant), the secrets
- * encrypted by Exment (encpassword). The redirect URI is plugins/<uri>/cal/oauth/callback.
+ * kept encrypted and never shown again (SecretField, SecretOption; a value saved by Exment's
+ * encpassword is read too). The redirect URI is plugins/<uri>/cal/oauth/callback.
  *
  * What a sign-in is for is kept in the session under a random state, with the person who began
  * it; the way back is refused for a state unknown, too old (15 minutes), used once already, or
@@ -62,18 +64,13 @@ class CloudOAuth
         return $this->plugin !== null ? trim(strval($this->plugin->getCustomOption($key))) : '';
     }
 
-    /** A secret of the settings: encrypted by Exment (encpassword); one that cannot be read is none. */
+    /**
+     * A secret of the settings (SecretOption: the plugin's encryption, or a value Exment's
+     * encpassword saved); one that is not encrypted or cannot be read is none.
+     */
     protected function secretOption(string $key): string
     {
-        $v = $this->option($key);
-        if ($v === '') {
-            return '';
-        }
-        try {
-            return trim(strval(Crypt::decrypt($v)));
-        } catch (\Throwable $e) {
-            return '';
-        }
+        return strval(SecretOption::reveal($this->option($key), false));
     }
 
     /** @return array{client_id: string, client_secret: string, authorize: string, token: string, scope: string} */

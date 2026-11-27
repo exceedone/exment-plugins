@@ -408,39 +408,6 @@ namespace Illuminate\Support\Facades {
     }
 }
 
-namespace Exceedone\Exment\Form\Field {
-    // Exment's EncPassword as it is (prepare: empty keeps the original; formatValue: decrypted into the input)
-    class EncPassword
-    {
-        public $value;
-        public $original;
-        protected $updateIfEmpty = false;
-
-        public function fill($v)
-        {
-            $this->value = $v;
-            $this->formatValue();
-        }
-
-        public function prepare($value)
-        {
-            if (!$this->updateIfEmpty && ($value === null || $value === '')) {
-                return $this->original;
-            }
-            return \Illuminate\Support\Facades\Crypt::encrypt($value);
-        }
-
-        protected function formatValue()
-        {
-            try {
-                $this->value = \Illuminate\Support\Facades\Crypt::decrypt($this->value);
-            } catch (\Throwable $e) {
-                $this->value = null;
-            }
-        }
-    }
-}
-
 namespace Exceedone\Exment\Enums {
     class SystemTableName
     {
@@ -571,11 +538,12 @@ namespace {
     }
 
     $base = __DIR__ . '/../ExmentGroupware';
-    foreach (['Mail/MailException', 'Mail/HostGuard', 'FeatureGate', 'Calendar/Rrule', 'Calendar/Occurrences', 'Calendar/Visibility', 'Calendar/Resources', 'Calendar/Events', 'Calendar/Ics', 'Calendar/IcsFetchError', 'Calendar/IcsFetch', 'Calendar/Links', 'Calendar/Feeds',
+    foreach (['Mail/MailException', 'Mail/HostGuard', 'SecretOption', 'FeatureGate', 'Calendar/Rrule', 'Calendar/Occurrences', 'Calendar/Visibility', 'Calendar/Resources', 'Calendar/Events', 'Calendar/Ics', 'Calendar/IcsFetchError', 'Calendar/IcsFetch', 'Calendar/Links', 'Calendar/Feeds',
         'Calendar/CloudFetch', 'Calendar/CloudOAuth', 'Calendar/CloudSync'] as $f) {
         require $base . '/' . $f . '.php';
     }
 
+    use App\Plugins\ExmentGroupware\SecretOption;
     use App\Plugins\ExmentGroupware\Calendar\CloudFetch;
     use App\Plugins\ExmentGroupware\Calendar\CloudOAuth;
     use App\Plugins\ExmentGroupware\Calendar\CloudSync;
@@ -638,8 +606,8 @@ namespace {
     $fetch = new CloudFetch($client, $resolve, $clock);
     $plugin = new GwFakePlugin();
     $plugin->o = [
-        'cal_google_client_id' => 'gid.apps.example.invalid', 'cal_google_client_secret' => Crypt::encrypt('g-client-secret'),
-        'cal_ms_client_id' => 'ms-client-id', 'cal_ms_client_secret' => Crypt::encrypt('ms-client-secret'),
+        'cal_google_client_id' => 'gid.apps.example.invalid', 'cal_google_client_secret' => SecretOption::seal('g-client-secret'),
+        'cal_ms_client_id' => 'ms-client-id', 'cal_ms_client_secret' => SecretOption::seal('ms-client-secret'),
     ];
     $oauth = new CloudOAuth($plugin, $fetch);
     $cloud = new CloudSync($oauth);
@@ -1201,15 +1169,10 @@ namespace {
     gw_check('not allowed: after 30 days the tokens forgotten, the link kept (sign in again)', empty($l->secret_enc) && $l->last_error === 'not_allowed' && Links::list(42)[0]['reconnect'] === true);
     $GLOBALS['gw_now'] = '2026-12-01 00:00:00';
 
-    // the client secrets of the settings never written back into the page
-    require $base . '/SettingSecretField.php';
-    $sf = new \App\Plugins\ExmentGroupware\SettingSecretField();
-    $sf->original = Crypt::encrypt('g-client-secret');
-    $sf->fill($sf->original);
-    gw_check('settings: the secret\'s input empty (not the decrypted secret)', $sf->value === '');
-    gw_check('settings: saved empty, the secret kept; a new one saved encrypted', $sf->prepare('') === $sf->original && Crypt::decrypt($sf->prepare('new-secret')) === 'new-secret');
+    // the client secrets of the settings: the same field as the web mail's (never shown again, an
+    // empty input keeps them, 「値を消す」 removes them; tested in test-gw-mail-secret.php)
     $ps = file_get_contents($base . '/PluginSetting.php');
-    gw_check('settings: both calendar secrets use that field', substr_count($ps, "gwSettingSecret('cal_") === 2 && strpos($ps, "encpassword('cal_") === false);
+    gw_check('settings: both calendar secrets use SecretField', substr_count($ps, "new SecretField('cal_") === 2 && strpos($ps, "encpassword('cal_") === false && strpos($ps, "password('cal_") === false);
 
     gw_check('logs: never a token or a secret', !preg_match('/ya29|refresh-|client-secret|ms-access/', implode("\n", \Illuminate\Support\Facades\Log::$lines)), \Illuminate\Support\Facades\Log::$lines);
 

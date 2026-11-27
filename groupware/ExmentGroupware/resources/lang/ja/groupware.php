@@ -6,6 +6,16 @@ return [
     'feature_office' => 'Office（ibisOffice）',
     'feature_calendar' => 'カレンダー',
     'feature_calendar_help' => '共有のカレンダー：自分・ほかの人・部署の予定を日・週・月・リストで見る、くりかえし、参加者と返事、公開の範囲（Exment Plugin Groupware）。',
+    // a secret of the plugin's settings (SecretField): never shown again
+    'secret' => [
+        'set' => '設定済み',
+        'not_set' => '未設定',
+        'help_set' => '保存した値は表示しません。変えるときだけ新しい値を入れます。空のまま保存すると今の値のままです。',
+        'help_not_set' => '値を入れて保存します。保存した値は暗号化して保存し、あとで表示しません。',
+        'placeholder_set' => '設定済み（変えるときだけ入力）',
+        'placeholder_not_set' => '',
+        'clear' => '値を消す',
+    ],
     // the calendar (ISS02947)
     'cal' => [
         'title' => 'カレンダー',
