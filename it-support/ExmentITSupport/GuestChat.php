@@ -274,7 +274,12 @@ class GuestChat
         // the client's IP as Laravel resolves it with the site's trusted proxies (never a raw
         // X-Forwarded-For), and a ceiling for the box whatever the IPs
         [$perIp, $perBox] = static::limitsOf($box->value);
-        if (static::limited('its_chat_box:' . $box->id, $perBox, 3600) || static::limited('its_chat_start:' . sha1($ip), $perIp, 3600)) {
+        // the IP first, every try counted (one person's tries are theirs); the box only counts the
+        // chats that start, so someone refused cannot use up the box for everyone
+        if (static::limited('its_chat_start:' . sha1($ip), $perIp, 3600)) {
+            abort(429);
+        }
+        if (RateLimiter::tooManyAttempts('its_chat_box:' . $box->id, $perBox)) {
             abort(429);
         }
         // the site's reCAPTCHA, when it has one
@@ -302,6 +307,7 @@ class GuestChat
             'requester_name' => $name,
             'requester_email' => $email,
         ], ['body' => $body]);
+        RateLimiter::hit('its_chat_box:' . $box->id, 3600);
         $token = bin2hex(random_bytes(32));
         DB::table('its_tokens')->insert([
             'kind' => static::KIND,
