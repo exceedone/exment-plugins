@@ -92,11 +92,17 @@ class CalendarPage
                     'event' => $this->url('api', 'event'),
                     'holidays' => $this->url('api', 'holidays'),
                     'people' => $this->url('api', 'people'),
+                    'resources' => $this->url('api', 'resources'),
+                    'resource' => $this->url('api', 'resource'),
+                    'resource_events' => $this->url('api', 'resources', 'events'),
                     // the video call of an event (ISS02946), while that feature is on
                     'call' => FeatureGate::allowed('exment_groupware.call') ? $this->plugin->getFullUrl('chat', 'call', 'new') : null,
                 ],
                 'lang' => trans('exment_exment_groupware::groupware.cal'),
                 'reminders' => Reminders::ready() ? Reminders::CHOICES : [],
+                // the rooms and equipment (part 3), and whether the viewer keeps their list
+                'resources' => Resources::all(true),
+                'resources_admin' => Resources::ready() && $this->isAdmin(),
             ],
         ]);
         foreach (['ExmentAdminCore\Admin\Layout\Content', 'Encore\Admin\Layout\Content'] as $class) {
@@ -139,14 +145,92 @@ class CalendarPage
         return $e === null ? $this->fail(404, 'not_found') : $this->ok(['event' => $e]);
     }
 
+    /**
+     * The rooms of a write, checked, and their clashes (part 3): null when it may go on, else the
+     * answer (422 a room not on the list; 409 a clash to confirm; 422 a clash the site refuses).
+     *
+     * @param array<string, mixed> $f
+     * @return \Symfony\Component\HttpFoundation\Response|null
+     */
+    protected function roomsRefused(Request $request, ?int $id, array &$f)
+    {
+        if (!Resources::ready() || $f['resources'] === null) {
+            $f['resources'] = null;
+            return null;
+        }
+        $rooms = Resources::checked($f['resources'], $id !== null ? Resources::of($id) : []);
+        if ($rooms === null) {
+            return $this->fail(422, 'resources');
+        }
+        $f['resources'] = $rooms;
+        return $this->clashAnswer($request, Resources::clashes($id, $f, $rooms));
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $clashes
+     * @return \Symfony\Component\HttpFoundation\Response|null
+     */
+    protected function clashAnswer(Request $request, array $clashes)
+    {
+        if (empty($clashes)) {
+            return null;
+        }
+        if (strval($this->plugin->getCustomOption('cal_resource_clash')) === 'block') {
+            return response()->json(['ok' => false, 'message' => $this->t('err_clash_block'), 'clashes' => $clashes], 422);
+        }
+        if (!$request->boolean('ignore_clash')) {
+            return response()->json(['ok' => false, 'clash' => true, 'message' => $this->t('clash_ask'), 'clashes' => $clashes], 409);
+        }
+        return null;
+    }
+
     public function create(Request $request)
     {
         [$f, $why] = Events::fields($request->all(), Events::orgsOf($this->me()));
         if ($f === null) {
             return $this->fail(422, $why);
         }
+        $refused = $this->roomsRefused($request, null, $f);
+        if ($refused !== null) {
+            return $refused;
+        }
         $id = Events::save(null, $f, $this->me());
         return $this->ok(['id' => $id]);
+    }
+
+    /** GET cal/api/resources: the rooms and equipment, and whether the viewer keeps the list. */
+    public function resources()
+    {
+        $admin = $this->isAdmin();
+        return $this->ok(['resources' => Resources::all($admin), 'admin' => $admin]);
+    }
+
+    /** POST cal/api/resource[/{id}]: add or change one (a system administrator). */
+    public function saveResource(Request $request, $id = null)
+    {
+        if (!$this->isAdmin()) {
+            return $this->fail(403, 'not_admin');
+        }
+        $why = Resources::save($id === null ? null : intval($id), $request->all());
+        return $why === null ? $this->ok(['resources' => Resources::all(true)]) : $this->fail(422, $why);
+    }
+
+    /** GET cal/api/resources/events: from, to, ids: the events of the rooms (the rooms side by side). */
+    public function resourceEvents(Request $request)
+    {
+        $from = static::utc($request->query('from'));
+        $to = static::utc($request->query('to'));
+        if ($from === null || $to === null || strcmp($to, $from) <= 0 || (strtotime($to) - strtotime($from)) > Events::MAX_WINDOW_DAYS * 86400) {
+            return $this->fail(422, 'window');
+        }
+        $ids = array_filter(array_map('intval', explode(',', strval($request->query('ids', '')))));
+        return $this->ok(['events' => Events::forResources($from, $to, array_slice($ids, 0, 30), $this->me(), $this->t('busy'))]);
+    }
+
+    protected function isAdmin(): bool
+    {
+        $user = \Exment::user();
+        return isset($user) && $user->hasPermission(\Exceedone\Exment\Enums\Permission::SYSTEM);
     }
 
     public function save(Request $request, $id)
@@ -158,12 +242,25 @@ class CalendarPage
             if ($original === null || $f === null) {
                 return $this->fail(422, $why ?? 'time');
             }
+            // one occurrence moved: its new time against the other bookings of its rooms
+            $rooms = Resources::ready() ? Resources::of($id) : [];
+            if (!empty($rooms)) {
+                $one = ['starts_at' => $f['starts_at'], 'ends_at' => $f['ends_at'], 'all_day' => $f['all_day'], 'tz' => $f['tz'], 'rrule' => null, 'exdates' => null];
+                $refused = $this->clashAnswer($request, Resources::clashes($id, $one, $rooms));
+                if ($refused !== null) {
+                    return $refused;
+                }
+            }
             $ok = Events::override($id, $original, ['starts_at' => $f['starts_at'], 'ends_at' => $f['ends_at'], 'title' => $f['title'], 'location' => $f['location']], $this->me());
             return $ok ? $this->ok(['id' => $id]) : $this->fail(403, 'not_owner');
         }
         [$f, $why] = Events::fields($request->all(), Events::orgsOf($this->me()));
         if ($f === null) {
             return $this->fail(422, $why);
+        }
+        $refused = $this->roomsRefused($request, $id, $f);
+        if ($refused !== null) {
+            return $refused;
         }
         return Events::save($id, $f, $this->me()) === null ? $this->fail(403, 'not_owner') : $this->ok(['id' => $id]);
     }

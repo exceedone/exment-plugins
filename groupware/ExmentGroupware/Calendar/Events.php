@@ -92,6 +92,12 @@ class Events
         foreach (DB::table(static::OVERRIDES)->whereIn('event_id', $ids)->get() as $o) {
             $overrides[intval($o->event_id)][] = (array) $o;
         }
+        $rooms = [];
+        if (Resources::ready()) {
+            foreach (DB::table(Resources::LINKS)->whereIn('event_id', $ids)->get() as $l) {
+                $rooms[intval($l->event_id)][] = intval($l->resource_id);
+            }
+        }
         $viewerOrgs = static::orgsOf($viewer);
         $out = [];
         foreach ($rows as $row) {
@@ -114,11 +120,67 @@ class Events
                     'repeat' => !empty($e['rrule']) || !empty($e['rdates']),
                     'changed' => $occ['changed'],
                     'visibility' => strval($e['visibility']),
+                    'resources' => $rooms[$eid] ?? [],
                     'editable' => $viewer > 0 && $viewer === intval($e['owner_user_id']) && strval($e['source']) === 'local',
                 ];
                 $out[] = Visibility::shown($item, $level, $busyLabel);
             }
         }
+        usort($out, function ($a, $b) {
+            return strcmp($a['start'], $b['start']);
+        });
+        return $out;
+    }
+
+    /**
+     * The occurrences of the events that book some rooms, as the viewer may see them; each says
+     * which of the rooms it has (a busy one too: the room is shown taken, not by what).
+     *
+     * @param array<int, int> $rooms
+     * @return array<int, array<string, mixed>>
+     */
+    public static function forResources(string $from, string $to, array $rooms, int $viewer, string $busyLabel): array
+    {
+        if (!Resources::ready() || empty($rooms)) {
+            return [];
+        }
+        $links = [];
+        foreach (DB::table(Resources::LINKS)->whereIn('resource_id', $rooms)->get() as $l) {
+            $links[intval($l->event_id)][] = intval($l->resource_id);
+        }
+        if (empty($links)) {
+            return [];
+        }
+        $owners = DB::table(static::EVENTS)->whereNull('deleted_at')->whereIn('id', array_keys($links))->pluck('owner_user_id')->all();
+        $out = [];
+        foreach (static::window($from, $to, array_map('intval', $owners), $viewer, $busyLabel) as $item) {
+            $eid = intval($item['id'] ?? 0);
+            if ($eid > 0 && isset($links[$eid])) {
+                $item['resources'] = $links[$eid];
+                $out[] = $item;
+            }
+        }
+        // the busy ones (no id): matched by their time and owner among the events of the rooms
+        $busy = [];
+        foreach (DB::table(static::EVENTS)->whereNull('deleted_at')->whereIn('id', array_keys($links))->get() as $row) {
+            $e = (array) $row;
+            $att = DB::table(static::ATTENDEES)->where('event_id', $e['id'])->pluck('user_id')->map(function ($v) {
+                return intval($v);
+            })->all();
+            if (Visibility::of($e, $viewer, $att, static::orgsOf($viewer)) === Visibility::FULL) {
+                continue;
+            }
+            $ov = DB::table(static::OVERRIDES)->where('event_id', $e['id'])->get()->map(function ($o) {
+                return (array) $o;
+            })->all();
+            foreach (Occurrences::between($e, $from, $to, $ov) as $occ) {
+                $busy[] = Visibility::shown(['start' => $occ['start'], 'end' => $occ['end'], 'all_day' => boolval($e['all_day']), 'owner' => intval($e['owner_user_id'])], Visibility::BUSY, $busyLabel)
+                    + ['resources' => $links[intval($e['id'])]];
+            }
+        }
+        $out = array_merge(array_values(array_filter($out, function ($i) {
+            return empty($i['busy']);
+        })), $busy);
         usort($out, function ($a, $b) {
             return strcmp($a['start'], $b['start']);
         });
@@ -161,6 +223,7 @@ class Events
             'attendees' => $att,
             'editable' => $viewer === intval($e['owner_user_id']) && strval($e['source']) === 'local',
             'reminder' => static::reminderOf($id),
+            'resources' => Resources::of($id),
         ];
     }
 
@@ -284,6 +347,8 @@ class Events
             'org_id' => $visibility === 'org' ? $org : null,
             'attendees' => $attendees,
             'reminders' => ($reminder === '' || $reminder === null) ? [] : [intval($reminder)],
+            // resources_set: the form has the rooms (none ticked sends no "resources")
+            'resources' => (array_key_exists('resources', $in) || !empty($in['resources_set'])) ? array_values(array_unique(array_filter(array_map('intval', (array) ($in['resources'] ?? []))))) : null,
         ], null];
     }
 
@@ -313,11 +378,12 @@ class Events
     {
         $attendees = $f['attendees'];
         $reminders = $f['reminders'] ?? null;
-        unset($f['attendees'], $f['reminders']);
+        $resources = $f['resources'] ?? null;
+        unset($f['attendees'], $f['reminders'], $f['resources']);
         $users = getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereIn('id', $attendees)->pluck('id')->map(function ($v) {
             return intval($v);
         })->all();
-        return DB::transaction(function () use ($id, $f, $viewer, $users, $reminders) {
+        return DB::transaction(function () use ($id, $f, $viewer, $users, $reminders, $resources) {
             if ($id === null) {
                 $id = intval(DB::table(static::EVENTS)->insertGetId($f + [
                     'owner_user_id' => $viewer, 'source' => 'local', 'created_user_id' => $viewer, 'updated_user_id' => $viewer,
@@ -339,6 +405,9 @@ class Events
                 foreach ($reminders as $m) {
                     DB::table(Reminders::TABLE)->insert(['event_id' => $id, 'minutes_before' => $m, 'created_at' => now(), 'updated_at' => now()]);
                 }
+            }
+            if ($resources !== null && Resources::ready()) {
+                Resources::set($id, $resources);
             }
             Log::info('gw_calendar: event ' . $id . ' saved by user ' . $viewer);
             return $id;
