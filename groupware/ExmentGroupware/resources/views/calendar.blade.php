@@ -920,8 +920,17 @@ function showModal(nodes) {
     clear(dlg);
     nodes.forEach(function (n) { if (n) { dlg.appendChild(n); } });
     m.hidden = false;
+    modalBelowHeader();
     var f = dlg.querySelector('[data-focus]') || dlg.querySelector('input,select,textarea,button');
     if (f) { f.focus(); }
+}
+function modalBelowHeader() {
+    var m = $('gwcal-modal');
+    if (!m || m.hidden) { return; }
+    // the admin header is drawn above this layer: start the dialog below what shows of it
+    var hd = document.querySelector('header.main-header');
+    var under = hd ? Math.max(0, Math.round(hd.getBoundingClientRect().bottom)) : 0;
+    m.style.paddingTop = under > 0 ? (under + 8) + 'px' : '';
 }
 function closeModal() {
     $('gwcal-modal').hidden = true;
@@ -1412,6 +1421,9 @@ function manageRooms(edit) {
 }
 
 // ---- keys, clicks, the clock ---------------------------------------------------------
+// the header's height changes with the width: keep an open dialog below it
+listen(window, 'resize', function () { if (document.body.contains(root)) { modalBelowHeader(); } });
+listen(window, 'orientationchange', function () { if (document.body.contains(root)) { modalBelowHeader(); } });
 listen(document, 'keydown', function (e) {
     if (!document.body.contains(root)) { return; }
     if (e.key === 'Escape') {

@@ -349,6 +349,22 @@ test('phones: the rooms dialog\'s day arrows are on top, on one row, with labels
         assert.ok(/'prev_day' => '[^']+'/.test(lang) && /'next_day' => '[^']+'/.test(lang), l + ' has no prev_day / next_day');
     });
 });
+test('a dialog starts below the admin header (drawn above it), again on resize and orientationchange', () => {
+    const run = (bottom, hidden) => {
+        const m = { hidden: !!hidden, style: { paddingTop: 'x' } };
+        const doc = { querySelector: (s) => (s === 'header.main-header' && bottom != null ? { getBoundingClientRect: () => ({ bottom }) } : null) };
+        new Function('$', 'document', functionSource(source, 'modalBelowHeader') + '\nmodalBelowHeader();')(() => m, doc);
+        return m.style.paddingTop;
+    };
+    assert.strictEqual(run(100), '108px');       // the phone header, 100px tall
+    assert.strictEqual(run(50.4), '58px');
+    assert.strictEqual(run(null), '');           // no header: the stylesheet's padding
+    assert.strictEqual(run(-40), '');            // scrolled out of view
+    assert.strictEqual(run(100, true), 'x');     // a closed dialog is left alone
+    assert.ok(/m\.hidden = false;\s*modalBelowHeader\(\);/.test(functionSource(source, 'showModal')), 'showModal does not place the dialog');
+    assert.ok(/listen\(window, 'resize', function \(\) \{[^}]*modalBelowHeader\(\)/.test(source), 'not again on resize');
+    assert.ok(/listen\(window, 'orientationchange', function \(\) \{[^}]*modalBelowHeader\(\)/.test(source), 'not again on orientationchange');
+});
 test('wide screens do not change: the buttons and the layer select stay 32px', () => {
     assert.strictEqual(topLevel['.gwcal .gb'].height, '32px');
     assert.strictEqual(topLevel['.gwcal .gb.sq'].width, '32px');
