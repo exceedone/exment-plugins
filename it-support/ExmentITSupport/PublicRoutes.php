@@ -62,6 +62,17 @@ class PublicRoutes
             Route::get('t/{token}/file/{uuid}', $c . '@file');
         });
 
+        // The chat window on a website (ISS02941): its script and its page, and its API with
+        // no session and no CSRF (the window is in another site's page), a guest token instead.
+        $g = GuestChatController::class;
+        Route::group(['prefix' => static::PREFIX . '/chat'], function () use ($g) {
+            Route::get('{key}.js', $g . '@script')->where('key', '[0-9a-f]{24}');
+            Route::get('{key}', $g . '@window')->where('key', '[0-9a-f]{24}');
+            Route::post('api/start', $g . '@start');
+            Route::get('api/lines', $g . '@lines');
+            Route::post('api/post', $g . '@post');
+        });
+
         // Machine to machine: no session, no CSRF, a key instead.
         Route::group(['prefix' => static::PREFIX . '/intake'], function () use ($c) {
             Route::post('alert', $c . '@intakeAlert');

@@ -37,6 +37,17 @@
             </form>
             @endif
         </div>
+        @if(!empty($b['chat']))
+        <div style="margin-top:8px">
+            <label class="its-sub" style="display:block">Web サイトのチャットの窓（サイトに貼るコード）
+                <span class="its-row" style="gap:6px;align-items:stretch">
+                    <textarea readonly rows="1" style="flex:1;font-family:monospace;font-size:12px" id="c-{{ $b['id'] }}">{{ $b['chat']['script'] }}</textarea>
+                    <button type="button" class="its-btn small" data-copy="c-{{ $b['id'] }}"><i class="fa fa-clipboard" aria-hidden="true"></i>コピー</button>
+                </span>
+            </label>
+            <div class="its-sub">出せるサイト：{{ $b['chat']['sites'] === '*' ? 'どこでも（受付箱のテーブルの「チャットの窓を出してよいサイト」で決められます）' : $b['chat']['sites'] }}。送られた話はこの受付箱のチケット（受付の方法：Web サイトのチャット）になります。</div>
+        </div>
+        @endif
         @if($formsOn && !empty($b['tags']))
         <div class="its-tags" style="margin-top:8px;display:grid;gap:6px">
             @foreach(['script' => 'サイトに貼るコード（おすすめ）', 'iframe' => 'iframe で貼るとき', 'url' => 'フォームの URL（リンクで開くとき）'] as $k => $label)

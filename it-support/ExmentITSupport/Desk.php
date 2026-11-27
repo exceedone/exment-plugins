@@ -184,6 +184,8 @@ class Desk
         if (!Its::isInstalled() || !static::isAgent()) {
             return response()->json(['error' => 'forbidden'], 403);
         }
+        // an agent is on the desk: the website chat says someone will answer (ISS02941)
+        GuestChat::markAgentSeen();
         $queue = isset(static::QUEUES[$request->get('queue')]) ? strval($request->get('queue')) : 'todo';
         // IT support or the inquiries (ISS02941): the list and the counts
         $this->group = isset(Queue::GROUPS[$request->get('group')]) ? strval($request->get('group')) : '';
@@ -898,9 +900,16 @@ class Desk
             return $r;
         }
         $formsOn = WebForms::available() && Feature::on(Feature::WEB_FORM);
+        $chatOn = GuestChat::enabled();
+        $rows = $chatOn ? Its::table(Its::T_CATEGORY)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->get()->keyBy('id') : collect();
         $boxes = [];
         foreach (Tickets::boxes() as $id => $box) {
             $box['tags'] = $formsOn ? WebForms::tagsOf(intval($id)) : null;
+            // the chat window's tag (the key is made the first time)
+            $box['chat'] = $chatOn && isset($rows[$id]) ? [
+                'script' => '<script src="' . PublicRoutes::url('chat', GuestChat::keyOf($rows[$id]) . '.js') . '" async></script>',
+                'sites' => GuestChat::frameAncestors(array_get($rows[$id]->value, 'chat_sites')),
+            ] : null;
             $boxes[] = $box;
         }
 

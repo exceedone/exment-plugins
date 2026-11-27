@@ -320,7 +320,7 @@ function u(name, id) { return B.url[name].replace('__ID__', id); }
 function hue(s) { var h = 0; s = String(s || '?'); for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; } return PALETTE[h % PALETTE.length]; }
 function initials(s) { s = String(s || '?').trim(); if (!s) { return '?'; } if (/^[\x00-\x7F]/.test(s)) { var p = s.split(/[\s@._-]+/).filter(Boolean); return ((p[0] || '?')[0] + ((p[1] || '')[0] || '')).toUpperCase(); } return s.replace(/\s/g, '').slice(0, 2); }
 function av(name, cls) { return '<span class="d-av ' + (cls || '') + '" style="background:' + hue(name) + '">' + esc(initials(name)) + '</span>'; }
-var CHICON = { monitor: ['fa-bell', '#e5484d', '監視'], asset: ['fa-desktop', '#0ea5a4', 'IT 資産'] };
+var CHICON = { monitor: ['fa-bell', '#e5484d', '監視'], asset: ['fa-desktop', '#0ea5a4', 'IT 資産'], chat: ['fa-comments', '#2563c9', 'チャット'] };
 function avFor(channel, name, cls) { var c = CHICON[channel]; return c ? '<span class="d-av ' + (cls || '') + '" style="background:' + c[1] + '"><i class="fa ' + c[0] + '"></i></span>' : av(name, cls); }
 function rel(iso) {
     if (!iso) { return ''; }
