@@ -2544,6 +2544,7 @@ window.PmPortalBoot = function () {
         renderPager(total, from, shown, pages, matched.length);
         syncBulkBar();
         hintList(matched.length, savedList().length);
+        backFlash();
         ppListFit();
     }
 
@@ -3427,7 +3428,7 @@ window.PmPortalBoot = function () {
         });
         // The way back is the trail above the issue (S19): where it sits, each
         // step a link, with no big button of its own.
-        var head = crumbs(i) + '<div class="bl-dhead">' + tag(i.ty) +
+        var head = '<div class="pp-backrow">' + backButton('') + crumbs(i) + '</div>' + '<div class="bl-dhead">' + tag(i.ty) +
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' + ikCopyButton(i) +
             // ISS00248: the alias, and a way to set it
             (local.al ? '<span class="pp-al-d" title="' + esc(L.alias) + '">' + esc(local.al) + '</span>' : '') +
@@ -4929,7 +4930,7 @@ window.PmPortalBoot = function () {
         var bar = document.getElementById('pp-dbar');
         if (!bar) { return; }
         bar.dataset.id = String(i.id);
-        bar.innerHTML = '<a class="pp-dbar-back" href="#issues" title="' + esc(L.back) + '"><i class="fa fa-angle-left"></i> ' + esc(L.tab_issues) + '</a>' +
+        bar.innerHTML = backButton('pp-dbar-back') +
             '<span class="bl-key">' + esc(i.key) + '</span>' +
             '<span class="t" role="button" tabindex="0" title="' + esc(i.subject) + '">' + esc(i.subject) + '</span>' + pill(i.st) +
             '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>';
@@ -6378,7 +6379,12 @@ window.PmPortalBoot = function () {
         if (!page) { page = wiki.pages[0]; }
         setTitle(page.title + ' | ' + L.tab_wiki);
         var files = page.files || [];
-        document.getElementById('pp-whead').innerHTML = '<span>' + esc(page.title) + '</span>' +
+        // BACK-1: 「← Wiki 一覧」 on a phone, where the list of pages sits above the page
+        var wtip = String(L.back_tip || '%s').replace('%s', L.back_wiki);
+        document.getElementById('pp-whead').innerHTML =
+            '<a class="bl-btn-sub pp-back pp-wback" href="javascript:void(0);" title="' + esc(wtip) + '" aria-label="' + esc(wtip) + '">' +
+            '<i class="fa fa-arrow-left"></i><span class="tx"> ' + esc(L.back_wiki) + '</span></a>' +
+            '<span>' + esc(page.title) + '</span>' +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             '<span class="bl-btn-sub">' + starBtn('star', D.wiki_table, page.id, page.star, page.my_star) + '</span>' +
             // Offered only to whoever may read the page's history: Exment's
@@ -13033,6 +13039,10 @@ window.PmPortalBoot = function () {
             refreshData(true, function (ok) { if (!ok) { location.reload(); } });
         }
 
+        // BACK-1: the screen an issue was opened from, for its 「←」 button
+        // (another issue keeps the one it had: ‹ › and links between issues).
+        if (scr === 'issue' && currentScreen !== 'issue') { BACK.from = backFrom(currentScreen); }
+        if (scr === 'issues' && currentScreen === 'issue' && currentIssue !== null) { BACK.flash = String(currentIssue); }
         // Park where this screen was before leaving it.
         if (scrollKey !== null) { SCROLL_POS[scrollKey] = window.scrollY; }
         root.querySelectorAll('.bl-screen').forEach(function (el) { el.classList.remove('on'); });
@@ -13084,6 +13094,36 @@ window.PmPortalBoot = function () {
     // equally inert, so nothing regressed either way.
     var SCROLL_POS = {};
     var scrollKey = null;
+    // BACK-1: where an issue's 「←」 goes back to, and the issue to light up
+    // in the list on the way back.
+    var BACK = { from: 'issues', flash: null };
+    // A screen that has a list or a view of the issues to go back to; any
+    // other (an issue opened from a link, the search, another page) goes back
+    // to the list.
+    function backFrom(prev) {
+        return ['issues', 'board', 'gantt', 'home'].indexOf(String(prev)) >= 0 ? String(prev) : 'issues';
+    }
+    function backTarget(from) {
+        var to = backFrom(from);
+        var names = { issues: L.back_list, board: L.back_board, gantt: L.back_gantt, home: L.back_home };
+        return { hash: '#' + to, label: names[to] || L.back_list, tip: String(L.back_tip || '%s').replace('%s', names[to] || L.back_list) };
+    }
+    function backButton(cls) {
+        var t = backTarget(BACK.from);
+        return '<a class="bl-btn-sub pp-back ' + (cls || '') + '" href="' + esc(t.hash) + '" title="' + esc(t.tip) + '" aria-label="' + esc(t.tip) + '">' +
+            '<i class="fa fa-arrow-left"></i><span class="tx"> ' + esc(t.label) + '</span></a>';
+    }
+    // Back in the list: the issue just left, lit up for a moment and in view.
+    function backFlash() {
+        if (!BACK.flash) { return; }
+        var id = BACK.flash;
+        BACK.flash = null;
+        var row = document.querySelector('#pp-issue-rows tr[data-issue="' + String(id).replace(/[^0-9]/g, '') + '"]');
+        if (!row) { return; }
+        row.classList.add('pp-back-flash');
+        try { row.scrollIntoView({ block: 'nearest' }); } catch (e) { row.scrollIntoView(false); }
+        setTimeout(function () { row.classList.remove('pp-back-flash'); }, 1600);
+    }
     function scrollBucket(scr, issueId) {
         return scr === 'issue' ? 'issue:' + (issueId || '') : scr;
     }
@@ -13873,6 +13913,22 @@ window.PmPortalBoot = function () {
         if (moveDo) { issueMoveRun(currentIssue, moveDo); return; }
         var issueDel = ev.target.closest('.pp-issuedel');
         if (issueDel) { issueDelete(currentIssue, issueDel); return; }
+        // BACK-1: back up to the list of the pages, the page just read lit up there
+        var wback = ev.target.closest('.pp-wback');
+        if (wback) {
+            ev.preventDefault();
+            var wbox = document.getElementById('pp-wtree');
+            var wcard = wbox ? wbox.closest('.bl-card-box') : null;
+            if (wcard) {
+                try { wcard.scrollIntoView({ block: 'start' }); } catch (e) { wcard.scrollIntoView(true); }
+                var won = wbox.querySelector('.nd.on');
+                if (won) {
+                    won.classList.add('pp-back-flash');
+                    setTimeout(function () { won.classList.remove('pp-back-flash'); }, 1600);
+                }
+            }
+            return;
+        }
         var wtgl = ev.target.closest('.pp-wtgl');
         if (wtgl) {
             // a fold, not a way into the page (ISS00361)

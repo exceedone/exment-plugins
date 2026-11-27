@@ -2297,4 +2297,11 @@ return [
     'hint_remind_go' => '提醒的设置',
     'hint_saved' => '常用的筛选可以在"已保存的条件"中起名保存。',
     'hint_saved_go' => '打开已保存的条件',
+    // BACK-1
+    'back_list' => '任务列表',
+    'back_board' => '看板',
+    'back_gantt' => '甘特图',
+    'back_home' => '首页',
+    'back_wiki' => 'Wiki 列表',
+    'back_tip' => '返回%s',
 ];

@@ -2299,4 +2299,11 @@ return [
     'mdx_task' => 'チェックボックス',
     'mdx_img' => '画像の貼り付け',
     'mdx_img_how' => '画像をコピーして、この欄に貼り付ける（Ctrl+V）か、ドロップします',
+    // BACK-1
+    'back_list' => '課題一覧',
+    'back_board' => 'ボード',
+    'back_gantt' => 'ガント',
+    'back_home' => 'ホーム',
+    'back_wiki' => 'Wiki 一覧',
+    'back_tip' => '%s に戻る',
 ];

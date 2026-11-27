@@ -2297,4 +2297,11 @@ return [
     'hint_remind_go' => 'Configuración de recordatorios',
     'hint_saved' => 'Un filtro que usa a menudo se puede guardar con un nombre en «Condiciones guardadas».',
     'hint_saved_go' => 'Abrir las condiciones guardadas',
+    // BACK-1
+    'back_list' => 'Incidencias',
+    'back_board' => 'Tablero',
+    'back_gantt' => 'Gantt',
+    'back_home' => 'Inicio',
+    'back_wiki' => 'Páginas wiki',
+    'back_tip' => 'Volver a %s',
 ];

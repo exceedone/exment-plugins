@@ -2297,4 +2297,11 @@ return [
     'hint_remind_go' => 'Einstellungen der Erinnerungen',
     'hint_saved' => 'Einen oft verwendeten Filter können Sie unter „Gespeicherte Bedingungen“ mit einem Namen aufbewahren.',
     'hint_saved_go' => 'Gespeicherte Bedingungen öffnen',
+    // BACK-1
+    'back_list' => 'Tickets',
+    'back_board' => 'Board',
+    'back_gantt' => 'Gantt',
+    'back_home' => 'Startseite',
+    'back_wiki' => 'Wiki-Seiten',
+    'back_tip' => 'Zurück zu %s',
 ];

@@ -2297,4 +2297,11 @@ return [
     'hint_remind_go' => 'Reminder settings',
     'hint_saved' => 'A filter you use often can be kept under a name in "Saved conditions".',
     'hint_saved_go' => 'Open saved conditions',
+    // BACK-1
+    'back_list' => 'Issues',
+    'back_board' => 'Board',
+    'back_gantt' => 'Gantt',
+    'back_home' => 'Home',
+    'back_wiki' => 'Wiki pages',
+    'back_tip' => 'Back to %s',
 ];

@@ -269,15 +269,18 @@
 .pmportal #pp-wtree .pp-wtgl:focus-visible{outline:2px solid var(--bl-accent);outline-offset:1px;}
 @media (pointer: coarse){.pmportal #pp-wtree .pp-wtgl,.pmportal #pp-wtree .pp-wtgl-sp{min-width:36px;min-height:36px;margin:-10px 0 -10px -8px;}}
 .pmportal .bl-list .pp-tind .pp-tgl .n{font-size:10px;margin-left:2px;}
-/* tree view: make children obvious - branch mark, tinted row, accent edge; parents bold */
+/* tree view: make children obvious - branch mark, tinted row; parents bold.
+   The tint is grey, not the accent, and there is no edge at the left: that edge and a blue tint
+   are the unread mark, and with a blue theme (ex1task) a child read long ago looked unread. */
 /* └ branch mark: dark accent, bold and a bit larger so it reads at a glance (snoro 2026-11-18) */
 .pmportal .bl-list .pp-tbr{color:var(--bl-accent-d);margin-right:4px;font-weight:800;font-size:15px;line-height:1;}
-.pmportal .bl-list tr.pp-tkid td{background:color-mix(in srgb, var(--bl-accent) 5%, var(--bl-box));}
-.pmportal .bl-list tr.pp-tkid.pp-td2 td{background:color-mix(in srgb, var(--bl-accent) 9%, var(--bl-box));}
-.pmportal .bl-list tr.pp-tkid.pp-td3 td{background:color-mix(in srgb, var(--bl-accent) 13%, var(--bl-box));}
-.pmportal .bl-list tr.pp-tkid.pp-td4 td{background:color-mix(in srgb, var(--bl-accent) 17%, var(--bl-box));}
+.pmportal .bl-list tr.pp-tkid td{background:color-mix(in srgb, #6b7a88 5%, var(--bl-box));}
+.pmportal .bl-list tr.pp-tkid.pp-td2 td{background:color-mix(in srgb, #6b7a88 9%, var(--bl-box));}
+.pmportal .bl-list tr.pp-tkid.pp-td3 td{background:color-mix(in srgb, #6b7a88 13%, var(--bl-box));}
+.pmportal .bl-list tr.pp-tkid.pp-td4 td{background:color-mix(in srgb, #6b7a88 17%, var(--bl-box));}
+/* an unread child: the unread tint over the child's (the cells' own colour would hide the row's) */
+.pmportal .bl-list tbody tr.pp-tkid.pp-unread td{background:color-mix(in srgb, #2f80ed 6%, var(--bl-box));}
 .pmportal .pp-rollup{line-height:1.2;margin-top:2px;white-space:nowrap;}
-.pmportal .bl-list tr.pp-tkid td:first-child{box-shadow:inset 3px 0 0 color-mix(in srgb, var(--bl-accent) 55%, transparent);}
 .pmportal .bl-list tr.pp-tkid:hover td{background:var(--bl-hover,var(--exm-ui-accent-soft,#f2f8f5));}
 .pmportal .bl-list tr.pp-tpar td.sub{font-weight:700;}
 .pmportal .bl-fmine{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);background:var(--bl-box);
@@ -2109,4 +2112,24 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-md-tabs > button{border:0;background:var(--bl-box);padding:2px 10px;font-size:12px;color:var(--bl-sub);cursor:pointer;}
 .pmportal .pp-md-tabs > button + button{border-left:1px solid var(--bl-line);}
 .pmportal .pp-md-tabs > button.on{background:var(--bl-hover);color:var(--bl-ink);font-weight:600;}
+/* BACK-1: a quiet 「← 課題一覧」 before the trail, and in the bar that stays on scroll */
+.pmportal .pp-backrow{display:flex;align-items:center;gap:10px;min-width:0;}
+.pmportal .pp-backrow .pp-crumbs{min-width:0;}
+.pmportal .pp-back{flex:none;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;font-size:12px;white-space:nowrap;}
+.pmportal #pp-issue-rows tr.pp-back-flash > td{background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));transition:background .6s;}
+@media (max-width:760px){
+  .pmportal .pp-back{padding:4px 9px;min-height:32px;}
+  .pmportal .pp-back .tx{display:none;}
+}
+/* The Wiki on a phone: the list of pages above the page (it was 260px beside a squeezed page),
+   and 「← Wiki 一覧」 back up to it. A wide screen has the list beside the page: no button. */
+.pmportal .pp-wback{margin-right:8px;}
+.pmportal .bl-wtree .nd.pp-back-flash{background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));transition:background .6s;}
+@media (min-width:761px){.pmportal .pp-wback{display:none;}}
+@media (max-width:760px){
+  .pmportal .bl-wiki,.pmportal .bl-wiki.pp-wempty{grid-template-columns:minmax(0,1fr);}
+  .pmportal .bl-wiki > .bl-card-box.pp-pinned{position:static !important;max-height:none !important;width:auto !important;}
+  .pmportal .bl-wiki.pp-wtree-pinned > .bl-card-box:nth-child(2){grid-column:auto;}
+  .pmportal .bl-wtree{max-height:40vh;overflow:auto;}
+}
 </style>
