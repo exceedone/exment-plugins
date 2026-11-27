@@ -274,7 +274,8 @@ class ChatPage
     public function postRoomSettings(Request $request, $id)
     {
         return $this->json(function () use ($request, $id) {
-            ChatService::setRoom($this->uid(), intval($id), $request->has('name') ? strval($request->input('name')) : null, $request->input('retention_days'));
+            ChatService::setRoom($this->uid(), intval($id), $request->has('name') ? strval($request->input('name')) : null,
+                $request->has('retention_days') ? strval($request->input('retention_days') ?? '') : null);
 
             return ['rooms' => ChatService::rooms($this->uid())];
         });
