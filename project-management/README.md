@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.24 / 1.7.24 で変わったこと**
 
 - The rows of the issue list are easier to tell apart (ISS02944): a child row in the tree is white like its parent (a thin guide, └ and the indent say it is a child); an unread row has a blue ● before a bold subject and the blue left edge, with no tint; the pointer gives a light neutral grey, and a ticked row its own colour, so unread, pointed at and ticked stay distinguishable in every mix, with the accent of the site and in a dark theme. A screen reader reads 「未読」.
   課題の一覧の行を見分けやすくしました（ISS02944）：ツリーの子の行は親と同じ白にし（細い線と └ と字下げで子とわかります）、未読の行は件名の前の青い ●・太字・左の青い線で示し、色は付けません。マウスを乗せた行は薄い灰色、チェックした行は別の色です。未読・マウス・チェックをどう重ねても見分けられ、サイトの色やダークでも同じです。読み上げでは「未読」と読みます。
