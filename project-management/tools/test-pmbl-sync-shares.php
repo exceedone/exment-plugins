@@ -57,20 +57,21 @@ $saveIssue->invoke($syncer, $row, ['subject' => 'a'], $issue, true);
 ok($row->log === ['notify:off', 'set', 'save'], 'a new issue: the plain save, notifications off', implode(',', $row->log));
 
 // --- ExmentPM with PortalRunShares::saveNew() --------------------------------------------------------
-eval('namespace App\Plugins\ExmentPM; class PortalRunShares { public static $saved = []; '
-    . 'public static function saveNew($row): void { static::$saved[] = $row; $row->log[] = "saveNew"; $row->save(); } }');
+$GLOBALS['savedNew'] = [];
+eval('namespace App\Plugins\ExmentPM; class PortalRunShares { '
+    . 'public static function saveNew($row): void { $GLOBALS["savedNew"][] = $row; $row->log[] = "saveNew"; $row->save(); } }');
 ok(Syncer::newIssueSaver() === ['App\Plugins\ExmentPM\PortalRunShares', 'saveNew'], 'ExmentPM has it: saveNew saves the new issues');
 
 $row = new FakeRow();
 $saveIssue->invoke($syncer, $row, ['subject' => 'b', 'assignees' => [2]], $issue, true);
 ok($row->log === ['notify:off', 'set', 'saveNew', 'save'], 'a new issue goes through saveNew (no creator\'s share), notifications still off', implode(',', $row->log));
 ok($row->value === ['subject' => 'b', 'assignees' => [2]], 'with its values set before the save');
-ok(\App\Plugins\ExmentPM\PortalRunShares::$saved === [$row], 'saveNew got that row, once');
+ok($GLOBALS['savedNew'] === [$row], 'saveNew got that row, once');
 
 $row = new FakeRow();
 $saveIssue->invoke($syncer, $row, ['subject' => 'c'], $issue, false);
 ok($row->log === ['notify:off', 'set', 'save'], 'an update is a plain save (Exment gives no creator\'s share on an update)', implode(',', $row->log));
-ok(count(\App\Plugins\ExmentPM\PortalRunShares::$saved) === 1, 'saveNew not called for the update');
+ok(count($GLOBALS['savedNew']) === 1, 'saveNew not called for the update');
 
 // --- the code uses it ----------------------------------------------------------------------------------
 $src = file_get_contents(__DIR__ . '/../ExmentPMBacklog/Syncer.php');
