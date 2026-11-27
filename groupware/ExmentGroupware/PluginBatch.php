@@ -50,7 +50,8 @@ class PluginBatch extends PluginBatchBase
             if (class_exists(Calendar\Links::class) && Calendar\Links::ready()
                 && FeatureGate::allowedOnSite(FeatureGate::CALENDAR) && FeatureGate::allowedOnSite(FeatureGate::CALENDAR_LINKS)) {
                 Mail\HostGuard::allowPrivateWeb(boolval($this->plugin->getCustomOption('calendar_allow_private')));
-                $r = Calendar\Links::run(Calendar\Links::BATCH_LINKS, null, 240);
+                // Google and Microsoft calendars (part 6) with the site's app of the settings
+                $r = Calendar\Links::run(Calendar\Links::BATCH_LINKS, null, 240, new Calendar\CloudSync(new Calendar\CloudOAuth($this->plugin)));
                 $this->line('calendar: ' . $r['read'] . ' outside calendar(s) read, ' . $r['failed'] . ' failed');
             }
         } catch (\Throwable $e) {
