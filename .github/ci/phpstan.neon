@@ -32,6 +32,9 @@ parameters:
             # Support Desk's connectors of the data sync (7.3.0), and their test in an Exment 7.3
             - ../../support-desk/ExmentSupportDesk/Sync
             - ../../support-desk/tools/test-asset-sync-db.php
+            # the test of the Plugin class of multi-type plugins declares stand-ins of Exment's
+            # PluginPageBase and PluginBase (used without --exment)
+            - ../../groupware/tools/test-plugin-class.php
     bootstrapFiles:
         - bootstrap.php
     # The baseline may list files that a branch does not have yet.

@@ -6,6 +6,10 @@
 
 <a id="english"></a>
 
+**Unreleased**
+
+- A site whose plugin files were replaced (copied onto the server) without uploading the zip no longer fails on every page. From 0.5.0 the plugin has two types (page, batch), but such a site still has `plugins.plugin_types` = `page` from before; Exment then looked for a class `Plugin`, found an empty one, and every page answered 500, the login included. `Plugin` is now the page itself (the same as `PluginPage`, with the settings form of `PluginSetting`), so the site keeps working. The reminders and the retention of the chat (the batch) still need the row updated: upload `ExmentGroupware-<version>.zip` in **Admin settings → Plugins** rather than replacing the files, or update `plugins.plugin_types` and the options and run the plugin's migrations as the [manual](https://exment.net/docs/plugin_groupware.html) says.
+
 **Changed in 0.5.0**
 
 - The README says that a picture cannot be pasted into Office (ibisOffice 0.8.9 in the browser takes only text), and what to do instead: [Pasting a picture into Office](#pasting-a-picture-into-office).
@@ -202,6 +206,10 @@ Coming: an export of one's own calendar with all its details, with a token of it
 <a id="japanese"></a>
 
 **未リリース**
+
+- プラグインのファイルを（サーバーにコピーして）入れかえ、zip をアップロードしなかったサイトで、すべての画面がエラーになることがなくなりました。0.5.0 からこのプラグインは 2 つの種類（ページ・バッチ）ですが、そのようなサイトでは `plugins.plugin_types` が前の `page` のままです。Exment は `Plugin` というクラスを探して空のクラスを見つけ、ログインも含めてすべての画面が 500 になっていました。今は `Plugin` がページそのもの（`PluginPage` と同じで、設定の画面は `PluginSetting` のもの）なので、サイトは動きます。カレンダーのリマインダーとチャットの保存期間（バッチ）には、行の更新が要ります。ファイルを入れかえるのではなく、**管理者設定 → プラグイン** で `ExmentGroupware-<version>.zip` をアップロードしてください。または、[マニュアル](https://exment.net/docs/ja/plugin_groupware.html) のとおりに `plugins.plugin_types` とオプションを更新し、プラグインのマイグレーションを動かしてください。
+
+**0.5.0 で変わったこと**
 
 - Office に画像を貼り付けられないこと（ブラウザー版の ibisOffice 0.8.9 は文字だけを受け取ります）と、その代わりの方法を README に書きました（[Office に画像を貼り付ける](#office-に画像を貼り付ける)）。
 - カレンダー：ExmentPM の課題をカレンダーに出せます（ISS02947 の 4）。ツールバーの新しい選択（初めは「課題を出さない」）で、**自分の課題**・**自分のプロジェクト**・1 つのプロジェクトを選びます。開始日と期限のある課題は帯で、期限だけの課題は期限の日に印で出します。マイルストーンと、ExmentPM の定期の予定のうち、まだ課題になっていない日も「予定（まだ課題になっていない）」として出します（動かした日・とばした日もそのとおり）。プロジェクトごとに色が分かれます。課題を押すと ExmentPM で開きます。定期の予定の日からは **この回だけ変える**（ExmentPM の定期の予定の画面。プロジェクトの管理者）へ進めます。読むだけで、プロジェクトと課題のテーブルの Exment の権限のとおりに、見てよいものだけを出します。ExmentPM のテーブルがあるサイトだけに出ます。定期の予定は、ExmentPM が課題を作る設定（機能の管理）のときだけです。

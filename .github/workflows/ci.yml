@@ -51,6 +51,11 @@ jobs:
       - name: config.json of each plugin
         run: php .github/ci/check-config.php
 
+      # A plugin with several types: its Plugin.php (if any) is the page, so a site whose
+      # plugins.plugin_types still lists one type does not fail on every request.
+      - name: Plugin class on a one-type row (multi-type plugins)
+        run: php groupware/tools/test-plugin-class.php
+
   php-cs-fixer:
     runs-on: ubuntu-24.04
     steps:
@@ -101,6 +106,12 @@ jobs:
             exit 0
           fi
           php -d memory_limit=2G vendor/bin/phpstan analyse -c phpstan.neon --no-progress
+
+      # The same check against the installed Exment: its base classes and the class name it
+      # builds on a row with one type (PluginType::getPluginClassShortName).
+      - name: Plugin class on a one-type row (with Exment)
+        working-directory: .github/ci
+        run: php ../../groupware/tools/test-plugin-class.php --exment
 
   exmentpm-script:
     runs-on: ubuntu-24.04
