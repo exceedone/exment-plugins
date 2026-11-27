@@ -185,6 +185,20 @@ var GWCAL_CFG = @json($cfg);
   .gwcal-ppname{padding:4px;font-size:12px}
   .gwcal-modal{padding:8px}
 }
+/* phones: taps of 44px (36px where a row is tight), and 16px text in the fields so that iOS does not zoom in */
+@media (max-width:640px){
+  .gwcal .gb,.gwcal .gbp{min-height:44px;height:auto}
+  .gwcal .gb.sq{width:44px;min-width:44px}
+  .gwcal .gwcal-views .gb{min-width:44px}
+  .gwcal .gwcal-pmsel{height:44px;font-size:16px}
+  .gwcal .gwcal-pick input{height:44px;font-size:16px}
+  .gwcal .gwcal-f input[type=text],.gwcal .gwcal-f input[type=date],.gwcal .gwcal-f input[type=time],.gwcal .gwcal-f select{height:44px;font-size:16px}
+  .gwcal .gwcal-f textarea{font-size:16px}
+  .gwcal .gwcal-chip button{width:36px;height:36px}
+  .gwcal .gwcal-chk,.gwcal .gwcal-rooms label{min-height:36px}
+  .gwcal .gwcal-rnav{position:relative;z-index:1;flex-wrap:nowrap;align-items:center;gap:8px;margin-bottom:4px}
+  .gwcal .gwcal-rnav .gwcal-q{flex:1 1 auto;min-width:0;margin:0;text-align:center}
+}
 </style>
 <div class="gwcal-bar" id="gwcal-bar"></div>
 <div class="gwcal-pbar" id="gwcal-pbar" hidden></div>
@@ -906,8 +920,17 @@ function showModal(nodes) {
     clear(dlg);
     nodes.forEach(function (n) { if (n) { dlg.appendChild(n); } });
     m.hidden = false;
+    modalBelowHeader();
     var f = dlg.querySelector('[data-focus]') || dlg.querySelector('input,select,textarea,button');
     if (f) { f.focus(); }
+}
+function modalBelowHeader() {
+    var m = $('gwcal-modal');
+    if (!m || m.hidden) { return; }
+    // the admin header is drawn above this layer: start the dialog below what shows of it
+    var hd = document.querySelector('header.main-header');
+    var under = hd ? Math.max(0, Math.round(hd.getBoundingClientRect().bottom)) : 0;
+    m.style.paddingTop = under > 0 ? (under + 8) + 'px' : '';
 }
 function closeModal() {
     $('gwcal-modal').hidden = true;
@@ -1305,10 +1328,11 @@ function roomName(id) {
 function openRooms(day) {
     day = day || (S.view === 'day' ? S.anchor : startOfDay(new Date()));
     var b = el('div', 'gwcal-dbody');
-    var nav = el('div', 'gwcal-nav');
-    var pv = btn('gb sq', null, function () { openRooms(addDays(day, -1)); }, t('prev'));
+    // its own class and labels: not taken for the toolbar's arrows behind the dialog
+    var nav = el('div', 'gwcal-nav gwcal-rnav');
+    var pv = btn('gb sq', null, function () { openRooms(addDays(day, -1)); }, t('prev_day'));
     pv.appendChild(icon('fa-chevron-left'));
-    var nx = btn('gb sq', null, function () { openRooms(addDays(day, 1)); }, t('next'));
+    var nx = btn('gb sq', null, function () { openRooms(addDays(day, 1)); }, t('next_day'));
     nx.appendChild(icon('fa-chevron-right'));
     nav.appendChild(pv);
     nav.appendChild(el('span', 'gwcal-q', fmtDate(day, { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' })));
@@ -1397,6 +1421,9 @@ function manageRooms(edit) {
 }
 
 // ---- keys, clicks, the clock ---------------------------------------------------------
+// the header's height changes with the width: keep an open dialog below it
+listen(window, 'resize', function () { if (document.body.contains(root)) { modalBelowHeader(); } });
+listen(window, 'orientationchange', function () { if (document.body.contains(root)) { modalBelowHeader(); } });
 listen(document, 'keydown', function (e) {
     if (!document.body.contains(root)) { return; }
     if (e.key === 'Escape') {

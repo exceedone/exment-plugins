@@ -14,6 +14,8 @@ return [
         'today' => '今日',
         'prev' => '前へ',
         'next' => '次へ',
+        'prev_day' => '前の日',
+        'next_day' => '次の日',
         'day' => '日',
         'week' => '週',
         'month' => '月',
