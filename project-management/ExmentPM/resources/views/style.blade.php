@@ -11,7 +11,7 @@
   --bl-accent-ink:var(--exm-ui-accent-strong,#2c6e5b);--bl-accent-line:var(--exm-ui-accent-ring,#bfe3d6);
   --bl-ink:var(--exm-ui-text,#24323f);--bl-sub:var(--exm-ui-text-sub,#6b7a88);
   --bl-line:var(--exm-ui-line,#dfe5ea);--bl-bg:var(--exm-ui-bg-sub,#f5f7f9);--bl-faint:var(--exm-ui-text-faint,#8b99a5);--bl-box:#ffffff;--bl-box2:#f5f7f9;--bl-chip:#eef3f6;--bl-hover:var(--exm-ui-accent-soft,#f2f8f5);--bl-red:var(--exm-ui-danger,#d9534f);--bl-amber:#eda62a;
-  --bl-unread:var(--exm-ui-info,#2f80ed);--bl-row-hover:color-mix(in srgb, var(--bl-ink) 5%, var(--bl-box));
+  --bl-unread:var(--exm-ui-info,#2f80ed);--bl-on-accent:var(--exm-ui-on-accent,#fff);--bl-row-hover:color-mix(in srgb, var(--bl-ink) 5%, var(--bl-box));
   --bl-row-sel:color-mix(in srgb, var(--bl-accent) 14%, var(--bl-box));
   /* design tokens (ISS00287): soft separator, muted text, radius, shadow, type scale, spacing, focus ring */
   --bl-line2:var(--exm-ui-line-soft,#e9eef2);--bl-muted:var(--bl-faint);
@@ -2115,9 +2115,16 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-backrow{display:flex;align-items:center;gap:10px;min-width:0;}
 .pmportal .pp-backrow .pp-crumbs{min-width:0;}
 .pmportal .pp-back{flex:none;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;font-size:12px;white-space:nowrap;}
+/* BACK-2: filled with the site's accent so it is seen at once (snoro 2026-11-28); the same class on the
+   issue, in the bar that stays on scroll and on a wiki page (.bl-btn-sub.pp-back) */
+.pmportal .pp-back,.pmportal .bl-btn-sub.pp-back{background:var(--bl-accent);border:1px solid var(--bl-accent);color:var(--bl-on-accent);
+  font-weight:700;min-height:30px;padding:4px 12px;border-radius:var(--bl-radius-s,4px);text-decoration:none;}
+.pmportal .pp-back:hover,.pmportal .bl-btn-sub.pp-back:hover{background:var(--bl-accent-d);border-color:var(--bl-accent-d);color:var(--bl-on-accent);}
+.pmportal .pp-back:focus-visible,.pmportal .bl-btn-sub.pp-back:focus-visible{outline:2px solid var(--bl-accent-d);outline-offset:2px;color:var(--bl-on-accent);}
+.pmportal .pp-back .fa{color:inherit;}
 .pmportal #pp-issue-rows tr.pp-back-flash > td{background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));transition:background .6s;}
 @media (max-width:760px){
-  .pmportal .pp-back{padding:4px 9px;min-height:32px;}
+  .pmportal .pp-back,.pmportal .bl-btn-sub.pp-back{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:50%;}
   .pmportal .pp-back .tx{display:none;}
 }
 /* The Wiki on a phone: the list of pages above the page (it was 260px beside a squeezed page),

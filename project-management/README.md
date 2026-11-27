@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- The 「← 課題一覧」 button (and 「← Wiki 一覧」, and the one in the bar that stays on scroll) is filled with the site's colour, white text, darker under the pointer, a filled circle on a phone.
+  「← 課題一覧」のボタン（「← Wiki 一覧」と、スクロールしても残る行のものも）を、サイトの色で塗り、白い文字にしました。マウスを乗せると濃くなり、スマホでは塗った丸になります。
+
 **Changed in 1.7.24 / 1.7.24 で変わったこと**
 
 - The rows of the issue list are easier to tell apart (ISS02944): a child row in the tree is white like its parent (a thin guide, └ and the indent say it is a child); an unread row has a blue ● before a bold subject and the blue left edge, with no tint; the pointer gives a light neutral grey, and a ticked row its own colour, so unread, pointed at and ticked stay distinguishable in every mix, with the accent of the site and in a dark theme. A screen reader reads 「未読」.
