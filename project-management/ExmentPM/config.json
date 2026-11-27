@@ -56,6 +56,8 @@
         { "method": "get", "uri": "sw.js", "function": "pwaWorker", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
         { "method": "get", "uri": "offline", "function": "pwaOffline", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
         { "method": "get", "uri": "pwa-icon/{name}", "function": "pwaIcon", "middleware_except": ["admin.morph", "admin.log", "admin.bootstrap"] },
+        { "method": "get", "uri": "notices", "function": "notices" },
+        { "method": "post", "uri": "notices/read-all", "function": "noticesReadAll" },
         { "method": "get", "uri": "{id}", "function": "show" },
         { "method": "get", "uri": "{id}/link_tables", "function": "linkTables" },
         { "method": "post", "uri": "{id}/link_tables", "function": "postLinkTables" },

@@ -171,6 +171,9 @@ trait PortalTopbarTrait
             'notify_by_url' => PortalDefinition::url('notify-by'),
             // ISS02939 item 6: the installable web app; its scope also when off, to take an old worker off
             'pwa' => PortalPwa::enabled() ? PortalPwa::urls() : ['off' => true, 'scope' => PortalPwa::scope()],
+            // the bell's own list (ISS02939 item 6)
+            'notices_url' => PortalDefinition::url('notices'),
+            'notices_all_url' => admin_url('notify_navbar'),
             // the page of the details: per event, projects muted, quiet hours
             'notify_settings_url' => PortalDefinition::url('notify-settings'),
             'notify_choices' => array_values(array_filter(PortalTeams::CHOICES, function ($choice) {
