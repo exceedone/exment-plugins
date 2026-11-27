@@ -464,7 +464,7 @@ class Schema
 
             // The plugin's own tables. Exment runs database/migrations when
             // the zip is uploaded; this covers a copy put in place by hand.
-            if ((!hasTable('its_tokens') || !hasTable('its_intake_sources')) && ($plugin = Its::plugin()) !== null) {
+            if ((!hasTable('its_tokens') || !hasTable('its_intake_sources') || !hasTable('its_calls')) && ($plugin = Its::plugin()) !== null) {
                 \Exceedone\Exment\Services\Plugin\PluginInstaller::migrationInstall($plugin);
                 $steps[] = 'プラグインのテーブルを作りました。';
             }

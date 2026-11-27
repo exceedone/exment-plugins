@@ -108,6 +108,26 @@ class PluginPage extends PluginPageBase
         return $this->desk()->postPmIssue(request(), $id);
     }
 
+    public function postCallLink($id)
+    {
+        return $this->desk()->postCallLink(request(), $id);
+    }
+
+    public function postCallSignal($id)
+    {
+        return $this->desk()->postCallSignal(request(), $id);
+    }
+
+    public function apiCallSignals($id)
+    {
+        return $this->desk()->apiCallSignals(request(), $id);
+    }
+
+    public function postCallEnd($id)
+    {
+        return $this->desk()->postCallEnd(request(), $id);
+    }
+
     public function postQuote($id)
     {
         return $this->desk()->postQuote(request(), $id);

@@ -6,6 +6,8 @@ return [
         'desk_help' => 'Die Bildschirme der Bearbeiter (Eingang, Dashboard, Einstellungen, Einrichtung), der Batch alle fünf Minuten und die Ticketregeln beim Speichern. Schalten Sie dies vor der Einrichtung ein.',
         'portal' => 'IT-Support: Kundenportal',
         'portal_help' => 'Das Portal ohne Anmeldung (/support), die Links in E-Mails, die Annahme von E-Mails und Überwachungsalarmen sowie „Meine Anfragen“. Funktioniert nur, solange der Eingang eingeschaltet ist.',
+        'guest_call' => 'Help desk: calls with customers',
+        'guest_call_help' => 'Send a customer a call link from a ticket (30 minutes, the first browser only) and talk with voice and a shared screen. The length goes to the ticket\'s time, the notes to the ticket.',
         'web_chat' => 'Help desk: website chat',
         'web_chat_help' => 'A chat window to paste into a website for each box. Customers without a login talk to the desk; the talk becomes a ticket of that box.',
         'sales_link' => 'Help desk: quotes and trial keys',

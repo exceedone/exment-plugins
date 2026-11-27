@@ -6,6 +6,8 @@ return [
         'desk_help' => 'The agents\' screens (inbox, dashboard, settings, setup), the batch every five minutes and the ticket rules on save. Turn it on before the setup.',
         'portal' => 'IT Support: customer portal',
         'portal_help' => 'The no-login portal (/support), the links in mails, mail and alert intake, and "my requests". Works only while the desk is on.',
+        'guest_call' => 'Help desk: calls with customers',
+        'guest_call_help' => 'Send a customer a call link from a ticket (30 minutes, the first browser only) and talk with voice and a shared screen. The length goes to the ticket\'s time, the notes to the ticket.',
         'web_chat' => 'Help desk: website chat',
         'web_chat_help' => 'A chat window to paste into a website for each box. Customers without a login talk to the desk; the talk becomes a ticket of that box.',
         'sales_link' => 'Help desk: quotes and trial keys',

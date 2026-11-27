@@ -164,6 +164,10 @@ class Desk
                     'problem' => Its::url('problem', '__ID__'),
                     'pm_issue' => Its::url('ticket', '__ID__', 'pm-issue'),
                     'quote' => Its::url('ticket', '__ID__', 'quote'),
+                    'call_link' => Its::url('ticket', '__ID__', 'call-link'),
+                    'call_signal' => Its::url('call', '__ID__', 'signal'),
+                    'call_signals' => Its::url('call', '__ID__', 'signals'),
+                    'call_end' => Its::url('call', '__ID__', 'end'),
                     'pm_projects' => Its::url('api', 'pm-projects'),
                     'ksearch' => Its::url('knowledge', 'search'),
                     'bulk' => Its::url('bulk'),
@@ -324,6 +328,8 @@ class Desk
             // the quote and the trial key (ISS02941): by the kind of the ticket's box
             'box_kind' => Tickets::boxOf($v['category'] ?? null)['kind'],
             'sales_on' => SalesLink::on(),
+            // 「通話のリンクを送る」 (ISS02941)
+            'call_on' => GuestCall::enabled(),
             'quotes_on' => SalesLink::quotesAvailable(),
             'quote' => SalesLink::quotesAvailable() ? SalesLink::quoteOf($ticket) : null,
             'quote_can' => SalesLink::quotesAvailable() && SalesLink::canCreateQuote(),
@@ -671,6 +677,80 @@ class Desk
         $result = PmLink::create($ticket, intval($request->get('project')));
 
         return $this->back(Its::url() . '?open=' . intval($ticket->id), $result['message'], !$result['ok']);
+    }
+
+    // ---- calls with a customer by a link (ISS02941) ----------------------------
+
+    protected function callGate()
+    {
+        if ($r = $this->gate()) {
+            return $r;
+        }
+        if (!GuestCall::enabled()) {
+            abort(404);
+        }
+
+        return null;
+    }
+
+    /** Make a call of the ticket, send its link to the requester, and open the agent's side. */
+    public function postCallLink(Request $request, $id)
+    {
+        if ($r = $this->callGate()) {
+            return $r;
+        }
+        $ticket = Tickets::find($id);
+        if (!isset($ticket)) {
+            return $this->back(Its::url(), 'チケットが見つかりません。', true);
+        }
+        $to = strval(array_get($ticket->value, 'requester_email'));
+        if (!Its::isEmail($to)) {
+            return $this->back(Its::url(), 'お客様のメールアドレスがないので、リンクを送れません。', true);
+        }
+        $made = GuestCall::create($ticket, intval(\Exment::getUserId()));
+        $body = "お客様\n\nサポート窓口から通話のご案内です。次のリンクをブラウザーで開いて「通話をはじめる」を押してください（" . GuestCall::MINUTES . " 分のあいだ、はじめに開いたブラウザーで使えます）。\n\n" . $made['link'];
+        $sent = Mailer::send($ticket, [$to], Mailer::subjectFor($ticket), Mailer::customerBody($ticket, $body, null), []);
+        Tickets::addMessage($ticket, ['kind' => 'system', 'body' => '通話のリンクを送りました（' . ($sent !== null ? 'メール送信済み' : 'メールを送れませんでした') . '）。', 'via' => 'staff']);
+
+        return response()->json(['ok' => true, 'call' => $made['call'], 'mailed' => $sent !== null, 'ice' => GuestCall::iceServers(Its::setting('call_ice', ''))]);
+    }
+
+    public function postCallSignal(Request $request, $id)
+    {
+        if ($r = $this->callGate()) {
+            return $r;
+        }
+        $call = GuestCall::agentCall(intval($id));
+        $json = strval($request->input('payload_json', ''));
+        $payload = $json !== '' ? json_decode($json, true) : null;
+        if ($json !== '' && !is_array($payload)) {
+            return response()->json(['ok' => false, 'message' => '合図を読めませんでした。'], 422);
+        }
+        try {
+            GuestCall::signal($call, 'agent', strval($request->input('type')), $payload);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function apiCallSignals(Request $request, $id)
+    {
+        if ($r = $this->callGate()) {
+            return $r;
+        }
+
+        return response()->json(['ok' => true] + GuestCall::signals(GuestCall::agentCall(intval($id)), 'agent', intval($request->get('after', 0))));
+    }
+
+    public function postCallEnd(Request $request, $id)
+    {
+        if ($r = $this->callGate()) {
+            return $r;
+        }
+
+        return response()->json(['ok' => true] + GuestCall::end(GuestCall::agentCall(intval($id)), 'agent', strval($request->input('notes', ''))));
     }
 
     public function postQuote(Request $request, $id)

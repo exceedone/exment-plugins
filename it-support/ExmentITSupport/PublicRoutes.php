@@ -73,6 +73,17 @@ class PublicRoutes
             Route::post('api/post', $g . '@post');
         });
 
+        // A call with a customer by a link (ISS02941): the page, and its API with no session and no
+        // CSRF; the link's token and the browser's own secret in headers instead.
+        $k = GuestCallController::class;
+        Route::group(['prefix' => static::PREFIX . '/call'], function () use ($k) {
+            Route::get('{token}', $k . '@page')->where('token', '[0-9a-f]{64}');
+            Route::post('api/join', $k . '@join');
+            Route::post('api/signal', $k . '@signal');
+            Route::get('api/signals', $k . '@signals');
+            Route::post('api/end', $k . '@end');
+        });
+
         // Machine to machine: no session, no CSRF, a key instead.
         Route::group(['prefix' => static::PREFIX . '/intake'], function () use ($c) {
             Route::post('alert', $c . '@intakeAlert');
