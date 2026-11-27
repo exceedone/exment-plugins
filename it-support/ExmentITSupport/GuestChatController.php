@@ -99,13 +99,22 @@ JS;
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             $code = $e->getStatusCode();
 
-            return response()->json(['ok' => false, 'message' => $code === 429 ? 'しばらく待ってから送ってください。' : 'このチャットは使えません。'], $code);
+            return response()->json(['ok' => false, 'message' => $code === 429 ? 'しばらく待ってから送ってください。' : ($code === 403 ? 'この窓からだけ送れます。' : 'このチャットは使えません。')], $code);
+        }
+    }
+
+    /** Writes only from the window itself (Exment's own origin): not a form or no-cors POST of another site. */
+    protected function own(Request $request): void
+    {
+        if (!GuestChat::fromWindow($request->header('Origin'), $request->header('Referer'), $request->header('Sec-Fetch-Site'), GuestChat::ownOrigins())) {
+            abort(403);
         }
     }
 
     public function start(Request $request)
     {
         $this->gate();
+        $this->own($request);
 
         return $this->json(function () use ($request) {
             return GuestChat::start(strval($request->input('key')), strval($request->input('name')), strval($request->input('email')), strval($request->input('body')), strval($request->ip()));
@@ -124,6 +133,7 @@ JS;
     public function post(Request $request)
     {
         $this->gate();
+        $this->own($request);
 
         return $this->json(function () use ($request) {
             return GuestChat::post(strval($request->header('X-Chat-Token')), strval($request->input('body')));

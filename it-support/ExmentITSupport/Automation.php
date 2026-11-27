@@ -24,7 +24,7 @@ class Automation
     {
         $out = [];
         foreach (['mail' => [Inbox::class, 'fetch'], 'sla' => [static::class, 'checkSla'], 'escalation' => [Escalation::class, 'run'], 'pending' => [static::class, 'chasePending'],
-            'close' => [static::class, 'closeResolved'], 'assets' => [static::class, 'assetExpiry']] as $name => $step) {
+            'close' => [static::class, 'closeResolved'], 'assets' => [static::class, 'assetExpiry'], 'chat_mail' => [GuestChat::class, 'mailUnread']] as $name => $step) {
             try {
                 $out[$name] = call_user_func($step);
             } catch (\Throwable $e) {

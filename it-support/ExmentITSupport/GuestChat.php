@@ -120,6 +120,89 @@ class GuestChat
         return $key;
     }
 
+    /**
+     * Whether a request comes from the window itself: the iframe is on Exment's own address, so
+     * its fetch carries Exment's origin. A form or no-cors POST from another site carries that
+     * site's: refused (a simple request has no preflight to stop it).
+     */
+    public static function fromWindow(?string $origin, ?string $referer, ?string $fetchSite, array $owns): bool
+    {
+        $owns = array_map(function ($o) {
+            return rtrim(strtolower($o), '/');
+        }, $owns);
+        if ($fetchSite !== null && $fetchSite !== '' && $fetchSite !== 'same-origin') {
+            return false;
+        }
+        if ($origin !== null && $origin !== '') {
+            return in_array(rtrim(strtolower($origin), '/'), $owns, true);
+        }
+        if ($referer !== null && $referer !== '') {
+            $p = parse_url($referer);
+            $ref = isset($p['scheme'], $p['host']) ? strtolower($p['scheme'] . '://' . $p['host'] . (isset($p['port']) ? ':' . $p['port'] : '')) : '';
+
+            return in_array($ref, $owns, true);
+        }
+
+        return false;
+    }
+
+    /** Exment's own origins: as the request sees it, and as APP_URL says (behind a proxy they differ). */
+    public static function ownOrigins(): array
+    {
+        $out = [];
+        foreach ([url('/'), strval(config('app.url', ''))] as $u) {
+            $p = parse_url($u);
+            if (isset($p['scheme'], $p['host'])) {
+                $out[] = strtolower($p['scheme'] . '://' . $p['host'] . (isset($p['port']) ? ':' . $p['port'] : ''));
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * The agents' replies shown in a window (mail_status "window") that the window did not read
+     * (it was not used after the reply came): mailed now, as a reply is (the batch, every 5 min).
+     */
+    public static function mailUnread(): int
+    {
+        $table = Its::table(Its::T_MESSAGE);
+        if (!isset($table)) {
+            return 0;
+        }
+        $n = 0;
+        $rows = $table->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
+            ->where('value->kind', 'reply')->where('value->mail_status', 'window')
+            ->where('created_at', '<', now()->subMinutes(2))->orderBy('id')->limit(200)->get();
+        foreach ($rows as $message) {
+            $ticket = Tickets::find($message->parent_id);
+            if (!isset($ticket)) {
+                continue;
+            }
+            $seen = DB::table('its_tokens')->where('kind', static::KIND)->where('ticket_id', $ticket->id)
+                ->where('last_used_at', '>=', $message->created_at)->exists();
+            if ($seen) {
+                $message->setValue(['mail_status' => 'shown']);
+                $message->save();
+                continue;
+            }
+            $to = strval(array_get($ticket->value, 'requester_email'));
+            if (!Its::isEmail($to)) {
+                $message->setValue(['mail_status' => 'none']);
+                $message->save();
+                continue;
+            }
+            $link = boolval(array_get($ticket->value, 'customer_visible', '1')) && Its::portalOn() ? Tokens::linkFor(intval($ticket->id), $to) : null;
+            $cc = array_filter(array_map('trim', explode(',', strval(array_get($ticket->value, 'cc', '')))));
+            $id = Mailer::send($ticket, [$to], Mailer::subjectFor($ticket), Mailer::customerBody($ticket, strval(array_get($message->value, 'body')), $link), $cc);
+            $message->setValue(['mail_status' => $id !== null ? 'sent' : 'failed', 'message_id' => $id]);
+            $message->save();
+            $n++;
+        }
+
+        return $n;
+    }
+
     /** Too many tries for a key (IP or token) in a while? */
     protected static function limited(string $name, int $max, int $seconds): bool
     {
@@ -144,6 +227,9 @@ class GuestChat
         }
         if (static::limited('its_chat_start:' . sha1($ip), static::STARTS_PER_HOUR, 3600)) {
             abort(429);
+        }
+        if (mb_strlen(trim($body)) > static::MAX_BODY) {
+            throw new \InvalidArgumentException(static::MAX_BODY . ' 文字までです。');
         }
         $name = static::clean($name, 100);
         $email = Its::normalizeEmail($email);
@@ -218,6 +304,9 @@ class GuestChat
         $ticket = static::ticketOf($token);
         if (static::limited('its_chat_line:' . Tokens::hash($token), static::LINES_PER_10MIN, 600)) {
             abort(429);
+        }
+        if (mb_strlen(trim(strval($body))) > static::MAX_BODY) {
+            throw new \InvalidArgumentException(static::MAX_BODY . ' 文字までです。');
         }
         $body = static::clean($body);
         if ($body === '') {

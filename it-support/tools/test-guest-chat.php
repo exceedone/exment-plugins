@@ -31,5 +31,14 @@ $check('online: seen 5 min ago', G::online($now - 300, $now));
 $check('offline: seen 10 min ago', !G::online($now - 600, $now));
 $check('offline: never seen', !G::online(null, $now));
 
+$own = ['https://exment.example.invalid'];
+$check('from the window: its own origin', G::fromWindow('https://exment.example.invalid', null, 'same-origin', $own));
+$check('from another site: refused', !G::fromWindow('https://evil.invalid', null, 'cross-site', $own) && !G::fromWindow('https://evil.invalid', null, null, $own));
+$check('another site saying same-origin is still its origin', !G::fromWindow('https://evil.invalid', null, 'same-origin', $own));
+$check('cross-site with our origin (forged): refused', !G::fromWindow('https://exment.example.invalid', null, 'cross-site', $own));
+$check('no origin: the referer', G::fromWindow(null, 'https://exment.example.invalid/support/chat/x', null, $own) && !G::fromWindow(null, 'https://evil.invalid/', null, $own));
+$check('nothing at all: refused', !G::fromWindow(null, null, null, $own));
+$check('behind a proxy: either origin', G::fromWindow('https://exment.example.invalid', null, null, ['http://10.0.0.5', 'https://exment.example.invalid']));
+
 echo "\n", $bad === 0 ? "all passed ($ok)" : "$bad failed, $ok passed", "\n";
 exit($bad === 0 ? 0 : 1);
