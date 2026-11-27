@@ -112,7 +112,7 @@
         renderFileServer();
         var files = D.files || {};
         var rows = (files.rows || []).map(function (f) {
-            return '<tr><td><a class="bl-file" style="margin-top:0;" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + '</td>' +
+            return '<tr><td><a class="bl-file" style="margin-top:0;" data-nopjax target="_blank" rel="noopener" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + '</td>' +
                 '<td>' + esc(f.src) + '</td><td>' + esc(user(f.by).n) + '</td><td>' + esc(f.at) + '</td></tr>';
         }).join('');
         document.getElementById('pp-file-rows').innerHTML = rows ||

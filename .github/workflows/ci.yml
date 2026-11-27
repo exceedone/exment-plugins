@@ -189,6 +189,10 @@ jobs:
       - name: Notice settings (ExmentPM)
         run: php project-management/tools/test-pm-notify-prefs.php
 
+      # links to files open outside the page loading of the admin screens
+      - name: File links (ExmentPM, Groupware, IT Support)
+        run: php project-management/tools/check-file-links.php
+
       # The project routes without admin.morph still find a project the same way as the others.
       - name: Morph-less routes check (ExmentPM)
         run: php project-management/tools/test-pm-morph-routes.php

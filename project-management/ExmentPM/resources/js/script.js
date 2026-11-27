@@ -7,6 +7,18 @@
 // for the same page a no-op.
 window.PmPortalBoot = function () {
     'use strict';
+    // A link to a stored file never goes through the admin's page loading (pjax): pjax would read
+    // the file and put it into the page. Marked at the click, before pjax's own handler (capture).
+    if (!window.__ppFileLinks) {
+        window.__ppFileLinks = true;
+        document.addEventListener('click', function (ev) {
+            var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+            if (a && /\/(files|tmpfiles)\//.test(a.getAttribute('href') || '') && !a.hasAttribute('data-nopjax')) {
+                a.setAttribute('data-nopjax', '');
+                if (!a.getAttribute('target')) { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener'); }
+            }
+        }, true);
+    }
     var root = document.getElementById('pmportal');
     if (!root || root.dataset.ppBound) { return; }
     root.dataset.ppBound = '1';
@@ -5058,7 +5070,7 @@ window.PmPortalBoot = function () {
                 body = '<div class="chg"><i class="fa fa-plus" style="color:var(--bl-accent);margin-right:6px;"></i>' + esc(L.added) + '</div>';
             } else if (e.tp === 'file') {
                 body = '<div class="chg"><i class="fa fa-paperclip" style="margin-right:6px;"></i>' + esc(L.file_added) +
-                    ' <a class="bl-file" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a>' + officeViewBtn(e) + '</div>';
+                    ' <a class="bl-file" data-nopjax target="_blank" rel="noopener" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a>' + officeViewBtn(e) + '</div>';
             } else {
                 // Only the author may rewrite or remove what they wrote; the
                 // address of a comment is public to everyone who can read it.
@@ -6363,7 +6375,7 @@ window.PmPortalBoot = function () {
             (files.length ? '<span><i class="fa fa-paperclip"></i> ' + esc(L.wiki_files) + ' (' + files.length + ')</span>' : '') + '</div>' +
             (renderRichText(page.content) || '<p style="color:var(--bl-faint);">' + esc(L.empty) + '</p>') +
             (files.length ? '<p>' + files.map(function (f) {
-                return '<a class="bl-file" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + attachTools(f, { editable: page.editable }, 'wiki:' + page.id) + ' ';
+                return '<a class="bl-file" data-nopjax target="_blank" rel="noopener" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + attachTools(f, { editable: page.editable }, 'wiki:' + page.id) + ' ';
             }).join('') + '</p>' : '');
         linkifyIssueRefs(document.getElementById('pp-wbody'));
         // Opened from the pinned list half way down a long article, the next
@@ -6495,7 +6507,7 @@ window.PmPortalBoot = function () {
         renderFileServer();
         var files = D.files || {};
         var rows = (files.rows || []).map(function (f) {
-            return '<tr><td><a class="bl-file" style="margin-top:0;" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + '</td>' +
+            return '<tr><td><a class="bl-file" style="margin-top:0;" data-nopjax target="_blank" rel="noopener" href="' + esc(linkUrl(f.url)) + '"><i class="fa fa-file-o"></i>' + esc(f.name) + '</a>' + officeViewBtn(f) + '</td>' +
                 '<td>' + esc(f.src) + '</td><td>' + esc(user(f.by).n) + '</td><td>' + esc(f.at) + '</td></tr>';
         }).join('');
         document.getElementById('pp-file-rows').innerHTML = rows ||
@@ -11843,7 +11855,7 @@ window.PmPortalBoot = function () {
             // The name is the text of the link, escaped (mdFileLink): a file named
             // to close the link early cannot point it somewhere else.
             var markup = res.files.map(function (f) {
-                return html ? '<a href="' + esc(f.url) + '">' + esc(f.name) + '</a>' : mdFileLink(f.name, f.url, !!f.img);
+                return html ? '<a href="' + esc(f.url) + '" data-nopjax target="_blank" rel="noopener">' + esc(f.name) + '</a>' : mdFileLink(f.name, f.url, !!f.img);
             });
             input.setRangeText(markup.join(html ? ' ' : '\n'), start, end, 'end');
             input.dispatchEvent(new Event('input', { bubbles: true }));

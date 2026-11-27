@@ -377,7 +377,7 @@
             // The name is the text of the link, escaped (mdFileLink): a file named
             // to close the link early cannot point it somewhere else.
             var markup = res.files.map(function (f) {
-                return html ? '<a href="' + esc(f.url) + '">' + esc(f.name) + '</a>' : mdFileLink(f.name, f.url, !!f.img);
+                return html ? '<a href="' + esc(f.url) + '" data-nopjax target="_blank" rel="noopener">' + esc(f.name) + '</a>' : mdFileLink(f.name, f.url, !!f.img);
             });
             input.setRangeText(markup.join(html ? ' ' : '\n'), start, end, 'end');
             input.dispatchEvent(new Event('input', { bubbles: true }));
