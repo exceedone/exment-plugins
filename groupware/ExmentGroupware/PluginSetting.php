@@ -46,12 +46,13 @@ class PluginSetting
         $form->exmheader('Web メール：Microsoft 365 でサインイン')->hr();
         $form->description('Azure portal の「アプリの登録」で Web アプリを登録し、リダイレクト URI に <code>' . e($redirect) . '</code> を入れます。API のアクセス許可は Office 365 Exchange Online の IMAP.AccessAsUser.All・SMTP.Send（委任）と offline_access・openid・email・profile。テナントの管理者が「SMTP 認証」をユーザーに許可している必要があります。')->escape(false);
         $form->text('ms_client_id', 'アプリケーション（クライアント）ID');
-        $form->password('ms_client_secret', 'クライアント シークレット');
+        // kept encrypted and never shown again (SecretField, SecretOption)
+        $form->pushField(new SecretField('ms_client_secret', ['クライアント シークレット']));
         $form->text('ms_tenant', 'テナント')->help('空のときは organizations（職場・学校のアカウントならどのテナントでも）。自社だけに限るときは、テナント ID か contoso.onmicrosoft.com のようなドメイン。');
         $form->exmheader('Web メール：Google でサインイン（Gmail・Google Workspace）')->hr();
         $form->description('Google Cloud console で OAuth クライアント ID（ウェブ アプリケーション）を作り、承認済みのリダイレクト URI に <code>' . e($redirect) . '</code> を入れます。スコープは https://mail.google.com/ を使います（外部に公開するときは Google の審査が必要です。Google Workspace の社内用なら「内部」で審査は要りません）。')->escape(false);
         $form->text('google_client_id', 'クライアント ID');
-        $form->password('google_client_secret', 'クライアント シークレット');
+        $form->pushField(new SecretField('google_client_secret', ['クライアント シークレット']));
         $form->exmheader('Web メール：つなぐ先')->hr();
         $form->switchbool('mail_allow_private', '社内のネットワークのメールサーバーを許可する')
             ->default(0)

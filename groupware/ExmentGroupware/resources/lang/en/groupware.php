@@ -6,6 +6,16 @@ return [
     'feature_office' => 'Office (ibisOffice)',
     'feature_calendar' => 'Calendar',
     'feature_calendar_help' => 'A shared calendar: your events, other people\'s and your organization\'s by day, week, month and list, with repeats, attendees and replies, and who can see each (Exment Plugin Groupware).',
+    // a secret of the plugin's settings (SecretField): never shown again
+    'secret' => [
+        'set' => 'Set',
+        'not_set' => 'Not set',
+        'help_set' => 'The saved value is not shown. Enter a new value only to replace it; saving with the field empty keeps the current value.',
+        'help_not_set' => 'Enter the value and save. It is stored encrypted and not shown again.',
+        'placeholder_set' => 'Set (enter only to replace it)',
+        'placeholder_not_set' => '',
+        'clear' => 'Remove the value',
+    ],
     // the calendar (ISS02947)
     'cal' => [
         'title' => 'Calendar',

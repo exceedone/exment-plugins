@@ -301,6 +301,12 @@ jobs:
       - name: Groupware chat calls (ExmentGroupware)
         run: php groupware/tools/test-chat-call.php
 
+      # the web mail's OAuth client secrets in the plugin's settings: kept encrypted, never written
+      # into the form, an empty field keeps them, the migration of a plain value (plain PHP, a fake
+      # HTTP client: nothing is sent to Google or Microsoft)
+      - name: Groupware mail client secrets (ExmentGroupware)
+        run: php groupware/tools/test-gw-mail-secret.php
+
       # 「ExmentPM の課題にする」 and every route with its method (ISS02941)
       - name: Help desk ExmentPM link (IT Support)
         run: php it-support/tools/test-pm-link.php

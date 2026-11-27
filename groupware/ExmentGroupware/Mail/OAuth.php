@@ -2,6 +2,7 @@
 
 namespace App\Plugins\ExmentGroupware\Mail;
 
+use App\Plugins\ExmentGroupware\SecretOption;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -13,7 +14,8 @@ use Illuminate\Support\Facades\Http;
  *
  * The system administrator registers the app once (Azure portal / Google
  * Cloud console) and enters its client ID and secret in the plugin's
- * settings, with the redirect URI the settings page shows.
+ * settings, with the redirect URI the settings page shows. The secret is kept
+ * encrypted there (SecretOption) and decrypted only here, for the token request.
  */
 class OAuth
 {
@@ -37,7 +39,7 @@ class OAuth
 
             return [
                 'client_id' => trim(strval($this->plugin->getCustomOption('ms_client_id'))),
-                'client_secret' => trim(strval($this->plugin->getCustomOption('ms_client_secret'))),
+                'client_secret' => strval(SecretOption::reveal($this->plugin->getCustomOption('ms_client_secret'))),
                 'authorize' => 'https://login.microsoftonline.com/' . $tenant . '/oauth2/v2.0/authorize',
                 'token' => 'https://login.microsoftonline.com/' . $tenant . '/oauth2/v2.0/token',
                 'scope' => 'openid email profile offline_access https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send',
@@ -46,7 +48,7 @@ class OAuth
         if ($provider === Providers::GMAIL) {
             return [
                 'client_id' => trim(strval($this->plugin->getCustomOption('google_client_id'))),
-                'client_secret' => trim(strval($this->plugin->getCustomOption('google_client_secret'))),
+                'client_secret' => strval(SecretOption::reveal($this->plugin->getCustomOption('google_client_secret'))),
                 'authorize' => 'https://accounts.google.com/o/oauth2/v2/auth',
                 'token' => 'https://oauth2.googleapis.com/token',
                 'scope' => 'openid email https://mail.google.com/',

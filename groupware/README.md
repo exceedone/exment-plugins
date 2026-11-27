@@ -15,6 +15,7 @@
 - A new version of this plugin may ask for a newer ibisOffice (ISS02827). Until now the site then said ibisOffice was not installed and Office stopped. Now Office keeps opening with the version already installed, and Feature management and the page of the plugin say a newer version is there, with **ibisOffice を X に更新する**. The update installs it as an install does (checked by its SHA-256) and then deletes the older folders.
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
 - Web mail: the dates of the mails are shown in the time zone the user chose in Exment (Exment 7.2.4; a user who chose none gets the time zone of the site). On an older Exment they are shown in the time zone of the browser, as before.
+- Web mail: the client secrets of the Microsoft 365 and Google apps in the plugin's settings are kept encrypted (Exment's data keys when the site has one, else the app key) and are not shown again: the settings show 「設定済み」 ("Set"), an empty field keeps the saved value, and 「値を消す」 removes it. The secrets saved before are encrypted on the update (`database/migrations`). See [Web mail](#web-mail).
 - The names and descriptions in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5). Another language reads English.
 - Calendar: the ICS export address and outside calendars (ISS02947, part 5; Feature management → **カレンダーの連携（ICS）**, off at first). A person can make an ICS address of their calendar for Google Calendar or Outlook (events open to all with their title, any other as 「予定あり」 only), and read ICS addresses of other calendars into theirs every 15 minutes. See [Calendar: the ICS export and outside calendars](#calendar-links).
 
@@ -144,6 +145,8 @@ Exment does not run a mail server. Like Outlook, it connects to the server the c
 - Microsoft: Azure portal → App registrations → a web app. Delegated permissions of Office 365 Exchange Online: `IMAP.AccessAsUser.All`, `SMTP.Send`, and `offline_access openid email profile`. SMTP AUTH must be allowed for the mailboxes. Tenant: empty = `organizations`.
 - Google: Google Cloud console → an OAuth client ID (web application), scope `https://mail.google.com/`. For a Google Workspace used inside the company, an "internal" app needs no review by Google.
 
+**The client secrets** are kept encrypted in the plugin's settings: with Exment's data keys when the site has one (Exment 7.3.0 and later, `enc:v1:`), else with the app key (`app:`), as ExmentPM keeps the secrets of its chat channels. They are decrypted only for the request to the provider's token endpoint. The settings page never shows a secret: it says 「設定済み」 ("Set") or 「未設定」 ("Not set"); leave the field empty to keep the saved value, type a new one to replace it, or check 「値を消す」 ("Remove the value") to remove it. Updating the plugin encrypts the secrets saved by 0.5.0 and before (`database/migrations/2026_11_29_000000_encrypt_gw_mail_client_secrets.php`); it leaves a value already encrypted as it is, so it can run again safely. Until it has run, a plain value still works, and saving the settings encrypts it.
+
 **Security.** Passwords and tokens are encrypted with the app key (`APP_KEY`). HTML mail is cleaned on the server and shown in a sandboxed iframe without scripts; images from outside are blocked until the user presses 画像を表示. Users can connect only to public addresses on the mail ports; for a mail server in the company network (on-premises Exment), the administrator turns on **社内のネットワークのメールサーバーを許可する** in the settings. Every call checks that the account belongs to the signed-in user.
 
 The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrations`).
@@ -192,6 +195,7 @@ Coming: an export of one's own calendar with all its details, with a token of it
 - カレンダー：その日の会議室・備品に、「使わない」にした会議室・備品も、その日に予約が残っていれば「使わない」と付けて出します。
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
+- Web メール：プラグインの設定の Microsoft 365・Google のアプリのクライアント シークレットを暗号化して保存し（サイトにデータの鍵があればそれで、なければアプリの鍵で）、あとで表示しません。設定の画面には「設定済み」と出て、空のまま保存すると今の値のまま、「値を消す」で消せます。前に保存したシークレットは、更新のときに暗号化します（`database/migrations`）。[Web メール](#web-mail-ja)を参照。
 - 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
 - カレンダー：ICS の書き出しの URL と、ほかのカレンダーの読みこみ（ISS02947 の 5。機能の管理 → **カレンダーの連携（ICS）**、初めは使わない）。自分のカレンダーの ICS の URL を作って Google カレンダーや Outlook で見られます（「全員」の予定は件名と場所、それ以外は「予定あり」だけ）。ほかのカレンダーの ICS の URL を、15 分ごとに自分のカレンダーに読みこめます。[カレンダー：ICS の書き出しとほかのカレンダー](#calendar-links-ja) を参照。
 
@@ -333,6 +337,8 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 
 - Microsoft: Azure portal →「アプリの登録」→ Web アプリ。Office 365 Exchange Online の委任のアクセス許可 `IMAP.AccessAsUser.All`・`SMTP.Send` と `offline_access openid email profile`。メールボックスで SMTP 認証が許可されている必要があります。テナントは空なら `organizations`。
 - Google: Google Cloud console → OAuth クライアント ID（ウェブ アプリケーション）、スコープ `https://mail.google.com/`。社内で使う Google Workspace なら「内部」のアプリにすれば Google の審査は要りません。
+
+**クライアント シークレット**は、プラグインの設定に暗号化して保存します。サイトに Exment のデータの鍵があればそれで（Exment 7.3.0 から、`enc:v1:`）、なければアプリの鍵で（`app:`）暗号化します（ExmentPM のチャットの通知先と同じ）。もとにもどすのは、プロバイダーのトークンの URL に送るときだけです。設定の画面にシークレットは出ません。「設定済み」か「未設定」と出ます。空のまま保存すると今の値のまま、新しい値を入れると入れかえ、「値を消す」にチェックすると消します。プラグインを更新すると、0.5.0 までに保存したシークレットを暗号化します（`database/migrations/2026_11_29_000000_encrypt_gw_mail_client_secrets.php`）。暗号化した値はそのままにするので、何度動いても同じです。動く前も、暗号化していない値はそのまま使え、設定を保存したときに暗号化します。
 
 **セキュリティ**: パスワード・トークンはアプリの鍵（`APP_KEY`）で暗号化します。HTML のメールはサーバーで危ない部分を取り除き、スクリプトの動かない iframe（sandbox）で表示します。外部の画像は「画像を表示」を押すまで読み込みません。つなげるのはインターネットのアドレスのメールのポートだけです。社内のネットワークのメールサーバー（オンプレミスの Exment）につなぐときは、管理者が設定の **社内のネットワークのメールサーバーを許可する** をオンにします。どの操作でも、アカウントがログインしている本人のものかを確かめます。
 
