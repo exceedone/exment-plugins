@@ -2121,4 +2121,15 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .pp-back{padding:4px 9px;min-height:32px;}
   .pmportal .pp-back .tx{display:none;}
 }
+/* The Wiki on a phone: the list of pages above the page (it was 260px beside a squeezed page),
+   and 「← Wiki 一覧」 back up to it. A wide screen has the list beside the page: no button. */
+.pmportal .pp-wback{margin-right:8px;}
+.pmportal .bl-wtree .nd.pp-back-flash{background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));transition:background .6s;}
+@media (min-width:761px){.pmportal .pp-wback{display:none;}}
+@media (max-width:760px){
+  .pmportal .bl-wiki,.pmportal .bl-wiki.pp-wempty{grid-template-columns:minmax(0,1fr);}
+  .pmportal .bl-wiki > .bl-card-box.pp-pinned{position:static !important;max-height:none !important;width:auto !important;}
+  .pmportal .bl-wiki.pp-wtree-pinned > .bl-card-box:nth-child(2){grid-column:auto;}
+  .pmportal .bl-wtree{max-height:40vh;overflow:auto;}
+}
 </style>

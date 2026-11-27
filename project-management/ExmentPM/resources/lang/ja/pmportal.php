@@ -2294,5 +2294,6 @@ return [
     'back_board' => 'ボード',
     'back_gantt' => 'ガント',
     'back_home' => 'ホーム',
+    'back_wiki' => 'Wiki 一覧',
     'back_tip' => '%s に戻る',
 ];
