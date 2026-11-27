@@ -505,11 +505,22 @@ class PortalChannels
         }
         static::$pending[$id]['issue'] = $issue;
         static::$pending[$id]['events'][$event] = $data;
-        static::$pending[$id]['by'] = static::actorName();
+        static::$pending[$id]['by'] = static::actorName($issue);
     }
 
-    protected static function actorName(): string
+    /**
+     * Who the change is by: the request's user, or, for an issue the plugin makes on someone's
+     * behalf (a recurring schedule's: PortalRules::onBehalf), that user, never the visitor whose
+     * page load ran it.
+     */
+    protected static function actorName(?CustomValue $issue = null): string
     {
+        if (isset($issue)) {
+            $owner = PortalRules::behalfOf($issue);
+            if ($owner !== null) {
+                return $owner > 0 ? PortalRunOwner::nameOf($owner) : '';
+            }
+        }
         try {
             $user = \Exment::user();
             if (!isset($user)) {

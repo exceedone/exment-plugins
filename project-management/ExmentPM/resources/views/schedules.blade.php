@@ -111,6 +111,7 @@
                 @if(!$row->enabled)<span class="mute">（{{ $s('off') }}）</span>@endif
                 <span class="r"><a href="{{ $base_url }}?edit={{ $row->id }}">{{ $s('edit') }}</a>
                 <form class="inl" method="post" action="{{ $base_url }}/{{ $row->id }}/delete" onsubmit="return confirm('{{ $s('delete_ask') }}');"><input type="hidden" name="_token" value="{{ csrf_token() }}"><button class="lnk" type="submit">{{ $s('delete') }}</button></form></span></h4>
+            @if(in_array(strval($row->run_error ?? ''), ['no_owner', 'no_right'], true))<div class="ng">{{ $s('blocked_' . $row->run_error) }}@if(!empty($row->run_error_at))（{{ $s('blocked_since', ['at' => $row->run_error_at]) }}）@endif</div>@endif
             <div class="mute">{{ $s('template') }}: {{ $item['template'] }} ・ {{ $row->rrule !== '' ? $row->rrule : $s('kind_dates') }} ・ {{ $s('shift_' . $row->shift) }} ・ {{ $s('lead_short', ['n' => $row->lead_days]) }}</div>
             <table>
                 <tr><th>{{ $s('col_orig') }}</th><th>{{ $s('col_due') }}</th><th>{{ $s('col_issue') }}</th><th>{{ $s('col_change') }}</th></tr>

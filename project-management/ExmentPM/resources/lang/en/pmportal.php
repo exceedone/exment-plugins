@@ -1500,6 +1500,9 @@ return [
         'opt_top_is_high_help' => 'Turn on if priorities are listed from highest to lowest, such as "Urgent, High, Medium, Low". Turn off if they are listed in reverse order.',
         'opt_severe_bump' => 'Raise priority one level for possible security issues or data loss',
         'opt_severe_bump_help' => 'For issues that mention wrong permissions, lost or corrupted data, or failed backups, the priority derived from impact and urgency is raised one level.',
+        'opt_nightly_hour' => 'Run the AI fill nightly (hour)',
+        'opt_nightly_hour_help' => 'When on, the batch of this plugin that Exment runs every 5 minutes (schedule:run) also fills, once a day at this hour (the server\'s clock), the empty fields of the projects that have AI autofill on. Up to 100 calls a run, within each project\'s daily cap. A run that did not get through is tried again within the hour. To run it by hand: php artisan exment:batch --name=ExmentPM --param1=all.',
+        'opt_nightly_off' => 'Off',
         // The key field is write-only: what it says instead of the key.
         'opt_api_key_placeholder' => 'Set (enter only to change)',
         'opt_api_key_state_set' => 'A key is currently saved. If you save with this field empty, the saved key is kept.',
@@ -1982,9 +1985,9 @@ return [
     // recurring schedules (ISS00432, stage 2)
     'sched' => [
         'feature' => 'Project management: recurring schedules',
-        'feature_help' => 'Makes issues from yearly, monthly, weekly, daily or fixed-date schedules by copying a template issue, some days before the due date. The project manager sets them in the project settings under "Recurring schedules". Run php artisan exment:batch --name=ExmentPM --param1=schedule with cron at least once a day.',
+        'feature_help' => 'Makes issues from yearly, monthly, weekly, daily or fixed-date schedules by copying a template issue, some days before the due date. The project manager sets them in the project settings under "Recurring schedules". Exment\'s schedule:run (the cron line every minute that Exment needs) runs this plugin\'s batch every 5 minutes. Where schedule:run does not run, run php artisan exment:batch --name=ExmentPM --param1=schedule with cron every 5 minutes (with neither, they are made when the portal\'s top page or a project is opened). Issues are made as the user who made the schedule.',
         'on' => 'Use recurring schedules',
-        'on_help' => 'Makes issues automatically from yearly, monthly, weekly and other schedules. Run php artisan exment:batch --name=ExmentPM --param1=schedule with cron.',
+        'on_help' => 'Makes issues automatically from yearly, monthly, weekly and other schedules. Exment\'s schedule:run runs them every 5 minutes (without it, run php artisan exment:batch --name=ExmentPM --param1=schedule with cron every 5 minutes).',
         'page_title' => 'Recurring schedules',
         'page_help' => 'For each date of the rule, an issue is made by copying the template issue, on the day set in "Days before". Dates already past are not made.',
         'saved' => 'Saved.',
@@ -1993,6 +1996,10 @@ return [
         'delete' => 'Delete',
         'delete_ask' => 'Delete this schedule? (The issues it made stay.)',
         'off' => 'Stopped',
+        'blocked_no_owner' => 'This schedule cannot make issues. The user who made it is gone or no longer a member of the project, and the project has no manager. Make the schedule again, or add a manager to the project.',
+        'blocked_no_right' => 'This schedule cannot make issues. The user it makes them as (the user who made the schedule, or the project\'s first manager) has no role that can edit the issue table.',
+        'blocked_since' => 'since :at',
+        'err_no_right' => 'You cannot save a schedule here because you may not add issues to this project. Its issues are made later as the user who made the schedule, with no one asked then.',
         'name' => 'Name',
         'template' => 'Template issue',
         'template_help' => 'Copies the subject, type, assignees, description and so on of this issue. The status becomes the first status; files and actual hours are not copied. The start date is set as far before the due date as in the template.',

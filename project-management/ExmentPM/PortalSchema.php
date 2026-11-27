@@ -328,10 +328,12 @@ class PortalSchema
      *
      *   php artisan exment:batch --name=<plugin name> --param1=all --param2=50
      *
-     * No hour equals -1. Exment's own plugin screen offers no batch field for a
-     * page plugin, so an operator who wants a nightly run sets options.batch_cron
-     * on the plugin row instead (a cron entry wins over batch_hour) or calls the
-     * command from the system's own scheduler. Either survives a re-upload.
+     * No hour equals -1. The batch called with no params (as Exment's scheduler
+     * calls it) now runs the recurring schedules, never the back-fill, and
+     * config.json ships options.batch_cron every 5 minutes for that
+     * (PluginBatch); the installer copies both values onto the plugin row at
+     * every upload. A nightly back-fill is a line of the system's own scheduler
+     * with --param1=all.
      */
     const BATCH_HOUR_OFF = -1;
 
