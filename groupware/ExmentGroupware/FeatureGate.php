@@ -153,7 +153,7 @@ class FeatureGate
         }
         call_user_func([static::FEATURES, 'register'], static::CALL, [
             'label' => static::text('feature_call', '通話'),
-            'description' => static::text('feature_call_help', 'チャットの 1 対 1 のルームから、声と画面の共有で通話する（ブラウザーどうしで直接つなぐ。録音はしない）。'),
+            'description' => static::text('feature_call_help', 'チャットのルームから、4 人までの声・カメラ・画面の共有で通話する（ブラウザーどうしで直接つなぐ。録音はしない）。'),
             'endpoints' => [],
             'plugin' => $plugin->plugin_name,
             'requires' => static::CHAT,

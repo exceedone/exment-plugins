@@ -73,8 +73,11 @@
 .gwc-panel .it.done .t{text-decoration:line-through;color:var(--faint)}
 .gwc-main{position:relative}
 .gwc-call{position:fixed;right:16px;bottom:16px;width:min(560px,calc(100% - 32px));background:#111;color:#fff;border-radius:12px;z-index:1090;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
-.gwc-call video{width:100%;max-height:60vh;background:#000;display:none}
-.gwc-call video.on{display:block}
+.gwc-call .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px;padding:4px}
+.gwc-call .tile{position:relative;background:#222;border-radius:8px;min-height:60px;overflow:hidden}
+.gwc-call .tile video{width:100%;max-height:40vh;background:#000;display:none}
+.gwc-call .tile.vid video{display:block}
+.gwc-call .tile .nm{position:absolute;left:6px;bottom:4px;font-size:12px;background:rgba(0,0,0,.5);padding:0 6px;border-radius:4px}
 .gwc-call .bar{display:flex;gap:8px;align-items:center;padding:8px 10px}
 .gwc-call .bar .st{flex:1;font-size:12px;color:#ccc}
 .gwc-call .bar button{border:0;border-radius:18px;padding:6px 12px;background:#333;color:#fff;cursor:pointer}
@@ -203,7 +206,7 @@ function openRoom(id, then) {
     $('gwc-title').textContent = r ? (r.name || '（名前なし）') : '';
     $('gwc-mem').hidden = !(r && r.kind === 'group');
     showMute();
-    $('gwc-call').hidden = !(B.call && r && r.kind === 'direct');
+    $('gwc-call').hidden = !(B.call && r);
     $('gwc-comp').hidden = false;
     renderRooms();
     $('gwc-list').innerHTML = '<div class="gwc-empty"><i class="fa fa-spinner fa-spin"></i></div>';
@@ -466,7 +469,8 @@ $('gwc-mute').addEventListener('click', function () {
     api(u('mute', S.room), { muted: !r.muted }).then(function (d) { if (d && d.rooms) { S.rooms = d.rooms; renderRooms(); showMute(); } });
 });
 
-// ---- calls from a 1:1 room (ISS02946): WebRTC browser to browser, signals through the server ----
+// ---- calls from a room (ISS02946): up to 4 people, each browser connected to each other (WebRTC);
+// the signals pass through the server, addressed to one person each
 var CALL = null;
 function callJoinHtml(m, mine) {
     var c = !m.deleted && /^📞 通話 #(\d+) を始めました$/.exec(String(m.body || ''));
@@ -479,46 +483,93 @@ function callJoinHtml(m, mine) {
 function callBox() {
     var w = document.createElement('div');
     w.className = 'gwc-call';
-    w.innerHTML = '<video autoplay playsinline></video><audio autoplay></audio><div class="bar"><span class="st"></span>' +
+    w.innerHTML = '<div class="tiles"></div><div class="bar"><span class="st"></span>' +
         '<button type="button" class="mu" title="マイク"><i class="fa fa-microphone"></i></button>' +
+        '<button type="button" class="cam" title="カメラ"><i class="fa fa-video-camera"></i></button>' +
         '<button type="button" class="sh" title="画面を共有"><i class="fa fa-desktop"></i> 画面</button>' +
         '<button type="button" class="end"><i class="fa fa-phone"></i> 切る</button></div>';
     document.body.appendChild(w);
     return w;
 }
 function callStatus(t) { if (CALL) { CALL.box.querySelector('.st').textContent = t; } }
-function callSend(type, payload) {
+function callShowStatus() {
     if (!CALL) { return; }
-    // one JSON text, so the server's trimming of input strings cannot cut the SDP's last line break
-    return api(u('call_signal', CALL.id), { type: type, payload_json: payload == null ? '' : JSON.stringify(payload) });
+    var n = Object.keys(CALL.peers).filter(function (k) { return CALL.peers[k].pc.connectionState === 'connected'; }).length;
+    callStatus(n ? '通話中（' + (n + 1) + ' 人）' : (Object.keys(CALL.peers).length ? 'つないでいます…' : 'ほかの人が参加するのを待っています…'));
 }
-function callSetup(id, polite) {
-    if (CALL) { alert('もう通話中です。'); return null; }
+function callSend(to, type, payload) {
+    if (!CALL) { return Promise.resolve(); }
+    // one JSON text, so the server's trimming of input strings cannot cut the SDP's last line break
+    return api(u('call_signal', CALL.id), { to: to, type: type, payload_json: payload == null ? '' : JSON.stringify(payload) });
+}
+// the tracks of oneself: the microphone, the camera, a screen
+function myTracks() {
+    var out = [];
+    [CALL.mic, CALL.cam, CALL.screen && CALL.screen.stream].forEach(function (st) { if (st) { st.getTracks().forEach(function (t) { out.push([t, st]); }); } });
+    return out;
+}
+function peerTile(uid) {
+    var t = document.createElement('div');
+    t.className = 'tile';
+    t.innerHTML = '<video autoplay playsinline></video><audio autoplay></audio><span class="nm"></span>';
+    t.querySelector('.nm').textContent = name(uid);
+    CALL.box.querySelector('.tiles').appendChild(t);
+    return t;
+}
+// a connection to one other person; the one who joined later makes the first offer (polite: the earlier one)
+function peer(uid, polite) {
+    if (CALL.peers[uid]) { return CALL.peers[uid]; }
     var pc = new RTCPeerConnection({ iceServers: B.ice || [] });
-    CALL = { id: id, pc: pc, polite: polite, after: 0, making: false, ignore: false, box: callBox(), screen: null, mic: null, timer: null, ready: false };
-    var box = CALL.box;
-    pc.onicecandidate = function (e) { if (e.candidate) { callSend('ice', e.candidate.toJSON()); } };
+    var p = { pc: pc, polite: polite, making: false, ignore: false, tile: peerTile(uid), senders: [] };
+    CALL.peers[uid] = p;
+    myTracks().forEach(function (x) { p.senders.push(pc.addTrack(x[0], x[1])); });
+    pc.onicecandidate = function (e) { if (e.candidate) { callSend(uid, 'ice', e.candidate.toJSON()); } };
     pc.ontrack = function (e) {
         if (e.track.kind === 'video') {
-            var v = box.querySelector('video');
-            v.srcObject = new MediaStream([e.track]);
-            v.classList.add('on');
-            e.track.onended = e.track.onmute = function () { v.classList.remove('on'); };
-            e.track.onunmute = function () { v.classList.add('on'); };
+            var v = p.tile.querySelector('video');
+            var ms = v.srcObject instanceof MediaStream ? v.srcObject : new MediaStream();
+            ms.getVideoTracks().forEach(function (t) { ms.removeTrack(t); });
+            ms.addTrack(e.track);
+            v.srcObject = ms;
+            p.tile.classList.add('vid');
+            e.track.onended = e.track.onmute = function () { p.tile.classList.remove('vid'); };
+            e.track.onunmute = function () { p.tile.classList.add('vid'); };
         } else {
-            box.querySelector('audio').srcObject = e.streams[0] || new MediaStream([e.track]);
+            p.tile.querySelector('audio').srcObject = e.streams[0] || new MediaStream([e.track]);
         }
     };
     pc.onconnectionstatechange = function () {
-        var st = pc.connectionState;
-        callStatus(st === 'connected' ? '通話中' : st === 'failed' ? 'つながりませんでした（ネットワークの中つぎが要るかもしれません）' : st === 'disconnected' ? '切れそうです…' : '');
+        if (pc.connectionState === 'failed') { callStatus(name(uid) + ' さんとつながりませんでした（ネットワークの中つぎが要るかもしれません）'); return; }
+        callShowStatus();
     };
-    // a new offer when a screen is shared or stopped (the polite one gives way on a clash)
     pc.onnegotiationneeded = function () {
-        if (!CALL || !CALL.ready) { return; }
-        CALL.making = true;
-        pc.setLocalDescription().then(function () { return callSend('offer', pc.localDescription.toJSON()); }).finally(function () { if (CALL) { CALL.making = false; } });
+        p.making = true;
+        pc.setLocalDescription().then(function () { return callSend(uid, 'offer', pc.localDescription.toJSON()); })
+            .catch(function () { /* a clash: the other side's offer wins */ })
+            .finally(function () { p.making = false; });
     };
+    return p;
+}
+function dropPeer(uid) {
+    var p = CALL && CALL.peers[uid];
+    if (!p) { return; }
+    try { p.pc.close(); } catch (e) { /* closed */ }
+    if (p.tile.parentNode) { p.tile.parentNode.removeChild(p.tile); }
+    delete CALL.peers[uid];
+    callShowStatus();
+}
+// a track of oneself to everyone, or away from everyone
+function addToAll(track, stream) { Object.keys(CALL.peers).forEach(function (k) { var p = CALL.peers[k]; p.senders.push(p.pc.addTrack(track, stream)); }); }
+function removeFromAll(track) {
+    Object.keys(CALL.peers).forEach(function (k) {
+        var p = CALL.peers[k];
+        p.senders = p.senders.filter(function (s) { if (s.track === track) { try { p.pc.removeTrack(s); } catch (e) { /* gone */ } return false; } return true; });
+    });
+}
+function callSetup(id) {
+    if (CALL) { alert('もう通話中です。'); return null; }
+    CALL = { id: id, peers: {}, after: 0, box: callBox(), mic: null, cam: null, screen: null, timer: null };
+    var box = CALL.box;
     box.querySelector('.end').onclick = function () { callEnd(true); };
     box.querySelector('.mu').onclick = function () {
         if (!CALL || !CALL.mic) { return; }
@@ -527,32 +578,46 @@ function callSetup(id, polite) {
         this.classList.toggle('on', !t.enabled);
         this.innerHTML = t.enabled ? '<i class="fa fa-microphone"></i>' : '<i class="fa fa-microphone-slash"></i>';
     };
+    box.querySelector('.cam').onclick = function () {
+        var btn = this;
+        if (!CALL) { return; }
+        if (CALL.cam) {
+            CALL.cam.getTracks().forEach(function (t) { removeFromAll(t); t.stop(); });
+            CALL.cam = null;
+            btn.classList.remove('on');
+            return;
+        }
+        if (CALL.screen) { alert('画面を共有しているあいだは、カメラは使えません。'); return; }
+        navigator.mediaDevices.getUserMedia({ video: true }).then(function (stream) {
+            CALL.cam = stream;
+            stream.getVideoTracks().forEach(function (t) { addToAll(t, stream); });
+            btn.classList.add('on');
+        }).catch(function () { alert('カメラを使えませんでした（ブラウザーの許可を見てください）。'); });
+    };
     box.querySelector('.sh').onclick = function () {
         var btn = this;
         if (!CALL) { return; }
         if (CALL.screen) { stopShare(); return; }
         if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) { alert('このブラウザーは画面の共有ができません。'); return; }
+        if (CALL.cam) { box.querySelector('.cam').click(); }
         navigator.mediaDevices.getDisplayMedia({ video: true }).then(function (stream) {
             var track = stream.getVideoTracks()[0];
-            CALL.screen = { stream: stream, sender: pc.addTrack(track, stream) };
+            CALL.screen = { stream: stream };
+            addToAll(track, stream);
             btn.classList.add('on');
             track.onended = stopShare;
         }).catch(function () { /* the person said no */ });
     };
     function stopShare() {
         if (!CALL || !CALL.screen) { return; }
-        CALL.screen.stream.getTracks().forEach(function (t) { t.stop(); });
-        try { pc.removeTrack(CALL.screen.sender); } catch (e) { /* gone already */ }
+        CALL.screen.stream.getTracks().forEach(function (t) { removeFromAll(t); t.stop(); });
         CALL.screen = null;
         box.querySelector('.sh').classList.remove('on');
     }
-    return pc;
+    return CALL;
 }
 function callMic() {
-    return navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
-        CALL.mic = stream;
-        stream.getTracks().forEach(function (t) { CALL.pc.addTrack(t, stream); });
-    });
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) { CALL.mic = stream; });
 }
 function callPoll() {
     if (!CALL) { return; }
@@ -562,7 +627,7 @@ function callPoll() {
         var chain = Promise.resolve();
         (d.signals || []).forEach(function (s) {
             CALL.after = Math.max(CALL.after, s.id);
-            chain = chain.then(function () { return callOn(s); });
+            chain = chain.then(function () { return callOn(s); }).catch(function () { /* one bad signal: the next ones still count */ });
         });
         chain.then(function () {
             if (d.ended) { callEnd(false); return; }
@@ -571,47 +636,46 @@ function callPoll() {
     }).catch(function () { if (CALL) { CALL.timer = setTimeout(callPoll, 2000); } });
 }
 function callOn(s) {
-    var pc = CALL.pc;
-    if (s.type === 'hangup') { callEnd(false); return; }
-    if (s.type === 'join') {
-        // the one who started makes the first offer
-        CALL.ready = true;
-        return pc.setLocalDescription().then(function () { return callSend('offer', pc.localDescription.toJSON()); });
-    }
+    if (!CALL) { return; }
+    if (s.type === 'hangup') { dropPeer(s.from); return; }
+    if (s.type === 'join') { return; }
+    // an offer from someone not yet connected: they joined later, so this side is the polite one
+    var p = CALL.peers[s.from] || (s.type === 'offer' ? peer(s.from, true) : null);
+    if (!p) { return; }
+    var pc = p.pc;
     if (s.type === 'offer' || s.type === 'answer') {
-        var clash = s.type === 'offer' && (CALL.making || pc.signalingState !== 'stable');
-        CALL.ignore = !CALL.polite && clash;
-        if (CALL.ignore) { return; }
+        var clash = s.type === 'offer' && (p.making || pc.signalingState !== 'stable');
+        p.ignore = !p.polite && clash;
+        if (p.ignore) { return; }
         // an SDP must end with CRLF (a server between may have trimmed it)
         var desc = s.payload || {};
         if (desc.sdp && !/\r\n$/.test(desc.sdp)) { desc = { type: desc.type, sdp: desc.sdp + '\r\n' }; }
         return pc.setRemoteDescription(desc).then(function () {
-            CALL.ready = true;
             if (s.type === 'offer') {
-                return pc.setLocalDescription().then(function () { return callSend('answer', pc.localDescription.toJSON()); });
+                return pc.setLocalDescription().then(function () { return callSend(s.from, 'answer', pc.localDescription.toJSON()); });
             }
         });
     }
     if (s.type === 'ice' && s.payload) {
-        return pc.addIceCandidate(s.payload).catch(function () { if (!CALL.ignore) { /* a late one */ } });
+        return pc.addIceCandidate(s.payload).catch(function () { /* late or ignored */ });
     }
 }
 function callEnd(tell) {
     if (!CALL) { return; }
     var c = CALL;
+    Object.keys(c.peers).forEach(function (k) { try { c.peers[k].pc.close(); } catch (e) { /* closed */ } });
     CALL = null;
     clearTimeout(c.timer);
     if (tell) { api(u('call_end', c.id), {}); }
-    [c.mic, c.screen && c.screen.stream].forEach(function (st) { if (st) { st.getTracks().forEach(function (t) { t.stop(); }); } });
-    try { c.pc.close(); } catch (e) { /* closed */ }
+    [c.mic, c.cam, c.screen && c.screen.stream].forEach(function (st) { if (st) { st.getTracks().forEach(function (t) { t.stop(); }); } });
     if (c.box.parentNode) { c.box.parentNode.removeChild(c.box); }
 }
 $('gwc-call').addEventListener('click', function () {
     if (!S.room || !window.RTCPeerConnection) { alert('このブラウザーでは通話できません。'); return; }
     api(u('call_start', S.room), {}).then(function (d) {
         if (!d || d.ok === false) { alert((d && d.message) || '通話を始められませんでした'); return; }
-        if (!callSetup(d.call, false)) { return; }
-        callStatus('相手が参加するのを待っています…');
+        if (!callSetup(d.call)) { return; }
+        callShowStatus();
         callMic().then(callPoll).catch(function () { alert('マイクを使えませんでした（ブラウザーの許可を見てください）。'); callEnd(true); });
     });
 });
@@ -621,9 +685,15 @@ $('gwc-list').addEventListener('click', function (ev) {
     ev.stopPropagation();
     if (!window.RTCPeerConnection) { alert('このブラウザーでは通話できません。'); return; }
     var id = parseInt(j.getAttribute('data-join'), 10);
-    if (!callSetup(id, true)) { return; }
-    callStatus('つないでいます…');
-    callMic().then(function () { return callSend('join'); }).then(callPoll).catch(function () { alert('マイクを使えませんでした（ブラウザーの許可を見てください）。'); callEnd(true); });
+    if (CALL) { alert('もう通話中です。'); return; }
+    api(u('call_join', id), {}).then(function (d) {
+        if (!d || d.ok === false) { alert((d && d.message) || '参加できませんでした'); return; }
+        if (!callSetup(id)) { return; }
+        callStatus('つないでいます…');
+        // the one who joins offers to each one already there (onnegotiationneeded, as the tracks go in)
+        callMic().then(function () { (d.people || []).forEach(function (uid) { peer(uid, false); }); callShowStatus(); callPoll(); })
+            .catch(function () { alert('マイクを使えませんでした（ブラウザーの許可を見てください）。'); callEnd(true); });
+    });
 }, true);
 window.addEventListener('beforeunload', function () { if (CALL) { callEnd(true); } });
 

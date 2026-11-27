@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 class ChatCall
 {
     const TYPES = ['join', 'offer', 'answer', 'ice', 'hangup'];
+    /** People in one call: each is connected to each other, so a few only (ISS02946 step 2). */
+    const MAX_PEOPLE = 4;
     const MAX_PAYLOAD = 65536;
     const SIGNALS_PER_CALL = 2000;
     /** The line of the room that starts a call (the page shows 「参加」 on it). */
@@ -44,22 +46,83 @@ class ChatCall
     public static function start(int $uid, int $roomId, string $roomUrl): array
     {
         $room = ChatService::room($uid, $roomId);
-        if ($room->kind !== 'direct') {
-            throw new \InvalidArgumentException('通話は、いまは 1 対 1 のルームだけです。');
-        }
         // the signals of calls over for an hour are of no use
         DB::table('gw_chat_signals')->where('created_at', '<', now()->subHour())->delete();
         $id = intval(DB::table('gw_chat_calls')->insertGetId(['room_id' => $roomId, 'started_by' => $uid, 'started_at' => now()]));
+        DB::table('gw_chat_call_members')->insert(['call_id' => $id, 'user_id' => $uid, 'joined_at' => now()]);
         $message = ChatService::post($uid, $roomId, sprintf(static::LINE, $id));
         ChatNotify::note($roomId, $message, $roomUrl . '?room=' . $roomId . '&message=' . intval($message['id']));
 
-        return ['call' => $id, 'message' => $message, 'other' => static::other($uid, $room)];
+        return ['call' => $id, 'message' => $message, 'people' => []];
+    }
+
+    /** The people in a call now (not who left). */
+    public static function people(int $callId): array
+    {
+        return array_map('intval', DB::table('gw_chat_call_members')->where('call_id', $callId)->whereNull('left_at')->pluck('user_id')->all());
+    }
+
+    /**
+     * Join a call: a member of its room, while it lasts, while it has room. The answer is who is
+     * in it already: the one who joins offers to each of them.
+     */
+    public static function join(int $uid, int $callId): array
+    {
+        [$call] = static::call($uid, $callId);
+        if ($call->ended_at !== null) {
+            throw new \InvalidArgumentException('この通話は終わっています。');
+        }
+        $people = array_values(array_diff(static::people($callId), [$uid]));
+        if (count($people) >= static::MAX_PEOPLE) {
+            throw new \InvalidArgumentException('この通話は ' . static::MAX_PEOPLE . ' 人までです。');
+        }
+        $row = DB::table('gw_chat_call_members')->where('call_id', $callId)->where('user_id', $uid);
+        if ($row->exists()) {
+            $row->update(['left_at' => null, 'joined_at' => now()]);
+        } else {
+            DB::table('gw_chat_call_members')->insert(['call_id' => $callId, 'user_id' => $uid, 'joined_at' => now()]);
+        }
+        if ($call->answered_at === null && $people !== []) {
+            DB::table('gw_chat_calls')->where('id', $callId)->update(['answered_at' => now()]);
+        }
+
+        return ['call' => $callId, 'people' => $people];
+    }
+
+    /** Leave a call: the others are told; the call ends when nobody is left. */
+    public static function leave(int $uid, int $callId): array
+    {
+        [$call, $room] = static::call($uid, $callId);
+        DB::table('gw_chat_call_members')->where('call_id', $callId)->where('user_id', $uid)->update(['left_at' => now()]);
+        foreach (static::people($callId) as $other) {
+            static::put($callId, $uid, $other, 'hangup', null);
+        }
+        if (static::people($callId) === []) {
+            return static::end($uid, $callId);
+        }
+
+        return ['ended' => false];
+    }
+
+    protected static function put(int $callId, int $from, int $to, string $type, ?string $json): void
+    {
+        DB::table('gw_chat_signals')->insert([
+            'call_id' => $callId, 'from_user' => $from, 'to_user' => $to, 'type' => $type, 'payload' => $json, 'created_at' => now(),
+        ]);
     }
 
     /** Pass a signal to the other member. */
-    public static function signal(int $uid, int $callId, string $type, $payload): void
+    public static function signal(int $uid, int $callId, string $type, $payload, ?int $to = null): void
     {
         [$call, $room] = static::call($uid, $callId);
+        if ($to === null) {
+            $to = static::other($uid, $room);
+        }
+        // only to someone of the room who is in the call (a hangup also to who just left)
+        if ($to === $uid || ChatService::member($to, intval($room->id)) === null
+            || ($type !== 'hangup' && !in_array($to, static::people($callId), true))) {
+            abort(404);
+        }
         if ($call->ended_at !== null && $type !== 'hangup') {
             throw new \InvalidArgumentException('この通話は終わっています。');
         }
@@ -76,10 +139,7 @@ class ChatCall
         if ($type === 'answer' && $call->answered_at === null) {
             DB::table('gw_chat_calls')->where('id', $callId)->update(['answered_at' => now()]);
         }
-        DB::table('gw_chat_signals')->insert([
-            'call_id' => $callId, 'from_user' => $uid, 'to_user' => static::other($uid, $room),
-            'type' => $type, 'payload' => $json, 'created_at' => now(),
-        ]);
+        static::put($callId, $uid, $to, $type, $json);
     }
 
     /** The signals for the person since an id. */
@@ -91,8 +151,9 @@ class ChatCall
 
         return [
             'ended' => $call->ended_at !== null,
+            'people' => static::people($callId),
             'signals' => $rows->map(function ($r) {
-                return ['id' => intval($r->id), 'type' => $r->type, 'payload' => $r->payload !== null ? json_decode($r->payload, true) : null];
+                return ['id' => intval($r->id), 'from' => intval($r->from_user), 'type' => $r->type, 'payload' => $r->payload !== null ? json_decode($r->payload, true) : null];
             })->values()->all(),
         ];
     }
@@ -104,7 +165,12 @@ class ChatCall
         if ($call->ended_at === null) {
             $now = now();
             DB::table('gw_chat_calls')->where('id', $callId)->update(['ended_at' => $now]);
-            static::signal($uid, $callId, 'hangup', null);
+            foreach (static::people($callId) as $other) {
+                if ($other !== $uid) {
+                    static::put($callId, $uid, $other, 'hangup', null);
+                }
+            }
+            DB::table('gw_chat_call_members')->where('call_id', $callId)->whereNull('left_at')->update(['left_at' => $now]);
             $line = $call->answered_at !== null
                 ? '📞 通話 #' . $callId . ' を終えました（' . static::duration(strtotime(strval($call->answered_at)), $now->getTimestamp()) . '）'
                 : '📞 通話 #' . $callId . ' はつながりませんでした';
