@@ -191,11 +191,20 @@ class ChatService
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function messages(int $uid, int $roomId, ?int $before = null): array
+    public static function messages(int $uid, int $roomId, ?int $before = null, ?int $around = null): array
     {
         static::room($uid, $roomId);
         $me = static::member($uid, $roomId);
-        $q = DB::table('gw_chat_messages')->where('room_id', $roomId)->where('created_at', '>=', $me->joined_at);
+        $base = function () use ($roomId, $me) {
+            return DB::table('gw_chat_messages')->where('room_id', $roomId)->where('created_at', '>=', $me->joined_at);
+        };
+        if ($around !== null) {
+            $older = $base()->where('id', '<=', $around)->orderByDesc('id')->limit(intdiv(static::PAGE, 2))->get()->reverse();
+            $newer = $base()->where('id', '>', $around)->orderBy('id')->limit(intdiv(static::PAGE, 2))->get();
+
+            return static::shape($roomId, $older->concat($newer)->values());
+        }
+        $q = $base();
         if ($before !== null) {
             $q->where('id', '<', $before);
         }
@@ -220,6 +229,15 @@ class ChatService
         if ($ids !== [] && \Illuminate\Support\Facades\Schema::hasTable('gw_chat_reactions')) {
             foreach (DB::table('gw_chat_reactions')->whereIn('message_id', $ids)->orderBy('id')->get() as $x) {
                 $reactions[intval($x->message_id)][$x->emoji][] = intval($x->user_id);
+            }
+        }
+        $tasks = [];
+        if ($ids !== [] && \Illuminate\Support\Facades\Schema::hasTable('gw_chat_tasks')) {
+            foreach (DB::table('gw_chat_tasks')->whereIn('message_id', $ids)->get() as $t) {
+                $tasks[intval($t->message_id)][] = [
+                    'id' => intval($t->id), 'assignee' => $t->assignee !== null ? intval($t->assignee) : null,
+                    'due' => $t->due, 'done' => $t->done_at !== null, 'pm_issue' => $t->pm_issue,
+                ];
             }
         }
         $quoted = [];
@@ -251,6 +269,7 @@ class ChatService
                 'reply_to' => $r->reply_to !== null ? intval($r->reply_to) : null,
                 'quote' => $r->reply_to !== null ? ($quoted[intval($r->reply_to)] ?? null) : null,
                 'reactions' => (object) ($reactions[intval($r->id)] ?? []),
+                'tasks' => $tasks[intval($r->id)] ?? [],
                 'mentions' => (array) json_decode(strval($r->mentions ?? '[]'), true),
                 'files' => $deleted ? [] : array_values(array_map(function ($f) {
                     return ['uuid' => strval($f['uuid'] ?? ''), 'name' => strval($f['name'] ?? ''), 'size' => intval($f['size'] ?? 0)];

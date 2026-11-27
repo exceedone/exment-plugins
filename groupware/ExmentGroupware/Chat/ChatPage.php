@@ -72,9 +72,17 @@ class ChatPage
                     'edit' => $this->url('api/message/__ID__/edit'),
                     'delete' => $this->url('api/message/__ID__/delete'),
                     'react' => $this->url('api/message/__ID__/react'),
+                    'tasks' => $this->url('api/tasks'),
+                    'task' => $this->url('api/message/__ID__/task'),
+                    'task_done' => $this->url('api/task/__ID__/done'),
+                    'projects' => $this->url('api/projects'),
+                    'issue' => $this->url('api/message/__ID__/issue'),
+                    'search' => $this->url('api/search'),
                 ],
                 'max_file' => ChatService::MAX_FILE_BYTES,
                 'reactions' => ChatText::REACTIONS,
+                'pm' => ChatTasks::pmAvailable() && ChatTasks::pmCanCreate(),
+                'jump' => intval(request()->query('message', 0)) ?: null,
             ],
         ]);
         foreach (['ExmentAdminCore\Admin\Layout\Content', 'Encore\Admin\Layout\Content'] as $class) {
@@ -139,8 +147,9 @@ class ChatPage
     {
         return $this->json(function () use ($request, $id) {
             $before = intval($request->query('before', 0)) ?: null;
+            $around = intval($request->query('around', 0)) ?: null;
 
-            return ['messages' => ChatService::messages($this->uid(), intval($id), $before)];
+            return ['messages' => ChatService::messages($this->uid(), intval($id), $before, $around)];
         });
     }
 
@@ -191,6 +200,56 @@ class ChatPage
     {
         return $this->json(function () use ($request, $id) {
             return ['message' => ChatService::react($this->uid(), intval($id), strval($request->input('emoji', '')))];
+        });
+    }
+
+    public function apiTasks()
+    {
+        return $this->json(function () {
+            return ChatTasks::mine($this->uid());
+        });
+    }
+
+    public function postTask(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            $assignee = intval($request->input('assignee', 0)) ?: null;
+            $due = trim(strval($request->input('due', ''))) ?: null;
+
+            return ChatTasks::create($this->uid(), intval($id), $assignee, $due, strval($request->input('title', '')));
+        });
+    }
+
+    public function postTaskDone(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            return ChatTasks::done($this->uid(), intval($id), boolval($request->input('done', true)));
+        });
+    }
+
+    public function apiProjects()
+    {
+        return $this->json(function () {
+            return ['projects' => (object) (ChatTasks::pmAvailable() && ChatTasks::pmCanCreate() ? ChatTasks::projects() : [])];
+        });
+    }
+
+    public function postIssue(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            $m = \Illuminate\Support\Facades\DB::table('gw_chat_messages')->where('id', intval($id))->first();
+            $link = isset($m) ? $this->url('') . '?room=' . intval($m->room_id) . '&message=' . intval($m->id) : $this->url('');
+
+            return ChatTasks::createIssue($this->uid(), intval($id), intval($request->input('project')), $link);
+        });
+    }
+
+    public function apiSearch(Request $request)
+    {
+        return $this->json(function () use ($request) {
+            $room = intval($request->query('room', 0)) ?: null;
+
+            return ChatTasks::search($this->uid(), strval($request->query('q', '')), $room);
         });
     }
 

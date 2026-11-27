@@ -736,6 +736,36 @@ class Plugin extends PluginPageBase
         return $this->chatDenied() ?? $this->chat()->postReact(request(), $id);
     }
 
+    public function chatTasks()
+    {
+        return $this->chatDenied() ?? $this->chat()->apiTasks();
+    }
+
+    public function chatTask($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postTask(request(), $id);
+    }
+
+    public function chatTaskDone($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postTaskDone(request(), $id);
+    }
+
+    public function chatProjects()
+    {
+        return $this->chatDenied() ?? $this->chat()->apiProjects();
+    }
+
+    public function chatIssue($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postIssue(request(), $id);
+    }
+
+    public function chatSearch()
+    {
+        return $this->chatDenied() ?? $this->chat()->apiSearch(request());
+    }
+
     public function chatRead($id)
     {
         return $this->chatDenied() ?? $this->chat()->postRead(request(), $id);
