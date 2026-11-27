@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -58,6 +59,16 @@ return new class extends Migration
 
     public function down(): void
     {
+        // the events read from the links go with them (and their occurrences changed one by one)
+        if (Schema::hasTable('gw_cal_events')) {
+            $ids = DB::table('gw_cal_events')->where('source', 'link')->pluck('id')->all();
+            foreach (array_chunk($ids, 500) as $chunk) {
+                if (Schema::hasTable('gw_cal_overrides')) {
+                    DB::table('gw_cal_overrides')->whereIn('event_id', $chunk)->delete();
+                }
+                DB::table('gw_cal_events')->whereIn('id', $chunk)->delete();
+            }
+        }
         Schema::dropIfExists('gw_cal_feeds');
         Schema::dropIfExists('gw_cal_links');
     }

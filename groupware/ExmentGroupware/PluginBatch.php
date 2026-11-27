@@ -49,7 +49,7 @@ class PluginBatch extends PluginBatchBase
         try {
             if (class_exists(Calendar\Links::class) && Calendar\Links::ready()
                 && FeatureGate::allowedOnSite(FeatureGate::CALENDAR) && FeatureGate::allowedOnSite(FeatureGate::CALENDAR_LINKS)) {
-                Mail\HostGuard::allowPrivate(boolval($this->plugin->getCustomOption('mail_allow_private')));
+                Mail\HostGuard::allowPrivateWeb(boolval($this->plugin->getCustomOption('calendar_allow_private')));
                 $r = Calendar\Links::run(Calendar\Links::BATCH_LINKS, null, 240);
                 $this->line('calendar: ' . $r['read'] . ' outside calendar(s) read, ' . $r['failed'] . ' failed');
             }

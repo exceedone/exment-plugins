@@ -57,15 +57,24 @@ class HostGuard
     /** The ports of a web address, unless the internal network is allowed. */
     const WEB_PORTS = [80, 443, 8080, 8443];
 
+    /** @var bool the internal network for web addresses: a setting of its own (calendar_allow_private), not the mail's */
+    protected static $webAllowPrivate = false;
+
+    public static function allowPrivateWeb(bool $allow): void
+    {
+        static::$webAllowPrivate = $allow;
+    }
+
     /**
      * A web address (http, https; webcal is https) that Exment may fetch: its parts and the
      * addresses its name has now, all of them public. The connection must then go to one of
      * those addresses (not resolve the name again), and a redirect is checked again from here.
      *
-     * Never allowed, even with the internal network allowed: loopback (127/8, ::1), link-local
-     * (169.254/16, fe80::/10: the cloud's metadata service), "this network" (0/8, ::),
-     * multicast and the reserved ranges. The internal network (10/8, 172.16/12, 192.168/16,
-     * 100.64/10, fc00::/7) and other ports only with the plugin's setting.
+     * Only the ports WEB_PORTS, always. Never allowed, even with the internal network allowed:
+     * loopback (127/8, ::1), link-local (169.254/16, fe80::/10: the cloud's metadata service),
+     * "this network" (0/8, ::), multicast, the reserved ranges and the IPv6 ranges that carry
+     * IPv4 (NAT64, Teredo, 6to4). The internal network (10/8, 172.16/12, 192.168/16, 100.64/10,
+     * fc00::/7) only with allowPrivateWeb() (the plugin's setting calendar_allow_private).
      *
      * @param callable|null $resolve host => list of IP addresses (the tests give a fake)
      * @return array{url: string, scheme: string, host: string, port: int, ips: array<int, string>}
@@ -93,7 +102,7 @@ class HostGuard
         }
         $host = strtolower(trim($p['host'], '[]'));
         $port = isset($p['port']) ? intval($p['port']) : ($scheme === 'https' ? 443 : 80);
-        if ($port < 1 || $port > 65535 || (!static::$allowPrivate && !in_array($port, static::WEB_PORTS, true))) {
+        if ($port < 1 || $port > 65535 || !in_array($port, static::WEB_PORTS, true)) {
             throw new MailException('port');
         }
         if (filter_var($host, FILTER_VALIDATE_IP)) {
@@ -111,7 +120,7 @@ class HostGuard
             throw new MailException('dns');
         }
         foreach ($ips as $ip) {
-            if (!static::webAddressAllowed($ip, static::$allowPrivate)) {
+            if (!static::webAddressAllowed($ip, static::$webAllowPrivate)) {
                 throw new MailException('private');
             }
         }
@@ -148,7 +157,7 @@ class HostGuard
                 $v4 = inet_ntop(substr($bin, 12));
                 return $v4 !== false && static::webAddressAllowed($v4, $allowPrivate);
             }
-            $never = ['::/128', '::1/128', 'fe80::/10', 'ff00::/8', '100::/64', '2001:db8::/32', '2002::/16'];
+            $never = ['::/128', '::1/128', 'fe80::/10', 'ff00::/8', '100::/64', '2001:db8::/32', '2002::/16', '64:ff9b:1::/48', '2001::/32'];
             $internal = ['fc00::/7', 'fec0::/10'];
         } else {
             $never = ['0.0.0.0/8', '127.0.0.0/8', '169.254.0.0/16', '224.0.0.0/4', '240.0.0.0/4', '255.255.255.255/32', '192.0.0.0/24'];

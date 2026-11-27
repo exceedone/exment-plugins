@@ -190,6 +190,8 @@ return [
         'e_decrypt' => 'The address can no longer be read. Enter it again.',
         'e_too_many' => 'Many events: the first 5000 were read.',
         'e_failed' => 'Could not read it.',
+        'e_too_slow' => 'The calendar took too long to read, so it was not read (the events stay as they were).',
+        'e_not_allowed' => 'Not read: the person may not use calendar links.',
         'err_link_name' => 'Enter a name.',
         'err_link_show_as' => 'Choose what others see.',
         'err_link_url' => 'Enter the ICS address.',

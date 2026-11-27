@@ -394,7 +394,53 @@ namespace Illuminate\Support\Facades {
     }
 }
 
+namespace Exceedone\Exment\Enums {
+    class SystemTableName
+    {
+        const USER = 'user';
+    }
+}
+
 namespace {
+    /** Exment's users, as Links::userActive and Events::orgsOf ask for them: ids there, ids deleted. */
+    class GwFakeUser
+    {
+        public static $active = [5, 7, 9];
+        public $id = null;
+        public $deleted = false;
+
+        public static function withoutGlobalScopes()
+        {
+            return new self();
+        }
+
+        public function whereNull($col)
+        {
+            $this->deleted = true;
+            return $this;
+        }
+
+        public function where($col, $v)
+        {
+            $this->id = intval($v);
+            return $this;
+        }
+
+        public function exists()
+        {
+            return in_array($this->id, static::$active, true);
+        }
+
+        public function find($id)
+        {
+            return null;
+        }
+    }
+    function getModelName($t)
+    {
+        return GwFakeUser::class;
+    }
+
     class Schema
     {
         public static function hasTable($t)
@@ -667,6 +713,9 @@ namespace {
         'http://0.0.0.0/x.ics' => 'private',
         'http://[fe80::1]/x.ics' => 'private',
         'http://[fd00::1]/x.ics' => 'private',
+        'http://[64:ff9b:1::a00:1]/x.ics' => 'private',
+        'http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/x.ics' => 'private',
+        'http://[64:ff9b::7f00:1]/x.ics' => 'private',
         'http://[::ffff:127.0.0.1]/x.ics' => 'private',
         'http://[::ffff:169.254.169.254]/x.ics' => 'private',
         'http://localhost/x.ics' => 'private',
@@ -690,16 +739,31 @@ namespace {
         }
     }
     gw_ics_check('guard: private, loopback, link-local (also inside IPv6), other schemes, user info, ports: refused', $ok);
+    // the mail's setting does not open the internal network to web addresses
     HostGuard::allowPrivate(true);
-    gw_ics_check('guard: the internal network with the setting', gw_ics_code(function () {
-        HostGuard::checkWeb('http://10.0.0.5:8000/x.ics');
+    gw_ics_check('guard: the mail\'s setting (mail_allow_private) changes nothing for web addresses', gw_ics_code(function () {
+        HostGuard::checkWeb('http://10.0.0.5/x.ics');
+    }) === 'private' && gw_ics_code(function () {
+        HostGuard::checkWeb('http://cal.example.invalid:6379/x.ics', function () {
+            return ['203.0.113.10'];
+        });
+    }) === 'port');
+    HostGuard::allowPrivate(false);
+    HostGuard::allowPrivateWeb(true);
+    gw_ics_check('guard: the internal network with the calendar\'s own setting', gw_ics_code(function () {
+        HostGuard::checkWeb('http://10.0.0.5:8080/x.ics');
     }) === null);
+    gw_ics_check('guard: other ports never, even with the setting (no port scan)', gw_ics_code(function () {
+        HostGuard::checkWeb('http://10.0.0.5:22/x.ics');
+    }) === 'port' && gw_ics_code(function () {
+        HostGuard::checkWeb('http://10.0.0.5:6379/x.ics');
+    }) === 'port');
     gw_ics_check('guard: never loopback nor link-local, even with the setting', gw_ics_code(function () {
         HostGuard::checkWeb('http://127.0.0.1/x.ics');
     }) === 'private' && gw_ics_code(function () {
         HostGuard::checkWeb('http://169.254.169.254/x.ics');
     }) === 'private');
-    HostGuard::allowPrivate(false);
+    HostGuard::allowPrivateWeb(false);
 
     // ---- the fetch, with a fake client -----------------------------------------------------
     $calls = [];
@@ -762,6 +826,54 @@ namespace {
     gw_ics_check('fetch: relative redirects', IcsFetch::resolveUrl('https://cal.example.invalid/a/b.ics', 'c.ics') === 'https://cal.example.invalid/a/c.ics'
         && IcsFetch::resolveUrl('https://cal.example.invalid:8443/a/b.ics', '/d.ics') === 'https://cal.example.invalid:8443/d.ics'
         && IcsFetch::resolveUrl('https://cal.example.invalid/a', '//other.example.invalid/e') === 'https://other.example.invalid/e');
+
+    // one time limit for the whole fetch, redirects included (a slow chain of redirects)
+    $hops = [];
+    $slow = function ($url, $headers, $opts) use (&$hops) {
+        $hops[] = $opts['timeout'];
+        usleep(400000);
+        return ['status' => 302, 'headers' => ['Location' => '/n' . count($hops)], 'body' => ''];
+    };
+    $f = new IcsFetch($slow, $resolve, 1.0);
+    $t0 = microtime(true);
+    gw_ics_check('fetch: the time limit is for the whole fetch, not each redirect', gw_ics_code(function () use ($f) {
+        $f->get('https://cal.example.invalid/a.ics');
+    }) === 'network' && count($hops) === 3 && microtime(true) - $t0 < 2.0, [$hops, microtime(true) - $t0]);
+
+    // ---- a calendar made to be slow ---------------------------------------------------------
+    gw_ics_check('rule: COUNT read from outside is 1000 at most', Ics::rule('FREQ=DAILY;COUNT=50000', 'UTC', false) === 'FREQ=DAILY;COUNT=1000');
+    $t0 = microtime(true);
+    gw_ics_check('repeat_until: UNTIL alone without walking the repeat; an end far away is no end', Events::repeatUntil('FREQ=DAILY;UNTIL=20991231', '2000-01-01 00:00:00', 'UTC', false) === '2100-01-02 00:00:00'
+        && Events::repeatUntil('FREQ=DAILY;UNTIL=99991231', '2000-01-01 00:00:00', 'UTC', false) === null && microtime(true) - $t0 < 0.05);
+    $old = ['starts_at' => '2000-01-01 01:00:00', 'ends_at' => '2000-01-01 02:00:00', 'tz' => 'UTC', 'rrule' => 'FREQ=DAILY'];
+    $t0 = microtime(true);
+    $occ = \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($old, '2026-12-01 00:00:00', '2026-12-03 00:00:00');
+    gw_ics_check('a daily repeat of 2000 still shows in 2026, at once', array_column($occ, 'start') === ['2026-12-01 01:00:00', '2026-12-02 01:00:00'] && microtime(true) - $t0 < 0.05, array_column($occ, 'start'));
+    $occ = \App\Plugins\ExmentGroupware\Calendar\Occurrences::between(['starts_at' => '2001-03-06 01:00:00', 'ends_at' => '2001-03-06 02:00:00', 'tz' => 'UTC', 'rrule' => 'FREQ=WEEKLY;INTERVAL=3;BYDAY=TU'], '2026-11-30 00:00:00', '2027-01-31 00:00:00');
+    $weeks = array_map(function ($o) {
+        return intdiv(intval((strtotime($o['start']) - strtotime('2001-03-06 01:00:00')) / 86400), 7) % 3;
+    }, $occ);
+    gw_ics_check('an old repeat every 3 weeks keeps its own weeks', count($occ) === 3 && array_unique($weeks) === [0], array_column($occ, 'start'));
+    gw_ics_check('an old monthly and yearly repeat', array_column(\App\Plugins\ExmentGroupware\Calendar\Occurrences::between(['starts_at' => '1990-01-31 00:00:00', 'ends_at' => '1990-02-01 00:00:00', 'all_day' => true, 'rrule' => 'FREQ=MONTHLY;BYMONTHDAY=-1'], '2026-11-01 00:00:00', '2027-01-01 00:00:00'), 'start') === ['2026-11-30 00:00:00', '2026-12-31 00:00:00']
+        && array_column(\App\Plugins\ExmentGroupware\Calendar\Occurrences::between(['starts_at' => '1980-12-24 00:00:00', 'ends_at' => '1980-12-25 00:00:00', 'all_day' => true, 'rrule' => 'FREQ=YEARLY;INTERVAL=2'], '2026-01-01 00:00:00', '2029-01-01 00:00:00'), 'start') === ['2026-12-24 00:00:00', '2028-12-24 00:00:00']);
+    $big = "BEGIN:VCALENDAR\r\n";
+    for ($i = 0; $i < Ics::MAX_EVENTS; $i++) {
+        $big .= "BEGIN:VEVENT\r\nUID:dos-$i\r\nDTSTART:20000101T" . sprintf('%02d', $i % 24) . "0000Z\r\nDTEND:20000101T" . sprintf('%02d', $i % 24) . "3000Z\r\nRRULE:FREQ=DAILY;UNTIL=99991231\r\nSUMMARY:x\r\nEND:VEVENT\r\n";
+    }
+    $big .= "END:VCALENDAR\r\n";
+    $t0 = microtime(true);
+    $r = Ics::events($big, 'UTC', '2026-11-01 00:00:00', '2027-06-01 00:00:00');
+    $plan = Links::plan($r['events'], [], 'busy');
+    $took = microtime(true) - $t0;
+    gw_ics_check('5000 daily repeats from 2000 to 9999: read and planned in a few seconds', count($plan['insert']) === Ics::MAX_EVENTS && $took < 8.0, $took);
+    echo '      (' . round($took, 2) . " s)\n";
+    $t0 = microtime(true);
+    foreach (array_slice($plan['insert'], 0, 500) as $row) {
+        \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($row, '2026-12-01 00:00:00', '2026-12-08 00:00:00');
+    }
+    gw_ics_check('...and 500 of them shown for a week at once', microtime(true) - $t0 < 2.0, microtime(true) - $t0);
+    $r = Ics::events($big, 'UTC', '2026-11-01 00:00:00', '2027-06-01 00:00:00', microtime(true) - 1);
+    gw_ics_check('a read past its time limit stops and gives nothing (so nothing is removed)', $r['timed_out'] === true && $r['events'] === []);
 
     // ---- a link: the form ------------------------------------------------------------------
     [$fl, $why] = Links::fields(['name' => 'Team', 'url' => 'webcal://cal.example.invalid/a.ics', 'show_as' => 'busy'], true, $resolve);
@@ -878,6 +990,29 @@ namespace {
     Links::run(10, new IcsFetch($fake, $resolve));
     $other = Events::window('2026-12-09 00:00:00', '2026-12-11 00:00:00', [$owner], 9, '予定あり');
     gw_ics_check('show_as details: the others see its title', count($other) === 1 && $other[0]['title'] === 'one' && empty($other[0]['busy']));
+
+    // a person who is gone: the link is not read, the address is never fetched
+    DB::reset();
+    $calls = [];
+    $gone = DB::table('gw_cal_links')->insertGetId(['user_id' => 42, 'provider' => 'ics', 'name' => 'Gone', 'url_enc' => \Illuminate\Support\Facades\Crypt::encryptString('https://cal.example.invalid/a.ics'),
+        'url_host' => 'cal.example.invalid', 'show_as' => 'busy', 'enabled' => 1, 'fails' => 0, 'event_count' => 0, 'next_sync_at' => null, 'etag' => null, 'last_modified' => null, 'last_error' => null, 'last_sync_at' => null]);
+    $res = Links::run(10, new IcsFetch($fake, $resolve));
+    $l = DB::table('gw_cal_links')->where('id', $gone)->first();
+    gw_ics_check('a deleted person\'s link: not fetched, kept with a code, tried again a day later', $res['failed'] === 1 && $calls === [] && $l->last_error === 'not_allowed' && strcmp($l->next_sync_at, '2026-12-01 12:00:00') > 0, $l);
+    gw_ics_check('a person there / deleted / none', Links::userActive(5) && !Links::userActive(42) && !Links::userActive(0));
+
+    // many events once (an outside calendar) never push a repeat out of the window
+    DB::reset();
+    for ($i = 0; $i < 5001; $i++) {
+        DB::table('gw_cal_events')->insertGetId(['owner_user_id' => $owner, 'title' => 'once ' . $i, 'location' => null, 'body' => null, 'starts_at' => '2026-12-01 00:00:00', 'ends_at' => '2026-12-31 00:00:00',
+            'all_day' => 0, 'tz' => 'UTC', 'rrule' => null, 'repeat_until' => null, 'exdates' => null, 'rdates' => null, 'visibility' => 'all', 'org_id' => null, 'source' => 'link', 'link_id' => 1, 'deleted_at' => null]);
+    }
+    DB::table('gw_cal_events')->insertGetId(['owner_user_id' => $owner, 'title' => 'weekly', 'location' => null, 'body' => null, 'starts_at' => '2026-12-20 01:00:00', 'ends_at' => '2026-12-20 02:00:00',
+        'all_day' => 0, 'tz' => 'UTC', 'rrule' => 'FREQ=WEEKLY', 'repeat_until' => null, 'exdates' => null, 'rdates' => null, 'visibility' => 'all', 'org_id' => null, 'source' => 'local', 'link_id' => null, 'deleted_at' => null]);
+    $w = Events::window('2026-12-01 00:00:00', '2027-01-01 00:00:00', [$owner], $owner, '予定あり');
+    gw_ics_check('the window: a repeat is there with 5000 events once', count(array_filter($w, function ($x) {
+        return $x['title'] === 'weekly';
+    })) === 2, count($w));
 
     // the pages put every text in as text
     foreach (['calendar.blade.php', 'calendar_links.blade.php'] as $v) {

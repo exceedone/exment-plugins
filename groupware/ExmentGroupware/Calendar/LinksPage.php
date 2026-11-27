@@ -28,7 +28,7 @@ class LinksPage
     public function __construct($plugin)
     {
         $this->plugin = $plugin;
-        HostGuard::allowPrivate(boolval($plugin->getCustomOption('mail_allow_private')));
+        HostGuard::allowPrivateWeb(boolval($plugin->getCustomOption('calendar_allow_private')));
     }
 
     protected function me(): int
@@ -142,7 +142,7 @@ class LinksPage
     protected function readSoon(): void
     {
         Cache::forget('gw_cal_links_tick:' . DB::connection()->getDatabaseName());
-        Links::afterResponse(boolval($this->plugin->getCustomOption('mail_allow_private')));
+        Links::afterResponse(boolval($this->plugin->getCustomOption('calendar_allow_private')));
     }
 
     public function feedCreate()

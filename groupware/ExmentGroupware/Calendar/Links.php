@@ -5,6 +5,7 @@ namespace App\Plugins\ExmentGroupware\Calendar;
 use App\Plugins\ExmentGroupware\FeatureGate;
 use App\Plugins\ExmentGroupware\Mail\HostGuard;
 use App\Plugins\ExmentGroupware\Mail\MailException;
+use Exceedone\Exment\Enums\SystemTableName;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,8 @@ class Links
     const TICK_LINKS = 3;
     const BATCH_LINKS = 30;
     const TICK_SECONDS = 25;
+    /** The time a calendar's text may take to be read, at most (after its fetch). */
+    const PARSE_SECONDS = 10;
 
     public static function ready(): bool
     {
@@ -302,7 +305,11 @@ class Links
             if ($res['status'] === 200) {
                 $tz = strval(config('app.timezone') ?: 'Asia/Tokyo');
                 [$from, $to] = static::window($now);
-                $parsed = Ics::events($res['body'], $tz, $from, $to);
+                // a calendar made to be slow stops here, and nothing of it is changed
+                $parsed = Ics::events($res['body'], $tz, $from, $to, microtime(true) + static::PARSE_SECONDS);
+                if ($parsed['timed_out']) {
+                    throw new IcsFetchError('too_slow');
+                }
                 $n = static::apply($link, $parsed['events']);
                 $set = ['etag' => $res['etag'], 'last_modified' => $res['last_modified'], 'event_count' => $n];
                 if ($parsed['too_many']) {
@@ -401,6 +408,7 @@ class Links
         }
         $started = microtime(true);
         $now = static::utcNow();
+        $allowed = [];
         $due = DB::table(static::TABLE)->where('enabled', 1)->where('provider', 'ics')
             ->where(function ($q) use ($now) {
                 $q->whereNull('next_sync_at')->orWhere('next_sync_at', '<=', $now);
@@ -419,10 +427,37 @@ class Links
             if ($taken === 0) {
                 continue;
             }
+            // a person who is gone, or no longer allowed the feature: not read (kept, tried again in a day)
+            $uid = intval($l->user_id);
+            if (!array_key_exists($uid, $allowed)) {
+                $allowed[$uid] = static::userActive($uid) && FeatureGate::allowedFor(FeatureGate::CALENDAR_LINKS, $uid);
+            }
+            if (!$allowed[$uid]) {
+                DB::table(static::TABLE)->where('id', $l->id)->update([
+                    'last_error' => 'not_allowed',
+                    'next_sync_at' => (new \DateTimeImmutable($now, new \DateTimeZone('UTC')))->modify('+1 day')->format('Y-m-d H:i:s'),
+                ]);
+                $out['failed']++;
+                continue;
+            }
             $error = static::sync($l, $fetch);
             $out[$error === null ? 'read' : 'failed']++;
         }
         return $out;
+    }
+
+    /** Whether an Exment user is there (not deleted). False when it cannot be told. */
+    public static function userActive(int $uid): bool
+    {
+        if ($uid <= 0) {
+            return false;
+        }
+        try {
+            // without the global scopes (no login in a batch), the deleted ones left out by hand
+            return getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereNull('deleted_at')->where('id', $uid)->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /** After the answer of a calendar page: a few links whose time has come, at most once a minute. */
@@ -432,7 +467,7 @@ class Links
             try {
                 if (static::ready() && FeatureGate::allowedOnSite(FeatureGate::CALENDAR_LINKS)
                     && Cache::add('gw_cal_links_tick:' . DB::connection()->getDatabaseName(), 1, now()->addMinutes(1))) {
-                    HostGuard::allowPrivate($allowPrivate);
+                    HostGuard::allowPrivateWeb($allowPrivate);
                     static::run(static::TICK_LINKS, null, static::TICK_SECONDS);
                 }
             } catch (\Throwable $e) {

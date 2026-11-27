@@ -26,11 +26,14 @@ class IcsFetch
     protected $client;
     /** @var callable|null host => IP addresses (null: DNS) */
     protected $resolve;
+    /** @var float the time limit of a whole fetch, seconds */
+    protected $timeout;
 
-    public function __construct(?callable $client = null, ?callable $resolve = null)
+    public function __construct(?callable $client = null, ?callable $resolve = null, float $timeout = self::TIMEOUT)
     {
         $this->client = $client;
         $this->resolve = $resolve;
+        $this->timeout = $timeout;
     }
 
     /**
@@ -47,13 +50,19 @@ class IcsFetch
         if ($lastModified !== null && $lastModified !== '') {
             $headers['If-Modified-Since'] = $lastModified;
         }
+        // one time limit for the whole fetch, redirects included
+        $deadline = microtime(true) + $this->timeout;
         for ($hop = 0; $hop <= static::MAX_REDIRECTS; $hop++) {
+            $left = $deadline - microtime(true);
+            if ($left <= 0) {
+                throw new IcsFetchError('network');
+            }
             try {
                 $g = HostGuard::checkWeb($url, $this->resolve);
             } catch (MailException $e) {
                 throw new IcsFetchError($e->getMessage());
             }
-            $opts = ['host' => $g['host'], 'port' => $g['port'], 'ip' => $g['ips'][0], 'timeout' => static::TIMEOUT, 'max_bytes' => static::MAX_BYTES];
+            $opts = ['host' => $g['host'], 'port' => $g['port'], 'ip' => $g['ips'][0], 'timeout' => max(1, intval(ceil($left))), 'max_bytes' => static::MAX_BYTES];
             $res = $this->client !== null ? ($this->client)($g['url'], $headers, $opts) : static::curl($g['url'], $headers, $opts);
             $status = intval($res['status'] ?? 0);
             $h = array_change_key_case((array) ($res['headers'] ?? []), CASE_LOWER);
@@ -159,7 +168,12 @@ class IcsFetch
         ]);
         $ok = curl_exec($ch);
         $status = intval(curl_getinfo($ch, CURLINFO_RESPONSE_CODE));
+        $primary = strval(curl_getinfo($ch, CURLINFO_PRIMARY_IP));
         curl_close($ch);
+        // the connection went to the address checked, and nowhere else
+        if ($ok !== false && @inet_pton($primary) !== @inet_pton($opts['ip'])) {
+            throw new IcsFetchError('private');
+        }
         if ($tooBig) {
             throw new IcsFetchError('too_big');
         }

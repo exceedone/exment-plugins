@@ -21,6 +21,8 @@ class Ics
     const MAX_EVENTS = 5000;
     /** Lines read at most (a calendar of 5 MB has fewer). */
     const MAX_LINES = 200000;
+    /** The occurrences a repeat read from outside counts at most (COUNT). */
+    const MAX_COUNT = 1000;
 
     /** The common Windows names of time zones (Outlook / Exchange write them). */
     const WINDOWS_TZ = [
@@ -380,6 +382,10 @@ class Ics
                 }
                 continue;
             }
+            if (preg_match('/^COUNT=(\d+)$/', $p, $cm)) {
+                // a repeat read from outside counts to MAX_COUNT at most
+                $p = 'COUNT=' . min(static::MAX_COUNT, max(1, intval($cm[1])));
+            }
             if (preg_match('/^UNTIL=(\d{8})(T\d{6}Z?)?$/', $p, $u)) {
                 if (!$allDay && isset($u[2]) && substr($u[2], -1) === 'Z') {
                     try {
@@ -456,10 +462,17 @@ class Ics
      * occurrences changed or cancelled (RECURRENCE-ID), in a window of time ('Y-m-d H:i:s', UTC).
      * A series that ends before the window or starts after it is left out.
      *
-     * @return array{events: array<string, array<string, mixed>>, skipped: int, rules_unread: int, too_many: bool}
+     * $deadline (microtime(true)): past it, the read stops and says so (timed_out), with no events:
+     * a calendar made to be slow never holds a batch or a page.
+     *
+     * @return array{events: array<string, array<string, mixed>>, skipped: int, rules_unread: int, too_many: bool, timed_out: bool}
      */
-    public static function events(string $text, string $defaultTz, string $from, string $to): array
+    public static function events(string $text, string $defaultTz, string $from, string $to, ?float $deadline = null): array
     {
+        $late = function () use ($deadline) {
+            return $deadline !== null && microtime(true) > $deadline;
+        };
+        $timedOut = ['events' => [], 'skipped' => 0, 'rules_unread' => 0, 'too_many' => false, 'timed_out' => true];
         $c = static::components($text);
         $known = $c['tz'];
         $masters = [];
@@ -467,6 +480,9 @@ class Ics
         $skipped = 0;
         $unread = 0;
         foreach ($c['events'] as $ev) {
+            if ($late()) {
+                return $timedOut;
+            }
             $uid = static::text($ev, 'UID', 255);
             $ds = static::first($ev, 'DTSTART');
             $start = $ds !== null ? static::when($ds['value'], $ds['params'], $defaultTz, $known) : null;
@@ -530,6 +546,9 @@ class Ics
         $out = [];
         $tooMany = false;
         foreach ($masters as $uid => $m) {
+            if ($late()) {
+                return $timedOut;
+            }
             if ($m['cancelled']) {
                 continue;
             }
@@ -574,7 +593,7 @@ class Ics
                 }
             }
         }
-        return ['events' => $out, 'skipped' => $skipped, 'rules_unread' => $unread, 'too_many' => $tooMany];
+        return ['events' => $out, 'skipped' => $skipped, 'rules_unread' => $unread, 'too_many' => $tooMany, 'timed_out' => false];
     }
 
     /** Whether an event (with its repeat) can have an occurrence in the window. */

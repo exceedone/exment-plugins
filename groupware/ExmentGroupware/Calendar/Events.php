@@ -61,29 +61,34 @@ class Events
             return [];
         }
         $attending = DB::table(static::ATTENDEES)->whereIn('user_id', $people)->pluck('event_id')->all();
-        $rows = DB::table(static::EVENTS)->whereNull('deleted_at')
-            ->where('starts_at', '<', $to)
-            ->where(function ($q) use ($people, $attending) {
-                $q->whereIn('owner_user_id', $people);
-                if (!empty($attending)) {
-                    $q->orWhereIn('id', $attending);
-                }
-            })
-            ->where(function ($q) use ($from) {
-                // once: still on at $from; a repeat: not over before $from
-                $q->where(function ($once) use ($from) {
-                    $once->whereNull('rrule')->where('ends_at', '>', $from);
-                })->orWhere(function ($rep) use ($from) {
-                    $rep->whereNotNull('rrule')->where(function ($u) use ($from) {
-                        $u->whereNull('repeat_until')->orWhere('repeat_until', '>=', $from);
-                    });
-                })->orWhereNotNull('rdates');
-            })
-            ->orderBy('starts_at')->limit(5000)->get();
-        if ($rows->isEmpty()) {
+        $base = function () use ($to, $people, $attending) {
+            return DB::table(static::EVENTS)->whereNull('deleted_at')
+                ->where('starts_at', '<', $to)
+                ->where(function ($q) use ($people, $attending) {
+                    $q->whereIn('owner_user_id', $people);
+                    if (!empty($attending)) {
+                        $q->orWhereIn('id', $attending);
+                    }
+                });
+        };
+        // the repeats not over before $from, and the events once still on at $from: each with its
+        // own limit, so many events once (an outside calendar's) never push a repeat out
+        $repeats = $base()->where(function ($q) use ($from) {
+            $q->where(function ($rep) use ($from) {
+                $rep->whereNotNull('rrule')->where(function ($u) use ($from) {
+                    $u->whereNull('repeat_until')->orWhere('repeat_until', '>=', $from);
+                });
+            })->orWhereNotNull('rdates');
+        })->orderBy('starts_at')->limit(5000)->get()->all();
+        $once = $base()->whereNull('rrule')->whereNull('rdates')->where('ends_at', '>', $from)
+            ->orderBy('starts_at')->limit(5000)->get()->all();
+        $rows = array_merge($repeats, $once);
+        if (empty($rows)) {
             return [];
         }
-        $ids = $rows->pluck('id')->all();
+        $ids = array_map(function ($r) {
+            return $r->id;
+        }, $rows);
         $attendees = [];
         foreach (DB::table(static::ATTENDEES)->whereIn('event_id', $ids)->get() as $a) {
             $attendees[intval($a->event_id)][intval($a->user_id)] = strval($a->response);
@@ -358,6 +363,14 @@ class Events
         $r = Rrule::parse($rrule);
         if ($r === null || ($r['UNTIL'] === null && $r['COUNT'] === null)) {
             return null;
+        }
+        if ($r['COUNT'] === null && strcmp($r['UNTIL'], '2200-01-01') >= 0) {
+            // an end so far away (UNTIL=99991231) is no end
+            return null;
+        }
+        if ($r['COUNT'] === null) {
+            // UNTIL alone: its day (no need to walk the repeat: this is only a filter of the queries)
+            return (new \DateTimeImmutable($r['UNTIL']))->modify('+2 day')->format('Y-m-d') . ' 00:00:00';
         }
         $localStart = $allDay ? substr($startsUtc, 0, 10)
             : (new \DateTimeImmutable($startsUtc, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone($tz))->format('Y-m-d');

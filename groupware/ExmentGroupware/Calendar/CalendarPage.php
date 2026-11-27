@@ -65,7 +65,7 @@ class CalendarPage
         Reminders::afterResponse($this->url());
         // the outside calendars whose time has come (part 5), while that feature is on
         if (FeatureGate::allowedOnSite(FeatureGate::CALENDAR_LINKS)) {
-            Links::afterResponse(boolval($this->plugin->getCustomOption('mail_allow_private')));
+            Links::afterResponse(boolval($this->plugin->getCustomOption('calendar_allow_private')));
         }
     }
 
