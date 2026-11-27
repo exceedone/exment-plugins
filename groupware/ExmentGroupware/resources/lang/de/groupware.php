@@ -128,7 +128,7 @@ return [
         'err_network' => 'Der Server ist nicht erreichbar.',
     ],
     'feature_chat' => 'Chat',
-    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
-    'feature_call' => 'Calls',
-    'feature_call_help' => 'Call from a chat room, up to 4 people, with voice, camera and a shared screen (browser to browser, not recorded).',
+    'feature_chat_help' => 'Sprechen Sie in Gruppen- und Einzelräumen, mit @Erwähnungen, Lesezahlen und Dateien (Exment Plugin Groupware).',
+    'feature_call' => 'Anrufe',
+    'feature_call_help' => 'Rufen Sie aus einem Chatraum an, mit bis zu 4 Personen, mit Stimme, Kamera und geteiltem Bildschirm (direkt von Browser zu Browser, ohne Aufzeichnung).',
 ];

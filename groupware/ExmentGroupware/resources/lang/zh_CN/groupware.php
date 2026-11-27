@@ -127,8 +127,8 @@ return [
         'err_expired' => '页面已过期。请重新加载页面。',
         'err_network' => '无法连接到服务器。',
     ],
-    'feature_chat' => 'Chat',
-    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
-    'feature_call' => 'Calls',
-    'feature_call_help' => 'Call from a chat room, up to 4 people, with voice, camera and a shared screen (browser to browser, not recorded).',
+    'feature_chat' => '聊天',
+    'feature_chat_help' => '在群组和一对一的聊天室中交谈，支持 @提及、已读人数和文件（Exment Plugin Groupware）。',
+    'feature_call' => '通话',
+    'feature_call_help' => '从聊天室发起最多 4 人的语音、摄像头和屏幕共享通话（浏览器之间直接连接，不录音）。',
 ];

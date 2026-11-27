@@ -128,7 +128,7 @@ return [
         'err_network' => 'No se puede conectar con el servidor.',
     ],
     'feature_chat' => 'Chat',
-    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
-    'feature_call' => 'Calls',
-    'feature_call_help' => 'Call from a chat room, up to 4 people, with voice, camera and a shared screen (browser to browser, not recorded).',
+    'feature_chat_help' => 'Hable en salas de grupo y uno a uno, con @menciones, recuento de lecturas y archivos (Exment Plugin Groupware).',
+    'feature_call' => 'Llamadas',
+    'feature_call_help' => 'Llame desde una sala de chat, hasta 4 personas, con voz, cámara y pantalla compartida (directamente entre navegadores, sin grabación).',
 ];
