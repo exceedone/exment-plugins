@@ -238,6 +238,8 @@ return [
         'e_oauth_failed' => 'Could not sign in.',
         'e_oauth_state' => 'The sign-in expired or was not started from this page. Please try again.',
         'e_oauth_token' => 'Could not sign in (no token was received).',
+        'e_oauth_scope' => 'Permission to read the calendar was not given. Connect again and allow access to the calendar.',
+        'e_oauth_client' => 'The app of this site could not sign in (for example, its client secret expired). Ask the system administrator to check the plugin settings.',
         'e_not_configured' => 'Not available on this site yet (the system administrator needs to set the app in the plugin settings).',
         'e_auth' => 'The sign-in has expired. Use "Sign in again".',
         'e_host' => 'Not one of the fixed servers, so it was not contacted.',

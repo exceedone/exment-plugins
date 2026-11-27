@@ -144,9 +144,9 @@ class CloudOAuth
             'code_challenge_method' => 'S256',
         ];
         if ($provider === static::GOOGLE) {
-            // a refresh token only with offline access and the consent asked again
+            // a refresh token only with offline access and the consent asked again; the account chosen each time
             $q['access_type'] = 'offline';
-            $q['prompt'] = 'consent';
+            $q['prompt'] = 'consent select_account';
         } else {
             $q['prompt'] = 'select_account';
         }
@@ -183,16 +183,44 @@ class CloudOAuth
             'code' => $code,
             'redirect_uri' => $this->redirectUri(),
             'code_verifier' => strval($entry['verifier']),
-        ]);
+        ], $provider);
         $json = $res['json'] ?? [];
         if ($res['status'] !== 200 || empty($json['access_token']) || empty($json['refresh_token'])) {
             throw new IcsFetchError('oauth_token');
+        }
+        if (!static::scopeGranted($provider, $json)) {
+            // the person left the calendar out on the consent page (Google's checkboxes)
+            throw new IcsFetchError('oauth_scope');
         }
         return [
             'provider' => $provider,
             'link_id' => isset($entry['link_id']) ? intval($entry['link_id']) : null,
             'secret' => static::tokens($json, ''),
         ];
+    }
+
+    /**
+     * Whether the token answer grants reading the calendar: Google calendar.readonly (or the
+     * whole calendar), Microsoft Calendars.Read (or ReadWrite, as a full URI or not). An answer
+     * without "scope" grants what was asked (RFC 6749 5.1).
+     *
+     * @param array<string, mixed> $json
+     */
+    public static function scopeGranted(string $provider, array $json): bool
+    {
+        if (!array_key_exists('scope', $json)) {
+            return true;
+        }
+        $granted = preg_split('/\s+/', trim(strval($json['scope']))) ?: [];
+        foreach ($granted as $s) {
+            if ($provider === static::GOOGLE && in_array($s, ['https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/calendar'], true)) {
+                return true;
+            }
+            if ($provider === static::MICROSOFT && in_array(strtolower(preg_replace('#^https://graph\.microsoft\.com/#i', '', $s) ?? ''), ['calendars.read', 'calendars.readwrite'], true)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** @return array{access_token: string, refresh_token: string, expires_at: int} */
@@ -253,13 +281,15 @@ class CloudOAuth
         if ($provider === static::MICROSOFT) {
             $form['scope'] = $c['scope'];
         }
-        $res = $this->fetch->request('POST', $c['token'], [], $form);
+        $res = $this->fetch->request('POST', $c['token'], [], $form, $provider);
         $json = $res['json'] ?? [];
         if ($res['status'] !== 200 || empty($json['access_token'])) {
             // the refresh token refused (revoked, expired, the password changed): sign in again;
             // the provider out of order: a try later
             if (in_array($res['status'], [400, 401], true)) {
-                throw new IcsFetchError('auth');
+                // the site's app refused (its secret wrong or expired): the administrator's to fix, not the person's
+                $err = strval($json['error'] ?? '');
+                throw new IcsFetchError(in_array($err, ['invalid_client', 'unauthorized_client'], true) ? 'oauth_client' : 'auth');
             }
             throw new IcsFetchError('http_' . $res['status']);
         }
@@ -287,7 +317,7 @@ class CloudOAuth
         }
         try {
             $this->fetch->within(5);
-            $res = $this->fetch->request('POST', 'https://oauth2.googleapis.com/revoke', [], ['token' => $token]);
+            $res = $this->fetch->request('POST', 'https://oauth2.googleapis.com/revoke', [], ['token' => $token], static::GOOGLE);
             return $res['status'] === 200;
         } catch (\Throwable $e) {
             return false;

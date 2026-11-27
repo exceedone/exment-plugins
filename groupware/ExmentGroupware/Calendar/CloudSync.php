@@ -61,9 +61,10 @@ class CloudSync
     protected function get(object $link, string $url, array $headers = []): array
     {
         $fetch = $this->oauth->fetch();
-        $res = $fetch->request('GET', $url, ['Authorization' => 'Bearer ' . $this->oauth->accessToken($link)] + $headers);
+        $provider = strval($link->provider);
+        $res = $fetch->request('GET', $url, ['Authorization' => 'Bearer ' . $this->oauth->accessToken($link)] + $headers, null, $provider);
         if ($res['status'] === 401) {
-            $res = $fetch->request('GET', $url, ['Authorization' => 'Bearer ' . $this->oauth->accessToken($link, true)] + $headers);
+            $res = $fetch->request('GET', $url, ['Authorization' => 'Bearer ' . $this->oauth->accessToken($link, true)] + $headers, null, $provider);
             if ($res['status'] === 401) {
                 throw new IcsFetchError('auth');
             }
@@ -109,11 +110,12 @@ class CloudSync
                 ? $this->readMicrosoft($link, $full, $cursor, $from, $to)
                 : $this->readGoogle($link, $full, $cursor, $from, $to);
             $tooMany = false;
-            $n = static::apply($link, $r['items'], $r['full'], $from, $to, $tooMany);
-            $set = ['sync_state' => $r['cursor'] !== '' ? $r['cursor'] : null, 'event_count' => $n];
+            // the cursor written with the events, in one transaction
+            $state = ['sync_state' => $r['cursor'] !== '' ? $r['cursor'] : null];
             if ($r['full']) {
-                $set['full_sync_at'] = $nowUtc;
+                $state['full_sync_at'] = $nowUtc;
             }
+            static::apply($link, $r['items'], $r['full'], $from, $to, $tooMany, $state);
             if ($tooMany) {
                 $error = 'too_many';
             }
@@ -183,7 +185,7 @@ class CloudSync
     /** @return array{full: bool, items: array<string, array<string, mixed>|null>, cursor: string} */
     public function readMicrosoft(object $link, bool $full, string $cursor, string $from, string $to): array
     {
-        if (!$full && !CloudFetch::allowedUrl($cursor)) {
+        if (!$full && !CloudFetch::allowedUrl($cursor, CloudOAuth::MICROSOFT)) {
             $full = true;
         }
         $url = $full ? static::MS_DELTA . '?' . http_build_query(['startDateTime' => static::rfc($from), 'endDateTime' => static::rfc($to)], '', '&', PHP_QUERY_RFC3986) : $cursor;
@@ -218,7 +220,7 @@ class CloudSync
             }
             $next = strval($res['json']['@odata.nextLink'] ?? '');
             if ($next !== '') {
-                if (!CloudFetch::allowedUrl($next)) {
+                if (!CloudFetch::allowedUrl($next, CloudOAuth::MICROSOFT)) {
                     throw new IcsFetchError('host');
                 }
                 $url = $next;
@@ -393,14 +395,21 @@ class CloudSync
      * @param array<string, array<string, mixed>|null> $items
      * @return int the events of the link
      */
-    public static function apply(object $link, array $items, bool $full, string $from, string $to, bool &$tooMany = false): int
+    public static function apply(object $link, array $items, bool $full, string $from, string $to, bool &$tooMany = false, array $state = []): int
     {
         $linkId = intval($link->id);
         $uid = intval($link->user_id);
         $showAs = strval($link->show_as);
         $google = strval($link->provider) === CloudOAuth::GOOGLE;
         $existing = [];
+        // the same event twice (two reads of the link at once): the extra rows go
+        $extra = [];
+        $existing = [];
         foreach (DB::table(Events::EVENTS)->where('source', 'link')->where('link_id', $linkId)->get(['id', 'external_id', 'external_etag']) as $r) {
+            if (isset($existing[strval($r->external_id)])) {
+                $extra[] = intval($r->id);
+                continue;
+            }
             $existing[strval($r->external_id)] = ['id' => intval($r->id), 'etag' => strval($r->external_etag ?? '')];
         }
         $upsert = [];
@@ -450,9 +459,9 @@ class CloudSync
                 $count++;
             }
         }
-        DB::transaction(function () use ($upsert, $delete, $existing, $linkId, $uid, &$count, &$tooMany) {
+        DB::transaction(function () use ($upsert, $delete, $extra, $existing, $linkId, $uid, $state, &$count, &$tooMany) {
             $now = now();
-            foreach (array_chunk(array_values($delete), 500) as $chunk) {
+            foreach (array_chunk(array_merge(array_values($delete), $extra), 500) as $chunk) {
                 DB::table(Events::OVERRIDES)->whereIn('event_id', $chunk)->delete();
                 DB::table(Events::EVENTS)->whereIn('id', $chunk)->delete();
             }
@@ -473,6 +482,8 @@ class CloudSync
                 ]);
                 $count++;
             }
+            // where the read ended (the sync token or deltaLink), with the events or not at all
+            DB::table(Links::TABLE)->where('id', $linkId)->update($state + ['event_count' => $count]);
         });
         return $count;
     }

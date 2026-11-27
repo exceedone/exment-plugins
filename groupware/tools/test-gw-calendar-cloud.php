@@ -408,6 +408,39 @@ namespace Illuminate\Support\Facades {
     }
 }
 
+namespace Exceedone\Exment\Form\Field {
+    // Exment's EncPassword as it is (prepare: empty keeps the original; formatValue: decrypted into the input)
+    class EncPassword
+    {
+        public $value;
+        public $original;
+        protected $updateIfEmpty = false;
+
+        public function fill($v)
+        {
+            $this->value = $v;
+            $this->formatValue();
+        }
+
+        public function prepare($value)
+        {
+            if (!$this->updateIfEmpty && ($value === null || $value === '')) {
+                return $this->original;
+            }
+            return \Illuminate\Support\Facades\Crypt::encrypt($value);
+        }
+
+        protected function formatValue()
+        {
+            try {
+                $this->value = \Illuminate\Support\Facades\Crypt::decrypt($this->value);
+            } catch (\Throwable $e) {
+                $this->value = null;
+            }
+        }
+    }
+}
+
 namespace Exceedone\Exment\Enums {
     class SystemTableName
     {
@@ -688,7 +721,7 @@ namespace {
     $q = gw_q($url);
     gw_check('sign-in: Google\'s page, read only, PKCE S256, offline', strpos($url, 'https://accounts.google.com/o/oauth2/v2/auth?') === 0
         && $q['scope'] === 'https://www.googleapis.com/auth/calendar.readonly' && $q['code_challenge_method'] === 'S256' && strlen($q['code_challenge']) === 43
-        && $q['access_type'] === 'offline' && $q['redirect_uri'] === 'https://exment.example.invalid/admin/plugins/exment_groupware/cal/oauth/callback' && $q['client_id'] === 'gid.apps.example.invalid', $q);
+        && $q['access_type'] === 'offline' && $q['prompt'] === 'consent select_account' && $q['redirect_uri'] === 'https://exment.example.invalid/admin/plugins/exment_groupware/cal/oauth/callback' && $q['client_id'] === 'gid.apps.example.invalid', $q);
     gw_check('sign-in: no secret in the address', strpos($url, 'g-client-secret') === false);
     $state = $q['state'];
     $entry = $GLOBALS['gw_session'][CloudOAuth::SESSION][$state];
@@ -916,6 +949,7 @@ namespace {
     $l = DB::table('gw_cal_links')->where('id', $gid)->first();
     gw_check('reconnect: the same link, its tokens new, the error gone, its events kept', $again === $gid && $l->last_error === null && CloudOAuth::secret($l)['refresh_token'] === 'g-refresh-9' && DB::table('gw_cal_events')->where('link_id', $gid)->count() === $n
         && DB::table('gw_cal_links')->count() === 1);
+    gw_check('reconnect: the same account too, read in full again (the cursor and the full read forgotten)', $l->sync_state === null && $l->full_sync_at === null);
     [$again] = Links::connect($owner, 'google', $gid, ['access_token' => 'a', 'refresh_token' => 'b', 'expires_at' => time() + 3600], 'someone-else@example.invalid', 'x');
     $l = DB::table('gw_cal_links')->where('id', $gid)->first();
     gw_check('reconnect: another account, the events of the old one go and it is read from nothing', $l->account === 'someone-else@example.invalid' && DB::table('gw_cal_events')->where('link_id', $gid)->count() === 0 && $l->sync_state === null);
@@ -1059,6 +1093,123 @@ namespace {
     $calls = [];
     $res = Links::run(10, null, 0, $cloud);
     gw_check('a deleted person\'s Google link: not read', $res['failed'] === 1 && $calls === [] && DB::table('gw_cal_links')->where('id', $gone)->first()->last_error === 'not_allowed');
+
+    // ---- the fixes of the review of part 6 --------------------------------------------------------
+    // each provider only its own hosts
+    $calls = [];
+    $handler = function () {
+        return gw_json([]);
+    };
+    gw_check('hosts: a Google request never goes to Microsoft\'s hosts, nor the other way', gw_code(function () use ($fetch) {
+        $fetch->request('GET', 'https://graph.microsoft.com/v1.0/me', [], null, 'google');
+    }) === 'host' && gw_code(function () use ($fetch) {
+        $fetch->request('POST', 'https://oauth2.googleapis.com/token', [], [], 'microsoft');
+    }) === 'host' && $calls === [] && CloudFetch::allowedUrl('https://login.microsoftonline.com/x', 'microsoft') && !CloudFetch::allowedUrl('https://www.googleapis.com/x', 'microsoft'));
+    DB::reset();
+    [$mid] = Links::connect($owner, 'microsoft', null, ['access_token' => 'ms-access-1', 'refresh_token' => 'ms-refresh-1', 'expires_at' => time() + 3600], 'owner@example.invalid', 'MS');
+    DB::table('gw_cal_links')->where('id', $mid)->update(['sync_state' => 'https://www.googleapis.com/calendar/v3/x?$deltatoken=1', 'full_sync_at' => '2026-12-01 00:00:00']);
+    $handler = function ($m, $u) {
+        return strpos($u, 'startDateTime=') !== false ? gw_json(['value' => [], '@odata.nextLink' => 'https://www.googleapis.com/next']) : ['status' => 404, 'headers' => [], 'body' => ''];
+    };
+    $calls = [];
+    $err = Links::sync(DB::table('gw_cal_links')->where('id', $mid)->first(), null, '2026-12-01 00:10:00', $cloud);
+    gw_check('hosts: a Microsoft cursor or nextLink of a Google host: never asked (a full read; the nextLink refused)', $err === 'host' && count($calls) === 1 && strpos($calls[0]['url'], CloudSync::MS_DELTA) === 0, [$err, array_column($calls, 'url')]);
+
+    // the scope granted is checked
+    $tok = function (string $provider, array $answer) use ($oauth, &$handler) {
+        $handler = function () use ($answer) {
+            return gw_json($answer);
+        };
+        $q = gw_q($oauth->authorizeUrl($provider, 5));
+        return gw_code(function () use ($oauth, $q) {
+            $oauth->finish(5, $q['state'], 'the-code');
+        });
+    };
+    gw_check('scope: Google without calendar.readonly refused (oauth_scope)', $tok('google', ['access_token' => 'a', 'refresh_token' => 'r', 'scope' => 'openid https://www.googleapis.com/auth/userinfo.email']) === 'oauth_scope');
+    gw_check('scope: Google with calendar.readonly accepted', $tok('google', ['access_token' => 'a', 'refresh_token' => 'r', 'scope' => 'https://www.googleapis.com/auth/calendar.readonly']) === null);
+    gw_check('scope: Microsoft without Calendars.Read refused', $tok('microsoft', ['access_token' => 'a', 'refresh_token' => 'r', 'scope' => 'User.Read offline_access']) === 'oauth_scope');
+    gw_check('scope: Microsoft Calendars.Read (short or as a URI) accepted', $tok('microsoft', ['access_token' => 'a', 'refresh_token' => 'r', 'scope' => 'Calendars.Read offline_access']) === null
+        && $tok('microsoft', ['access_token' => 'a', 'refresh_token' => 'r', 'scope' => 'https://graph.microsoft.com/Calendars.Read']) === null);
+    $lang = include $base . '/resources/lang/ja/groupware.php';
+    $langEn = include $base . '/resources/lang/en/groupware.php';
+    gw_check('scope: its words in ja and en', isset($lang['cal_links']['e_oauth_scope'], $langEn['cal_links']['e_oauth_scope'], $lang['cal_links']['e_oauth_client'], $langEn['cal_links']['e_oauth_client']));
+
+    // the site's app refused (invalid_client): the administrator's to fix, no 「再接続」
+    DB::table('gw_cal_links')->where('id', $mid)->update(['secret_enc' => CloudOAuth::encryptSecret(['access_token' => 'x', 'refresh_token' => 'ms-refresh-1', 'expires_at' => time() - 10]), 'sync_state' => null]);
+    $handler = function () {
+        return ['status' => 401, 'headers' => [], 'body' => '{"error":"invalid_client","error_description":"AADSTS7000222: the client secret expired"}'];
+    };
+    $err = Links::sync(DB::table('gw_cal_links')->where('id', $mid)->first(), null, '2026-12-01 00:30:00', $cloud);
+    $l = Links::list($owner)[0];
+    gw_check('invalid_client: a code of its own (oauth_client), no reconnect offered', $err === 'oauth_client' && $l['last_error'] === 'oauth_client' && $l['reconnect'] === false);
+
+    // read now: the row taken first, as the batch takes it
+    $row = DB::table('gw_cal_links')->where('id', $mid)->first();
+    $stale = clone $row;
+    gw_check('take: the first read takes the link, a second one at once does not', Links::take($row, '2026-12-01 01:00:00') && !Links::take($stale, '2026-12-01 01:00:00'));
+    $page = file_get_contents($base . '/Calendar/LinksPage.php');
+    gw_check('take: 「今すぐ読む」 takes the link before it reads it', preg_match('/Links::take\(\$l, Links::utcNow\(\)\)[\s\S]{0,200}Links::sync\(\$l/', $page) === 1);
+
+    // rows of one event twice (two reads at once): the extras removed by the next read
+    DB::reset();
+    [$gid] = Links::connect($owner, 'google', null, ['access_token' => 'ya29-access-1', 'refresh_token' => 'g-refresh-1', 'expires_at' => time() + 3600], 'owner@example.invalid', 'G');
+    foreach ([1, 2, 3] as $i) {
+        DB::table('gw_cal_events')->insertGetId(['owner_user_id' => $owner, 'source' => 'link', 'link_id' => $gid, 'external_id' => 'dup', 'external_etag' => 'old', 'title' => 'dup ' . $i,
+            'starts_at' => '2026-12-10 01:00:00', 'ends_at' => '2026-12-10 02:00:00', 'all_day' => 0, 'tz' => 'UTC', 'rrule' => null, 'visibility' => 'busy', 'deleted_at' => null]);
+    }
+    $handler = function ($m, $u) {
+        return strpos($u, CloudSync::GOOGLE_EVENTS) === 0 ? gw_json(['items' => [['id' => 'dup', 'status' => 'confirmed', 'summary' => 'once', 'start' => ['dateTime' => '2026-12-10T01:00:00Z'], 'end' => ['dateTime' => '2026-12-10T02:00:00Z']]], 'nextSyncToken' => 's1'])
+            : ['status' => 404, 'headers' => [], 'body' => ''];
+    };
+    DB::table('gw_cal_links')->where('id', $gid)->update(['sync_state' => 's0', 'full_sync_at' => '2026-12-01 00:00:00']);
+    $err = Links::sync(DB::table('gw_cal_links')->where('id', $gid)->first(), null, '2026-12-01 00:10:00', $cloud);
+    $rows = DB::table('gw_cal_events')->where('link_id', $gid)->get()->all();
+    gw_check('duplicates: one row an event again (the extras removed), changed in place', $err === null && count($rows) === 1 && $rows[0]->title === 'once' && intval(DB::table('gw_cal_links')->where('id', $gid)->first()->event_count) === 1, [$err, count($rows)]);
+    // the ICS links too
+    $ics = DB::table('gw_cal_links')->insertGetId(['user_id' => $owner, 'provider' => 'ics', 'name' => 'I', 'show_as' => 'busy', 'enabled' => 1]);
+    foreach ([1, 2] as $i) {
+        DB::table('gw_cal_events')->insertGetId(['owner_user_id' => $owner, 'source' => 'link', 'link_id' => $ics, 'external_id' => 'u1', 'external_etag' => 'x', 'title' => 't', 'starts_at' => '2026-12-10 01:00:00', 'ends_at' => '2026-12-10 02:00:00']);
+    }
+    Links::apply(DB::table('gw_cal_links')->where('id', $ics)->first(), ['u1' => ['title' => 'one', 'starts_at' => '2026-12-10 01:00:00', 'ends_at' => '2026-12-10 02:00:00', 'all_day' => false, 'tz' => 'UTC']]);
+    gw_check('duplicates: an ICS link\'s extras removed too', DB::table('gw_cal_events')->where('link_id', $ics)->count() === 1);
+    // the cursor goes with the events (apply writes it in its transaction)
+    $tm = false;
+    CloudSync::apply(DB::table('gw_cal_links')->where('id', $gid)->first(), [], false, '2026-11-01 00:00:00', '2027-05-30 00:00:00', $tm, ['sync_state' => 'with-the-events']);
+    gw_check('cursor: written by apply, with the events', DB::table('gw_cal_links')->where('id', $gid)->first()->sync_state === 'with-the-events');
+    $src = file_get_contents($base . '/Calendar/CloudSync.php');
+    gw_check('cursor: in the same transaction as the events', preg_match('/DB::transaction\(function \(\) use \([^)]*\$state[\s\S]*?update\(\$state \+ \[\'event_count\'/', $src) === 1);
+
+    // no columns of part 6 (the migration not run): a Google link cannot be changed
+    $setReady = function ($v) {
+        static::$cloudReady = $v;
+    };
+    \Closure::bind($setReady, null, Links::class)(false);
+    gw_check('migration missing: a change of a Google link refused (not_ready)', Links::update($owner, $gid, ['name' => 'x', 'show_as' => 'details']) === 'not_ready');
+    \Closure::bind($setReady, null, Links::class)(true);
+
+    // not allowed for 30 days: the tokens forgotten, the link and its events kept
+    DB::reset();
+    [$gid] = Links::connect(42, 'google', null, ['access_token' => 'ya29-access-1', 'refresh_token' => 'g-refresh-1', 'expires_at' => time() + 3600], '', 'G');
+    DB::table('gw_cal_links')->where('id', $gid)->update(['last_error' => 'not_allowed', 'last_sync_at' => '2026-10-01 00:00:00', 'next_sync_at' => null]);
+    $GLOBALS['gw_now'] = '2026-10-20 00:00:00';
+    Links::run(10, null, 0, $cloud);
+    gw_check('not allowed: the tokens kept before 30 days', !empty(DB::table('gw_cal_links')->where('id', $gid)->first()->secret_enc));
+    $GLOBALS['gw_now'] = '2026-11-05 00:00:00';
+    DB::table('gw_cal_links')->where('id', $gid)->update(['next_sync_at' => null]);
+    Links::run(10, null, 0, $cloud);
+    $l = DB::table('gw_cal_links')->where('id', $gid)->first();
+    gw_check('not allowed: after 30 days the tokens forgotten, the link kept (sign in again)', empty($l->secret_enc) && $l->last_error === 'not_allowed' && Links::list(42)[0]['reconnect'] === true);
+    $GLOBALS['gw_now'] = '2026-12-01 00:00:00';
+
+    // the client secrets of the settings never written back into the page
+    require $base . '/SettingSecretField.php';
+    $sf = new \App\Plugins\ExmentGroupware\SettingSecretField();
+    $sf->original = Crypt::encrypt('g-client-secret');
+    $sf->fill($sf->original);
+    gw_check('settings: the secret\'s input empty (not the decrypted secret)', $sf->value === '');
+    gw_check('settings: saved empty, the secret kept; a new one saved encrypted', $sf->prepare('') === $sf->original && Crypt::decrypt($sf->prepare('new-secret')) === 'new-secret');
+    $ps = file_get_contents($base . '/PluginSetting.php');
+    gw_check('settings: both calendar secrets use that field', substr_count($ps, "gwSettingSecret('cal_") === 2 && strpos($ps, "encpassword('cal_") === false);
 
     gw_check('logs: never a token or a secret', !preg_match('/ya29|refresh-|client-secret|ms-access/', implode("\n", \Illuminate\Support\Facades\Log::$lines)), \Illuminate\Support\Facades\Log::$lines);
 

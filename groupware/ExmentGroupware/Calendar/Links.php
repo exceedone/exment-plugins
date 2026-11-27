@@ -38,6 +38,8 @@ class Links
     const SHOW_AS = ['busy', 'details'];
     /** The providers signed in with OAuth (part 6). */
     const CLOUD = ['google', 'microsoft'];
+    /** Days a Google or Microsoft link may stay not allowed before its tokens are forgotten. */
+    const NOT_ALLOWED_DAYS = 30;
     /** Links read after one page's answer, and by one run of the batch. */
     const TICK_LINKS = 3;
     const BATCH_LINKS = 30;
@@ -172,6 +174,10 @@ class Links
             return 'link_not_found';
         }
         $cloud = static::isCloud($l->provider ?? null);
+        if ($cloud && !static::cloudReady()) {
+            // the columns of part 6 not there (its migration not run)
+            return 'not_ready';
+        }
         if ($cloud) {
             // a Google or Microsoft calendar has no address to change
             unset($in['url']);
@@ -244,10 +250,11 @@ class Links
             if (!isset($l)) {
                 return [null, 'link_not_found'];
             }
-            $v = ['secret_enc' => $enc, 'last_error' => null, 'fails' => 0, 'next_sync_at' => static::utcNow(), 'updated_at' => now()];
+            // always read in full again: what the new sign-in sees replaces everything (even when its account could not be read)
+            $v = ['secret_enc' => $enc, 'last_error' => null, 'fails' => 0, 'next_sync_at' => static::utcNow(), 'updated_at' => now(), 'sync_state' => null, 'full_sync_at' => null];
             if ($account !== '' && $account !== strval($l->account ?? '')) {
                 static::removeEvents($linkId);
-                $v += ['account' => $account, 'sync_state' => null, 'full_sync_at' => null, 'event_count' => 0];
+                $v += ['account' => $account, 'event_count' => 0];
             }
             DB::table(static::TABLE)->where('id', $linkId)->update($v);
             Log::info('gw_calendar: link ' . $linkId . ' signed in again by user ' . $uid);
@@ -435,12 +442,22 @@ class Links
         $linkId = intval($link->id);
         $uid = intval($link->user_id);
         $existing = [];
+        // the same event twice (two reads of the link at once): the extra rows go
+        $extra = [];
         foreach (DB::table(Events::EVENTS)->where('source', 'link')->where('link_id', $linkId)->get(['id', 'external_id', 'external_etag']) as $r) {
+            if (isset($existing[strval($r->external_id)])) {
+                $extra[] = intval($r->id);
+                continue;
+            }
             $existing[strval($r->external_id)] = ['id' => intval($r->id), 'etag' => strval($r->external_etag ?? '')];
         }
         $plan = static::plan($events, $existing, strval($link->show_as));
-        DB::transaction(function () use ($plan, $linkId, $uid) {
+        DB::transaction(function () use ($plan, $extra, $linkId, $uid) {
             $now = now();
+            foreach (array_chunk($extra, 500) as $chunk) {
+                DB::table(Events::OVERRIDES)->whereIn('event_id', $chunk)->delete();
+                DB::table(Events::EVENTS)->whereIn('id', $chunk)->delete();
+            }
             foreach ($plan['insert'] as $ext => $row) {
                 $ov = $row['overrides'];
                 unset($row['overrides']);
@@ -510,14 +527,7 @@ class Links
             if ($seconds > 0 && microtime(true) - $started > $seconds) {
                 break;
             }
-            $taken = DB::table(static::TABLE)->where('id', $l->id)->where(function ($q) use ($l) {
-                if ($l->next_sync_at === null) {
-                    $q->whereNull('next_sync_at');
-                } else {
-                    $q->where('next_sync_at', $l->next_sync_at);
-                }
-            })->update(['next_sync_at' => (new \DateTimeImmutable($now, new \DateTimeZone('UTC')))->modify('+5 minute')->format('Y-m-d H:i:s')]);
-            if ($taken === 0) {
+            if (!static::take($l, $now)) {
                 continue;
             }
             // a person who is gone, or no longer allowed the feature: not read (kept, tried again in a day)
@@ -530,6 +540,7 @@ class Links
                     'last_error' => 'not_allowed',
                     'next_sync_at' => (new \DateTimeImmutable($now, new \DateTimeZone('UTC')))->modify('+1 day')->format('Y-m-d H:i:s'),
                 ]);
+                static::forgetTokensOf($l, $now);
                 $out['failed']++;
                 continue;
             }
@@ -540,6 +551,38 @@ class Links
             $out[$error === null ? 'read' : 'failed']++;
         }
         return $out;
+    }
+
+    /**
+     * Take a link for one read (its next time moved 5 minutes on, if it is still what was read):
+     * a batch, a page tick and 「今すぐ読む」 never read the same link at once.
+     */
+    public static function take(object $l, string $nowUtc): bool
+    {
+        return DB::table(static::TABLE)->where('id', $l->id)->where(function ($q) use ($l) {
+            if ($l->next_sync_at === null) {
+                $q->whereNull('next_sync_at');
+            } else {
+                $q->where('next_sync_at', $l->next_sync_at);
+            }
+        })->update(['next_sync_at' => (new \DateTimeImmutable($nowUtc, new \DateTimeZone('UTC')))->modify('+5 minute')->format('Y-m-d H:i:s')]) > 0;
+    }
+
+    /**
+     * The tokens of a Google or Microsoft link not allowed for NOT_ALLOWED_DAYS (no read since):
+     * forgotten. The link and its events stay; the person signs in again when allowed again.
+     */
+    protected static function forgetTokensOf(object $l, string $nowUtc): void
+    {
+        if (!static::isCloud($l->provider ?? null) || empty($l->secret_enc) || strval($l->last_error ?? '') !== 'not_allowed') {
+            return;
+        }
+        $since = strval($l->last_sync_at ?? '') ?: strval($l->created_at ?? '');
+        $limit = (new \DateTimeImmutable($nowUtc, new \DateTimeZone('UTC')))->modify('-' . static::NOT_ALLOWED_DAYS . ' day')->format('Y-m-d H:i:s');
+        if ($since === '' || strcmp($since, $limit) < 0) {
+            DB::table(static::TABLE)->where('id', $l->id)->update(['secret_enc' => null, 'sync_state' => null, 'full_sync_at' => null]);
+            Log::info('gw_calendar: the tokens of link ' . intval($l->id) . ' forgotten (not allowed for ' . static::NOT_ALLOWED_DAYS . ' days)');
+        }
     }
 
     /** Whether an Exment user is there (not deleted). False when it cannot be told. */

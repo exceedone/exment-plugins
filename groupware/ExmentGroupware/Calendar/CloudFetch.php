@@ -52,8 +52,17 @@ class CloudFetch
         $this->deadline = $this->now() + $seconds;
     }
 
-    /** Whether an address is one this class may ask (https, port 443, a fixed host). */
-    public static function allowedUrl(string $url): bool
+    /** The hosts of each provider: a request for one never goes to the other's. */
+    const PROVIDER_HOSTS = [
+        'google' => ['www.googleapis.com', 'oauth2.googleapis.com'],
+        'microsoft' => ['graph.microsoft.com', 'login.microsoftonline.com'],
+    ];
+
+    /**
+     * Whether an address is one this class may ask (https, port 443, a fixed host; with a
+     * provider, one of that provider's hosts only).
+     */
+    public static function allowedUrl(string $url, ?string $provider = null): bool
     {
         $p = parse_url($url);
         if (!is_array($p) || strtolower(strval($p['scheme'] ?? '')) !== 'https' || isset($p['user']) || isset($p['pass'])) {
@@ -62,18 +71,20 @@ class CloudFetch
         if (isset($p['port']) && intval($p['port']) !== 443) {
             return false;
         }
-        return in_array(strtolower(strval($p['host'] ?? '')), static::HOSTS, true);
+        $hosts = $provider === null ? static::HOSTS : (static::PROVIDER_HOSTS[$provider] ?? []);
+        return in_array(strtolower(strval($p['host'] ?? '')), $hosts, true);
     }
 
     /**
      * @param array<string, string> $headers
      * @param array<string, string>|null $form a form to POST (application/x-www-form-urlencoded)
+     * @param string|null $provider google | microsoft: only that provider's hosts
      * @return array{status: int, headers: array<string, string>, body: string, json: array<string, mixed>|null}
      * @throws IcsFetchError its message a code: host, bad_url, dns, private, redirects, too_big, network, too_slow
      */
-    public function request(string $method, string $url, array $headers = [], ?array $form = null): array
+    public function request(string $method, string $url, array $headers = [], ?array $form = null, ?string $provider = null): array
     {
-        if (!static::allowedUrl($url)) {
+        if (!static::allowedUrl($url, $provider)) {
             throw new IcsFetchError('host');
         }
         $timeout = IcsFetch::TIMEOUT;

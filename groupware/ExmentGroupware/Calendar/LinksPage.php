@@ -228,6 +228,10 @@ class LinksPage
         if (!Cache::add('gw_cal_link_sync:' . intval($l->id), 1, now()->addMinute())) {
             return $this->fail(429, 'link_wait');
         }
+        // taken as the batch and the page tick take it: never two reads of one link at once
+        if (!Links::take($l, Links::utcNow())) {
+            return $this->fail(429, 'link_wait');
+        }
         Links::sync($l, null, null, new CloudSync(new CloudOAuth($this->plugin)));
         return $this->ok(['links' => Links::list($this->me())]);
     }
