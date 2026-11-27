@@ -68,6 +68,9 @@ JS;
             abort(404);
         }
         $nonce = base64_encode(random_bytes(16));
+        // the site's reCAPTCHA: its script and frame are Google's
+        $robot = GuestChat::robot();
+        $google = $robot !== null ? ' https://www.google.com https://www.gstatic.com https://www.recaptcha.net' : '';
         $html = view(Its::view('public.chat'), [
             'nonce' => $nonce,
             'boxName' => strval(array_get($box->value, 'name')),
@@ -78,12 +81,13 @@ JS;
                 'post' => PublicRoutes::url('chat', 'api', 'post'),
                 'online' => GuestChat::online(GuestChat::agentSeen(), time()),
                 'max' => GuestChat::MAX_BODY,
+                'robot' => $robot,
             ],
         ])->render();
 
         return response($html, 200, [
             'Content-Type' => 'text/html; charset=utf-8',
-            'Content-Security-Policy' => "default-src 'none'; script-src 'nonce-{$nonce}'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors " . GuestChat::frameAncestors(array_get($box->value, 'chat_sites')),
+            'Content-Security-Policy' => "default-src 'none'; script-src 'nonce-{$nonce}'{$google}; frame-src{$google}" . ($google === '' ? " 'none'" : '') . "; style-src 'unsafe-inline'; connect-src 'self'{$google}; img-src 'self' data:{$google}; base-uri 'none'; form-action 'none'; frame-ancestors " . GuestChat::frameAncestors(array_get($box->value, 'chat_sites')),
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'no-referrer',
             'Cache-Control' => 'no-store',
@@ -114,10 +118,11 @@ JS;
     public function start(Request $request)
     {
         $this->gate();
-        $this->own($request);
 
         return $this->json(function () use ($request) {
-            return GuestChat::start(strval($request->input('key')), strval($request->input('name')), strval($request->input('email')), strval($request->input('body')), strval($request->ip()));
+            // inside json(): a write from elsewhere is a JSON 403, as the window shows it
+            $this->own($request);
+            return GuestChat::start(strval($request->input('key')), strval($request->input('name')), strval($request->input('email')), strval($request->input('body')), strval($request->ip()), strval($request->input('robot', '')));
         });
     }
 
@@ -133,9 +138,10 @@ JS;
     public function post(Request $request)
     {
         $this->gate();
-        $this->own($request);
 
         return $this->json(function () use ($request) {
+            // inside json(): a write from elsewhere is a JSON 403, as the window shows it
+            $this->own($request);
             return GuestChat::post(strval($request->header('X-Chat-Token')), strval($request->input('body')));
         });
     }
