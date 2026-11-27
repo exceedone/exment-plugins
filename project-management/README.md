@@ -19,6 +19,8 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 
 - 「← 課題一覧」: back in the list, the issue just left now lights up and is brought into view (it waited for the list to be drawn again, which going back does not do). After a reload, in a new tab or from a link, it goes back to the list as it was last left in that project (filters, sort and page, kept in this browser per person and per project), not to page 1 with no filter. On a phone the bar that stays on scroll is shown too, with the ←, the key and the title.
   「← 課題一覧」：一覧に戻ったとき、今まで見ていた課題が光って見える所に出るようにしました（前は一覧をもう一度描くまで待っていて、戻るだけでは光りませんでした）。読み込み直したとき・新しいタブ・リンクから開いたときも、そのプロジェクトで最後に使った一覧（絞り込み・並び順・ページ。このブラウザーに人ごと・プロジェクトごとに残します）に戻ります。前は 1 ページ目で絞り込みなしでした。スマホでも、スクロールしても残る行を出し、←・キー・件名を置きました。
+- Buttons with white text on the site's colour (保存, 送信, 「← 課題一覧」, 「＋ 課題を追加」 and the like) are readable on the classic green: white on it is 2.67:1, under the 4.5:1 that WCAG AA asks for, so they are filled with a darker shade of the same green (4.6:1), darker again under the pointer. A colour that reads well already, such as Exment Modern's blue, is left as it is, and so are lines, borders and links in the site's colour.
+  サイトの色に白い文字のボタン（保存・送信・「← 課題一覧」・「＋ 課題を追加」など）を、昔からの緑でも読みやすくしました。白と緑の差は 2.67:1 で、WCAG AA の 4.5:1 に足りないので、同じ緑の濃い色（4.6:1）で塗り、マウスを乗せるともう少し濃くします。Exment Modern の青のように、もとから読みやすい色はそのままです。線・枠・リンクの色も変えていません。
 
 **Changed in 1.7.25 / 1.7.25 で変わったこと**
 
