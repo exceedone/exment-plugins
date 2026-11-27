@@ -11,6 +11,7 @@
     // multi-line array literal inside directive parentheses.
     $setLang = [
         'set' => PortalDefinition::trans('set'),
+        'gitlink' => PortalDefinition::trans('gitlink'),
         'git' => PortalDefinition::trans('git_repo'),
         'fs' => PortalDefinition::trans('fileserver'),
         'ch' => PortalDefinition::trans('channels'),
@@ -113,6 +114,7 @@
         'dashboard_url' => $payload['urls']['dashboard'],
         'map' => $payload['settings_map'] ?? [],
         'git' => $payload['git'],
+        'git_hooks_url' => $payload['urls']['git_hooks'] ?? null,
         'git_on' => boolval(array_get($payload, 'project.features.git')),
         // The AI pane: whether a key exists and the thresholds, never the key.
         'ai' => $payload['ai'] ?? [],
@@ -1013,6 +1015,91 @@
         // the portal does not have. The list still shows a public key if one
         // is registered on the Git server - from before this route was
         // dropped, or put there by hand - so it can be revoked from here.
+        // ISS02939 item 5: the repositories connected by webhook, under the repository part
+        function paneGitAll() {
+            var frag = paneGit();
+            if (S.git_hooks_url) { frag.appendChild(gitHooksBox()); }
+            return frag;
+        }
+        function gitHooksBox() {
+            var H = LANG.gitlink || {};
+            var box = el('div', 'pp-set-sub');
+            box.style.marginTop = '18px';
+            box.style.borderTop = '1px solid var(--bl-line)';
+            box.style.paddingTop = '10px';
+            box.appendChild(el('div', 'pp-set-lab', H.title));
+            box.appendChild(el('div', 'pp-set-note', H.lead));
+            var list = el('div');
+            var shown = el('div', 'pp-set-note');
+            box.appendChild(list);
+            box.appendChild(shown);
+            var post = function (url, body) {
+                return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': TOKEN, 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(body || {}) }).then(readJson);
+            };
+            var showSecret = function (j) {
+                shown.textContent = '';
+                if (!j || !j.secret) { return; }
+                var h = (j.hooks || []).filter(function (x) { return x.id === j.id; })[0];
+                shown.appendChild(el('div', 'pp-set-warn', H.secret_once));
+                if (h) { shown.appendChild(el('div', '', H.address + ' ' + h.url)); }
+                shown.appendChild(el('div', '', H.secret + ' ' + j.secret));
+            };
+            var draw = function (hooks) {
+                list.textContent = '';
+                if (!hooks.length) { list.appendChild(el('div', 'pp-set-note', H.none)); }
+                hooks.forEach(function (h) {
+                    var row = el('div');
+                    row.style.cssText = 'border:1px solid var(--bl-line);border-radius:6px;padding:6px 10px;margin:6px 0;';
+                    row.appendChild(el('div', 'pp-set-lab', h.provider + ' · ' + h.repo));
+                    row.appendChild(el('div', 'pp-set-note', H.address + ' ' + h.url));
+                    row.appendChild(el('div', 'pp-set-note', h.last_delivery_at ? H.last + ' ' + h.last_delivery_at + (h.last_error ? '（' + H.error + ': ' + h.last_error + '）' : '') : H.never));
+                    var again = el('button', 'pp-set-btn', H.new_secret);
+                    again.type = 'button';
+                    again.addEventListener('click', function () { if (!window.confirm(H.new_secret_ask)) { return; } post(S.git_hooks_url + '/' + h.id + '/secret').then(function (r) { if (r.body && r.body.ok) { draw(r.body.hooks); showSecret(r.body); } }); });
+                    var del = el('button', 'pp-set-btn', H.remove);
+                    del.type = 'button';
+                    del.addEventListener('click', function () { if (!window.confirm(H.remove_ask)) { return; } post(S.git_hooks_url + '/' + h.id + '/delete').then(function (r) { if (r.body && r.body.ok) { draw(r.body.hooks); shown.textContent = ''; } }); });
+                    row.appendChild(again);
+                    row.appendChild(document.createTextNode(' '));
+                    row.appendChild(del);
+                    list.appendChild(row);
+                });
+            };
+            // connect one
+            var form = el('div');
+            form.style.marginTop = '8px';
+            var prov = document.createElement('select');
+            ['github', 'gitlab', 'gitea'].forEach(function (p) { var o = document.createElement('option'); o.value = p; o.textContent = p; prov.appendChild(o); });
+            var repo = document.createElement('input');
+            repo.type = 'text';
+            repo.placeholder = H.repo_ph;
+            repo.maxLength = 200;
+            var add = el('button', 'pp-set-btn main', H.add);
+            add.type = 'button';
+            var err = el('div', 'err');
+            err.hidden = true;
+            add.addEventListener('click', function () {
+                err.hidden = true;
+                add.disabled = true;
+                post(S.git_hooks_url, { provider: prov.value, repo: repo.value.trim() }).then(function (r) {
+                    add.disabled = false;
+                    if (r.body && r.body.ok) { repo.value = ''; draw(r.body.hooks); showSecret(r.body); return; }
+                    err.textContent = errText(r.status, r.body, L.save_fail);
+                    err.hidden = false;
+                });
+            });
+            form.appendChild(prov);
+            form.appendChild(document.createTextNode(' '));
+            form.appendChild(repo);
+            form.appendChild(document.createTextNode(' '));
+            form.appendChild(add);
+            form.appendChild(err);
+            box.appendChild(form);
+            fetch(S.git_hooks_url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } }).then(readJson).then(function (r) {
+                if (r.body && r.body.ok) { draw(r.body.hooks || []); }
+            });
+            return box;
+        }
         function gitKeysBox() {
             var box = el('div', 'pp-set-f');
             box.appendChild(el('label', 'pp-set-lab', G.keys_label));
@@ -2368,7 +2455,7 @@
 
         var PANES = {
             basic: paneBasic, people: panePeople, features: paneFeatures,
-            other: paneOther, git: paneGit, ai: paneAi, danger: paneDanger, fileserver: paneFiles, channels: paneChannels,
+            other: paneOther, git: paneGitAll, ai: paneAi, danger: paneDanger, fileserver: paneFiles, channels: paneChannels,
             attributes: paneAttributes, links: paneLinks,
             statuses: function () { return paneList('statuses'); },
             types: function () { return paneList('types'); },

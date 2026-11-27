@@ -217,6 +217,19 @@
     function issueCopyLink() {
         copyText(issuePageUrl(currentIssue), L.link_copied);
     }
+    // A branch name for the issue (ISS02939 item 5): the key, then the subject's ASCII words in
+    // lower case joined by "-", at most 60 (PortalGitParse::branchName does the same).
+    function branchNameOf(key, subject) {
+        var words = String(subject || '').toLowerCase().split(/[^a-z0-9]+/).filter(function (w) { return w !== ''; });
+        var name = key + (words.length ? '-' + words.join('-') : '');
+        return name.slice(0, 60).replace(/-+$/, '');
+    }
+    function issueCopyBranch() {
+        var i = issueById(currentIssue);
+        var key = ikText(i);
+        if (!key) { return; }
+        copyText(branchNameOf(key, i.subject), L.branch_copied);
+    }
     // The copy button by the issue key (ISS00440, like Backlog's): a click
     // copies "ISS00239 subject", Shift+click the key alone. As text and as
     // a link, so a paste into Teams, OneNote, Outlook or Word is a link to

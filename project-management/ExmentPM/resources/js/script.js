@@ -3457,6 +3457,7 @@ window.PmPortalBoot = function () {
             (res.description ? '<a class="pp-quote pp-dquote" href="javascript:void(0);"><i class="fa fa-quote-right"></i> ' + esc(L.desc_quote) + '</a>' : '') +
             (CAN_ADD_ISSUE ? '<a class="pp-issuecopy" href="javascript:void(0);"><i class="fa fa-clone"></i> ' + esc(L.issue_copy) + '</a>' : '') +
             '<a class="pp-linkcopy" href="javascript:void(0);"><i class="fa fa-link"></i> ' + esc(L.link_copy) + '</a>' +
+            (D.can && D.can.git_link ? '<a class="pp-branchcopy" href="javascript:void(0);"><i class="fa fa-code-fork"></i> ' + esc(L.branch_copy) + '</a>' : '') +
             '<a class="pp-mailbtn" href="javascript:void(0);"><i class="fa fa-envelope-o"></i> ' + esc(L.mail_btn) + '</a>' +
             (res.movable ? '<a class="pp-issuemove" href="javascript:void(0);"><i class="fa fa-exchange"></i> ' + esc(L.issue_move) + '</a>' : '') +
             (res.deletable ? '<a class="pp-issuedel" href="javascript:void(0);"><i class="fa fa-trash-o"></i> <span class="lb">' + esc(L.issue_delete) + '</span></a>' : '') +
@@ -5068,6 +5069,13 @@ window.PmPortalBoot = function () {
                     (e.hide ? '<div class="act"><a href="javascript:void(0);" class="pp-chghide" data-rid="' + esc(e.rid) + '">' + esc(L.chg_hide) + '</a></div>' : '');
             } else if (e.tp === 'add') {
                 body = '<div class="chg"><i class="fa fa-plus" style="color:var(--bl-accent);margin-right:6px;"></i>' + esc(L.added) + '</div>';
+            } else if (e.tp === 'git') {
+                // a commit or a pull request that named this issue (ISS02939): all as text
+                var gs = e.state ? ' <span class="pp-gitst" style="display:inline-block;padding:0 6px;margin-left:4px;border-radius:9px;font-size:11px;color:#fff;background:' + ({ merged: '#8250df', closed: '#cf222e' }[e.state] || '#1a7f37') + ';">' + esc(L['git_' + e.state] || e.state) + '</span>' : '';
+                body = '<div class="chg"><i class="fa ' + (e.kind === 'pr' ? 'fa-code-fork' : 'fa-code') + '" style="margin-right:6px;"></i>' +
+                    esc(e.kind === 'pr' ? L.git_pr : L.git_commit) + ' ' +
+                    (e.url ? '<a href="' + esc(linkUrl(e.url)) + '" target="_blank" rel="noopener noreferrer" data-nopjax>' + esc(e.title || e.ref) + '</a>' : esc(e.title || e.ref)) + gs +
+                    '<div style="color:var(--bl-faint);font-size:12px;">' + esc(e.author) + (e.branch ? ' · ' + esc(e.branch) : '') + (e.kind === 'pr' ? ' · #' + esc(e.ref) : ' · ' + esc(String(e.ref).slice(0, 8))) + '</div></div>';
             } else if (e.tp === 'file') {
                 body = '<div class="chg"><i class="fa fa-paperclip" style="margin-right:6px;"></i>' + esc(L.file_added) +
                     ' <a class="bl-file" data-nopjax target="_blank" rel="noopener" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a>' + officeViewBtn(e) + '</div>';
@@ -5088,8 +5096,10 @@ window.PmPortalBoot = function () {
                     '<a href="javascript:void(0);" class="pp-cdel" data-cid="' + esc(e.cid) + '">' + esc(L.del) + '</a>' +
                     '</span></span>' : '') + '</div>';
             }
-            return '<div class="ent"' + (e.tp === 'cmt' ? ' id="pp-c' + esc(e.cid) + '"' : '') + '>' + av(e.by, 1) +
-                '<div class="body"><div class="head"><span class="who">' + esc(user(e.by).n) + '</span><span class="tm">' + esc(e.at) + '</span></div>' + body + '</div></div>';
+            // a Git line: its author as the host said it, a Git mark for the face
+            var gitLine = e.tp === 'git';
+            return '<div class="ent"' + (e.tp === 'cmt' ? ' id="pp-c' + esc(e.cid) + '"' : '') + '>' + (gitLine ? '<span class="av" style="background:#6e7781;"><i class="fa fa-git"></i></span>' : av(e.by, 1)) +
+                '<div class="body"><div class="head"><span class="who">' + esc(gitLine ? (e.author || 'Git') : user(e.by).n) + '</span><span class="tm">' + esc(e.at) + '</span></div>' + body + '</div></div>';
         }).join('') || ('<div style="color:var(--bl-faint);font-size:12px;">' + esc(L.empty) + '</div>');
         clipLongComments();
         highlightLinkedComment(landingComment(res));
@@ -8538,6 +8548,19 @@ window.PmPortalBoot = function () {
     }
     function issueCopyLink() {
         copyText(issuePageUrl(currentIssue), L.link_copied);
+    }
+    // A branch name for the issue (ISS02939 item 5): the key, then the subject's ASCII words in
+    // lower case joined by "-", at most 60 (PortalGitParse::branchName does the same).
+    function branchNameOf(key, subject) {
+        var words = String(subject || '').toLowerCase().split(/[^a-z0-9]+/).filter(function (w) { return w !== ''; });
+        var name = key + (words.length ? '-' + words.join('-') : '');
+        return name.slice(0, 60).replace(/-+$/, '');
+    }
+    function issueCopyBranch() {
+        var i = issueById(currentIssue);
+        var key = ikText(i);
+        if (!key) { return; }
+        copyText(branchNameOf(key, i.subject), L.branch_copied);
     }
     // The copy button by the issue key (ISS00440, like Backlog's): a click
     // copies "ISS00239 subject", Shift+click the key alone. As text and as
@@ -13830,6 +13853,8 @@ window.PmPortalBoot = function () {
         if (addChild) { openNcreate(D.issue_table, issuePrefill('child'), 'child' + currentIssue); return; }
         var linkCopy = ev.target.closest('.pp-linkcopy');
         if (linkCopy) { issueCopyLink(); return; }
+        var branchCopy = ev.target.closest('.pp-branchcopy');
+        if (branchCopy) { issueCopyBranch(); return; }
         var mailBtn = ev.target.closest('.pp-mailbtn');
         if (mailBtn) { mailOpen(currentIssue); return; }
         var issueCopy = ev.target.closest('.pp-issuecopy');
