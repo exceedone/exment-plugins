@@ -183,6 +183,16 @@ class PluginEvent extends PluginEventBase
         Event::listen('eloquent.creating: ' . NotifyNavbar::class, function ($bell) {
             return PortalNotify::allow($bell) ? null : false;
         });
+        // Web Push (off at first): a bell that was written goes to the person's browsers after
+        // the answer, or at the end of the queue job that wrote it
+        Event::listen('eloquent.created: ' . NotifyNavbar::class, function ($bell) {
+            PortalPush::bellCreated($bell);
+        });
+        Event::listen('Illuminate\Queue\Events\JobProcessed', function () {
+            if (PortalPush::pendingCount() > 0) {
+                PortalPush::flush();
+            }
+        });
 
         // A project key lock is let go after the save commits; a save that is
         // rolled back instead lets go here.

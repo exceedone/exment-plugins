@@ -101,7 +101,7 @@ class PortalPwa
      *
      * @param string $assetPrefixes "|" between: where the portal's versioned assets are
      */
-    public static function worker(string $scope, string $assetPrefixes, string $version): string
+    public static function worker(string $scope, string $assetPrefixes, string $version, string $name = ''): string
     {
         $path = strval(parse_url($scope, PHP_URL_PATH) ?: '/');
         $cfg = json_encode([
@@ -110,6 +110,8 @@ class PortalPwa
             'icons' => [$path . 'pwa-icon/192', $path . 'pwa-icon/512'],
             'assets' => array_values(array_filter(explode('|', $assetPrefixes), 'strlen')),
             'version' => $version,
+            // the title of a Web Push notice that came without one
+            'name' => $name,
         ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
         return "/* ExmentPM service worker (ISS02939). No data is kept: see docs/pwa-design.md. */\n"

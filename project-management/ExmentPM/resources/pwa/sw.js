@@ -65,3 +65,40 @@ self.addEventListener('fetch', function (event) {
     }
     // anything else: not touched
 });
+
+// Web Push (step 2): the server sends the bell's subject and a link only (no data of the issue).
+// The link opens in the portal (the bell's list); anything else opens the portal's start.
+function inScopeUrl(href) {
+    try {
+        var u = new URL(href, self.location.origin);
+        return inScope(u) ? u.href : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+self.addEventListener('push', function (event) {
+    var data = {};
+    try { data = event.data ? event.data.json() : {}; } catch (e) { data = {}; }
+    var title = typeof data.title === 'string' && data.title !== '' ? data.title.slice(0, 120) : (CFG.name || '');
+    var url = (typeof data.url === 'string' && inScopeUrl(data.url)) || new URL(CFG.scope + '?notices=1', self.location.origin).href;
+    event.waitUntil(self.registration.showNotification(title, {
+        icon: CFG.icons[0],
+        badge: CFG.icons[0],
+        data: { url: url }
+    }));
+});
+
+self.addEventListener('notificationclick', function (event) {
+    event.notification.close();
+    var url = (event.notification.data && inScopeUrl(event.notification.data.url)) || new URL(CFG.scope, self.location.origin).href;
+    event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+        for (var i = 0; i < list.length; i++) {
+            var c = list[i];
+            if (inScopeUrl(c.url) && 'focus' in c) {
+                return (c.navigate ? c.navigate(url).catch(function () { return c; }) : Promise.resolve(c)).then(function (w) { return (w || c).focus(); });
+            }
+        }
+        return self.clients.openWindow ? self.clients.openWindow(url) : null;
+    }));
+});

@@ -73,6 +73,8 @@ class PortalSettingsController extends AdminControllerBase
             'sections' => $this->sections(),
             'schema' => $this->schemaState(),
             'migrate' => $this->migrateState($migrate),
+            // Web Push (off at first): 「鍵を作り直す」 of the site's key pair
+            'push' => PortalPush::enabled() ? ['url' => PortalDefinition::url('settings', 'push-keys'), 'renewed' => $request->query('push_keys') === 'renewed'] : null,
             'urls' => [
                 'lightapi' => PortalDefinition::url('lightapi'),
                 'upgrade' => PortalDefinition::url('settings', 'upgrade'),

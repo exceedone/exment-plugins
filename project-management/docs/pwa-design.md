@@ -80,6 +80,24 @@ the bells. The list of what was weak and what changed goes into the PR.
 - The service worker shows the notice (`showNotification`), a tap opens or focuses the portal at
   the link.
 
+### Step 2 as built
+
+- `PortalPush` (the feature, subscriptions, sending), `PortalPushCrypto` (RFC 8291 / 8292 with
+  openssl), `PortalPushStore` (the rows). The key pair is in its own table `pm_portal_push_keys`
+  (one row: the public key, the private key's PEM encrypted), next to `pm_portal_push_subs`.
+- The feature is on only with `exment_pm.pwa` on too.
+- The link of every notice is the portal with `?notices=1`: the bell's list (#221) opens.
+  The service worker follows links inside the portal only.
+- A bell is kept when it is written (NotifyNavbar `created`, after PortalNotify let it through)
+  and sent at `terminating` (after the answer, or at the end of an artisan command such as the
+  batch) or after the queue job that wrote it. At most 3 a person a request (a bulk edit makes
+  many; the list has them all).
+- Routes: `POST …/push` (`action` subscribe / unsubscribe / state, the person's own browser),
+  `POST …/settings/push-keys` (「鍵を作り直す」, system administrators, on the settings page).
+- At most 10 browsers a person; a new one replaces the oldest.
+- Not yet: a list of one's devices (to remove another one), `pushsubscriptionchange`, a test
+  in a real browser with a real push service.
+
 ## Tests
 
 - Plain PHP: the manifest (scope, start_url, icons), the push encryption against RFC 8291's
