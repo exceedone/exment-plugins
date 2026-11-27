@@ -685,11 +685,13 @@ class WebMail
     /**
      * A message at the top of the next page. Laravel-admin puts the text into
      * a JavaScript string and toastr shows it as HTML, so it is escaped here
-     * (messages can carry words from a mail server).
+     * (messages can carry words from a mail server). Given as HTML (an HtmlString in an
+     * array of one), as it is escaped: exment-admin-core shows the messages not marked as
+     * HTML as text.
      */
     public static function toast(string $message, string $level = 'success'): void
     {
         $message = preg_replace('/[\x00-\x1F\x7F\\\\\x{2028}\x{2029}]/u', ' ', $message) ?? '';
-        admin_toastr(htmlspecialchars(mb_substr($message, 0, 300), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), $level);
+        admin_toastr([new \Illuminate\Support\HtmlString(htmlspecialchars(mb_substr($message, 0, 300), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'))], $level);
     }
 }

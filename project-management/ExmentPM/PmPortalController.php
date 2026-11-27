@@ -351,7 +351,7 @@ class PmPortalController extends AdminControllerBase
         $result = PortalSetup::install(strval($request->get('prefix', '')));
 
         if (!$result['ok']) {
-            admin_toastr(static::toastText($result['message']), 'error');
+            admin_toastr(static::toastHtml($result['message']), 'error');
 
             // The toast is flashed for one request only, so go straight to the
             // page the administrator ends up on; a second redirect would
@@ -364,7 +364,7 @@ class PmPortalController extends AdminControllerBase
             return redirect(PortalDefinition::url('setup') . '?prefix=' . rawurlencode(strval($request->get('prefix', ''))));
         }
 
-        admin_toastr(static::toastText($result['message']));
+        admin_toastr(static::toastHtml($result['message']));
 
         return redirect(PortalDefinition::url());
     }
@@ -377,7 +377,17 @@ class PmPortalController extends AdminControllerBase
      * always contains quotes, so the raw text broke the script and the toast
      * never appeared. Escaped for HTML, with backslashes doubled and line
      * breaks folded, it survives both.
+     *
+     * Given as HTML (an HtmlString in an array of one), which the toast shows as it is: the
+     * text is escaped here, and exment-admin-core shows the messages not marked as HTML as text.
+     *
+     * @return array<int, \Illuminate\Support\HtmlString>
      */
+    protected static function toastHtml(string $message): array
+    {
+        return [new \Illuminate\Support\HtmlString(static::toastText($message))];
+    }
+
     protected static function toastText(string $message): string
     {
         // Without /u when the text is not valid UTF-8; e() substitutes the bad bytes.

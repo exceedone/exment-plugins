@@ -32,6 +32,13 @@ $m = F::fromValues(['warning' => new PmFlashBag(['title' => 'T', 'message' => 'l
 $check('markup becomes text, a <br> a line break', $m[0]['message'] === "line 1\nline 2 link & alert(1)", $m[0]['message']);
 $check('no tag is left for the page (it writes the text escaped)', strpos($m[0]['message'], '<') === false);
 
+// a message marked as HTML: an Htmlable (Illuminate\Support\HtmlString), which the bag gives in an array
+$html = new class {
+    public function toHtml() { return 'line 1<br><b>bold</b> &amp; more'; }
+};
+$m = F::fromValues(['info' => new PmFlashBag(['title' => 'T', 'message' => $html])]);
+$check('a message marked as HTML is read, as text', ($m[0]['message'] ?? null) === "line 1\nbold & more", $m);
+
 $m = F::fromValues(['error' => str_repeat('あ', 5000)]);
 $check('a long message is cut', mb_strlen($m[0]['message']) <= F::MAX + 1, mb_strlen($m[0]['message']));
 $check('a key that is not a message is not read', F::fromValues(['toastr' => 'x', 'errors' => 'y']) === []);
