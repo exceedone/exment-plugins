@@ -19,8 +19,7 @@ $check('config.json reads', is_array($config));
 $config = is_array($config) ? $config : [];
 $check('plugin_name is ExmentSupportDesk', ($config['plugin_name'] ?? null) === 'ExmentSupportDesk');
 $check('uri is exment_support_desk', ($config['uri'] ?? null) === 'exment_support_desk');
-$check('uuid is not the one of ExmentITSupport', ($config['uuid'] ?? '') !== '6b1f2c0e-7a4d-4e8b-9c35-1d2e8f4a7b90'
-    && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', (string) ($config['uuid'] ?? '')) === 1);
+$check('uuid is a version 4 uuid (a new one for ExmentSupportDesk)', preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', (string) ($config['uuid'] ?? '')) === 1);
 $view = (string) ($config['plugin_view_name'] ?? '');
 $check('plugin_view_name says Support Desk and サポートデスク', strpos($view, 'Support Desk') !== false && strpos($view, 'サポートデスク') !== false);
 
