@@ -63,7 +63,7 @@ ITreview の「ヘルプデスクツール」カテゴリー（2026 年 11 月�
 4. 担当者を役割グループ **サポートデスク 担当者** に入れます。ログインするお客様は **サポートデスク お客様** に入れ、**お客様の担当者** の「Exment のユーザー」でつなぎます。
 5. お客様には窓口の URL（`https://あなたの Exment/support`）を案内します。
 
-**未リリース / Unreleased**: `plugins.plugin_types` が 1 つの種類だけのサイト（zip をアップロードせずにファイルを入れかえたサイト）でも、すべての画面がエラーになることがなくなりました（`Plugin` がページそのものになりました）。バッチとイベントには行の更新が要るので、ファイルを入れかえるのではなく、zip をアップロードしてください。A site whose `plugins.plugin_types` lists one type only (files replaced without uploading the zip) no longer fails on every page (`Plugin` is now the page itself); the batch and the event still need the row updated, so upload the zip rather than replacing the files.
+**1.1.1 から / Since 1.1.1**: `plugins.plugin_types` が 1 つの種類だけのサイト（zip をアップロードせずにファイルを入れかえたサイト）でも、すべての画面がエラーになることがなくなりました（`Plugin` がページそのものになりました）。バッチとイベントには行の更新が要るので、ファイルを入れかえるのではなく、zip をアップロードしてください。A site whose `plugins.plugin_types` lists one type only (files replaced without uploading the zip) no longer fails on every page (`Plugin` is now the page itself); the batch and the event still need the row updated, so upload the zip rather than replacing the files.
 
 左のメニューは **サポートデスク** 1 つだけです（開くと受付箱）。チケット表・ナレッジ・お客様・連絡先・IT 資産・定型文は受付箱の上のメニューから、すべてのテーブル（チケットの種類・SLA も）は **設定** の「テーブル・権限」から開きます。1.0.6 までの「サポートデスク」のフォルダー（受付箱とテーブル 8 つ）は、1.0.7 に上げたあと、最初に受付箱を開いたとき（またはセットアップの「テーブルを更新」）に 1 つにまとまります。管理者が自分で足したメニューは残ります。
 

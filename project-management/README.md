@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.8.0 / 1.8.0 で変わったこと**
 
 - **If you run `exment:batch --name=ExmentPM` without parameters for the AI fill, add `--param1=all` or turn on the nightly setting.** The batch without parameters (how Exment's scheduler calls a plugin) now makes the issues of the recurring schedules, and no longer runs the AI fill. The nightly setting is 「AI のうめ合わせを毎晩動かす（時刻）」 / "Run the AI fill nightly (hour)" in the plugin's settings, with the other AI settings (off at first). One fill runs at a time (a lock in the cache): if several servers run schedule:run, give them a shared cache (redis, database, memcached), or run schedule:run on one server only.
   **`exment:batch --name=ExmentPM` をパラメーターなしで AI のうめ合わせに使っているときは、`--param1=all` を付けるか、毎晩の設定をオンにしてください。** パラメーターなしのバッチ（Exment のスケジューラーがプラグインを呼ぶ形）は、繰り返しの予定の課題を作るようになり、AI のうめ合わせはしなくなりました。毎晩の設定は、プラグインの設定の AI の設定のところにある「AI のうめ合わせを毎晩動かす（時刻）」です（初めはオフ）。うめ合わせは一度に 1 つだけ動きます（キャッシュのロック）。schedule:run を何台ものサーバーで動かすときは、共有のキャッシュ（redis・database・memcached）を使うか、schedule:run を 1 台だけで動かしてください。
@@ -25,6 +25,13 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
   繰り返しの予定の課題を、ポータルを開いた人ではなく、予定を作った人（またはプロジェクトの最初の管理者）として作るようにしました。プロジェクトの人がだれも開かなくても作られます。Exment の schedule:run が 5 分ごとに動かします（config.json の `batch_cron`）。schedule:run がないときは、cron で `php artisan exment:batch --name=ExmentPM --param1=schedule` を動かしてください。作れない予定は、予定の画面にそう出ます。予定を保存するには、プロジェクトに課題を追加できる権限が要ります。
 - A site whose `plugins.plugin_types` lists one type only (files replaced without uploading the zip) no longer fails on every page: `Plugin` is now the page itself (the same as `PluginPage`, with the settings form of `PluginSetting`) instead of an empty class. The other types (validator, event, batch, script) still need the row updated: upload the zip in **Admin settings → Plugins** rather than replacing the files, or follow the manual.
   `plugins.plugin_types` が 1 つの種類だけのサイト（zip をアップロードせずにファイルを入れかえたサイト）で、すべての画面がエラーになることがなくなりました。`Plugin` が空のクラスではなく、ページそのもの（`PluginPage` と同じで、設定の画面は `PluginSetting` のもの）になりました。ほかの種類（検証・イベント・バッチ・スクリプト）には行の更新が要ります。ファイルを入れかえるのではなく、**管理者設定 → プラグイン** で zip をアップロードするか、マニュアルのとおりにしてください。
+
+- On phones, a second pass: the buttons, fields and links still under 44px are now 44px (the project head, the issue's buttons, the comment sheet, all issues, the issue list's tabs), the fields are 16px so iOS does not zoom in, the head takes less height, and the trail of links above an issue stays on one line that scrolls sideways (each link ends in "…", the current key stays in view). In all issues the whole row opens the issue. Wide screens are unchanged.
+  スマホで、もう一度見直しました。まだ 44px より小さかったボタン・入力欄・リンク（プロジェクトの見出し・課題のボタン・コメントの入力・すべての課題・課題一覧のタブ）を 44px にし、入力欄の文字を 16px にして iOS が拡大しないようにしました。見出しの高さを低くし、課題の上のリンクの並びは 1 行にして、長いときは横にスクロールします（リンクは「…」で切り、今の課題のキーは見えたままです）。すべての課題では、行のどこを押しても課題を開きます。広い画面は変わりません。
+- When a page has expired (Exment's message 「ページの有効期限が切れました。…」 after a form was sent with an old token), the portal now shows that message in its own box under the top bar. When one of the portal's own requests is refused for the same reason (419), a bar stays on the screen with the reason and a **再読み込み / Reload** button (a form with unsaved work still asks first). Exment's other messages for the next page (errors, warnings, saved) are shown there too.
+  ページの有効期限が切れたとき（古いトークンのままフォームを送ったときの Exment のメッセージ「ページの有効期限が切れました。…」）、ポータルの上のバーの下に、ポータルの枠でそのメッセージを出すようにしました。ポータルの画面からの送信が同じ理由で断られたとき（419）は、理由と **再読み込み** のボタンのある行を出したままにします（保存していない入力があるときは、先に確かめます）。Exment が次の画面に残すほかのメッセージ（エラー・注意・保存しました）も、そこに出します。
+- The check of extra shares (`--param1=schedule_shares`, a dry run unless `--param2=apply`) also looks at the issues that ExmentPMBacklog imported, by the time of the import.
+  余分な共有を調べるバッチ（`--param1=schedule_shares`、`--param2=apply` を付けなければ数えるだけ）が、ExmentPMBacklog が取り込んだ課題も、取り込んだ時刻で調べるようにしました。
 
 **Changed in 1.7.26 / 1.7.26 で変わったこと**
 

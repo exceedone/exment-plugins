@@ -6,9 +6,13 @@
 
 <a id="english"></a>
 
-**Unreleased**
+**Changed in 0.5.1**
 
 - A site whose plugin files were replaced (copied onto the server) without uploading the zip no longer fails on every page. From 0.5.0 the plugin has two types (page, batch), but such a site still has `plugins.plugin_types` = `page` from before; Exment then looked for a class `Plugin`, found an empty one, and every page answered 500, the login included. `Plugin` is now the page itself (the same as `PluginPage`, with the settings form of `PluginSetting`), so the site keeps working. The reminders and the retention of the chat (the batch) still need the row updated: upload `ExmentGroupware-<version>.zip` in **Admin settings → Plugins** rather than replacing the files, or update `plugins.plugin_types` and the options and run the plugin's migrations as the [manual](https://exment.net/docs/plugin_groupware.html) says.
+
+- Calendar: Google Calendar and Microsoft 365 read into a person's calendar, read only (ISS02947, part 6). In the 「連携」 dialog, **Google と連携** / **Microsoft と連携** sign in to the account and read its main calendar every 15 minutes, like an ICS link; the site's app is entered in the plugin's settings by the system administrator. See [Google and Microsoft 365 calendars (read only)](#calendar-google-microsoft).
+- Calendar on phones: the toolbar buttons, the dialog buttons, the ExmentPM layer select and the form fields are 44px tall (the fields at 16px, so iOS does not zoom in), and the rooms dialog has its own day arrows (前の日 / 次の日) that can be tapped. Wide screens are unchanged.
+- Calendar: the dialogs start below Exment's header, so their top (the close button, the day arrows) is no longer hidden under it.
 
 **Changed in 0.5.0**
 
@@ -205,9 +209,13 @@ Coming: an export of one's own calendar with all its details, with a token of it
 
 <a id="japanese"></a>
 
-**未リリース**
+**0.5.1 で変わったこと**
 
 - プラグインのファイルを（サーバーにコピーして）入れかえ、zip をアップロードしなかったサイトで、すべての画面がエラーになることがなくなりました。0.5.0 からこのプラグインは 2 つの種類（ページ・バッチ）ですが、そのようなサイトでは `plugins.plugin_types` が前の `page` のままです。Exment は `Plugin` というクラスを探して空のクラスを見つけ、ログインも含めてすべての画面が 500 になっていました。今は `Plugin` がページそのもの（`PluginPage` と同じで、設定の画面は `PluginSetting` のもの）なので、サイトは動きます。カレンダーのリマインダーとチャットの保存期間（バッチ）には、行の更新が要ります。ファイルを入れかえるのではなく、**管理者設定 → プラグイン** で `ExmentGroupware-<version>.zip` をアップロードしてください。または、[マニュアル](https://exment.net/docs/ja/plugin_groupware.html) のとおりに `plugins.plugin_types` とオプションを更新し、プラグインのマイグレーションを動かしてください。
+
+- カレンダー：Google カレンダーと Microsoft 365 の予定表を、自分のカレンダーに読みこめます（読むだけ。ISS02947 の 6）。「連携」の画面の **Google と連携**・**Microsoft と連携** でアカウントにサインインすると、そのメインのカレンダーを ICS と同じように 15 分ごとに読みます。サイトのアプリは、システム管理者がプラグインの設定に入れます。[Google カレンダー・Microsoft 365 の予定表（読むだけ）](#calendar-google-microsoft-ja) を参照。
+- スマホのカレンダー：ツールバーのボタン・画面のボタン・ExmentPM の選択・入力欄を 44px の高さにしました（入力欄の文字は 16px で、iOS が拡大しません）。会議室・備品の画面には、押せる日の矢印（前の日・次の日）を付けました。広い画面は変わりません。
+- カレンダー：画面（ダイアログ）を Exment の上の見出しの下から出すようにしました。上の部分（閉じるボタン・日の矢印）が見出しにかくれなくなりました。
 
 **0.5.0 で変わったこと**
 
