@@ -75,6 +75,7 @@ class PortalRecurrence
      */
     public static function run(bool $dry = false, ?Carbon $today = null): array
     {
+        PortalRunOwner::forget();
         $def = PortalDefinition::config();
         $issue_table = CustomTable::getEloquent(array_get($def, 'issue_table'));
         $project_table = CustomTable::getEloquent(array_get($def, 'project_table'));
@@ -281,6 +282,21 @@ class PortalRecurrence
      */
     protected static function copy(CustomTable $issue_table, $issue, $project, array $plan, array $def): ?int
     {
+        // made as the issue's creator (or the project's first manager), never as the visitor
+        $owner = null;
+        $blocked = PortalRunOwner::check($project, intval($issue->created_user_id) ?: null, $issue_table, $owner);
+        $logKey = 'pmportal_recur_block:' . DB::connection()->getDatabaseName() . ':' . $issue->id;
+        if ($blocked !== null || $owner === null) {
+            // the setting stays on the issue; said once a day at most, and only by the batch (a page
+            // load may not see the owner's role: PortalSchedule::mayFlag)
+            if (PortalSchedule::mayFlag($blocked, \Exment::user() === null) && Cache::add($logKey, 1, now()->addDay())) {
+                Log::warning('PmPortal recurrence: issue ' . $issue->id . ' makes no copy (' . $blocked . '): nobody on the project to make it as, or they may not add issues');
+            }
+
+            return null;
+        }
+        Cache::forget($logKey);
+
         $col = static::columnName();
         $kind = strval(array_get($issue->value, $col));
         $db = getDBTableName($issue_table);
@@ -299,15 +315,9 @@ class PortalRecurrence
             $row->parent_id = $issue->parent_id;
             $row->parent_type = $issue->parent_type;
             $row->setValue($value);
-            // no creator's share for whoever's page load made the copy (PortalRunShares)
-            PortalRunShares::saveNew($row);
-
-            // Recorded as its first issue's creator's. No creator's share comes with it: they
-            // reach it the way every member of the project does, as do its assignees.
-            DB::table($db)->where('id', $row->id)->update([
-                'created_user_id' => $issue->created_user_id,
-                'updated_user_id' => $issue->created_user_id,
-            ]);
+            // Made as its first issue's creator (or the project's first manager), with no creator's
+            // share for anyone: they reach it the way every member of the project does.
+            PortalRunOwner::saveAs($row, $owner);
 
             return intval($row->id);
         } catch (\Throwable $e) {

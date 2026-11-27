@@ -9,6 +9,7 @@
     "uri": "exment_pm",
     "event_triggers": ["saving", "saved"],
     "batch_hour": -1,
+    "batch_cron": "*/5 * * * *",
     "templates": false,
     "route": [
         { "method": "get", "uri": "", "function": "index" },
