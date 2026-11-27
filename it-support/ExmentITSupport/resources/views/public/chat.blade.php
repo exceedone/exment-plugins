@@ -111,7 +111,7 @@ function robotToken() {
     if (!B.robot) { return Promise.resolve(''); }
     if (!window.grecaptcha) { return Promise.reject(new Error('ロボットでないことの確かめを読み込めませんでした。')); }
     if (B.robot.version === 'v2') { return Promise.resolve(ROBOT.widget !== null ? window.grecaptcha.getResponse(ROBOT.widget) : ''); }
-    return new Promise(function (ok) { window.grecaptcha.ready(function () { window.grecaptcha.execute(B.robot.sitekey, { action: 'chat' }).then(ok, function () { ok(''); }); }); });
+    return new Promise(function (ok) { window.grecaptcha.ready(function () { window.grecaptcha.execute(B.robot.sitekey, { action: B.robot.action || 'publicform' }).then(ok, function () { ok(''); }); }); });
 }
 $('form').addEventListener('submit', function (ev) {
     ev.preventDefault();

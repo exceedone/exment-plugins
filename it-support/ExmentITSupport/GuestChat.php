@@ -50,7 +50,11 @@ class GuestChat
                 return null;
             }
 
-            return ['version' => $version, 'sitekey' => $key];
+            // v3: the action Exment's verify expects (ReCaptchaService::ACTION, "publicform")
+            $service = static::RECAPTCHA;
+            $action = defined($service . '::ACTION') ? strval(constant($service . '::ACTION')) : 'publicform';
+
+            return ['version' => $version, 'sitekey' => $key, 'action' => $action];
         } catch (\Throwable $e) {
             return null;
         }
