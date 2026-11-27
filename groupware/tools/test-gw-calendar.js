@@ -52,7 +52,7 @@ function test(name, fn) {
 function fakeDocument() {
     function node(tag) {
         const n = {
-            tagName: tag.toUpperCase(), className: '', attrs: {}, children: [], _text: '',
+            tagName: tag.toUpperCase(), className: '', attrs: {}, style: {}, children: [], _text: '',
             setAttribute(k, v) { this.attrs[k] = String(v); },
             appendChild(c) { this.children.push(c); return c; },
             addEventListener() {},
@@ -244,6 +244,46 @@ test('a holiday\'s label: its name, or the kind', () => {
     assert.strictEqual(T.holidayLabel({ name: '', kind: 'off' }), '会社の休み');
     assert.strictEqual(T.holidayLabel({ name: '', kind: 'work' }), '休日出勤');
     assert.strictEqual(H.t('more', 3), 'ほか 3 件');
+});
+
+/* ---------------------------------------------------- ExmentPM (part 4) ------ */
+const PMLANG = { pm_pending: '予定（まだ課題になっていない）', pm_milestone: 'マイルストーン', pm_due: '期限' };
+const pmNodeOf = (doc) => new Function(
+    'var L = ' + JSON.stringify(PMLANG) + '; var document = arguments[0];\n' +
+    ['t', 'pmNode', 'evNode'].map((n) => functionSource(source, n)).join('\n') +
+    '\nreturn evNode;'
+)(doc);
+test('ExmentPM: the choice of the toolbar as the query', () => {
+    const P = load(['pmQuery']);
+    assert.deepStrictEqual(P.pmQuery('mine'), { filter: 'mine' });
+    assert.deepStrictEqual(P.pmQuery('projects'), { filter: 'projects' });
+    assert.deepStrictEqual(P.pmQuery('p12'), { filter: 'project', project: '12' });
+    assert.strictEqual(P.pmQuery('off'), null);
+    assert.strictEqual(P.pmQuery('p12;x'), null);
+    assert.strictEqual(P.pmQuery(null), null);
+});
+test('ExmentPM: an issue is a button in its project\'s colour, its title as text', () => {
+    const evNode = pmNodeOf(fakeDocument());
+    const n = evNode({ pm: 'issue', kind: 'bar', start: '2026-12-01', end: '2026-12-05', all_day: true, title: 'ISS1 <b>見積</b>', project_name: 'P', color: '#0f8a6a', due: '2026-12-04', done: true });
+    assert.strictEqual(n.tagName, 'BUTTON'); // it opens (no id: not taken for a busy one)
+    assert.strictEqual(n.textContent, 'ISS1 <b>見積</b>');
+    assert.ok(/\bpm\b/.test(n.className) && /\bdone\b/.test(n.className), n.className);
+    assert.strictEqual(n.style.borderLeftColor, '#0f8a6a');
+    assert.strictEqual(n.attrs.title, 'ISS1 <b>見積</b> (期限 2026-12-04) - P');
+});
+test('ExmentPM: a date of a schedule says it is not an issue yet; a colour that is not one is not set', () => {
+    const evNode = pmNodeOf(fakeDocument());
+    const n = evNode({ pm: 'schedule', start: '2026-12-05', end: '2026-12-06', all_day: true, title: '月次報告', color: 'red;background:url(x)' });
+    assert.ok(/\bsched\b/.test(n.className));
+    assert.strictEqual(n.style.borderLeftColor, undefined);
+    assert.strictEqual(n.attrs.title, '月次報告 (予定（まだ課題になっていない）)');
+});
+test('the rooms of a day: a room taken out of use shows while it has bookings that day', () => {
+    const R = load(['roomsOfDay']);
+    const rooms = [{ id: 1, name: 'A', enabled: true }, { id: 2, name: 'B', enabled: false }, { id: 3, name: 'C', enabled: false }];
+    const out = R.roomsOfDay(rooms, [{ resources: [2], title: '定例' }]);
+    assert.deepStrictEqual(out.map((x) => [x.room.name, x.off, x.events.length]), [['A', false, 0], ['B', true, 1]]);
+    assert.deepStrictEqual(R.roomsOfDay(rooms, []).map((x) => x.room.name), ['A']);
 });
 
 if (failed) {
