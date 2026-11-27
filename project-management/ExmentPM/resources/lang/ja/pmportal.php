@@ -1876,6 +1876,17 @@ return [
         'err_type' => 'この種類は使えません。',
     ],
     // chat channels of a project (ISS02939)
+    // ISS02939 item 6: the portal as an installable web app
+    'pwa' => [
+        'feature' => 'スマホのアプリ（PWA）',
+        'feature_help' => 'プロジェクト管理を、スマホやパソコンの「ホーム画面に追加」でアプリのように使えるようにします。電波がないときは「オフラインです」の画面を出します。課題のデータは端末に残しません。',
+        'app_name' => 'プロジェクト管理',
+        'install' => 'ホーム画面に追加',
+        'offline_title' => 'オフラインです',
+        'offline_line' => 'インターネットにつながっていません。つながったら、もう一度ためしてください。',
+        'offline_retry' => 'もう一度ためす',
+        'ios_help' => 'Safari の共有ボタン（□に↑）から「ホーム画面に追加」を選んでください。',
+    ],
     // ISS02939 item 5: Git linked to the issues by webhook
     'gitlink' => [
         'feature' => 'Git とつなぐ（Webhook）',

@@ -120,6 +120,8 @@ jobs:
       # The list after a refresh and after a save in the form (packed rows).
       - name: Refresh check (ExmentPM list rows)
         run: node project-management/tools/test-pm-refresh.js
+      - name: ExmentPM web app service worker (offline page, assets, nothing else)
+        run: node project-management/tools/test-pm-pwa.js
 
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
@@ -160,6 +162,8 @@ jobs:
         run: php project-management/tools/test-pm-channels.php
       - name: ExmentPM Git link (webhook parsing, signatures, keys)
         run: php project-management/tools/test-pm-git.php
+      - name: ExmentPM web app (manifest, worker settings, icons)
+        run: php project-management/tools/test-pm-pwa.php
       - name: Simple by default (ExmentPM schema 30)
         run: php project-management/tools/test-pm-features.php
 

@@ -169,6 +169,8 @@ trait PortalTopbarTrait
             // ISS02863: how the user gets the notices of the issues (mail, Teams)
             'notify_by' => PortalTeams::choiceOf(\Exment::user()),
             'notify_by_url' => PortalDefinition::url('notify-by'),
+            // ISS02939 item 6: the installable web app; its scope also when off, to take an old worker off
+            'pwa' => PortalPwa::enabled() ? PortalPwa::urls() : ['off' => true, 'scope' => PortalPwa::scope()],
             // the page of the details: per event, projects muted, quiet hours
             'notify_settings_url' => PortalDefinition::url('notify-settings'),
             'notify_choices' => array_values(array_filter(PortalTeams::CHOICES, function ($choice) {

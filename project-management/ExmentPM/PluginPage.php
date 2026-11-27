@@ -45,6 +45,8 @@ class PluginPage extends PluginPageBase
         PortalSchedule::registerFeature();
         // Git linked to the issues by webhook: a feature, off at first, and its own route (ISS02939)
         PortalGitHooks::registerFeature();
+        // the portal as an installable web app on phones: a feature, off at first (ISS02939)
+        PortalPwa::registerFeature();
         try {
             PortalGitHooks::registerRoutes();
         } catch (\Throwable $e) {
@@ -411,6 +413,57 @@ class PluginPage extends PluginPageBase
     public function asset($name)
     {
         return $this->portal()->asset(request(), $name);
+    }
+
+    // ISS02939 item 6: the portal as an installable web app (off at first)
+    public function pwaManifest()
+    {
+        if (!PortalPwa::enabled()) {
+            abort(404);
+        }
+        $site = '';
+        try {
+            $site = strval(\Exceedone\Exment\Model\System::site_name());
+        } catch (\Throwable $e) {
+            $site = strval(config('admin.name', ''));
+        }
+        $body = json_encode(PortalPwa::manifest(PortalPwa::scope(), $site, strval(PortalDefinition::trans('pwa.app_name'))), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return response($body, 200, ['Content-Type' => 'application/manifest+json; charset=utf-8', 'Cache-Control' => 'private, max-age=3600', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
+    public function pwaWorker()
+    {
+        if (!PortalPwa::enabled()) {
+            abort(404);
+        }
+        $assets = strval(parse_url(asset(PortalDefinition::PUBLIC_ASSET_DIR . '/'), PHP_URL_PATH) ?: '');
+
+        return response(PortalPwa::worker(PortalPwa::scope(), $assets, PortalPwa::version()), 200, [
+            'Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'no-cache', 'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function pwaOffline()
+    {
+        if (!PortalPwa::enabled()) {
+            abort(404);
+        }
+
+        return response(PortalPwa::offlinePage(strval(PortalDefinition::trans('pwa.app_name')), strval(PortalDefinition::trans('pwa.offline_title')),
+            strval(PortalDefinition::trans('pwa.offline_line')), strval(PortalDefinition::trans('pwa.offline_retry'))), 200, [
+            'Content-Type' => 'text/html; charset=utf-8', 'Cache-Control' => 'no-cache', 'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function pwaIcon($name)
+    {
+        $png = PortalPwa::enabled() ? PortalPwa::icon(strval($name)) : null;
+        if ($png === null) {
+            abort(404);
+        }
+
+        return response($png, 200, ['Content-Type' => 'image/png', 'Cache-Control' => 'private, max-age=86400', 'X-Content-Type-Options' => 'nosniff']);
     }
 
     public function issueMoveTargets($id, $issue_id)
