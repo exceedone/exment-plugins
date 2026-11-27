@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
  *
  * A calendar program (Google Calendar, Outlook, the iPhone's) reads it without logging in, so it
  * cannot be a route of config.json (Exment gives those the admin login on purpose). It is added
- * here, from PluginPage's constructor while Exment boots, as ExmentITSupport adds its pages for
+ * here, from PluginPage's constructor while Exment boots, as ExmentSupportDesk adds its pages for
  * customers. The token in the address opens one person's calendar as somebody not logged in
  * sees it (Calendar\Feeds), and nothing else. An unknown or stopped token, a person deleted or
  * no longer allowed the feature, or the feature off: 404, all the same.

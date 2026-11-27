@@ -20,7 +20,7 @@ return new class extends Migration
                 $table->string('name', 100)->nullable();
                 $table->text('description')->nullable();
                 $table->string('direct_key', 64)->nullable()->unique();
-                $table->string('source_type', 16)->nullable();   // organization | role_group | its_ticket
+                $table->string('source_type', 16)->nullable();   // organization | role_group | sd_ticket
                 $table->unsignedBigInteger('source_id')->nullable();
                 $table->unsignedInteger('retention_days')->nullable();
                 $table->unsignedBigInteger('created_by');

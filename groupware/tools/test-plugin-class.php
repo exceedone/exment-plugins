@@ -1,6 +1,6 @@
 <?php
 // The class "Plugin" of each plugin in this repository whose config.json declares several types
-// (ExmentGroupware, ExmentPM, ExmentITSupport, ExmentPMBacklog ...).
+// (ExmentGroupware, ExmentPM, ExmentSupportDesk, ExmentPMBacklog ...).
 //
 // Exment loads Plugin<Type> (PluginPage, PluginBatch ...) when plugins.plugin_types lists several
 // types, and a class called Plugin when it lists one. A site whose files were replaced without
