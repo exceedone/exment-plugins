@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.25 / 1.7.25 で変わったこと**
 
 - The 「← 課題一覧」 button (and 「← Wiki 一覧」, and the one in the bar that stays on scroll) is filled with the site's colour, white text, darker under the pointer, a filled circle on a phone.
   「← 課題一覧」のボタン（「← Wiki 一覧」と、スクロールしても残る行のものも）を、サイトの色で塗り、白い文字にしました。マウスを乗せると濃くなり、スマホでは塗った丸になります。
