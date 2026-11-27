@@ -250,6 +250,10 @@ jobs:
       - name: Help desk chat notices (IT Support)
         run: php it-support/tools/test-chat-notices.php
 
+      # the chat of the groupware: mentions, read counts, direct rooms, the polling (ISS02945)
+      - name: Groupware chat (ExmentGroupware)
+        run: php groupware/tools/test-chat-text.php
+
       # 「ExmentPM の課題にする」 and every route with its method (ISS02941)
       - name: Help desk ExmentPM link (IT Support)
         run: php it-support/tools/test-pm-link.php
