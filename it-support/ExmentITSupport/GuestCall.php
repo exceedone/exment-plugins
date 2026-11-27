@@ -77,14 +77,27 @@ class GuestCall
     }
 
     /** The call of a link, not over, not expired; else null. */
-    public static function byToken(string $token): ?object
+    /** How long a call that was taken may last (the link itself is good for 30 minutes to open). */
+    const TAKEN_HOURS = 4;
+
+    public static function byToken(string $token, bool $ended = false): ?object
     {
         if (!preg_match('/^[0-9a-f]{64}$/', $token)) {
             return null;
         }
         $c = DB::table('its_calls')->where('token_hash', Tokens::hash($token))->first();
+        if (!isset($c)) {
+            return null;
+        }
+        if ($c->ended_at !== null) {
+            // read once more after the end (the other side's hangup), for a few minutes
+            return $ended && strtotime(strval($c->ended_at)) > time() - 600 ? $c : null;
+        }
+        $live = $c->joined_at !== null
+            ? strtotime(strval($c->joined_at)) > time() - static::TAKEN_HOURS * 3600
+            : strtotime(strval($c->expires_at)) > time();
 
-        return isset($c) && $c->ended_at === null && strtotime(strval($c->expires_at)) > time() ? $c : null;
+        return $live ? $c : null;
     }
 
     /**
@@ -113,9 +126,9 @@ class GuestCall
     }
 
     /** The call of a guest: the link and its bind secret. */
-    public static function guestCall(string $token, string $bind): object
+    public static function guestCall(string $token, string $bind, bool $ended = false): object
     {
-        $c = static::byToken($token);
+        $c = static::byToken($token, $ended);
         if (!isset($c) || $c->bound_hash === null || !hash_equals($c->bound_hash, Tokens::hash($bind))) {
             abort(404);
         }
@@ -177,11 +190,12 @@ class GuestCall
     public static function end(object $call, string $side, string $notes = ''): array
     {
         $fresh = DB::table('its_calls')->where('id', $call->id)->first();
+        // the ticket whoever ended first: the agent's notes come with the agent's end, maybe the second
+        $ticket = isset($fresh) ? Tickets::find($fresh->ticket_id) : null;
         if (isset($fresh) && $fresh->ended_at === null) {
             $now = now();
             DB::table('its_calls')->where('id', $call->id)->update(['ended_at' => $now, 'updated_at' => $now]);
             DB::table('its_call_signals')->insert(['call_id' => $call->id, 'side' => $side, 'type' => 'hangup', 'payload' => null, 'created_at' => $now]);
-            $ticket = Tickets::find($fresh->ticket_id);
             if (isset($ticket)) {
                 if ($fresh->answered_at !== null) {
                     $from = strtotime(strval($fresh->answered_at));

@@ -110,7 +110,7 @@ function finish(msg) {
     if (C.done) { return; }
     C.done = true;
     clearTimeout(C.timer);
-    [C.mic, C.screen].forEach(function (s) { if (s) { s.getTracks().forEach(function (t) { t.stop(); }); } });
+    [C.mic, C.screen && C.screen.stream].forEach(function (s) { if (s) { s.getTracks().forEach(function (t) { t.stop(); }); } });
     try { if (C.pc) { C.pc.close(); } } catch (e) { /* closed */ }
     st(msg);
     ['mu', 'sh', 'end', 'go'].forEach(function (id) { $(id).disabled = true; });

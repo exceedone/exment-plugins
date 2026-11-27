@@ -63,9 +63,9 @@ class GuestCallController
         }
     }
 
-    protected function call(Request $request): object
+    protected function call(Request $request, bool $ended = false): object
     {
-        return GuestCall::guestCall(strval($request->header('X-Call-Token')), strval($request->header('X-Call-Bind')));
+        return GuestCall::guestCall(strval($request->header('X-Call-Token')), strval($request->header('X-Call-Bind')), $ended);
     }
 
     public function join(Request $request)
@@ -95,7 +95,8 @@ class GuestCallController
     public function signals(Request $request)
     {
         return $this->json($request, false, function () use ($request) {
-            return GuestCall::signals($this->call($request), 'guest', intval($request->query('after', 0)));
+            // an ended call is still read once (the agent's hangup)
+            return GuestCall::signals($this->call($request, true), 'guest', intval($request->query('after', 0)));
         });
     }
 
