@@ -404,6 +404,7 @@ return [
     'git_open' => 'open',
     'git_merged' => 'merged',
     'git_closed' => 'closed',
+    'git_done' => 'marked done by the merge',
     // ISS00440: the copy button by the issue key
     'ik_copied' => 'Copied the issue key and subject',
     'ik_key_copied' => 'Copied the issue key',
@@ -1850,7 +1851,7 @@ return [
         'last' => 'Last delivery:',
         'never' => 'Nothing delivered yet.',
         'error' => 'error',
-        'close_on_merge' => 'Mark done on merge (fixes / closes KEY)',
+        'close_on_merge' => 'Mark done on merge (a merged pull request that says "fixes KEY" or "closes KEY")',
         'new_secret' => 'New secret',
         'new_secret_ask' => 'Make a new secret? Deliveries with the current one will be refused.',
         'remove' => 'Remove',

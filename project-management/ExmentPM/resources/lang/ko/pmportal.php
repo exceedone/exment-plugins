@@ -404,6 +404,7 @@ return [
     'git_open' => '열림',
     'git_merged' => '병합됨',
     'git_closed' => '닫힘',
+    'git_done' => 'marked done by the merge',
     // ISS00440: the copy button by the issue key
     'ik_copied' => '이슈 키와 제목을 복사했습니다',
     'ik_key_copied' => '이슈 키를 복사했습니다',

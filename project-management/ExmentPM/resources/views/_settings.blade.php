@@ -1053,6 +1053,16 @@
                     row.appendChild(el('div', 'pp-set-lab', h.provider + ' · ' + h.repo));
                     row.appendChild(el('div', 'pp-set-note', H.address + ' ' + h.url));
                     row.appendChild(el('div', 'pp-set-note', h.last_delivery_at ? H.last + ' ' + h.last_delivery_at + (h.last_error ? '（' + H.error + ': ' + h.last_error + '）' : '') : H.never));
+                    // 「fixes / closes KEY」 on a merged PR moves the issue to done (off at first)
+                    var cb = el('label', 'pp-set-note');
+                    cb.style.display = 'block';
+                    var c = document.createElement('input');
+                    c.type = 'checkbox';
+                    c.checked = !!h.close_on_merge;
+                    c.addEventListener('change', function () { post(S.git_hooks_url + '/' + h.id + '/update', { close_on_merge: c.checked }).then(function (r) { if (!(r.body && r.body.ok)) { c.checked = !c.checked; } }); });
+                    cb.appendChild(c);
+                    cb.appendChild(document.createTextNode(' ' + H.close_on_merge));
+                    row.appendChild(cb);
                     var again = el('button', 'pp-set-btn', H.new_secret);
                     again.type = 'button';
                     again.addEventListener('click', function () { if (!window.confirm(H.new_secret_ask)) { return; } post(S.git_hooks_url + '/' + h.id + '/secret').then(function (r) { if (r.body && r.body.ok) { draw(r.body.hooks); showSecret(r.body); } }); });

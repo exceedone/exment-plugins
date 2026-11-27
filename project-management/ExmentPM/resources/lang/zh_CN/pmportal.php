@@ -404,6 +404,7 @@ return [
     'git_open' => '打开',
     'git_merged' => '已合并',
     'git_closed' => '已关闭',
+    'git_done' => 'marked done by the merge',
     // ISS00440: the copy button by the issue key
     'ik_copied' => '已复制任务键和主题',
     'ik_key_copied' => '已复制任务键',

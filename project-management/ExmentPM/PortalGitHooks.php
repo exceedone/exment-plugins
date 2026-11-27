@@ -207,6 +207,11 @@ class PortalGitHooks
             return response()->json(['ok' => false], 403);
         }
         try {
+            // outside the admin middleware: Exment's names of the tables (the history, the
+            // comments) are not set yet; without them a save is kept under the bare class name
+            if (class_exists(\Exceedone\Exment\Middleware\Morph::class)) {
+                \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            }
             $n = static::store($hook, PortalGitParse::items(strval($hook->provider), $event, $payload));
         } catch (\Throwable $e) {
             Log::warning('pm_portal git hook ' . $hook->id . ': ' . $e->getMessage());
@@ -238,46 +243,158 @@ class PortalGitHooks
         $keyCol = strval(array_get($def, 'issue.key', 'issue_key'));
         $aliases = static::aliasesOf(intval($project->id), $projects->table_name, $issues);
         $n = 0;
-        foreach ($items as $it) {
+        // the issues a text names, in the order written, at most 20 (linking and closing alike)
+        $resolve = function (string $text) use ($projectKey, $aliases, $issues, $projects, $project, $keyCol): array {
+            $hits = PortalGitParse::hits($text, $projectKey, array_keys($aliases));
+            $words = [];
+            foreach ($hits as $h) {
+                if ($h['type'] === 'word' && count($words) < 50) {
+                    $words[] = $h['k'];
+                }
+            }
+            // the issue's own key (the key column: what the screen shows and the branch name copies)
+            $byWord = [];
+            if (!empty($words)) {
+                $rows = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
+                    ->where('parent_type', $projects->table_name)->where('parent_id', $project->id)
+                    ->whereIn('value->' . $keyCol, $words)->limit(100)->get(['id', 'value']);
+                foreach ($rows as $row) {
+                    $byWord[strval(array_get($row->value, $keyCol))] = intval($row->id);
+                }
+            }
             $ids = [];
-            foreach (PortalGitParse::keys($it['text'], $projectKey, array_keys($aliases)) as $k) {
-                if (str_starts_with($k, '@')) {
-                    $id = $aliases[substr($k, 1)] ?? null;
+            foreach ($hits as $h) {
+                if (count($ids) >= PortalGitParse::MAX_ISSUES) {
+                    break;
+                }
+                $id = null;
+                if ($h['type'] === 'alias') {
+                    $id = $aliases[$h['k']] ?? null;
+                } elseif ($h['type'] === 'word') {
+                    $id = $byWord[$h['k']] ?? null;
                 } else {
                     // the key on screen is "<PROJECT KEY>-<the issue's id>"; an issue moved here
                     // from another project is found by its old key too
-                    $id = intval(substr($k, strrpos($k, '-') + 1));
+                    $k = $h['k'];
                     $old = PortalIssueAliases::exists() ? PortalIssueAliases::issueOf($k) : null;
-                    $id = static::ofProject($issues, $projects->table_name, intval($project->id), $id)
+                    $id = static::ofProject($issues, $projects->table_name, intval($project->id), intval(substr($k, strrpos($k, '-') + 1)))
                         ?? ($old !== null ? static::ofProject($issues, $projects->table_name, intval($project->id), $old) : null);
                 }
                 if ($id !== null) {
                     $ids[$id] = true;
                 }
             }
-            // the issue's own key (the key column: what the screen shows and the branch name copies)
-            $words = PortalGitParse::keyWords($it['text']);
-            if (!empty($words) && count($ids) < PortalGitParse::MAX_ISSUES) {
-                $rows = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
-                    ->where('parent_type', $projects->table_name)->where('parent_id', $project->id)
-                    ->whereIn('value->' . $keyCol, $words)->limit(PortalGitParse::MAX_ISSUES)->pluck('id');
-                foreach ($rows as $rid) {
-                    if (count($ids) < PortalGitParse::MAX_ISSUES) {
-                        $ids[intval($rid)] = true;
-                    }
-                }
+
+            return $ids;
+        };
+        foreach ($items as $it) {
+            $ids = $resolve($it['text']);
+            // 「fixes / closes KEY」 of a merged PR, when the hook says so (step 2): only issues it links
+            $closing = [];
+            if ($it['kind'] === 'pr' && $it['merged'] && boolval($hook->close_on_merge)) {
+                $words = PortalGitParse::closeWords($it['text']);
+                $closing = empty($words) ? [] : array_intersect_key($resolve(implode(' ', $words)), $ids);
             }
             foreach (array_keys($ids) as $issueId) {
+                $before = DB::table(static::EVENTS)->where(['hook_id' => $hook->id, 'kind' => $it['kind'], 'ref' => $it['ref'], 'issue_id' => $issueId])->value('state');
                 DB::table(static::EVENTS)->updateOrInsert(
                     ['hook_id' => $hook->id, 'kind' => $it['kind'], 'ref' => $it['ref'], 'issue_id' => $issueId],
                     ['project_id' => $hook->project_id, 'title' => $it['title'], 'author' => $it['author'], 'url' => $it['url'],
                         'branch' => $it['branch'], 'state' => $it['state'], 'occurred_at' => $it['at'], 'updated_at' => now(), 'created_at' => now()]
                 );
                 $n++;
+                // once, when the PR becomes merged: an issue opened again later is left alone
+                if (isset($closing[$issueId]) && $before !== 'merged') {
+                    static::closeIssue($def, $issues, $project, $issueId, $hook, $it);
+                }
             }
         }
 
         return $n;
+    }
+
+    /**
+     * Move an issue to the first done status of its project, with a line in its history. Never
+     * an issue already done (any done status), never when the statuses are still a word list.
+     */
+    protected static function closeIssue(array $def, CustomTable $issues, $project, int $issueId, object $hook, array $it): void
+    {
+        try {
+            $statusTable = CustomTable::getEloquent(strval(array_get($def, 'status_table')));
+            $statusCol = strval(array_get($def, 'issue.status', 'status'));
+            if (!isset($statusTable) || $statusCol === '') {
+                return;
+            }
+            $doneCol = strval(array_get($def, 'status_row.done', 'is_done'));
+            $orderCol = strval(array_get($def, 'status_row.order', 'display_order'));
+            $rows = $statusTable->getValueModel()->query()->withoutGlobalScopes()->where(function ($w) use ($project) {
+                $w->where('parent_id', $project->id)->orWhereNull('parent_id');
+            })->orderBy('id')->get();
+            $doneIds = [];
+            foreach ($rows as $r) {
+                if (boolval(array_get($r->value, $doneCol))) {
+                    $doneIds[] = strval($r->id);
+                }
+            }
+            // an issue table with a workflow: its steps are the way to done, never skipped here
+            if (class_exists(\Exceedone\Exment\Model\Workflow::class) && !empty(\Exceedone\Exment\Model\Workflow::getWorkflowByTable($issues))) {
+                return;
+            }
+            $issue = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($issueId);
+            if (!isset($issue) || empty($doneIds)) {
+                return;
+            }
+            $now = array_get($issue->value, $statusCol);
+            $now = is_array($now) ? strval(reset($now)) : strval($now ?? '');
+            if (in_array($now, $doneIds, true)) {
+                return;
+            }
+            // the project's own statuses when it has any (as the settings tab shows them), else the shared ones
+            $own = $rows->filter(function ($r) {
+                return !is_null($r->parent_id);
+            });
+            $list = ($own->isNotEmpty() ? $own : $rows)->filter(function ($r) use ($doneCol) {
+                return boolval(array_get($r->value, $doneCol));
+            })->sortBy(function ($r) use ($orderCol) {
+                return intval(array_get($r->value, $orderCol, 0));
+            })->values();
+            if ($list->isEmpty()) {
+                return;
+            }
+            $issue->setValue($statusCol, strval($list->first()->id));
+            $issue->save();
+            // the line of the issue's history: by 「Git（owner/repo）」 with the PR's link, not by nobody
+            DB::table(static::EVENTS)->updateOrInsert(
+                ['hook_id' => $hook->id, 'kind' => 'close', 'ref' => $it['ref'], 'issue_id' => $issueId],
+                ['project_id' => $hook->project_id, 'title' => $it['title'], 'author' => static::by($hook), 'url' => $it['url'],
+                    'branch' => $it['branch'], 'state' => 'merged', 'occurred_at' => now(), 'updated_at' => now(), 'created_at' => now()]
+            );
+        } catch (\Throwable $e) {
+            Log::warning('pm_portal git hook ' . $hook->id . ': issue ' . $issueId . ' could not be moved to done: ' . $e->getMessage());
+        }
+    }
+
+    /** Who a change of the webhook is shown as: 「Git（owner/repo）」. */
+    public static function by(object $hook): string
+    {
+        return 'Git（' . strval($hook->repo) . '）';
+    }
+
+    /**
+     * The issues' status changes the webhook made (its "close" lines), for the history lines of
+     * no user: [time, who, the PR's link, its number].
+     *
+     * @return array<int, array{ts: int, who: string, url: ?string, ref: string}>
+     */
+    public static function closers(int $issueId): array
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable(static::EVENTS)) {
+            return [];
+        }
+
+        return DB::table(static::EVENTS)->where('issue_id', $issueId)->where('kind', 'close')->get()->map(function ($e) {
+            return ['ts' => intval(strtotime(strval($e->occurred_at))), 'who' => strval($e->author), 'url' => $e->url, 'ref' => strval($e->ref)];
+        })->values()->all();
     }
 
     /** The issue's id when it is an issue of the project, else null. */
