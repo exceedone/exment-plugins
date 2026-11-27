@@ -52,6 +52,8 @@ class ChatPage
     public function page()
     {
         $uid = $this->uid();
+        // older messages of the rooms that keep them a while: once a day, after the answer
+        ChatRetention::maybe();
         $view = view('exment_exment_groupware::chat', [
             'boot' => [
                 'me' => $uid,
@@ -69,8 +71,30 @@ class ChatPage
                     'direct' => $this->url('api/direct/__ID__'),
                     'poll' => $this->url('api/poll'),
                     'file' => $this->url('file/__ID__'),
+                    'edit' => $this->url('api/message/__ID__/edit'),
+                    'delete' => $this->url('api/message/__ID__/delete'),
+                    'react' => $this->url('api/message/__ID__/react'),
+                    'tasks' => $this->url('api/tasks'),
+                    'task' => $this->url('api/message/__ID__/task'),
+                    'task_done' => $this->url('api/task/__ID__/done'),
+                    'projects' => $this->url('api/projects'),
+                    'issue' => $this->url('api/message/__ID__/issue'),
+                    'search' => $this->url('api/search'),
+                    'mute' => $this->url('api/room/__ID__/mute'),
+                    'call_start' => $this->url('api/room/__ID__/call'),
+                    'call_signal' => $this->url('api/call/__ID__/signal'),
+                    'call_signals' => $this->url('api/call/__ID__/signals'),
+                    'call_end' => $this->url('api/call/__ID__/end'),
+                    'settings' => $this->url('api/room/__ID__/settings'),
                 ],
                 'max_file' => ChatService::MAX_FILE_BYTES,
+                'reactions' => ChatText::REACTIONS,
+                'pm' => ChatTasks::pmAvailable() && ChatTasks::pmCanCreate(),
+                'retention' => ChatRetention::CHOICES,
+                // calls from a 1:1 room (ISS02946): on, and the STUN / TURN servers of the setting
+                'call' => \App\Plugins\ExmentGroupware\FeatureGate::allowed(\App\Plugins\ExmentGroupware\FeatureGate::CALL),
+                'ice' => ChatCall::iceServers($this->plugin->getCustomOption('call_ice')),
+                'jump' => intval(request()->query('message', 0)) ?: null,
             ],
         ]);
         foreach (['ExmentAdminCore\Admin\Layout\Content', 'Encore\Admin\Layout\Content'] as $class) {
@@ -83,6 +107,45 @@ class ChatPage
         }
 
         return $view;
+    }
+
+    // ---- calls (ISS02946) -------------------------------------------------------
+
+    public function postCallStart($id)
+    {
+        return $this->json(function () use ($id) {
+            return ChatCall::start($this->uid(), intval($id), $this->url(''));
+        });
+    }
+
+    public function postCallSignal(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            // the description as one JSON text: Exment trims every input string (TrimStrings), and an
+            // SDP must end with its line break
+            $json = $request->input('payload_json');
+            $payload = is_string($json) && $json !== '' ? json_decode($json, true) : null;
+            if (is_string($json) && $json !== '' && !is_array($payload)) {
+                throw new \InvalidArgumentException('合図を読めませんでした。');
+            }
+            ChatCall::signal($this->uid(), intval($id), strval($request->input('type')), $payload);
+
+            return [];
+        });
+    }
+
+    public function apiCallSignals(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            return ChatCall::signals($this->uid(), intval($id), intval($request->query('after', 0)));
+        });
+    }
+
+    public function postCallEnd($id)
+    {
+        return $this->json(function () use ($id) {
+            return ChatCall::end($this->uid(), intval($id));
+        });
     }
 
     public function apiRooms()
@@ -110,6 +173,7 @@ class ChatPage
 
             return ['room' => [
                 'id' => intval($room->id), 'kind' => $room->kind, 'name' => strval($room->name ?? ''),
+                'retention_days' => $room->retention_days !== null ? intval($room->retention_days) : 0,
                 'owner' => $me->role === 'owner', 'members' => array_keys(ChatService::memberNames(intval($id))),
             ]];
         });
@@ -135,8 +199,9 @@ class ChatPage
     {
         return $this->json(function () use ($request, $id) {
             $before = intval($request->query('before', 0)) ?: null;
+            $around = intval($request->query('around', 0)) ?: null;
 
-            return ['messages' => ChatService::messages($this->uid(), intval($id), $before)];
+            return ['messages' => ChatService::messages($this->uid(), intval($id), $before, $around)];
         });
     }
 
@@ -163,7 +228,102 @@ class ChatPage
                 $files[] = ['uuid' => $key, 'name' => $name, 'size' => intval($up->getSize()), 'path' => $path];
             }
 
-            return ['message' => ChatService::post($uid, intval($id), strval($request->input('body', '')), $files)];
+            $reply = intval($request->input('reply_to', 0)) ?: null;
+            $message = ChatService::post($uid, intval($id), strval($request->input('body', '')), $files, $reply);
+            // the bell, and mail or Teams as each one chose, after the answer
+            ChatNotify::note(intval($id), $message, $this->url('') . '?room=' . intval($id) . '&message=' . intval($message['id']));
+
+            return ['message' => $message];
+        });
+    }
+
+    public function postEdit(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            return ['message' => ChatService::edit($this->uid(), intval($id), strval($request->input('body', '')))];
+        });
+    }
+
+    public function postDelete($id)
+    {
+        return $this->json(function () use ($id) {
+            return ['message' => ChatService::delete($this->uid(), intval($id))];
+        });
+    }
+
+    public function postReact(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            return ['message' => ChatService::react($this->uid(), intval($id), strval($request->input('emoji', '')))];
+        });
+    }
+
+    public function apiTasks()
+    {
+        return $this->json(function () {
+            return ChatTasks::mine($this->uid());
+        });
+    }
+
+    public function postTask(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            $assignee = intval($request->input('assignee', 0)) ?: null;
+            $due = trim(strval($request->input('due', ''))) ?: null;
+
+            return ChatTasks::create($this->uid(), intval($id), $assignee, $due, strval($request->input('title', '')));
+        });
+    }
+
+    public function postTaskDone(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            return ChatTasks::done($this->uid(), intval($id), boolval($request->input('done', true)));
+        });
+    }
+
+    public function apiProjects()
+    {
+        return $this->json(function () {
+            return ['projects' => (object) (ChatTasks::pmAvailable() && ChatTasks::pmCanCreate() ? ChatTasks::projects() : [])];
+        });
+    }
+
+    public function postIssue(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            $m = \Illuminate\Support\Facades\DB::table('gw_chat_messages')->where('id', intval($id))->first();
+            $link = isset($m) ? $this->url('') . '?room=' . intval($m->room_id) . '&message=' . intval($m->id) : $this->url('');
+
+            return ChatTasks::createIssue($this->uid(), intval($id), intval($request->input('project')), $link);
+        });
+    }
+
+    public function apiSearch(Request $request)
+    {
+        return $this->json(function () use ($request) {
+            $room = intval($request->query('room', 0)) ?: null;
+
+            return ChatTasks::search($this->uid(), strval($request->query('q', '')), $room);
+        });
+    }
+
+    public function postMute(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            ChatService::setMuted($this->uid(), intval($id), boolval($request->input('muted', true)));
+
+            return ['rooms' => ChatService::rooms($this->uid())];
+        });
+    }
+
+    public function postRoomSettings(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            ChatService::setRoom($this->uid(), intval($id), $request->has('name') ? strval($request->input('name')) : null,
+                $request->has('retention_days') ? strval($request->input('retention_days') ?? '') : null);
+
+            return ['rooms' => ChatService::rooms($this->uid())];
         });
     }
 

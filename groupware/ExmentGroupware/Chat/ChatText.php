@@ -10,6 +10,24 @@ class ChatText
     const MAX_BODY = 20000;
     const MAX_NAME = 100;
 
+    /** The reactions one may give (a fixed list: nothing else is kept). */
+    const REACTIONS = ['👍', '🙏', '👀', '🎉', '😄', '✅'];
+
+    public static function reaction($emoji): ?string
+    {
+        $e = strval($emoji ?? '');
+
+        return in_array($e, static::REACTIONS, true) ? $e : null;
+    }
+
+    /** The line a reply shows of the message it answers: one line, at most 80. */
+    public static function quote(string $body): string
+    {
+        $s = trim(preg_replace('/\s+/u', ' ', $body) ?? '');
+
+        return mb_strlen($s) > 80 ? mb_substr($s, 0, 80) . '…' : $s;
+    }
+
     /** The one direct room of two people: the same key whichever opens it. */
     public static function directKey(int $a, int $b): string
     {

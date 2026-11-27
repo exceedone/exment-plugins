@@ -25,6 +25,8 @@ class FeatureGate
     const CALENDAR = 'exment_groupware.calendar';
     /** The chat (ISS02945): new, off at first. */
     const CHAT = 'exment_groupware.chat';
+    /** Calls from a chat room (ISS02946): new, off at first, with the chat. */
+    const CALL = 'exment_groupware.call';
     const FILE_SERVER = 'file_server';
 
     // a string, not ::class: an Exment without Feature management does not have the class
@@ -135,6 +137,21 @@ class FeatureGate
     }
 
     /** The chat (ISS02945): its page and its API are plugins/<uri>/chat. Off at first. */
+    public static function registerCall($plugin): void
+    {
+        if (!static::available()) {
+            return;
+        }
+        call_user_func([static::FEATURES, 'register'], static::CALL, [
+            'label' => static::text('feature_call', '通話'),
+            'description' => static::text('feature_call_help', 'チャットの 1 対 1 のルームから、声と画面の共有で通話する（ブラウザーどうしで直接つなぐ。録音はしない）。'),
+            'endpoints' => [],
+            'plugin' => $plugin->plugin_name,
+            'requires' => static::CHAT,
+            'existing' => false,
+        ]);
+    }
+
     public static function registerChat($plugin): void
     {
         if (!static::available()) {

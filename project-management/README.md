@@ -15,19 +15,21 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.21 / 1.7.21 で変わったこと**
 
 - The editors say they take Markdown (MD-1): under the comment box, the issue body and a wiki page, a small 「Markdown が使えます」 mark opens a cheat sheet (見出し, 太字, リスト, 番号, 引用, コード, リンク, 表, チェックボックス, and how to paste an image); a line puts its Markdown at the caret. The boxes' placeholder and the toolbar's tooltips show the Markdown. The comment box has 書く｜プレビュー as a pair. 「並べて表示」 puts a live preview beside the text on a screen 900px or wider (each person's choice, kept in their Exment settings; off at first). The preview is drawn the way the comment or the body is shown.
   書く欄が Markdown を使えることがわかるようにしました（MD-1）。コメント欄・課題の本文・Wiki のページの下に「Markdown が使えます」の目印を出し、押すと書き方の早見表（見出し・太字・リスト・番号・引用・コード・リンク・表・チェックボックス・画像の貼り付け方）が出ます。行を押すと、その書き方をカーソルの所に入れます。欄の薄い字と道具のボタンの説明にも Markdown を出します。コメント欄は「書く｜プレビュー」の 2 つのボタンにしました。「並べて表示」で、幅 900px 以上の画面では右にプレビューを並べ、書くとすぐ変わります（1 人ずつ Exment の設定に覚えます。はじめは OFF）。プレビューは、本当の表示と同じ描き方です。
+
+- The trail above an issue names its parents too (プロジェクト管理 › project › 課題 › parent keys › this key): each a link with its key (and a short subject on a wide screen, the whole one in the tooltip), up to the issue levels; with more than two, the middle folds into 「…」, which opens them; a phone shows the direct parent only; a parent the reader may not open reads 「見られない課題」. The parents come with the issue (one query a level for all the issues of the page).
+  課題の上のパンくずに、親課題も出すようにしました（プロジェクト管理 › プロジェクト › 課題 › 親のキー › この課題）。それぞれキーのリンクで、広い画面では短い件名も、マウスを乗せると件名すべてが出ます。課題の階層の深さまで出し、3 つ以上あるときは間を「…」にまとめます（押すと出ます）。スマホではすぐ上の親だけです。見られない親は「見られない課題」と出します。親は課題といっしょに読みます（ページの課題すべてに、階層 1 つにつき 1 回のクエリ）。
+
+- Attachments open more easily: next to every attachment link (the issue's files, links in comments, the wiki) there are 「ダウンロード」 and 「オンラインで開く」 (and 「オンラインで編集」 with Groupware's Office editing). 「オンラインで開く」 shows pictures, PDF, text, CSV, Excel (with sheet tabs) and Word (text) in a window, up to 10 MB; links in comments also get a small preview card with 「▼ 開く」 and 「⤢ 大きく見る」. File links now always open in a new tab, outside the page loader.
+  添付を開きやすくしました。添付のリンク（課題のファイル・コメントの中のリンク・Wiki）の横に「ダウンロード」「オンラインで開く」（グループウェアの Office の編集があれば「オンラインで編集」も）を出します。「オンラインで開く」は、画像・PDF・テキスト・CSV・Excel（シートのタブつき）・Word（文字）を窓で見られます（10 MB まで）。コメントの中のリンクには、小さなプレビュー（「▼ 開く」「⤢ 大きく見る」）も出ます。ファイルのリンクは、いつも新しいタブで、ページの読みこみの外で開くようにしました。
 
 **Changed in 1.7.20 / 1.7.20 で変わったこと**
 
 - The comment dock's 「ほかの項目も変える」 also has 管理者 and レビュアー (the same picker as 担当者) and 難易度, beside 副担当者, each where the issue table has the column; saved with the comment, in the history like the other fields.
   コメント欄の「ほかの項目も変える」に、副担当者に加えて、管理者・レビュアー（担当者と同じ選び方）と難易度を足しました。課題のテーブルにその列があるときだけ出します。コメントといっしょに保存し、履歴に残ります。
-**Unreleased / 未リリース**
-
-- The trail above an issue names its parents too (プロジェクト管理 › project › 課題 › parent keys › this key): each a link with its key (and a short subject on a wide screen, the whole one in the tooltip), up to the issue levels; with more than two, the middle folds into 「…」, which opens them; a phone shows the direct parent only; a parent the reader may not open reads 「見られない課題」. The parents come with the issue (one query a level for all the issues of the page).
-  課題の上のパンくずに、親課題も出すようにしました（プロジェクト管理 › プロジェクト › 課題 › 親のキー › この課題）。それぞれキーのリンクで、広い画面では短い件名も、マウスを乗せると件名すべてが出ます。課題の階層の深さまで出し、3 つ以上あるときは間を「…」にまとめます（押すと出ます）。スマホではすぐ上の親だけです。見られない親は「見られない課題」と出します。親は課題といっしょに読みます（ページの課題すべてに、階層 1 つにつき 1 回のクエリ）。
 
 **Changed in 1.7.19 / 1.7.19 で変わったこと**
 

@@ -46,6 +46,41 @@
 .gwc button.b{border:1px solid var(--line);background:var(--box);border-radius:7px;padding:5px 10px}
 .gwc button.p{border:0;background:var(--acc);color:#fff;border-radius:7px;padding:6px 14px;font-weight:600}
 .gwc .off{color:var(--faint);font-size:11px;padding:4px 14px}
+.gwc-msg{position:relative}
+.gwc-msg .acts{display:none;position:absolute;top:-10px;right:0;background:var(--box);border:1px solid var(--line);border-radius:7px;padding:1px 3px;gap:2px;z-index:2}
+.gwc-msg.me .acts{right:auto;left:0}
+.gwc-msg:hover .acts,.gwc-msg:focus-within .acts{display:flex}
+.gwc-msg .acts button{border:0;background:none;padding:2px 6px;font-size:12px;color:var(--sub);cursor:pointer}
+.gwc-msg .acts button:hover{color:var(--acc)}
+.gwc-msg .q{border-left:3px solid var(--line);padding:0 6px;margin-bottom:4px;color:var(--sub);font-size:12px;cursor:pointer}
+.gwc-msg .rx{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.gwc-msg .rx button{border:1px solid var(--line);background:var(--box);border-radius:10px;padding:0 7px;font-size:12px;cursor:pointer}
+.gwc-msg .rx button.mine{border-color:var(--acc);background:var(--sel)}
+.gwc-pick{position:absolute;z-index:5;background:var(--box);border:1px solid var(--line);border-radius:8px;padding:4px;display:flex;gap:2px;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.gwc-pick button{border:0;background:none;font-size:18px;padding:2px 5px;cursor:pointer}
+.gwc-replybar{display:flex;gap:8px;align-items:center;padding:4px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--sub)}
+.gwc-replybar .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gwc-msg .ed textarea{width:100%;min-height:60px;border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.gwc-msg.hl .bub{outline:2px solid var(--acc)}
+.gwc-msg .tk{font-size:11px;color:var(--sub);margin-top:2px}
+.gwc-msg .tk b{color:var(--acc)}
+.gwc-search{padding:0 10px 8px}
+.gwc-search input{width:100%;border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+.gwc-panel{position:absolute;right:12px;top:48px;width:min(420px,calc(100% - 24px));max-height:70%;overflow:auto;background:var(--box);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:6;padding:8px 10px}
+.gwc-panel .it{padding:6px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.gwc-panel .it:hover{background:var(--hover)}
+.gwc-panel .it small{color:var(--faint)}
+.gwc-panel .it.done .t{text-decoration:line-through;color:var(--faint)}
+.gwc-main{position:relative}
+.gwc-call{position:fixed;right:16px;bottom:16px;width:min(560px,calc(100% - 32px));background:#111;color:#fff;border-radius:12px;z-index:1090;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
+.gwc-call video{width:100%;max-height:60vh;background:#000;display:none}
+.gwc-call video.on{display:block}
+.gwc-call .bar{display:flex;gap:8px;align-items:center;padding:8px 10px}
+.gwc-call .bar .st{flex:1;font-size:12px;color:#ccc}
+.gwc-call .bar button{border:0;border-radius:18px;padding:6px 12px;background:#333;color:#fff;cursor:pointer}
+.gwc-call .bar button.on{background:#2563c9}
+.gwc-call .bar button.end{background:#e5484d}
+.gwc-msg .join{margin-top:4px}
 @media (max-width:760px){
   .gwc-app{grid-template-columns:1fr}
   .gwc-app.open .gwc-side{display:none}
@@ -57,12 +92,14 @@
 <div class="gwc-app" id="gwc-app">
   <aside class="gwc-side" aria-label="ルーム">
     <div class="hd"><button type="button" class="b" id="gwc-new"><i class="fa fa-users"></i> グループ</button><button type="button" class="b" id="gwc-dm"><i class="fa fa-user"></i> 1 対 1</button></div>
+    <div class="gwc-search"><input type="search" id="gwc-q" placeholder="メッセージを探す" aria-label="メッセージを探す"></div>
     <div class="gwc-rooms" id="gwc-rooms" role="list"></div>
   </aside>
   <section class="gwc-main">
-    <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
+    <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-call" hidden><i class="fa fa-phone"></i> 通話</button> <button type="button" class="b" id="gwc-mute" hidden></button> <button type="button" class="b" id="gwc-tasks"><i class="fa fa-check-square-o"></i> タスク</button> <button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
     <div class="gwc-list" id="gwc-list" aria-live="polite"><div class="gwc-empty">左のルームを選ぶか、新しいルームを作ってください。</div></div>
     <div class="off" id="gwc-off" hidden>しばらく何もしていないので、新しいメッセージの確かめを止めています。ページを動かすとまた確かめます。</div>
+    <div class="gwc-replybar" id="gwc-replybar" hidden><i class="fa fa-reply"></i><span class="t" id="gwc-replyt"></span><button type="button" class="b" id="gwc-replyx" aria-label="返信をやめる"><i class="fa fa-times"></i></button></div>
     <form class="gwc-comp" id="gwc-comp" hidden>
       <textarea id="gwc-body" placeholder="メッセージ（Ctrl+Enter で送る、@名前 で知らせる）" aria-label="メッセージ"></textarea>
       <div><label class="b" style="display:inline-block;cursor:pointer;border:1px solid var(--line);border-radius:7px;padding:5px 9px" title="ファイル"><i class="fa fa-paperclip"></i><input type="file" id="gwc-files" multiple hidden></label> <span class="fs" id="gwc-fs"></span></div>
@@ -104,7 +141,7 @@ function textHtml(s) {
 function renderRooms() {
     var h = S.rooms.map(function (r) {
         return '<div class="gwc-room' + (S.room === r.id ? ' on' : '') + '" role="listitem" tabindex="0" data-id="' + r.id + '">' +
-            '<i class="fa ' + (r.kind === 'direct' ? 'fa-user' : 'fa-users') + '" aria-hidden="true"></i><span class="nm"><b>' + esc(r.name || '（名前なし）') + '</b><small>' + esc(r.last) + '</small></span>' +
+            '<i class="fa ' + (r.kind === 'direct' ? 'fa-user' : 'fa-users') + '" aria-hidden="true"></i>' + (r.muted ? '<i class="fa fa-bell-slash-o" title="知らせを止めています" style="color:var(--faint)"></i>' : '') + '<span class="nm"><b>' + esc(r.name || '（名前なし）') + '</b><small>' + esc(r.last) + '</small></span>' +
             (r.unread > 0 ? '<span class="un" aria-label="未読 ' + r.unread + '">' + (r.unread > 99 ? '99+' : r.unread) + '</span>' : '') + '</div>';
     }).join('');
     $('gwc-rooms').innerHTML = h || '<div class="gwc-empty">ルームはまだありません。</div>';
@@ -123,9 +160,33 @@ function msgHtml(m, prevDay) {
     return (d !== prevDay ? '<div class="gwc-day">' + esc(d) + '</div>' : '') +
         '<div class="gwc-msg' + (mine ? ' me' : '') + (ment ? ' ment' : '') + (m.deleted ? ' del' : '') + '" data-id="' + m.id + '">' +
         (mine ? '' : '<span class="who">' + esc(m.name) + '</span>') +
-        '<div class="bub">' + (m.deleted ? 'このメッセージは消されました' : textHtml(m.body)) + (files ? '<div class="files">' + files + '</div>' : '') + '</div>' +
+        (m.deleted ? '' : '<span class="acts"><button type="button" data-act="reply" title="返信">返信</button><button type="button" data-act="react" title="リアクション">☺</button>' +
+            '<button type="button" data-act="task" title="タスクにする">タスク</button>' + (B.pm ? '<button type="button" data-act="issue" title="ExmentPM の課題にする">課題</button>' : '') +
+            (mine ? '<button type="button" data-act="edit">編集</button><button type="button" data-act="delete">消す</button>' : '') + '</span>') +
+        (m.quote ? '<div class="q" data-goto="' + m.quote.id + '">' + esc(m.quote.name) + '：' + (m.quote.deleted ? '（消されました）' : esc(m.quote.text)) + '</div>' : '') +
+        '<div class="bub">' + (m.deleted ? 'このメッセージは消されました' : textHtml(m.body)) + (files ? '<div class="files">' + files + '</div>' : '') + callJoinHtml(m, mine) + '</div>' +
+        rxHtml(m) + tkHtml(m) +
         '<span class="meta">' + esc(String(m.at).slice(11, 16)) + (m.edited ? '（編集）' : '') + (mine && m.read > 0 ? ' · 既読 ' + m.read : '') + '</span></div>';
 }
+function rxHtml(m) {
+    var keys = Object.keys(m.reactions || {});
+    if (!keys.length) { return ''; }
+    return '<div class="rx">' + keys.map(function (e) {
+        var who = m.reactions[e] || [];
+        return '<button type="button" data-rx="' + esc(e) + '" class="' + (who.indexOf(B.me) >= 0 ? 'mine' : '') + '" title="' + esc(who.map(name).join('、')) + '">' + esc(e) + ' ' + who.length + '</button>';
+    }).join('') + '</div>';
+}
+// what the list shows of the messages: drawn again only when it changes
+function sig() {
+    return JSON.stringify(S.msgs.map(function (m) { return [m.id, m.body, m.deleted, m.edited, m.read, m.reactions, m.tasks, m.quote, m.files]; }));
+}
+function tkHtml(m) {
+    return (m.tasks || []).map(function (t) {
+        if (t.pm_issue) { return '<div class="tk"><i class="fa fa-tasks"></i> ExmentPM の課題にしました</div>'; }
+        return '<div class="tk"><i class="fa ' + (t.done ? 'fa-check-square-o' : 'fa-square-o') + '"></i> タスク' + (t.assignee ? '：<b>' + esc(name(t.assignee)) + '</b>' : '') + (t.due ? '（' + esc(t.due) + ' まで）' : '') + (t.done ? ' 済み' : '') + '</div>';
+    }).join('');
+}
+function replace(m) { for (var i = 0; i < S.msgs.length; i++) { if (S.msgs[i].id === m.id) { S.msgs[i] = m; return true; } } return false; }
 function renderMsgs(keepScroll) {
     var list = $('gwc-list');
     var atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
@@ -133,12 +194,16 @@ function renderMsgs(keepScroll) {
     list.innerHTML = S.msgs.length ? S.msgs.map(function (m) { var h = msgHtml(m, prev); prev = day(m.at); return h; }).join('') : '<div class="gwc-empty">まだメッセージはありません。</div>';
     if (!keepScroll || atEnd) { list.scrollTop = list.scrollHeight; }
 }
-function openRoom(id) {
+function openRoom(id, then) {
     S.room = id;
+    S.editing = false;
+    setReply(null);
     $('gwc-app').classList.add('open');
     var r = S.rooms.filter(function (x) { return x.id === id; })[0];
     $('gwc-title').textContent = r ? (r.name || '（名前なし）') : '';
     $('gwc-mem').hidden = !(r && r.kind === 'group');
+    showMute();
+    $('gwc-call').hidden = !(B.call && r && r.kind === 'direct');
     $('gwc-comp').hidden = false;
     renderRooms();
     $('gwc-list').innerHTML = '<div class="gwc-empty"><i class="fa fa-spinner fa-spin"></i></div>';
@@ -147,6 +212,7 @@ function openRoom(id) {
         S.msgs = d.messages || [];
         renderMsgs(false);
         markRead();
+        if (then) { then(); }
     });
     try { history.replaceState(null, '', location.pathname + '?room=' + id); } catch (e) { /* the address only */ }
 }
@@ -172,12 +238,23 @@ function poll() {
         S.busy = false;
         if (!d || d.ok === false) { schedule(); return; }
         S.top = Math.max(S.top, d.top || 0);
+        // drawn again only when something changed, and never under an edit or an open picker:
+        // the box being written, the picker, a highlight, the hovered tools and a selection stay
+        var roomsBefore = JSON.stringify(S.rooms), msgsBefore = sig();
         S.rooms = d.rooms || S.rooms;
         var mine = (d.messages || []).filter(function (m) { return m.room === S.room && !S.msgs.some(function (x) { return x.id === m.id; }); });
         if (mine.length) { S.msgs = S.msgs.concat(mine); }
-        if (d.reads) { S.msgs.forEach(function (m) { if (d.reads[m.id] != null) { m.read = d.reads[m.id]; } }); }
-        if (S.room) { renderMsgs(true); if (mine.length) { markRead(); } }
-        renderRooms();
+        if (!S.editing) {
+            if (d.reads) { S.msgs.forEach(function (m) { if (d.reads[m.id] != null) { m.read = d.reads[m.id]; } }); }
+            (d.recent || []).forEach(function (m) { if (m.room === S.room) { replace(m); } });
+        }
+        if (S.room && sig() !== msgsBefore) {
+            if (!S.editing && !document.querySelector('.gwc-pick')) { renderMsgs(true); } else { S.stale = true; }
+            if (mine.length) { markRead(); }
+        } else if (S.room && S.stale && !S.editing && !document.querySelector('.gwc-pick')) {
+            S.stale = false; renderMsgs(true);
+        }
+        if (JSON.stringify(S.rooms) !== roomsBefore) { renderRooms(); }
         schedule();
     }).catch(function () { S.busy = false; schedule(); });
 }
@@ -204,18 +281,351 @@ function send() {
     if (pending.some(function (f) { return f.size > B.max_file; })) { alert('25 MB をこえるファイルは送れません。'); return; }
     var fd = new FormData();
     fd.append('body', body);
+    if (S.reply) { fd.append('reply_to', S.reply); }
     pending.forEach(function (f) { fd.append('files[]', f, f.name && f.name !== 'image.png' ? f.name : ('image-' + Date.now() + '.png')); });
     $('gwc-send').disabled = true;
     api(u('post', S.room), fd).then(function (d) {
         $('gwc-send').disabled = false;
         if (!d || d.ok === false) { alert((d && d.message) || '送れませんでした'); return; }
         $('gwc-body').value = '';
-        pending = []; showFiles();
+        pending = []; showFiles(); setReply(null);
         if (!S.msgs.some(function (x) { return x.id === d.message.id; })) { S.msgs.push(d.message); }
         S.top = Math.max(S.top, d.message.id);
         renderMsgs(false);
     }).catch(function () { $('gwc-send').disabled = false; alert('送れませんでした'); });
 }
+
+// a message's actions: reply, react, edit, delete; the quote goes to the message it answers
+function setReply(id) {
+    S.reply = id;
+    var m = id ? S.msgs.filter(function (x) { return x.id === id; })[0] : null;
+    $('gwc-replybar').hidden = !m;
+    $('gwc-replyt').textContent = m ? m.name + '：' + String(m.body || '').replace(/\s+/g, ' ').slice(0, 80) : '';
+    if (m) { $('gwc-body').focus(); }
+}
+$('gwc-replyx').addEventListener('click', function () { setReply(null); });
+function pick(btn, id) {
+    var old = document.querySelector('.gwc-pick');
+    if (old) { old.parentNode.removeChild(old); }
+    var p = document.createElement('div');
+    p.className = 'gwc-pick';
+    B.reactions.forEach(function (e) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = e;
+        b.onclick = function () { p.parentNode.removeChild(p); react(id, e); };
+        p.appendChild(b);
+    });
+    btn.closest('.gwc-msg').appendChild(p);
+    setTimeout(function () { document.addEventListener('click', function off(ev) { if (!p.contains(ev.target)) { if (p.parentNode) { p.parentNode.removeChild(p); } document.removeEventListener('click', off); } }); }, 0);
+}
+function react(id, e) {
+    api(u('react', id), { emoji: e }).then(function (d) { if (d && d.message) { replace(d.message); renderMsgs(true); } });
+}
+function startEdit(el, m) {
+    S.editing = true;
+    var bub = el.querySelector('.bub');
+    bub.innerHTML = '<div class="ed"><textarea></textarea><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px"><button type="button" class="b x">やめる</button><button type="button" class="p ok">保存</button></div></div>';
+    var ta = bub.querySelector('textarea');
+    ta.value = m.body;
+    ta.focus();
+    bub.querySelector('.x').onclick = function () { S.editing = false; renderMsgs(true); };
+    bub.querySelector('.ok').onclick = function () {
+        api(u('edit', m.id), { body: ta.value }).then(function (d) {
+            if (!d || d.ok === false) { alert((d && d.message) || '保存できませんでした'); return; }
+            S.editing = false; replace(d.message); renderMsgs(true);
+        });
+    };
+}
+$('gwc-list').addEventListener('click', function (ev) {
+    var t = ev.target;
+    var el = t.closest('.gwc-msg');
+    if (!el) { return; }
+    var id = parseInt(el.getAttribute('data-id'), 10);
+    var m = S.msgs.filter(function (x) { return x.id === id; })[0];
+    if (!m) { return; }
+    var act = t.closest('[data-act]');
+    var rx = t.closest('[data-rx]');
+    var q = t.closest('[data-goto]');
+    if (rx) { react(id, rx.getAttribute('data-rx')); return; }
+    if (q) {
+        var to = $('gwc-list').querySelector('.gwc-msg[data-id="' + q.getAttribute('data-goto') + '"]');
+        if (to) { to.scrollIntoView({ block: 'center' }); to.classList.add('hl'); setTimeout(function () { to.classList.remove('hl'); }, 1500); }
+        return;
+    }
+    if (!act) { return; }
+    var a = act.getAttribute('data-act');
+    if (a === 'reply') { setReply(id); }
+    if (a === 'react') { pick(act, id); }
+    if (a === 'edit') { startEdit(el, m); }
+    if (a === 'task') { makeTask(m); }
+    if (a === 'issue') { makeIssue(m); }
+    if (a === 'delete' && window.confirm('このメッセージを消しますか？')) {
+        api(u('delete', id), {}).then(function (d) { if (d && d.message) { replace(d.message); renderMsgs(true); } });
+    }
+});
+
+// 「タスクにする」, 「課題にする」, the list of one's tasks, the search
+function memberChecks(roomId, done) {
+    api(u('room', roomId)).then(function (d) { done(d && d.room ? d.room.members : []); });
+}
+function makeTask(m) {
+    memberChecks(m.room, function (members) {
+        var opts = '<option value="">（担当なし）</option>' + members.map(function (id) { return '<option value="' + id + '"' + (id === B.me ? ' selected' : '') + '>' + esc(name(id)) + '</option>'; }).join('');
+        var w = dialog('タスクにする', '<input type="text" class="tt" maxlength="200" style="width:100%"><p style="margin:8px 0 2px">担当</p><select class="as" style="width:100%">' + opts + '</select><p style="margin:8px 0 2px">期限</p><input type="date" class="du">', function (w, close) {
+            api(u('task', m.id), { title: w.querySelector('.tt').value, assignee: w.querySelector('.as').value, due: w.querySelector('.du').value }).then(function (d) {
+                if (!d || d.ok === false) { alert((d && d.message) || 'できませんでした'); return; }
+                close(); reloadOne(m.id);
+            });
+        });
+        w.querySelector('.tt').value = String(m.body || '').split('\n')[0].slice(0, 200);
+    });
+}
+function makeIssue(m) {
+    api(B.url.projects).then(function (d) {
+        var ps = d && d.projects ? d.projects : {};
+        var keys = Object.keys(ps);
+        if (!keys.length) { alert('課題を作れるプロジェクトがありません。'); return; }
+        dialog('ExmentPM の課題にする', '<select class="pj" style="width:100%">' + keys.map(function (k) { return '<option value="' + esc(k) + '">' + esc(ps[k]) + '</option>'; }).join('') + '</select>', function (w, close) {
+            api(u('issue', m.id), { project: w.querySelector('.pj').value }).then(function (r) {
+                if (!r || r.ok === false) { alert((r && r.message) || 'できませんでした'); return; }
+                close(); reloadOne(m.id);
+                if (r.url) { window.open(r.url, '_blank', 'noopener'); }
+            });
+        });
+    });
+}
+function reloadOne(id) {
+    if (!S.room) { return; }
+    api(u('messages', S.room) + '?around=' + id).then(function (d) { (d.messages || []).forEach(function (x) { replace(x); }); renderMsgs(true); });
+}
+function panel(html) {
+    var old = document.querySelector('.gwc-panel');
+    if (old) { old.parentNode.removeChild(old); }
+    if (html === null) { return null; }
+    var p = document.createElement('div');
+    p.className = 'gwc-panel';
+    p.innerHTML = html;
+    document.querySelector('.gwc-main').appendChild(p);
+    setTimeout(function () { document.addEventListener('click', function off(ev) { if (!p.contains(ev.target) && ev.target.id !== 'gwc-tasks' && ev.target.id !== 'gwc-q') { if (p.parentNode) { p.parentNode.removeChild(p); } document.removeEventListener('click', off); } }); }, 0);
+    return p;
+}
+function jump(roomId, messageId) {
+    var go = function () {
+        api(u('messages', roomId) + '?around=' + messageId).then(function (d) {
+            S.msgs = d.messages || [];
+            renderMsgs(true);
+            var el = $('gwc-list').querySelector('.gwc-msg[data-id="' + messageId + '"]');
+            if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 1500); }
+        });
+    };
+    if (S.room !== roomId) { openRoom(roomId, go); } else { go(); }
+}
+$('gwc-tasks').addEventListener('click', function () {
+    api(B.url.tasks).then(function (d) {
+        var list = (d && d.tasks) || [];
+        var p = panel('<b>自分のタスク</b>' + (list.length ? list.map(function (t) {
+            return '<div class="it' + (t.done ? ' done' : '') + '" data-room="' + t.room + '" data-msg="' + t.message + '"><label style="font-weight:400;margin:0"><input type="checkbox" data-done="' + t.id + '"' + (t.done ? ' checked' : '') + (t.pm_issue ? ' disabled' : '') + '> <span class="t">' + esc(t.title) + '</span></label><br><small>' +
+                (t.pm_issue ? 'ExmentPM の課題' : (t.assignee_name ? esc(t.assignee_name) : '担当なし') + (t.due ? ' · ' + esc(t.due) + ' まで' : '')) + '</small></div>';
+        }).join('') : '<p style="color:var(--faint)">タスクはありません。</p>'));
+        p.addEventListener('click', function (ev) {
+            var c = ev.target.closest('[data-done]');
+            if (c) { api(u('task_done', c.getAttribute('data-done')), { done: c.checked }).then(function () { c.closest('.it').classList.toggle('done', c.checked); }); return; }
+            var it = ev.target.closest('.it');
+            if (it && ev.target.tagName !== 'INPUT') { panel(null); jump(parseInt(it.getAttribute('data-room'), 10), parseInt(it.getAttribute('data-msg'), 10)); }
+        });
+    });
+});
+var qTimer = null;
+$('gwc-q').addEventListener('input', function () {
+    var q = this.value.trim();
+    clearTimeout(qTimer);
+    if (!q) { panel(null); return; }
+    qTimer = setTimeout(function () {
+        api(B.url.search + '?q=' + encodeURIComponent(q)).then(function (d) {
+            var rs = (d && d.results) || [];
+            var roomName = function (id) { var r = S.rooms.filter(function (x) { return x.id === id; })[0]; return r ? r.name : ''; };
+            var p = panel('<b>「' + esc(q) + '」</b>' + (rs.length ? rs.map(function (r) {
+                return '<div class="it" data-room="' + r.room + '" data-msg="' + r.id + '">' + esc(r.text) + '<br><small>' + esc(roomName(r.room)) + ' · ' + esc(r.name) + ' · ' + esc(String(r.at).slice(0, 16)) + '</small></div>';
+            }).join('') : '<p style="color:var(--faint)">見つかりません。</p>'));
+            p.addEventListener('click', function (ev) { var it = ev.target.closest('.it'); if (it) { panel(null); jump(parseInt(it.getAttribute('data-room'), 10), parseInt(it.getAttribute('data-msg'), 10)); } });
+        });
+    }, 300);
+});
+
+// a room's notices: on or off for oneself
+function showMute() {
+    var r = S.rooms.filter(function (x) { return x.id === S.room; })[0];
+    var b = $('gwc-mute');
+    b.hidden = !r;
+    if (r) { b.innerHTML = r.muted ? '<i class="fa fa-bell"></i> 知らせる' : '<i class="fa fa-bell-slash-o"></i> 知らせを止める'; }
+}
+$('gwc-mute').addEventListener('click', function () {
+    var r = S.rooms.filter(function (x) { return x.id === S.room; })[0];
+    if (!r) { return; }
+    api(u('mute', S.room), { muted: !r.muted }).then(function (d) { if (d && d.rooms) { S.rooms = d.rooms; renderRooms(); showMute(); } });
+});
+
+// ---- calls from a 1:1 room (ISS02946): WebRTC browser to browser, signals through the server ----
+var CALL = null;
+function callJoinHtml(m, mine) {
+    var c = !m.deleted && /^📞 通話 #(\d+) を始めました$/.exec(String(m.body || ''));
+    if (!c || mine || !B.call) { return ''; }
+    // a call that is over: no 「参加」
+    var over = S.msgs.some(function (x) { return x.room === m.room && new RegExp('^📞 通話 #' + c[1] + ' (を終えました|はつながりませんでした)').test(String(x.body || '')); });
+    if (over) { return ''; }
+    return '<div class="join"><button type="button" class="p" data-join="' + c[1] + '"><i class="fa fa-phone"></i> 参加</button></div>';
+}
+function callBox() {
+    var w = document.createElement('div');
+    w.className = 'gwc-call';
+    w.innerHTML = '<video autoplay playsinline></video><audio autoplay></audio><div class="bar"><span class="st"></span>' +
+        '<button type="button" class="mu" title="マイク"><i class="fa fa-microphone"></i></button>' +
+        '<button type="button" class="sh" title="画面を共有"><i class="fa fa-desktop"></i> 画面</button>' +
+        '<button type="button" class="end"><i class="fa fa-phone"></i> 切る</button></div>';
+    document.body.appendChild(w);
+    return w;
+}
+function callStatus(t) { if (CALL) { CALL.box.querySelector('.st').textContent = t; } }
+function callSend(type, payload) {
+    if (!CALL) { return; }
+    // one JSON text, so the server's trimming of input strings cannot cut the SDP's last line break
+    return api(u('call_signal', CALL.id), { type: type, payload_json: payload == null ? '' : JSON.stringify(payload) });
+}
+function callSetup(id, polite) {
+    if (CALL) { alert('もう通話中です。'); return null; }
+    var pc = new RTCPeerConnection({ iceServers: B.ice || [] });
+    CALL = { id: id, pc: pc, polite: polite, after: 0, making: false, ignore: false, box: callBox(), screen: null, mic: null, timer: null, ready: false };
+    var box = CALL.box;
+    pc.onicecandidate = function (e) { if (e.candidate) { callSend('ice', e.candidate.toJSON()); } };
+    pc.ontrack = function (e) {
+        if (e.track.kind === 'video') {
+            var v = box.querySelector('video');
+            v.srcObject = new MediaStream([e.track]);
+            v.classList.add('on');
+            e.track.onended = e.track.onmute = function () { v.classList.remove('on'); };
+            e.track.onunmute = function () { v.classList.add('on'); };
+        } else {
+            box.querySelector('audio').srcObject = e.streams[0] || new MediaStream([e.track]);
+        }
+    };
+    pc.onconnectionstatechange = function () {
+        var st = pc.connectionState;
+        callStatus(st === 'connected' ? '通話中' : st === 'failed' ? 'つながりませんでした（ネットワークの中つぎが要るかもしれません）' : st === 'disconnected' ? '切れそうです…' : '');
+    };
+    // a new offer when a screen is shared or stopped (the polite one gives way on a clash)
+    pc.onnegotiationneeded = function () {
+        if (!CALL || !CALL.ready) { return; }
+        CALL.making = true;
+        pc.setLocalDescription().then(function () { return callSend('offer', pc.localDescription.toJSON()); }).finally(function () { if (CALL) { CALL.making = false; } });
+    };
+    box.querySelector('.end').onclick = function () { callEnd(true); };
+    box.querySelector('.mu').onclick = function () {
+        if (!CALL || !CALL.mic) { return; }
+        var t = CALL.mic.getAudioTracks()[0];
+        t.enabled = !t.enabled;
+        this.classList.toggle('on', !t.enabled);
+        this.innerHTML = t.enabled ? '<i class="fa fa-microphone"></i>' : '<i class="fa fa-microphone-slash"></i>';
+    };
+    box.querySelector('.sh').onclick = function () {
+        var btn = this;
+        if (!CALL) { return; }
+        if (CALL.screen) { stopShare(); return; }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) { alert('このブラウザーは画面の共有ができません。'); return; }
+        navigator.mediaDevices.getDisplayMedia({ video: true }).then(function (stream) {
+            var track = stream.getVideoTracks()[0];
+            CALL.screen = { stream: stream, sender: pc.addTrack(track, stream) };
+            btn.classList.add('on');
+            track.onended = stopShare;
+        }).catch(function () { /* the person said no */ });
+    };
+    function stopShare() {
+        if (!CALL || !CALL.screen) { return; }
+        CALL.screen.stream.getTracks().forEach(function (t) { t.stop(); });
+        try { pc.removeTrack(CALL.screen.sender); } catch (e) { /* gone already */ }
+        CALL.screen = null;
+        box.querySelector('.sh').classList.remove('on');
+    }
+    return pc;
+}
+function callMic() {
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
+        CALL.mic = stream;
+        stream.getTracks().forEach(function (t) { CALL.pc.addTrack(t, stream); });
+    });
+}
+function callPoll() {
+    if (!CALL) { return; }
+    var id = CALL.id;
+    api(u('call_signals', id) + '?after=' + CALL.after).then(function (d) {
+        if (!CALL || CALL.id !== id) { return; }
+        var chain = Promise.resolve();
+        (d.signals || []).forEach(function (s) {
+            CALL.after = Math.max(CALL.after, s.id);
+            chain = chain.then(function () { return callOn(s); });
+        });
+        chain.then(function () {
+            if (d.ended) { callEnd(false); return; }
+            if (CALL) { CALL.timer = setTimeout(callPoll, 1000); }
+        });
+    }).catch(function () { if (CALL) { CALL.timer = setTimeout(callPoll, 2000); } });
+}
+function callOn(s) {
+    var pc = CALL.pc;
+    if (s.type === 'hangup') { callEnd(false); return; }
+    if (s.type === 'join') {
+        // the one who started makes the first offer
+        CALL.ready = true;
+        return pc.setLocalDescription().then(function () { return callSend('offer', pc.localDescription.toJSON()); });
+    }
+    if (s.type === 'offer' || s.type === 'answer') {
+        var clash = s.type === 'offer' && (CALL.making || pc.signalingState !== 'stable');
+        CALL.ignore = !CALL.polite && clash;
+        if (CALL.ignore) { return; }
+        // an SDP must end with CRLF (a server between may have trimmed it)
+        var desc = s.payload || {};
+        if (desc.sdp && !/\r\n$/.test(desc.sdp)) { desc = { type: desc.type, sdp: desc.sdp + '\r\n' }; }
+        return pc.setRemoteDescription(desc).then(function () {
+            CALL.ready = true;
+            if (s.type === 'offer') {
+                return pc.setLocalDescription().then(function () { return callSend('answer', pc.localDescription.toJSON()); });
+            }
+        });
+    }
+    if (s.type === 'ice' && s.payload) {
+        return pc.addIceCandidate(s.payload).catch(function () { if (!CALL.ignore) { /* a late one */ } });
+    }
+}
+function callEnd(tell) {
+    if (!CALL) { return; }
+    var c = CALL;
+    CALL = null;
+    clearTimeout(c.timer);
+    if (tell) { api(u('call_end', c.id), {}); }
+    [c.mic, c.screen && c.screen.stream].forEach(function (st) { if (st) { st.getTracks().forEach(function (t) { t.stop(); }); } });
+    try { c.pc.close(); } catch (e) { /* closed */ }
+    if (c.box.parentNode) { c.box.parentNode.removeChild(c.box); }
+}
+$('gwc-call').addEventListener('click', function () {
+    if (!S.room || !window.RTCPeerConnection) { alert('このブラウザーでは通話できません。'); return; }
+    api(u('call_start', S.room), {}).then(function (d) {
+        if (!d || d.ok === false) { alert((d && d.message) || '通話を始められませんでした'); return; }
+        if (!callSetup(d.call, false)) { return; }
+        callStatus('相手が参加するのを待っています…');
+        callMic().then(callPoll).catch(function () { alert('マイクを使えませんでした（ブラウザーの許可を見てください）。'); callEnd(true); });
+    });
+});
+$('gwc-list').addEventListener('click', function (ev) {
+    var j = ev.target.closest('[data-join]');
+    if (!j) { return; }
+    ev.stopPropagation();
+    if (!window.RTCPeerConnection) { alert('このブラウザーでは通話できません。'); return; }
+    var id = parseInt(j.getAttribute('data-join'), 10);
+    if (!callSetup(id, true)) { return; }
+    callStatus('つないでいます…');
+    callMic().then(function () { return callSend('join'); }).then(callPoll).catch(function () { alert('マイクを使えませんでした（ブラウザーの許可を見てください）。'); callEnd(true); });
+}, true);
+window.addEventListener('beforeunload', function () { if (CALL) { callEnd(true); } });
 
 // rooms
 $('gwc-rooms').addEventListener('click', function (ev) { var r = ev.target.closest('.gwc-room'); if (r) { openRoom(parseInt(r.getAttribute('data-id'), 10)); } });
@@ -272,10 +682,15 @@ $('gwc-mem').addEventListener('click', function () {
         var now = '<div class="users">' + rm.members.map(function (id) {
             return '<label>' + esc(name(id)) + (rm.owner && id !== B.me ? ' <input type="checkbox" name="rm" value="' + id + '"> 外す' : '') + (id === B.me ? '（自分）' : '') + '</label>';
         }).join('') + '</div>';
-        var w = dialog('メンバー', now + (rm.owner ? '<b>足す</b>' + userChecks('checkbox', rm.members) : '') + '<label style="font-weight:400"><input type="checkbox" class="leave"> このルームから出る</label>', function (w, close) {
+        var keep = rm.owner ? '<p style="margin:8px 0 2px"><b>メッセージを残す期間</b></p><select class="ret">' + B.retention.map(function (d) {
+            return '<option value="' + d + '"' + (d === (rm.retention_days || 0) ? ' selected' : '') + '>' + (d ? d + ' 日' : 'ずっと') + '</option>';
+        }).join('') + '</select>' : '';
+        var w = dialog('メンバー', now + (rm.owner ? '<b>足す</b>' + userChecks('checkbox', rm.members) : '') + keep + '<label style="font-weight:400"><input type="checkbox" class="leave"> このルームから出る</label>', function (w, close) {
             var add = Array.prototype.map.call(w.querySelectorAll('input[name=u]:checked'), function (c) { return c.value; });
             var remove = Array.prototype.map.call(w.querySelectorAll('input[name=rm]:checked'), function (c) { return c.value; });
             if (w.querySelector('.leave').checked) { remove.push(String(B.me)); }
+            var ret = w.querySelector('.ret');
+            if (ret && parseInt(ret.value, 10) !== (rm.retention_days || 0)) { api(u('settings', S.room), { retention_days: ret.value }); }
             api(u('members', S.room), { add: add, remove: remove }).then(function (r) {
                 if (!r || r.ok === false) { alert((r && r.message) || 'できませんでした'); return; }
                 close(); S.rooms = r.rooms;
@@ -289,7 +704,7 @@ $('gwc-mem').addEventListener('click', function () {
 
 renderRooms();
 S.top = B.top || 0;
-if (B.open && S.rooms.some(function (r) { return r.id === B.open; })) { openRoom(B.open); }
+if (B.open && S.rooms.some(function (r) { return r.id === B.open; })) { if (B.jump) { jump(B.open, B.jump); } else { openRoom(B.open); } }
 poll();
 })();
 </script>

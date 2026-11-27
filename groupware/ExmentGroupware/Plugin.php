@@ -44,6 +44,7 @@ class Plugin extends PluginPageBase
         // the calendar (ISS02947): a feature of Feature management, off at first
         FeatureGate::registerCalendar($plugin);
         FeatureGate::registerChat($plugin);
+        FeatureGate::registerCall($plugin);
     }
 
     /**
@@ -66,6 +67,9 @@ class Plugin extends PluginPageBase
         $form->switchbool('mail_allow_private', '社内のネットワークのメールサーバーを許可する')
             ->default(0)
             ->help('オンにすると、プライベート IP（10.x・192.168.x など）や localhost のサーバー、ふつうでないポートにもつなげます。社内に自社のメールサーバーがあるオンプレミスの Exment のときだけオンにしてください（Exment SaaS ではオフのまま）。');
+        $form->exmheader('通話（チャット）')->hr();
+        $form->textarea('call_ice', '通話のサーバー（STUN / TURN）')->rows(3)
+            ->help('1 行に 1 つ。STUN は stun:ホスト:ポート、TURN は turn:ホスト:ポート|ユーザー|パスワード。空のときは、2 台の PC が直接つながるとき（同じ LAN・VPN）だけ通話できます。公開の STUN（例: stun:stun.l.google.com:19302）を入れると、多くの家や会社のネットからつながりますが、ブラウザーはその外のサーバーに自分の IP アドレスを知らせます。TURN のパスワードは、通話する人のブラウザーに渡ります。');
         $form->exmheader('Office')->hr();
         $form->url('ibisoffice_url', 'ibisOffice の場所（URL）')
             ->help('空にすると、このサイトにインストールした ibisOffice ' . IbisOffice::VERSION . ' を使います。ほかの場所の ibisOffice を使うときだけ、index.html のあるフォルダーの URL を入れます（例: https://office.example.com/ibisoffice/0.8.9/）。このサイトにインストールした ibisOffice があるときは、ページの中で動く ibisoffice-host.js はそちらを使います。ほかの場所のものは https のときだけ使います。');
@@ -719,6 +723,61 @@ class Plugin extends PluginPageBase
         return $this->chatDenied() ?? $this->chat()->postMessage(request(), $id);
     }
 
+    public function chatEdit($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postEdit(request(), $id);
+    }
+
+    public function chatDelete($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postDelete($id);
+    }
+
+    public function chatReact($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postReact(request(), $id);
+    }
+
+    public function chatTasks()
+    {
+        return $this->chatDenied() ?? $this->chat()->apiTasks();
+    }
+
+    public function chatTask($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postTask(request(), $id);
+    }
+
+    public function chatTaskDone($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postTaskDone(request(), $id);
+    }
+
+    public function chatProjects()
+    {
+        return $this->chatDenied() ?? $this->chat()->apiProjects();
+    }
+
+    public function chatIssue($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postIssue(request(), $id);
+    }
+
+    public function chatSearch()
+    {
+        return $this->chatDenied() ?? $this->chat()->apiSearch(request());
+    }
+
+    public function chatMute($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postMute(request(), $id);
+    }
+
+    public function chatRoomSettings($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postRoomSettings(request(), $id);
+    }
+
     public function chatRead($id)
     {
         return $this->chatDenied() ?? $this->chat()->postRead(request(), $id);
@@ -732,5 +791,32 @@ class Plugin extends PluginPageBase
     public function chatFile($uuid)
     {
         return $this->chatDenied() ?? $this->chat()->file($uuid);
+    }
+
+    // ---- calls from the chat (ISS02946) ---------------------------------------
+
+    protected function callDenied()
+    {
+        return $this->chatDenied() ?? FeatureGate::deny(FeatureGate::CALL);
+    }
+
+    public function chatCallStart($id)
+    {
+        return $this->callDenied() ?? $this->chat()->postCallStart($id);
+    }
+
+    public function chatCallSignal($id)
+    {
+        return $this->callDenied() ?? $this->chat()->postCallSignal(request(), $id);
+    }
+
+    public function chatCallSignals($id)
+    {
+        return $this->callDenied() ?? $this->chat()->apiCallSignals(request(), $id);
+    }
+
+    public function chatCallEnd($id)
+    {
+        return $this->callDenied() ?? $this->chat()->postCallEnd($id);
     }
 }

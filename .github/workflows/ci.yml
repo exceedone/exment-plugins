@@ -261,6 +261,18 @@ jobs:
       - name: Groupware chat (ExmentGroupware)
         run: php groupware/tools/test-chat-text.php
 
+      # the tasks and the search of the chat
+      - name: Groupware chat tasks (ExmentGroupware)
+        run: php groupware/tools/test-chat-tasks.php
+
+      # who the chat tells and how, and how long a room keeps its messages
+      - name: Groupware chat notices (ExmentGroupware)
+        run: php groupware/tools/test-chat-notify.php
+
+      # calls from the chat: the servers of the setting, the length of a call (ISS02946)
+      - name: Groupware chat calls (ExmentGroupware)
+        run: php groupware/tools/test-chat-call.php
+
       # 「ExmentPM の課題にする」 and every route with its method (ISS02941)
       - name: Help desk ExmentPM link (IT Support)
         run: php it-support/tools/test-pm-link.php
