@@ -235,6 +235,7 @@ class PortalGitHooks
             return 0;
         }
         $projectKey = strtoupper(strval(array_get($project->value, array_get($def, 'project.key', 'project_code'), '')));
+        $keyCol = strval(array_get($def, 'issue.key', 'issue_key'));
         $aliases = static::aliasesOf(intval($project->id), $projects->table_name, $issues);
         $n = 0;
         foreach ($items as $it) {
@@ -252,6 +253,18 @@ class PortalGitHooks
                 }
                 if ($id !== null) {
                     $ids[$id] = true;
+                }
+            }
+            // the issue's own key (the key column: what the screen shows and the branch name copies)
+            $words = PortalGitParse::keyWords($it['text']);
+            if (!empty($words) && count($ids) < PortalGitParse::MAX_ISSUES) {
+                $rows = $issues->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
+                    ->where('parent_type', $projects->table_name)->where('parent_id', $project->id)
+                    ->whereIn('value->' . $keyCol, $words)->limit(PortalGitParse::MAX_ISSUES)->pluck('id');
+                foreach ($rows as $rid) {
+                    if (count($ids) < PortalGitParse::MAX_ISSUES) {
+                        $ids[intval($rid)] = true;
+                    }
                 }
             }
             foreach (array_keys($ids) as $issueId) {

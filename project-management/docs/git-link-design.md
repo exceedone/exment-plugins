@@ -56,7 +56,7 @@ Unique (hook_id, kind, ref, issue_id): a delivery sent again, or a PR edited, up
 - Events read: GitHub `push`, `pull_request`; GitLab `Push Hook`, `Merge Request Hook`; Gitea
   `push`, `pull_request`. Others: 200 and ignored (`ping` too).
 - Keys found in a commit message, a PR title / body / branch name: `<PROJECT KEY>-<number>` of
-  this project (case-insensitive, whole words) and the project's aliases. At most 20 issues per
+  this project (case-insensitive, whole words), the issue's own key of the key column (`ISS00001`: what the screen shows and 「ブランチ名をコピー」 copies) and the project's aliases. At most 20 issues per
   commit / PR, 200 commits per push. Issues of other projects are never touched.
 - Text is kept as text (escaped where it is shown), links only https to the repository's host.
 - Replays: the delivery's own id (`X-GitHub-Delivery`, `X-Gitea-Delivery`, GitLab's

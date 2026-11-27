@@ -205,6 +205,28 @@ class PortalGitParse
         return array_slice(array_keys($found), 0, static::MAX_ISSUES);
     }
 
+    /**
+     * The words of a text that may be an issue's own key (its key column, the key the screen shows
+     * and the branch name button copies, like ISS00001): a letter first, digits last, at most 50.
+     * Only checked against the issues of the hook's project.
+     *
+     * @return array<int, string>
+     */
+    public static function keyWords(string $text): array
+    {
+        $out = [];
+        if (preg_match_all('/(?<![A-Za-z0-9_])([A-Za-z][A-Za-z0-9_]{0,40}-?\d{1,12})(?![A-Za-z0-9_])/', $text, $m)) {
+            foreach ($m[1] as $w) {
+                $out[$w] = true;
+                if (count($out) >= 50) {
+                    break;
+                }
+            }
+        }
+
+        return array_keys($out);
+    }
+
     /** The keys a merged PR closes: fixes / closes / resolves KEY (and their forms). */
     public static function closes(string $text, string $projectKey): array
     {

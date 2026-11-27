@@ -67,6 +67,12 @@ $check('keys: at most 20', count(G::keys(implode(' ', array_map(function ($n) { 
 $check('closes: fixes / closes / resolved', G::closes($it['text'], 'EXMENT_AI') === ['EXMENT_AI-439', 'EXMENT_AI-440'], G::closes($it['text'], 'EXMENT_AI'));
 $check('closes: "see KEY" does not', G::closes('see EXMENT_AI-1, refs EXMENT_AI-2', 'EXMENT_AI') === []);
 
+// the issue's own key (the key column), as the branch name button copies it
+$check('key words: the copied branch name', in_array('ISS00001', G::keyWords('ISS00001-pm101-issue-1'), true));
+$check('key words: in a message', in_array('ISS00001', G::keyWords('touch ISS00001 now'), true) && in_array('PMD-1', G::keyWords('PMD-1-fix'), true));
+$check('key words: not inside a word', !in_array('ISS00001', G::keyWords('xISS00001 ISS00001x'), true));
+$check('key words: at most 50', count(G::keyWords(implode(' ', array_map(function ($n) { return 'A' . $n; }, range(1, 80))))) === 50);
+
 // branch names
 $check('branch: key and words', G::branchName('EXMENT_AI-439', 'Login fails on Safari') === 'EXMENT_AI-439-login-fails-on-safari');
 $check('branch: Japanese only: the key', G::branchName('EXMENT_AI-439', 'ログインできない') === 'EXMENT_AI-439');
