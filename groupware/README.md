@@ -8,6 +8,7 @@
 
 **Unreleased**
 
+- The README says that a picture cannot be pasted into Office (ibisOffice 0.8.9 in the browser takes only text), and what to do instead: [Pasting a picture into Office](#pasting-a-picture-into-office).
 - The manual: a link 「マニュアル」 on the top page and in the side of the mail screen opens the manual of the plugin on exment.net in the language of the user (Japanese, Vietnamese, else English), and Exment's "?" in the header opens it on the plugin's pages (Exment 7.2.4 and later).
 - A new version of this plugin may ask for a newer ibisOffice (ISS02827). Until now the site then said ibisOffice was not installed and Office stopped. Now Office keeps opening with the version already installed, and Feature management and the page of the plugin say a newer version is there, with **ibisOffice を X に更新する**. The update installs it as an install does (checked by its SHA-256) and then deletes the older folders.
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
@@ -110,6 +111,12 @@ ibisOffice is software of ibis inc. under **AGPL-3.0-only** and a commercial lic
 
 Before offering it on Exment SaaS, check with ibis inc. whether the AGPL terms are enough for that use (see ISS00233).
 
+### Pasting a picture into Office
+
+In the browser version of ibisOffice that this plugin installs (0.8.9), **Ctrl+V of a picture (a screenshot, an image copied in another program) does nothing**, in a spreadsheet, a document or a slide. Text and cells paste as usual. The page of this plugin does not catch the paste: it reaches ibisOffice, whose browser version takes only the text of what is pasted for now. The page also has no way to hand ibisOffice a picture (its embedding interface has none).
+
+Until ibisOffice takes pictures: save the picture as a file, insert it in the desktop version of the program, or attach the picture to the record or the folder beside the file.
+
 <a id="web-mail"></a>
 
 ## Web mail
@@ -144,6 +151,7 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 
 **未リリース**
 
+- Office に画像を貼り付けられないこと（ブラウザー版の ibisOffice 0.8.9 は文字だけを受け取ります）と、その代わりの方法を README に書きました（[Office に画像を貼り付ける](#office-に画像を貼り付ける)）。
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
 - 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
@@ -256,6 +264,12 @@ ibisOffice は株式会社アイビスのソフトウェアで、**AGPL-3.0-only
 - エディターの画面とプラグインの画面に、https://github.com/ibisjp/ibis-office へのリンク付きで **「Powered by ibisOffice」** を表示します（[商標の決まり](https://github.com/ibisjp/ibis-office/blob/main/docs/TRADEMARK.md)で必須）。
 
 Exment SaaS で提供する前に、その使い方が AGPL の条件で足りるかをアイビスに確認してください（ISS00233 を参照）。
+
+### Office に画像を貼り付ける
+
+このプラグインが入れるブラウザー版の ibisOffice（0.8.9）では、**画像（スクリーンショット・ほかのアプリでコピーした画像）を Ctrl+V で貼り付けても何も起きません**（表計算・文書・スライドのどれでも）。文字やセルの貼り付けは今までどおりできます。プラグインの画面は貼り付けを止めていません。貼り付けは ibisOffice に届いていて、ブラウザー版の ibisOffice が今は貼り付けの文字だけを受け取るためです。プラグインの画面から ibisOffice に画像を渡す方法も（組み込みの仕組みに）ありません。
+
+ibisOffice が画像を受け取れるようになるまでは、画像をファイルに保存してパソコンのアプリで入れるか、画像をレコードやフォルダーにファイルとして添付してください。
 
 <a id="web-mail-ja"></a>
 
