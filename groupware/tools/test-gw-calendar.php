@@ -8,9 +8,11 @@
 require __DIR__ . '/../ExmentGroupware/Calendar/Rrule.php';
 require __DIR__ . '/../ExmentGroupware/Calendar/Occurrences.php';
 require __DIR__ . '/../ExmentGroupware/Calendar/Visibility.php';
+require __DIR__ . '/../ExmentGroupware/Calendar/Reminders.php';
 
 use App\Plugins\ExmentGroupware\Calendar\Occurrences as O;
 use App\Plugins\ExmentGroupware\Calendar\Visibility as V;
+use App\Plugins\ExmentGroupware\Calendar\Reminders as R;
 
 $failed = 0;
 function gw_cal_check(string $name, bool $ok, $extra = null): void
@@ -72,6 +74,23 @@ $busy = V::shown($item, V::BUSY, '予定あり');
 gw_cal_check('a busy one keeps the time and nothing else', $busy === ['busy' => true, 'start' => 's', 'end' => 'e', 'all_day' => false, 'owner' => 5, 'title' => '予定あり'], $busy);
 gw_cal_check('nothing of it leaks in its JSON', strpos(json_encode($busy, JSON_UNESCAPED_UNICODE), '人事') === false && strpos(json_encode($busy), 'secret') === false && !isset($busy['id']));
 gw_cal_check('full: as it is', V::shown($item, V::FULL, '予定あり') === $item);
+
+// ---- reminders (part 2)
+$utcNow = function ($s) {
+    return new \DateTimeImmutable($s, new \DateTimeZone('UTC'));
+};
+gw_cal_check('10 minutes before: due at its time', R::dueMinutes('2026-12-01 01:00:00', [10], $utcNow('2026-12-01 00:50:00')) === [10]);
+gw_cal_check('not yet', R::dueMinutes('2026-12-01 01:00:00', [10], $utcNow('2026-12-01 00:49:59')) === []);
+gw_cal_check('reached late (20 min): still sent', R::dueMinutes('2026-12-01 01:00:00', [10], $utcNow('2026-12-01 01:10:00')) === [10]);
+gw_cal_check('reached too late (40 min): not sent', R::dueMinutes('2026-12-01 01:00:00', [10], $utcNow('2026-12-01 01:30:00')) === []);
+gw_cal_check('a day before and at the start, each at its time', R::dueMinutes('2026-12-02 01:00:00', [1440, 0], $utcNow('2026-12-01 01:00:00')) === [1440] && R::dueMinutes('2026-12-02 01:00:00', [1440, 0], $utcNow('2026-12-02 01:00:00')) === [0]);
+gw_cal_check('no choice made: bell and mail', R::channels(null, null, '12:00') === ['bell' => true, 'mail' => true, 'teams' => false]);
+gw_cal_check('bell only', R::channels('bell', null, '12:00') === ['bell' => true, 'mail' => false, 'teams' => false]);
+gw_cal_check('both', R::channels('both', [], '12:00') === ['bell' => true, 'mail' => true, 'teams' => true]);
+gw_cal_check('quiet hours over midnight: the bell only', R::channels('both', ['quiet' => ['from' => '22:00', 'to' => '07:00']], '23:30') === ['bell' => true, 'mail' => false, 'teams' => false] && R::channels('both', ['quiet' => ['from' => '22:00', 'to' => '07:00']], '08:00')['mail'] === true);
+$w = ['rem_now' => 'まもなく始まります', 'rem_in_minutes' => 'あと :n 分で始まります', 'rem_in_hours' => 'あと :n 時間で始まります', 'rem_in_days' => ':n 日後です'];
+gw_cal_check('the words of a reminder', R::text(0, $w) === 'まもなく始まります' && R::text(15, $w) === 'あと 15 分で始まります' && R::text(120, $w) === 'あと 2 時間で始まります' && R::text(2880, $w) === '2 日後です');
+gw_cal_check('the choices of the form are the ones accepted', R::CHOICES === [0, 5, 10, 15, 30, 60, 120, 1440, 2880]);
 
 echo $failed ? "\n$failed failed\n" : "\nall passed\n";
 exit($failed ? 1 : 0);

@@ -901,6 +901,7 @@ function showDetail(ev, it) {
         b.appendChild(dlgRow('fa-users', ul));
     }
     b.appendChild(dlgRow('fa-user', t('owner') + ': ' + nameOf(ev.owner)));
+    if (ev.reminder !== null && ev.reminder !== undefined) { b.appendChild(dlgRow('fa-bell-o', t('f_reminder') + ': ' + remLabel(ev.reminder))); }
     if (me) {
         var rp = el('div');
         rp.appendChild(el('div', '', t('reply')));
@@ -999,6 +1000,15 @@ function select(id, options, value) {
     s.value = String(value);
     return s;
 }
+// "10 分前", "1 時間前", "1 日前", "始まるとき"
+function remLabel(m) {
+    m = Number(m);
+    if (m === 0) { return t('rem_at_start'); }
+    if (m % 1440 === 0) { return t('rem_days').replace(':n', String(m / 1440)); }
+    if (m % 60 === 0) { return t('rem_hours').replace(':n', String(m / 60)); }
+    return t('rem_minutes').replace(':n', String(m));
+}
+
 function openForm(ev, it, scope, init) {
     var one = scope === 'one';
     var v = init || (one ? eventToForm(it.start, it.end, ev.all_day) : eventToForm(ev.starts_at, ev.ends_at, ev.all_day));
@@ -1081,8 +1091,13 @@ function openForm(ev, it, scope, init) {
     b.appendChild(pf);
     b.appendChild(field(t('f_visibility'), visS));
     b.appendChild(orgF);
+    // the reminder (part 2): none, or minutes before
+    var remOpts = [['', t('rem_none')]].concat((C.reminders || []).map(function (m) { return [String(m), remLabel(m)]; }));
+    var remS = select('gwcal-f-rem', remOpts, ev && ev.reminder !== null && ev.reminder !== undefined ? String(ev.reminder) : '');
+    var remF = field(t('f_reminder'), remS);
+    if ((C.reminders || []).length) { b.appendChild(remF); }
     // one occurrence keeps its times, title and place only: the rest is of all of them
-    if (one) { [repF, notes.parentNode, pf, visS.parentNode, orgF].forEach(function (n) { n.hidden = true; }); }
+    if (one) { [repF, notes.parentNode, pf, visS.parentNode, orgF, remF].forEach(function (n) { n.hidden = true; }); }
     var f = el('div', 'gwcal-dfoot');
     var save = btn('gbp', t('save'), submit);
     f.appendChild(save);
@@ -1098,7 +1113,8 @@ function openForm(ev, it, scope, init) {
             title: title.value, location: loc.value, body: notes.value, all_day: fv.all_day ? '1' : '',
             start: tm.start, end: tm.end, tz: browserTz(),
             rrule: one ? (ev.rrule || '') : buildRrule(rep.value, fv.sd, custom.value),
-            visibility: visS.value, org_id: visS.value === 'org' ? org.value : '', attendees: picker.ids
+            visibility: visS.value, org_id: visS.value === 'org' ? org.value : '', attendees: picker.ids,
+            reminder: remS.value
         };
         if (ev && one) { p.scope = 'one'; p.original = it.original; }
         if (ev && !one) { p.scope = 'all'; p.exdates = ev.exdates || []; }

@@ -160,6 +160,45 @@ class Events
             'owner' => intval($e['owner_user_id']),
             'attendees' => $att,
             'editable' => $viewer === intval($e['owner_user_id']) && strval($e['source']) === 'local',
+            'reminder' => static::reminderOf($id),
+        ];
+    }
+
+    /** The minutes of an event's reminder, or null. */
+    protected static function reminderOf(int $id): ?int
+    {
+        if (!Reminders::ready()) {
+            return null;
+        }
+        $m = DB::table(Reminders::TABLE)->where('event_id', $id)->min('minutes_before');
+        return $m === null ? null : intval($m);
+    }
+
+    /**
+     * What a call of an event needs (the chat's call, ISS02946): its title, its people (the owner
+     * and the attendees, Exment user ids) and its times (UTC), or null when the person may not see
+     * it in full (not there, deleted, or only 「予定あり」 for them).
+     *
+     * @return array{title: string, attendees: array<int, int>, starts_at: string, ends_at: string}|null
+     */
+    public static function callInfo(int $eventId, int $uid): ?array
+    {
+        if (!static::ready()) {
+            return null;
+        }
+        $e = static::get($eventId, $uid);
+        if ($e === null) {
+            return null;
+        }
+        $people = array_merge([intval($e['owner'])], array_map(function ($a) {
+            return intval($a['user']);
+        }, $e['attendees']));
+
+        return [
+            'title' => $e['title'],
+            'attendees' => array_values(array_unique(array_filter($people))),
+            'starts_at' => $e['starts_at'],
+            'ends_at' => $e['ends_at'],
         ];
     }
 
@@ -222,6 +261,13 @@ class Events
         if (count($attendees) > static::MAX_ATTENDEES) {
             return [null, 'attendees'];
         }
+        // the reminder (part 2): one of the choices, or none
+        $reminder = $in['reminder'] ?? '';
+        // digits only: intval('abc') is 0, "at the start"
+        if ($reminder !== '' && $reminder !== null
+            && (!(is_int($reminder) || (is_string($reminder) && ctype_digit($reminder))) || !in_array(intval($reminder), Reminders::CHOICES, true))) {
+            return [null, 'reminder'];
+        }
 
         return [[
             'title' => $title,
@@ -237,6 +283,7 @@ class Events
             'visibility' => $visibility,
             'org_id' => $visibility === 'org' ? $org : null,
             'attendees' => $attendees,
+            'reminders' => ($reminder === '' || $reminder === null) ? [] : [intval($reminder)],
         ], null];
     }
 
@@ -265,11 +312,12 @@ class Events
     public static function save(?int $id, array $f, int $viewer): ?int
     {
         $attendees = $f['attendees'];
-        unset($f['attendees']);
+        $reminders = $f['reminders'] ?? null;
+        unset($f['attendees'], $f['reminders']);
         $users = getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereIn('id', $attendees)->pluck('id')->map(function ($v) {
             return intval($v);
         })->all();
-        return DB::transaction(function () use ($id, $f, $viewer, $users) {
+        return DB::transaction(function () use ($id, $f, $viewer, $users, $reminders) {
             if ($id === null) {
                 $id = intval(DB::table(static::EVENTS)->insertGetId($f + [
                     'owner_user_id' => $viewer, 'source' => 'local', 'created_user_id' => $viewer, 'updated_user_id' => $viewer,
@@ -285,6 +333,12 @@ class Events
             DB::table(static::ATTENDEES)->where('event_id', $id)->whereNotIn('user_id', $users ?: [0])->delete();
             foreach ($users as $u) {
                 DB::table(static::ATTENDEES)->insertOrIgnore(['event_id' => $id, 'user_id' => $u, 'response' => $u === $viewer ? 'yes' : 'none', 'created_at' => now(), 'updated_at' => now()]);
+            }
+            if ($reminders !== null && Reminders::ready()) {
+                DB::table(Reminders::TABLE)->where('event_id', $id)->delete();
+                foreach ($reminders as $m) {
+                    DB::table(Reminders::TABLE)->insert(['event_id' => $id, 'minutes_before' => $m, 'created_at' => now(), 'updated_at' => now()]);
+                }
             }
             Log::info('gw_calendar: event ' . $id . ' saved by user ' . $viewer);
             return $id;
