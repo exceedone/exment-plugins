@@ -107,7 +107,18 @@ class PluginBatch extends PluginBatchBase
         // recurring schedules, the same as --param1=schedule; the AI back-fill spends paid calls
         // and is run by hand only (--param1=all or a project's id, PortalSchema::BATCH_HOUR_OFF).
         if ($target === '') {
-            return $this->schedules($dry);
+            $code = $this->schedules($dry);
+            // the portal setting "Run the AI fill nightly (hour)": once a day, in that hour
+            $now = now();
+            if (PortalNightly::due(IssueAutofill::option(PortalNightly::OPTION, null), intval($now->format('G')), $now->format('Y-m-d'), PortalNightly::lastDay())) {
+                $filled = $this->fill('all', $limit, $dry);
+                if (!$dry && $filled === 0) {
+                    // only after a run that got through: a failed one is tried again in the hour
+                    PortalNightly::ran($now->format('Y-m-d'));
+                }
+            }
+
+            return $code;
         }
 
         // --param1=recur: make the recurring issues whose turn has come
@@ -212,6 +223,16 @@ class PluginBatch extends PluginBatchBase
             return 0;
         }
 
+        return $this->fill($target, $limit, $dry);
+    }
+
+    /**
+     * The AI back-fill of one project ($target its id) or of every project ("all").
+     *
+     * @return int|false
+     */
+    protected function fill(string $target, int $limit, bool $dry)
+    {
         $def = PortalDefinition::config();
         $project_table = CustomTable::getEloquent(array_get($def, 'project_table'));
         $issue_table = CustomTable::getEloquent(array_get($def, 'issue_table'));

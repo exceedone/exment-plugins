@@ -1500,6 +1500,9 @@ return [
         'opt_top_is_high_help' => 'Turn on if priorities are listed from highest to lowest, such as "Urgent, High, Medium, Low". Turn off if they are listed in reverse order.',
         'opt_severe_bump' => 'Raise priority one level for possible security issues or data loss',
         'opt_severe_bump_help' => 'For issues that mention wrong permissions, lost or corrupted data, or failed backups, the priority derived from impact and urgency is raised one level.',
+        'opt_nightly_hour' => 'Run the AI fill nightly (hour)',
+        'opt_nightly_hour_help' => 'When on, the batch of this plugin that Exment runs every 5 minutes (schedule:run) also fills, once a day at this hour (the server\'s clock), the empty fields of the projects that have AI autofill on. Up to 100 calls a run, within each project\'s daily cap. A run that did not get through is tried again within the hour. To run it by hand: php artisan exment:batch --name=ExmentPM --param1=all.',
+        'opt_nightly_off' => 'Off',
         // The key field is write-only: what it says instead of the key.
         'opt_api_key_placeholder' => 'Set (enter only to change)',
         'opt_api_key_state_set' => 'A key is currently saved. If you save with this field empty, the saved key is kept.',

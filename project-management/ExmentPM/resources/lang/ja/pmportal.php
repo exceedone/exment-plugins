@@ -1502,6 +1502,9 @@ return [
         'opt_top_is_high_help' => '「至急・高・中・低」のように、上ほど優先度が高い順で並べている場合はオン。逆順に並べている場合はオフにします。',
         'opt_severe_bump' => 'セキュリティ・データ消失の疑いで優先度を 1 段階上げる',
         'opt_severe_bump_help' => '権限の誤り、データの消失や破損、バックアップ失敗が書かれている課題は、影響範囲と緊急度から出た優先度を 1 段階引き上げます。',
+        'opt_nightly_hour' => 'AI のうめ合わせを毎晩動かす（時刻）',
+        'opt_nightly_hour_help' => 'オンにすると、Exment が 5 分ごとに動かすこのプラグインのバッチ（schedule:run）が、1 日に 1 回、この時刻（サーバーの時計）に、AI 自動入力がオンのプロジェクトの空いている項目を AI でうめます。1 回に 100 回まで呼び出し、プロジェクトごとの 1 日の上限も守ります。うまくいかなかったときは、その時間のうちにもう一度試します。手で動かすときは php artisan exment:batch --name=ExmentPM --param1=all です。',
+        'opt_nightly_off' => '動かさない',
         // The key field is write-only: what it says instead of the key.
         'opt_api_key_placeholder' => '設定済み（変更するときだけ入力）',
         'opt_api_key_state_set' => '現在、キーが保存されています。空欄のまま保存すると、保存済みのキーをそのまま使います。',

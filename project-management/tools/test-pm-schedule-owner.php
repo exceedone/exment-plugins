@@ -8,7 +8,9 @@ require __DIR__ . '/../ExmentPM/PortalSchema.php';
 require __DIR__ . '/../ExmentPM/PortalMembership.php';
 require __DIR__ . '/../ExmentPM/PortalRunOwner.php';
 require __DIR__ . '/../ExmentPM/PortalSchedule.php';
+require __DIR__ . '/../ExmentPM/PortalNightly.php';
 
+use App\Plugins\ExmentPM\PortalNightly as N;
 use App\Plugins\ExmentPM\PortalRunOwner as O;
 use App\Plugins\ExmentPM\PortalSchedule as S;
 
@@ -62,11 +64,34 @@ ok(strpos($saveAs, "->where('created_at', '>=', \$from)") !== false && strpos($s
     && strpos($saveAs, "\$q->orWhere('create_user_id', \$visitor);") !== false, 'only the history this save wrote: by the visitor or by nobody (the batch), from its start on');
 ok(strpos($saveAs, 'if ($visitor > 0 && $visitor !== $owner') === false, 'the batch\'s history is repointed too');
 ok(strpos($saveAs, 'PortalRules::onBehalf($row, function () use ($row) {') !== false && strpos($saveAs, '}, $owner);') !== false, 'the portal\'s rules do not ask the visitor about this row, and know whom it is by');
-$canWrite = substr($owner, strpos($owner, 'public static function canWrite('), 900);
+$canWrite = substr($owner, strpos($owner, 'public static function canWrite('), 3000);
 ok(strpos($canWrite, 'PortalRoleUsers::editors($issueTable)') !== false && strpos($canWrite, 'getRoleUserAndOrgBelongsUserQueryTable') === false, 'canWrite asks for a role that edits, not for who may see the table');
 ok(strpos($canWrite, 'static::$editors[$key]') !== false && strpos($sched, 'PortalRunOwner::forget();') !== false, 'one read of the roles per run');
+ok(strpos($canWrite, "boolval(System::permission_available())") !== false && strpos($canWrite, "boolval(\$issueTable->getOption('all_user_editable_flg'))") !== false, 'canWrite reads the permission switch and the table\'s "every user edits"');
+
+// writeRule: Exment's rule for who may add a row, on fakes
+$reads = 0;
+$editors = function () use (&$reads) {
+    $reads++;
+
+    return [5 => true, 6 => true];
+};
+ok(O::writeRule(5, true, false, $editors) && O::writeRule(6, true, false, $editors), 'permissions on: a user whose role edits the table');
+ok(!O::writeRule(7, true, false, $editors), 'permissions on: a user with no such role (a viewer) may not');
+$reads = 0;
+ok(O::writeRule(7, false, false, $editors) && $reads === 0, 'permissions off (System::permission_available): any real user, the roles not read');
+ok(O::writeRule(7, true, true, $editors) && $reads === 0, 'a table every user may edit (all_user_editable_flg): any real user');
+ok(!O::writeRule(0, false, true, $editors) && !O::writeRule(-1, false, false, $editors), 'nobody (0) never');
+ok(!O::writeRule(5, true, false, function () {
+    return null;
+}), 'the roles could not be read: refused');
+
+// the editors of the roles and of the organizations' roles
+ok(O::mergeIds(['5', 3, 0, null], [8, '3', 12]) === [3, 5, 8, 12], 'merge: users of the roles and of the organizations, once each, no empty id');
 $roleUsers = file_get_contents(__DIR__ . '/../ExmentPM/PortalRoleUsers.php');
 ok(strpos($roleUsers, 'Permission::AVAILABLE_EDIT_CUSTOM_VALUE') !== false && strpos($roleUsers, 'allUserAccessable') === false && strpos($roleUsers, 'getRoleUserOrgId($table, SystemTableName::USER') !== false, 'the editors: Exment\'s role groups with an edit permission, no "everyone may see it" shortcut');
+ok(substr_count($roleUsers, '->query()->withoutGlobalScope(CustomValueModelScope::class)') === 2 && strpos($roleUsers, "->with(['users' => \$unscoped])") !== false
+    && strpos($roleUsers, '$query->withoutGlobalScope(CustomValueModelScope::class);') !== false, 'the organizations and their users unscoped: not filtered by the request\'s user (filter_multi_user)');
 
 // the portal's notices name the owner, not the visitor (PortalChannels)
 if (!class_exists('Exceedone\Exment\Model\CustomValue')) {
@@ -102,6 +127,7 @@ ok(strpos($saveFn, 'if (!PortalSchedule::saverMayAdd($project, intval(\Exment::g
     && strpos($saveFn, 'saverMayAdd') < strpos($saveFn, 'PortalSchedule::split(') && strpos($saveFn, 'saverMayAdd') < strpos($saveFn, 'PortalSchedule::save('), 'a save or a split is refused to a user who may not add issues');
 $mayAdd = substr($sched, strpos($sched, 'public static function saverMayAdd('), 500);
 ok(strpos($mayAdd, 'PortalRunOwner::canWrite($userId, $issueTable)') !== false && strpos($mayAdd, 'PortalDefinition::enableEdit($project, true) === true') !== false, 'may add: a role that edits issues, and the project editable for them');
+ok(strpos($mayAdd, 'PortalRunOwner::forget();') !== false && strpos($mayAdd, 'PortalRunOwner::forget();') < strpos($mayAdd, 'PortalRunOwner::canWrite('), 'may add: the roles read afresh, not from an earlier run\'s memo');
 $saveSched = substr($sched, strpos($sched, 'public static function save(int $projectId'), 900);
 ok(strpos($saveSched, '$issueTable->getValueModel()->query()->find($template)') !== false && strpos($saveSched, 'withoutGlobalScopes') === false, 'the template as the saver sees it: hidden or in the trash is refused');
 ok(strpos($run, '$issueTable->getValueModel()->query()->withoutGlobalScope(CustomValueModelScope::class)->find(intval($s->template_issue_id))') !== false, 'a run skips a template in the trash');
@@ -173,7 +199,7 @@ ok(preg_match("/if \\(\\\$target === 'schedule'\\) \\{\\s*return \\\$this->sched
 // Exment's own scheduler: exment:batch --uuid=<plugin> or exment:batch <id>, with no param1
 $exec = substr($batch, strpos($batch, 'public function execute()'));
 $noParam = strpos($exec, "if (\$target === '') {");
-ok($noParam !== false && preg_match("/if \\(\\\$target === ''\\) \\{\\s*return \\\$this->schedules\\(\\\$dry\\);/", $exec) === 1, 'no param1 (Exment\'s scheduler): the schedules, with the time of the run kept');
+ok($noParam !== false && preg_match("/if \\(\\\$target === ''\\) \\{\\s*\\\$code = \\\$this->schedules\\(\\\$dry\\);/", $exec) === 1, 'no param1 (Exment\'s scheduler): the schedules, with the time of the run kept');
 ok($noParam < strpos($exec, "if (\$target === 'shares')") && $noParam < strpos($exec, '$autofill = $this->autofill();'), 'no param1 returns before anything else, the AI back-fill included');
 ok(strpos($exec, "static::target(array_get(\$options, 'param1'))") !== false && strpos($exec, "?? 'all')") === false, 'param1 is read as given: no default to the AI back-fill');
 // PluginBatch::target, as written (the class needs Exment to load)
@@ -184,6 +210,61 @@ ok($target(null) === '' && $target('') === '' && $target('  ') === '' && $target
 ok($target('schedule') === 'schedule' && $target(' all ') === 'all' && $target(12) === '12', 'a param1 given is kept');
 ok(strpos($batch, 'options.batch_cron') !== false && strpos($batch, 'BATCH_HOUR_OFF') !== false, 'the setting Exment\'s scheduler needs is documented');
 ok(strpos($sched, '0-59/5 * * * *') !== false, 'the cron line is documented');
+
+// --- the AI fill once a night, from the 5-minute batch (PortalNightly) ---------------------------
+
+ok(N::hour('') === null && N::hour(null) === null && N::hour('off') === null && N::hour('24') === null && N::hour('-1') === null, 'off: empty, missing or not an hour');
+ok(N::hour('0') === 0 && N::hour('3') === 3 && N::hour(' 23 ') === 23 && N::hour(5) === 5, 'an hour 0 to 23');
+$settingSrc = file_get_contents(__DIR__ . '/../ExmentPM/PluginSetting.php');
+$field = substr($settingSrc, strpos($settingSrc, '$form->select(PortalNightly::OPTION'), 300);
+ok(strpos($field, "->default('');") !== false && strpos($settingSrc, "\$hours = ['' => \$a('nightly_off')];") !== false, 'the setting is off by default');
+ok(strpos($settingSrc, 'PortalNightly::OPTION') > strpos($settingSrc, "'ai_severe_bump'"), 'with the other AI settings');
+foreach (['ja', 'en'] as $lang) {
+    $t = include __DIR__ . '/../ExmentPM/resources/lang/' . $lang . '/pmportal.php';
+    ok(!empty($t['ai']['opt_nightly_hour']) && !empty($t['ai']['opt_nightly_hour_help']) && !empty($t['ai']['opt_nightly_off']), 'the setting\'s text in ' . $lang);
+}
+ok((include __DIR__ . '/../ExmentPM/resources/lang/ja/pmportal.php')['ai']['opt_nightly_hour'] === 'AI のうめ合わせを毎晩動かす（時刻）', 'the ja label as agreed');
+
+// a day of 5-minute runs (288), the fill counted; $fails: the runs of the fill that fail
+$day = function ($setting, string $date, ?string &$last, array $fails = []) {
+    $fills = [];
+    for ($m = 0; $m < 24 * 60; $m += 5) {
+        $hour = intdiv($m, 60);
+        if (N::due($setting, $hour, $date, $last)) {
+            $n = count($fills);
+            $fills[] = sprintf('%02d:%02d', $hour, $m % 60);
+            if (!in_array($n, $fails, true)) {
+                $last = $date; // ran(): only after a fill that got through
+            }
+        }
+    }
+
+    return $fills;
+};
+$last = null;
+ok($day('', '2026-12-01', $last) === [] && $last === null, 'off by default: no fill all day');
+$last = null;
+ok($day('3', '2026-12-01', $last) === ['03:00'], 'on at 3: one fill, at 3:00, among the twelve runs of that hour', json_encode($day('3', '2026-12-01', $last)));
+ok($day('3', '2026-12-01', $last) === [], 'not twice in the day, even if the hour comes again');
+ok($day('3', '2026-12-02', $last) === ['03:00'], 'the next day: once again');
+$last = null;
+ok($day('3', '2026-12-03', $last, [0, 1]) === ['03:00', '03:05', '03:10'], 'a fill that fails is tried again in the hour, then kept', json_encode($day('3', '2026-12-04', $last, [0, 1])));
+$last = null;
+ok($day('3', '2026-12-05', $last, range(0, 20)) === ['03:00', '03:05', '03:10', '03:15', '03:20', '03:25', '03:30', '03:35', '03:40', '03:45', '03:50', '03:55'] && $last === null, 'failing all hour: not outside the hour');
+ok(!N::due('3', 2, '2026-12-01', null) && !N::due('3', 4, '2026-12-01', null) && N::due('3', 3, '2026-12-01', null), 'not at other hours');
+ok(!N::due('3', 3, '2026-12-01', '2026-12-01') && N::due('3', 3, '2026-12-01', '2026-11-30'), 'the day\'s stamp');
+$noParam = substr($batch, strpos($batch, "if (\$target === '') {"), 900);
+ok(strpos($noParam, 'PortalNightly::due(IssueAutofill::option(PortalNightly::OPTION, null)') !== false && strpos($noParam, "\$this->fill('all', \$limit, \$dry)") !== false, 'the batch with no param1: the fill of every project when the night\'s hour is due');
+ok(strpos($noParam, 'if (!$dry && $filled === 0) {') !== false && strpos($noParam, 'PortalNightly::ran(') > strpos($noParam, "\$this->fill('all'"), 'stamped only after a fill that got through, never in a dry run');
+ok(strpos($noParam, '$this->schedules($dry)') < strpos($noParam, 'PortalNightly::due('), 'the schedules first');
+ok(strpos($batch, 'return $this->fill($target, $limit, $dry);') !== false, '--param1=all or a project id: the fill as before');
+$readme = file_get_contents(__DIR__ . '/../README.md');
+$unreleased = substr($readme, strpos($readme, '**Unreleased / 未リリース**'), 2000);
+ok(strpos($unreleased, '`--param1=all`') !== false && strpos($unreleased, 'without parameters for the AI fill') !== false && strpos($unreleased, 'パラメーターなしで AI のうめ合わせ') !== false
+    && strpos($readme, '**Unreleased / 未リリース**') < strpos($readme, '**Changed in 1.7.26'), 'the release note, ja and en, under Unreleased');
+ok(strpos($unreleased, 'set your own `options.batch_cron`') !== false && strpos($unreleased, '`options.batch_cron` を自分で入れていた') !== false, 'the release note: an own batch_cron is replaced at the next upload (ja and en)');
+$schemaSrc = file_get_contents(__DIR__ . '/../ExmentPM/PortalSchema.php');
+ok(strpos($schemaSrc, 'Either survives a re-upload') === false && strpos($schemaSrc, 'sets options.batch_cron') === false, 'the old advice to set batch_cron for the back-fill is gone');
 
 // --- no date made twice when the batch and a page load run at once ------------------------------
 // the claim: (schedule, date) unique in pm_portal_schedule_items, taken before the copy

@@ -6,6 +6,7 @@ use Exceedone\Exment\Enums\SystemTableName;
 use Exceedone\Exment\Model\CustomTable;
 use Exceedone\Exment\Model\CustomValue;
 use Exceedone\Exment\Model\CustomValueModelScope;
+use Exceedone\Exment\Model\System;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -114,10 +115,70 @@ class PortalRunOwner
     }
 
     /**
-     * Whether the user may add issues: a role that edits the issue table (system administrators
-     * included). A table every user may see gives nobody the right to add a row.
+     * Whether the user may add issues (writeRule): anyone while Exment's permissions are off or
+     * the table lets every user edit it, else a role that edits the issue table (system
+     * administrators included). A table every user may only see gives nobody the right to add a row.
      */
     public static function canWrite(int $userId, CustomTable $issueTable): bool
+    {
+        try {
+            $permissionOn = boolval(System::permission_available());
+            $allEditable = boolval($issueTable->getOption('all_user_editable_flg'));
+        } catch (\Throwable $e) {
+            Log::warning('ExmentPM: could not read the permission settings: ' . $e->getMessage());
+
+            return false;
+        }
+
+        return static::writeRule($userId, $permissionOn, $allEditable, function () use ($issueTable) {
+            return static::editorsOf($issueTable);
+        });
+    }
+
+    /**
+     * Exment's rule for who may add a row, without the reads: everyone (a real user) while the
+     * permissions are off or the table lets every user edit it (all_user_editable_flg, which
+     * Exment turns into custom_value_edit_all for all: HasPermissions), else a role that edits it.
+     *
+     * @param callable $editors fn(): array<int, bool>|null, the editors by id (null: could not tell)
+     */
+    public static function writeRule(int $userId, bool $permissionOn, bool $allEditable, callable $editors): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+        if (!$permissionOn || $allEditable) {
+            return true;
+        }
+        $ids = $editors();
+
+        return is_array($ids) && isset($ids[$userId]);
+    }
+
+    /**
+     * The users of the roles and of the organizations' roles (PortalRoleUsers), as one sorted list
+     * of ids.
+     *
+     * @param array<int, mixed> $direct
+     * @param array<int, mixed> $byOrg
+     * @return array<int, int>
+     */
+    public static function mergeIds(array $direct, array $byOrg): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', array_merge($direct, $byOrg)), function ($id) {
+            return $id > 0;
+        })));
+        sort($ids);
+
+        return $ids;
+    }
+
+    /**
+     * The editors of a table by role, read once per run.
+     *
+     * @return ?array<int, bool>
+     */
+    protected static function editorsOf(CustomTable $issueTable): ?array
     {
         $key = intval($issueTable->id);
         if (!isset(static::$editors[$key])) {
@@ -126,11 +187,11 @@ class PortalRunOwner
             } catch (\Throwable $e) {
                 Log::warning('ExmentPM: could not read who may add issues: ' . $e->getMessage());
 
-                return false;
+                return null;
             }
         }
 
-        return isset(static::$editors[$key][$userId]);
+        return static::$editors[$key];
     }
 
     /**

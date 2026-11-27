@@ -190,6 +190,16 @@ class PluginSetting
             ->help($a('severe_bump_help'))
             ->default("1");
 
+        // the back-fill once a night, from the batch Exment's scheduler runs (PortalNightly): off at first
+        $hours = ['' => $a('nightly_off')];
+        for ($h = 0; $h < 24; $h++) {
+            $hours[strval($h)] = sprintf('%02d:00', $h);
+        }
+        $form->select(PortalNightly::OPTION, $a('nightly_hour'))
+            ->options($hours)
+            ->help($a('nightly_hour_help'))
+            ->default('');
+
         // the AI's line in the morning digest (ISS02939): off at first
         $form->switchbool('digest_ai', PortalDefinition::trans('digest.ai_option'))
             ->help(PortalDefinition::trans('digest.ai_option_help'))

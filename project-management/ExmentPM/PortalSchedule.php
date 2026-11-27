@@ -199,6 +199,9 @@ class PortalSchedule
      */
     public static function saverMayAdd($project, int $userId, CustomTable $issueTable): bool
     {
+        // the roles as they are now, not a memo of an earlier run in this process
+        PortalRunOwner::forget();
+
         return $userId > 0 && PortalRunOwner::canWrite($userId, $issueTable)
             && PortalDefinition::enableEdit($project, true) === true;
     }
