@@ -206,6 +206,11 @@ jobs:
       - name: Morph-less routes check (ExmentPM)
         run: php project-management/tools/test-pm-morph-routes.php
 
+      # Every ja key is also in en (ExmentPM, IT Support, Groupware): a key only in ja shows as
+      # "undefined" in the other languages. An error: add the en text in the same PR.
+      - name: Lang keys check (ja and en)
+        run: php project-management/tools/test-lang-keys.php --ja-en
+
       # Every locale has the keys and placeholders of ja (ExmentPM) or en (the others).
       # A warning only: a new ja key waits for its translations in a later PR.
       - name: Lang keys check (warning only)

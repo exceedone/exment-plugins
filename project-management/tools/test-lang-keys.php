@@ -5,6 +5,10 @@
 // Exit 1 when a key or a placeholder is missing. A new ja key waits for its translations in a
 // later PR, so CI runs this as a warning (continue-on-error). The order of the lookup is checked
 // by test-languages.php (in an Exment folder).
+//   php project-management/tools/test-lang-keys.php --ja-en
+// only checks that every ja key is also in en (a key only in ja shows as "undefined" or the key
+// itself in every other language). CI runs this one as an error: add the en text with the ja one.
+// Both exit 1 when no plugin folder is found (nothing checked is not a pass).
 $root = dirname(__DIR__, 2);
 $plugins = [
     ['project-management/ExmentPM/resources/lang', 'pmportal.php', 'ja'],
@@ -29,10 +33,24 @@ $marks = function ($s) {
     return implode(' ', $r);
 };
 
+$jaEn = in_array('--ja-en', $argv, true);
 $bad = 0;
+$checked = 0;
 foreach ($plugins as [$dir, $file, $baseLocale]) {
     $dir = $root . '/' . $dir;
     if (!is_dir($dir)) {
+        continue;
+    }
+    $checked++;
+    if ($jaEn) {
+        $missing = array_keys(array_diff_key($flat(require "$dir/ja/$file"), $flat(require "$dir/en/$file")));
+        $name = basename(dirname($dir, 2));
+        if (count($missing) === 0) {
+            echo "OK  $name: every ja key is in en\n";
+        } else {
+            $bad++;
+            echo "NG  $name: in ja but not in en: " . implode(', ', $missing) . "\n";
+        }
         continue;
     }
     $base = $flat(require "$dir/$baseLocale/$file");
@@ -63,6 +81,14 @@ foreach ($plugins as [$dir, $file, $baseLocale]) {
             }
         }
     }
+}
+if ($checked === 0) {
+    echo "NG  no plugin folder found under $root\n";
+    exit(1);
+}
+if ($jaEn) {
+    echo $bad === 0 ? "every ja key is in en\n" : "$bad plugin(s) have ja keys without en\n";
+    exit($bad === 0 ? 0 : 1);
 }
 echo $bad === 0 ? "all locales match\n" : "$bad locale(s) do not match\n";
 exit($bad === 0 ? 0 : 1);
