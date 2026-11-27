@@ -176,12 +176,15 @@ class ChatService
         if ($room->kind !== 'group' || $me->role !== 'owner') {
             abort(403);
         }
-        // a period not among the choices is refused, the saved one stays (0 or empty: always)
-        $raw = trim(strval($retention ?? ''));
-        if ($raw !== '' && $raw !== '0' && ChatRetention::clean($raw) === null) {
-            throw new \InvalidArgumentException('残す期間は、えらぶ中から決めてください。');
+        // null: not sent, the saved one stays; 0 or empty: always; else one of the choices, in digits
+        $values = ['updated_at' => now()];
+        if ($retention !== null) {
+            $raw = trim(strval($retention));
+            if ($raw !== '' && (!ctype_digit($raw) || ($raw !== '0' && ChatRetention::clean($raw) === null))) {
+                throw new \InvalidArgumentException('残す期間は、えらぶ中から決めてください。');
+            }
+            $values['retention_days'] = ChatRetention::clean($raw);
         }
-        $values = ['retention_days' => ChatRetention::clean($raw), 'updated_at' => now()];
         if ($name !== null) {
             $name = ChatText::cleanName($name);
             if ($name === '') {
@@ -189,7 +192,7 @@ class ChatService
             }
             $values['name'] = $name;
         }
-        if (intval($room->retention_days) !== intval($values['retention_days'])) {
+        if (array_key_exists('retention_days', $values) && intval($room->retention_days) !== intval($values['retention_days'])) {
             ChatRetention::log('plugins/exment_groupware/chat/room/' . $roomId . '/retention', ['room' => $roomId, 'days' => $values['retention_days']]);
         }
         DB::table('gw_chat_rooms')->where('id', $roomId)->update($values);
