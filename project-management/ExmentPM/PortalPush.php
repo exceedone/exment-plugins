@@ -267,8 +267,10 @@ class PortalPush
         }
         $store = static::store();
         $hash = static::hash($sub['endpoint']);
-        $values = ['user_id' => $userId, 'endpoint' => $sub['endpoint'], 'endpoint_hash' => $hash, 'p256dh' => $sub['p256dh'],
-            'auth' => $sub['auth'], 'device' => static::deviceName($userAgent), 'failures' => 0];
+        // kept encrypted (as the site's private key); the hash finds and dedupes the browser
+        $values = ['user_id' => $userId, 'endpoint' => PortalChannels::encrypt($sub['endpoint']), 'endpoint_hash' => $hash,
+            'p256dh' => '', 'auth' => '', 'p256dh_enc' => PortalChannels::encrypt($sub['p256dh']), 'auth_enc' => PortalChannels::encrypt($sub['auth']),
+            'device' => static::deviceName($userAgent), 'failures' => 0];
         $old = $store->byHash($hash);
         if ($old !== null) {
             $store->update(intval($old['id']), $values);
@@ -393,6 +395,35 @@ class PortalPush
     }
 
     /**
+     * A value of a row as kept: encrypted (PortalChannels::encrypt), or, in a row written before
+     * the values were encrypted (the upgrade encrypts those), plain.
+     */
+    public static function open(string $value): ?string
+    {
+        if ($value === '') {
+            return null;
+        }
+        $plain = PortalChannels::decrypt($value);
+        if ($plain !== null) {
+            return $plain;
+        }
+
+        return strpos($value, 'app:') === 0 ? null : $value;
+    }
+
+    /**
+     * A browser key of a row (p256dh, auth): from its encrypted column, else the old plain one.
+     *
+     * @param array<string, mixed> $sub
+     */
+    protected static function key(array $sub, string $name): string
+    {
+        $enc = strval($sub[$name . '_enc'] ?? '');
+
+        return strval($enc !== '' ? static::open($enc) : ($sub[$name] ?? ''));
+    }
+
+    /**
      * Send one message to one browser.
      *
      * @param array<string, mixed> $sub the row
@@ -401,12 +432,13 @@ class PortalPush
      */
     public static function deliver(array $sub, string $payload, array $keys, string $siteUrl, callable $post): int
     {
-        $endpoint = strval($sub['endpoint'] ?? '');
+        // decrypted here only, to send
+        $endpoint = strval(static::open(strval($sub['endpoint'] ?? '')));
         if (!static::endpointAllowed($endpoint)) {
             return 0;
         }
-        $p256dh = PortalPushCrypto::unb64u(strval($sub['p256dh'] ?? ''));
-        $auth = PortalPushCrypto::unb64u(strval($sub['auth'] ?? ''));
+        $p256dh = PortalPushCrypto::unb64u(static::key($sub, 'p256dh'));
+        $auth = PortalPushCrypto::unb64u(static::key($sub, 'auth'));
         if ($p256dh === null || $auth === null) {
             return 0;
         }
