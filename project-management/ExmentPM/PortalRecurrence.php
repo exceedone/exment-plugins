@@ -30,8 +30,9 @@ use Illuminate\Support\Facades\Log;
  * portal, at most once every few minutes per Exment, and the batch can run
  * it too (php artisan exment:batch --name=ExmentPM --param1=recur).
  *
- * The copy is the issue's creator's, not the visitor's whose page load
- * happened to make it, and the issue it came from keeps its last-changed
+ * The copy is recorded as the issue's creator's, not the visitor's whose
+ * page load happened to make it, and neither gets a creator's share on it
+ * (PortalRunShares::saveNew), and the issue it came from keeps its last-changed
  * time and person: moving the setting is not anyone's edit, and must not
  * make the issue look new to everyone else.
  */
@@ -301,7 +302,8 @@ class PortalRecurrence
             // no creator's share for whoever's page load made the copy (PortalRunShares)
             PortalRunShares::saveNew($row);
 
-            // Its creator's, as if they had raised it themselves.
+            // Recorded as its first issue's creator's. No creator's share comes with it: they
+            // reach it the way every member of the project does, as do its assignees.
             DB::table($db)->where('id', $row->id)->update([
                 'created_user_id' => $issue->created_user_id,
                 'updated_user_id' => $issue->created_user_id,
@@ -321,7 +323,8 @@ class PortalRecurrence
      * An issue's values without what belongs to that issue alone: its files, its key (an auto
      * number: Exment numbers only an empty one, so a copy that kept it would show the same key as
      * the issue it came from, where a new issue gets the next one), where it was imported from, the
-     * work done on it and how it ended.
+     * work done on it and how it ended. The imported issue's own data goes too: its custom fields'
+     * text is written by the sync of the issue it came from, which the copy is not.
      *
      * @param array<string, mixed> $value
      * @param array<string, string> $types column name => column type
@@ -337,10 +340,10 @@ class PortalRecurrence
         }
         $is = (array) ($def['issue'] ?? []);
         $extra = (array) ($def['issue_extra'] ?? PortalSchema::ISSUE_COLUMNS);
-        $names = [$is['key'] ?? 'issue_key', $is['actual'] ?? null, $extra['resolution'] ?? null];
-        foreach (['source_key', 'source_url', 'source_created_by', 'source_created_at', 'source_updated_by', 'source_updated_at'] as $k) {
-            $names[] = $extra[$k] ?? PortalSchema::ISSUE_COLUMNS[$k];
-        }
+        $names = array_merge(
+            [static::keyColumn($def), $is['actual'] ?? null, $extra['resolution'] ?? null, $extra['custom_fields'] ?? PortalSchema::ISSUE_COLUMNS['custom_fields']],
+            static::sourceColumns($def)
+        );
         foreach ($names as $name) {
             if (!empty($name)) {
                 unset($value[$name]);
@@ -348,6 +351,148 @@ class PortalRecurrence
         }
 
         return $value;
+    }
+
+    /** @param array<string, mixed> $def */
+    public static function keyColumn(array $def): string
+    {
+        return strval(($def['issue'] ?? [])['key'] ?? 'issue_key');
+    }
+
+    /**
+     * The columns that say where an imported issue came from (source_key, source_url, ...).
+     *
+     * @param array<string, mixed> $def
+     * @return array<int, string>
+     */
+    public static function sourceColumns(array $def): array
+    {
+        $extra = (array) ($def['issue_extra'] ?? PortalSchema::ISSUE_COLUMNS);
+        $out = [];
+        foreach (PortalSchema::ISSUE_COLUMNS as $k => $name) {
+            if (strpos($k, 'source_') === 0) {
+                $out[] = strval($extra[$k] ?? $name);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The issues that show the key of an older issue: copies made before the copy left the key
+     * out. $rows in any order: [id, project, key, source_key]. An issue whose key an older one
+     * has gets a new key ('key'); one whose source_key an older issue of the same project has
+     * loses where it was imported from ('source'), as the copy was not imported. The oldest of
+     * each keeps its own.
+     *
+     * @param array<int, array{id: int, project: int, key: string, source: string}> $rows
+     * @return array<int, array{key: bool, source: bool, dup_of: int}> issue id => what to clear
+     */
+    public static function duplicateKeys(array $rows): array
+    {
+        usort($rows, function ($a, $b) {
+            return $a['id'] <=> $b['id'];
+        });
+        $keys = [];
+        $sources = [];
+        $out = [];
+        foreach ($rows as $r) {
+            $key = trim($r['key']);
+            $src = trim($r['source']);
+            $k = $key !== '' && isset($keys[$key]);
+            $s = $src !== '' && isset($sources[$r['project'] . "\0" . $src]);
+            if ($k || $s) {
+                $out[$r['id']] = ['key' => $k, 'source' => $s, 'dup_of' => $k ? $keys[$key] : $sources[$r['project'] . "\0" . $src]];
+            }
+            if ($key !== '' && !isset($keys[$key])) {
+                $keys[$key] = $r['id'];
+            }
+            if ($src !== '' && !isset($sources[$r['project'] . "\0" . $src])) {
+                $sources[$r['project'] . "\0" . $src] = $r['id'];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Find (and with $apply, fix) the issues that show the key of an older issue (duplicateKeys):
+     * the key is cleared and Exment numbers it again on the save, as for a new issue; where it was
+     * imported from is cleared where it is the older issue's too. Deleted issues are left out.
+     * Safe to run again: a fixed issue has a key of its own.
+     *
+     * @return array{issues: int, found: array<int, array<string, mixed>>, fixed: int, failed: array<int, int>}
+     */
+    public static function repairKeys(bool $apply): array
+    {
+        $out = ['issues' => 0, 'found' => [], 'fixed' => 0, 'failed' => []];
+        $def = PortalDefinition::config();
+        $issueTable = CustomTable::getEloquent(array_get($def, 'issue_table'));
+        if (!isset($issueTable)) {
+            return $out;
+        }
+        $keyCol = static::keyColumn($def);
+        $srcCol = strval(array_get($def, 'issue_extra.source_key', PortalSchema::ISSUE_COLUMNS['source_key']));
+        $rows = [];
+        $query = $issueTable->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class);
+        $query->select(['id', 'parent_id', 'value'])->chunkById(500, function ($chunk) use (&$rows, $keyCol, $srcCol) {
+            foreach ($chunk as $issue) {
+                $v = (array) $issue->value;
+                $rows[] = [
+                    'id' => intval($issue->id),
+                    'project' => intval($issue->parent_id),
+                    'key' => is_scalar($v[$keyCol] ?? null) ? strval($v[$keyCol]) : '',
+                    'source' => is_scalar($v[$srcCol] ?? null) ? strval($v[$srcCol]) : '',
+                ];
+            }
+        });
+        $out['issues'] = count($rows);
+        $byId = array_column($rows, null, 'id');
+        foreach (static::duplicateKeys($rows) as $id => $d) {
+            $out['found'][] = $d + ['issue' => $id, 'old_key' => $byId[$id]['key'], 'source_key' => $byId[$id]['source']];
+        }
+        if (!$apply) {
+            Log::info('ExmentPM schedule keys repair (dry run): issues ' . $out['issues'] . ', found ' . count($out['found']));
+
+            return $out;
+        }
+        foreach ($out['found'] as $f) {
+            try {
+                $issue = $issueTable->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find($f['issue']);
+                if (!isset($issue)) {
+                    continue;
+                }
+                $clear = [];
+                if ($f['key']) {
+                    $clear[$keyCol] = null;
+                }
+                if ($f['source']) {
+                    foreach (static::sourceColumns($def) as $c) {
+                        $clear[$c] = null;
+                    }
+                }
+                $issue->saved_notify(false);
+                $issue->setValue($clear);
+                $issue->save();
+                if ($f['key']) {
+                    // Exment numbers an empty auto number on the save; a key column that is not one stays empty
+                    $fresh = $issueTable->getValueModel()->newQueryWithoutScopes()->find($f['issue']);
+                    $new = isset($fresh) ? strval(array_get((array) $fresh->value, $keyCol, '')) : '';
+                    if ($new === '' || $new === $f['old_key']) {
+                        $out['failed'][] = intval($f['issue']);
+                        continue;
+                    }
+                }
+                $out['fixed']++;
+            } catch (\Throwable $e) {
+                $out['failed'][] = intval($f['issue']);
+                Log::warning('ExmentPM schedule keys repair: issue ' . $f['issue'] . ': ' . $e->getMessage());
+            }
+        }
+        Log::info('ExmentPM schedule keys repair: issues ' . $out['issues'] . ', found ' . count($out['found'])
+            . ', fixed ' . $out['fixed'] . ', failed ' . count($out['failed']));
+
+        return $out;
     }
 
     /**

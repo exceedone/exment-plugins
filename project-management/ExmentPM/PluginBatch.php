@@ -21,8 +21,10 @@ use Illuminate\Support\Facades\Log;
  *           the AI nor writes anything
  *
  *   --param1=schedule_shares lists the creator's shares that runs of the recurring
- *           schedules gave on their issues to people outside the project (a dry run);
- *           --param2=apply removes them (PortalRunShares::repair)
+ *           schedules and issues gave on their issues to people outside the project (a dry
+ *           run); --param2=apply removes them (PortalRunShares::repair)
+ *   --param1=schedule_keys lists the issues that show the key of an older issue (a dry
+ *           run); --param2=apply gives each a key of its own (PortalRecurrence::repairKeys)
  *
  * Meant for the issues that were there before the switch was turned on,
  * and for a day on which the switch was off while a CSV was imported. One
@@ -138,6 +140,22 @@ class PluginBatch extends PluginBatchBase
             $this->say($apply ? 'schedule_shares' : 'schedule_shares_dry', ['issues' => $r['issues'], 'count' => count($r['found']), 'removed' => $r['removed']]);
 
             return 0;
+        }
+
+        // --param1=schedule_keys: list the issues that show the key of an older issue (copies made
+        // by the schedules and the recurring issues before the copy left the key out). A dry run
+        // unless --param2=apply, which gives each a key of its own (PortalRecurrence::repairKeys).
+        if ($target === 'schedule_keys') {
+            \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            $apply = strtolower(strval(array_get($options, 'param2') ?? '')) === 'apply';
+            $r = PortalRecurrence::repairKeys($apply);
+            foreach ($r['found'] as $f) {
+                echo static::pad('#' . $f['issue'], 10) . ' ' . static::pad($f['old_key'], 14) . ' '
+                    . ($f['key'] ? 'key ' : '') . ($f['source'] ? 'source_key=' . $f['source_key'] . ' ' : '') . '(#' . $f['dup_of'] . ")\n";
+            }
+            $this->say($apply ? 'schedule_keys' : 'schedule_keys_dry', ['issues' => $r['issues'], 'count' => count($r['found']), 'fixed' => $r['fixed'], 'failed' => count($r['failed'])]);
+
+            return empty($r['failed']) ? 0 : 1;
         }
 
         // --param1=digest: the morning digest of each person (ISS02939), every 15 minutes
