@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.26 / 1.7.26 で変わったこと**
 
 - 「← 課題一覧」: back in the list, the issue just left now lights up and is brought into view (it waited for the list to be drawn again, which going back does not do). After a reload, in a new tab or from a link, it goes back to the list as it was last left in that project (filters, sort and page, kept in this browser per person and per project), not to page 1 with no filter. On a phone the bar that stays on scroll is shown too, with the ←, the key and the title.
   「← 課題一覧」：一覧に戻ったとき、今まで見ていた課題が光って見える所に出るようにしました（前は一覧をもう一度描くまで待っていて、戻るだけでは光りませんでした）。読み込み直したとき・新しいタブ・リンクから開いたときも、そのプロジェクトで最後に使った一覧（絞り込み・並び順・ページ。このブラウザーに人ごと・プロジェクトごとに残します）に戻ります。前は 1 ページ目で絞り込みなしでした。スマホでも、スクロールしても残る行を出し、←・キー・件名を置きました。
