@@ -585,8 +585,8 @@ test('BACK-1: an issue goes back where it was opened from', () => {
 });
 
 test('BACK-2: the back button is filled with the accent, darker on hover, a circle on a phone', () => {
-    assert.ok(/\.pmportal \.pp-back,\.pmportal \.bl-btn-sub\.pp-back\{background:var\(--bl-accent\);border:1px solid var\(--bl-accent\);color:var\(--bl-on-accent\);/.test(style));
-    assert.ok(/\.pp-back:hover,\.pmportal \.bl-btn-sub\.pp-back:hover\{background:var\(--bl-accent-d\)/.test(style));
+    assert.ok(/\.pmportal \.pp-back,\.pmportal \.bl-btn-sub\.pp-back\{background:var\(--bl-accent-fill,var\(--bl-accent\)\);border:1px solid var\(--bl-accent-fill,var\(--bl-accent\)\);color:var\(--bl-on-accent\);/.test(style));
+    assert.ok(/\.pp-back:hover,\.pmportal \.bl-btn-sub\.pp-back:hover\{background:var\(--bl-accent-fill-d,var\(--bl-accent-d\)\)/.test(style));
     assert.ok(/\.pp-back:focus-visible,\.pmportal \.bl-btn-sub\.pp-back:focus-visible\{outline:2px solid var\(--bl-accent-d\)/.test(style), 'a focus ring');
     assert.ok(/\.bl-btn-sub\.pp-back\{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:50%;\}/.test(style), 'a filled circle on a phone');
     assert.ok(/--bl-on-accent:var\(--exm-ui-on-accent,#fff\)/.test(style));
@@ -720,6 +720,41 @@ test('PHONE-2: the taps left under 44px on a phone, less height above the conten
     assert.ok(/\.pp-a-dl a\{white-space:normal;/.test(all), 'a long download name wraps');
     assert.ok(/td\.sub a::after\{content:"";position:absolute;inset:0;\}/.test(all) && /tbody tr\{position:relative;\}/.test(all), 'the whole row opens the issue');
     assert.ok(/\.pp-all \.pp-a-bar input\.q,\.pp-all \.pp-a-bar select,\.pp-all \.pp-a-pop input\[type=search\]\{font-size:16px;\}/.test(all), 'no iOS zoom on the keyword, the selects and the pickers');
+});
+
+test('A11Y: white text on the accent: a darker fill when the accent is too light (4.5:1)', () => {
+    const topbarSrc = view('_topbar.blade.php');
+    const f = new Function(['ppRgb', 'ppLum', 'ppContrast', 'ppAccentFill'].map((n) => functionSource(topbarSrc, n)).join('\n') +
+        'return { rgb: ppRgb, contrast: ppContrast, fill: ppAccentFill };')();
+    const white = [255, 255, 255];
+    assert.deepStrictEqual(f.rgb('rgb(76, 175, 147)'), [76, 175, 147]);
+    assert.deepStrictEqual(f.rgb('rgba(0, 0, 0, 0.5)'), [0, 0, 0]);
+    assert.strictEqual(f.rgb('oklch(0.6 0.1 160)'), null, 'a colour it cannot read: left as it is');
+    assert.ok(Math.abs(f.contrast([76, 175, 147], white) - 2.67) < 0.01, 'the classic green: 2.67:1');
+    const g = f.fill([76, 175, 147], white);
+    assert.ok(g, 'the classic green gets a darker fill');
+    assert.ok(f.contrast(g.fill, white) >= 4.5, 'at least 4.5:1');
+    assert.ok(f.contrast(g.fill, white) < 5.2, 'just dark enough: still the green');
+    assert.ok(g.fill[1] > g.fill[0] && g.fill[1] > g.fill[2], 'still a green');
+    assert.ok(f.contrast(g.hover, white) > f.contrast(g.fill, white), 'darker again under the pointer');
+    ['#2563eb', '#b45309', '#008548', '#605ca8', '#d03b2b', '#334155'].forEach((hex) => {
+        const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+        assert.strictEqual(f.fill(c, white), null, hex + ' (Exment Modern) reads well: left as it is');
+    });
+    const dark = f.fill([120, 200, 255], [20, 20, 20]);
+    assert.ok(dark === null || f.contrast(dark.fill, [20, 20, 20]) >= 4.5, 'dark text: lighter, not darker');
+    const lightOnDark = f.fill([90, 90, 90], [20, 20, 20]);
+    assert.ok(lightOnDark && f.contrast(lightOnDark.fill, [20, 20, 20]) >= 4.5 && lightOnDark.fill[0] > 90, 'dark text on a dull accent: mixed toward white');
+    // only the buttons with text on the accent take the fill; with no script, the accent as before
+    const F = 'var(--bl-accent-fill,var(--bl-accent))', FD = 'var(--bl-accent-fill-d,var(--bl-accent-d))';
+    ['.pmportal .bl-btn-main{background:' + F, '.pmportal .bl-btn-main:hover:not([disabled]){background:' + FD,
+        '.pmportal .bl-addissue{margin-left:auto;background:' + F, '.pmportal .bl-app .btn-primary{background:' + F,
+        '.pmportal .bl-tlfilter button.on{background:' + F].forEach((r) => assert.ok(style.indexOf(r) >= 0, r));
+    assert.ok(view('_settings.blade.php').indexOf('.pmportal .pp-set-btn.main{background:' + F) >= 0, '保存 in the settings');
+    assert.ok(topbarSrc.indexOf('.pp-top .pp-top-addwrap>button{background:var(--bl-accent-fill,var(--bl-accent,') >= 0, '＋ 課題を追加');
+    assert.ok(/--bl-accent-fill/.test(style) && !/--bl-accent-fill:/.test(style), 'set by the script only, so the fallback is the accent');
+    assert.ok(/html\.setProperty\('--bl-accent-fill'/.test(functionSource(topbarSrc, 'ppAccentFit')), 'on the page');
+    assert.ok(/\.pmportal \.bl-btn-sub:hover\{border-color:var\(--bl-accent\);/.test(style), 'other hovers and borders as they were');
 });
 
 if (failed) {

@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Log;
  *   POST cal/api/event/{id}/reply     response = yes | no | maybe | none
  *   GET  cal/api/holidays             from, to ('Y-m-d')
  *   GET  cal/api/people               q: users (for attendees and the people side by side)
+ *   GET  cal/api/pm                   from, to ('Y-m-d', to the day after), filter, project: ExmentPM's issues,
+ *                                     milestones and the dates of its schedules (part 4, read only)
  */
 class CalendarPage
 {
@@ -80,6 +82,7 @@ class CalendarPage
             }
         }
         $user = \Exment::user();
+        $pm = PmLayer::ready();
         $view = view('exment_exment_groupware::calendar', [
             'cfg' => [
                 'me' => $me,
@@ -97,12 +100,17 @@ class CalendarPage
                     'resource_events' => $this->url('api', 'resources', 'events'),
                     // the video call of an event (ISS02946), while that feature is on
                     'call' => FeatureGate::allowed('exment_groupware.call') ? $this->plugin->getFullUrl('chat', 'call', 'new') : null,
+                    'pm' => $pm ? $this->url('api', 'pm') : null,
                 ],
                 'lang' => trans('exment_exment_groupware::groupware.cal'),
                 'reminders' => Reminders::ready() ? Reminders::CHOICES : [],
                 // the rooms and equipment (part 3), and whether the viewer keeps their list
                 'resources' => Resources::all(true),
                 'resources_admin' => Resources::ready() && $this->isAdmin(),
+                // ExmentPM's layer (part 4): the projects the viewer may read, when the site has ExmentPM
+                'pm' => $pm ? ['projects' => array_map(function ($p) {
+                    return ['id' => $p['id'], 'name' => $p['name'], 'color' => $p['color'], 'mine' => $p['mine']];
+                }, PmLayer::projects($me))] : null,
             ],
         ]);
         foreach (['ExmentAdminCore\Admin\Layout\Content', 'Encore\Admin\Layout\Content'] as $class) {
@@ -137,6 +145,28 @@ class CalendarPage
         $this->remind();
 
         return $this->ok(['events' => Events::window($from, $to, $people, $this->me(), $this->t('busy'))]);
+    }
+
+    /** GET cal/api/pm: ExmentPM on the calendar (part 4), as the viewer may read it. */
+    public function pm(Request $request)
+    {
+        if (!PmLayer::ready()) {
+            return $this->ok(['events' => []]);
+        }
+        $from = Rrule::day($request->query('from'));
+        $to = Rrule::day($request->query('to'));
+        if ($from === null || $to === null || strcmp($to, $from) <= 0 || (strtotime($to) - strtotime($from)) > PmLayer::MAX_WINDOW_DAYS * 86400) {
+            return $this->fail(422, 'window');
+        }
+        $filter = strval($request->query('filter', 'mine'));
+        if (!in_array($filter, PmLayer::FILTERS, true)) {
+            $filter = 'mine';
+        }
+        $project = $filter === 'project' ? intval($request->query('project')) : null;
+        $tz = new \DateTimeZone(strval(config('app.timezone') ?: 'Asia/Tokyo'));
+        $today = (new \DateTimeImmutable('now', $tz))->format('Y-m-d');
+
+        return $this->ok(['events' => PmLayer::window($this->me(), $from, $to, $filter, $project, $today, $this->isAdmin())]);
     }
 
     public function event($id)
