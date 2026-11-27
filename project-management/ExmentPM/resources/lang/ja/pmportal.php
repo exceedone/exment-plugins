@@ -1886,6 +1886,7 @@ return [
         'offline_line' => 'インターネットにつながっていません。つながったら、もう一度ためしてください。',
         'offline_retry' => 'もう一度ためす',
         'ios_help' => 'Safari の共有ボタン（□に↑）から「ホーム画面に追加」を選んでください。',
+    ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [
         'title' => 'お知らせ',

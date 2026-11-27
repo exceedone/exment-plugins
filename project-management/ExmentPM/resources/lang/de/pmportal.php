@@ -1837,6 +1837,7 @@ return [
         'offline_line' => 'There is no internet connection. Try again when you are back online.',
         'offline_retry' => 'Try again',
         'ios_help' => 'In Safari, tap the Share button (a square with an arrow) and choose "Add to Home Screen".',
+    ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [
         'title' => 'Notices',
