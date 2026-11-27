@@ -185,6 +185,11 @@ jobs:
       - name: Calendar ICS check (Groupware)
         run: php groupware/tools/test-gw-calendar-ics.php
 
+      # The calendar's repeats against the walk from the start they replaced (a fixed seed, a few
+      # thousand random rules), and a COUNT read as UNTIL.
+      - name: Calendar repeats regression (Groupware)
+        run: php groupware/tools/test-gw-calendar-rrule.php
+
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
         run: node project-management/tools/test-user-timezone.js

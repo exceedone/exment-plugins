@@ -872,6 +872,32 @@ namespace {
         \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($row, '2026-12-01 00:00:00', '2026-12-08 00:00:00');
     }
     gw_ics_check('...and 500 of them shown for a week at once', microtime(true) - $t0 < 2.0, microtime(true) - $t0);
+    // COUNT is read once, as UNTIL: 700 weekly series of 1000 from 2013 (a large real calendar)
+    $cnt = "BEGIN:VCALENDAR\r\n";
+    for ($i = 0; $i < 700; $i++) {
+        $cnt .= "BEGIN:VEVENT\r\nUID:cnt-$i\r\nDTSTART;TZID=Asia/Tokyo:20130107T090000\r\nDTEND;TZID=Asia/Tokyo:20130107T100000\r\nRRULE:FREQ=DAILY;BYDAY=MO;COUNT=1000\r\nSUMMARY:x\r\nEND:VEVENT\r\n";
+    }
+    $cnt .= "END:VCALENDAR\r\n";
+    $t0 = microtime(true);
+    $r = Ics::events($cnt, 'Asia/Tokyo', '2026-11-01 00:00:00', '2027-06-01 00:00:00', microtime(true) + 10);
+    $plan = Links::plan($r['events'], [], 'busy');
+    $took = microtime(true) - $t0;
+    $one = $plan['insert']['cnt-0'] ?? [];
+    gw_ics_check('COUNT read as UNTIL (its last date), once: 700 series of 1000 read and planned well in time', !$r['timed_out'] && count($plan['insert']) === 700
+        && ($one['rrule'] ?? '') === 'FREQ=DAILY;BYDAY=MO;UNTIL=20320301' && $took < 5.0, [$took, $one['rrule'] ?? null]);
+    echo '      (' . round($took, 2) . " s)\n";
+    // (as a weekly rule: walked by weeks, the COUNT reaches its end within the walk's limit)
+    $asCount = ['starts_at' => '2013-01-07 00:00:00', 'ends_at' => '2013-01-07 01:00:00', 'tz' => 'Asia/Tokyo', 'rrule' => 'FREQ=WEEKLY;BYDAY=MO;COUNT=1000'];
+    $same = true;
+    foreach ([['2026-11-01', '2027-01-01'], ['2032-02-01', '2032-04-01'], ['2013-01-01', '2013-02-01']] as [$a, $b]) {
+        $same = $same && array_column(\App\Plugins\ExmentGroupware\Calendar\Occurrences::between($asCount, $a . ' 00:00:00', $b . ' 00:00:00'), 'start')
+            === array_column(\App\Plugins\ExmentGroupware\Calendar\Occurrences::between($one, $a . ' 00:00:00', $b . ' 00:00:00'), 'start');
+    }
+    // the 1000th Monday from 2013-01-07 is 2032-03-01 (999 weeks on): there, and nothing after
+    $end = array_column(\App\Plugins\ExmentGroupware\Calendar\Occurrences::between($one, '2032-02-20 00:00:00', '2032-04-01 00:00:00'), 'start');
+    gw_ics_check('...the same occurrences as the COUNT, its last one (the 1000th) included, none after', $same && $end === ['2032-02-23 00:00:00', '2032-03-01 00:00:00'], $end);
+    gw_ics_check('...and its end kept for the queries', ($one['repeat_until'] ?? '') === '2032-03-03 00:00:00', $one['repeat_until'] ?? null);
+
     $r = Ics::events($big, 'UTC', '2026-11-01 00:00:00', '2027-06-01 00:00:00', microtime(true) - 1);
     gw_ics_check('a read past its time limit stops and gives nothing (so nothing is removed)', $r['timed_out'] === true && $r['events'] === []);
 

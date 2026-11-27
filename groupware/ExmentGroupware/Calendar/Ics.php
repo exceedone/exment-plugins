@@ -408,6 +408,73 @@ class Ics
     }
 
     /**
+     * A rule with COUNT as the same rule with UNTIL its last date (in the event's time zone),
+     * worked out once when it is read: then nothing has to walk it from its start again (its
+     * occurrences on the page, the end kept for the queries, the plan of a read).
+     */
+    public static function countAsUntil(string $rule, string $localStart): string
+    {
+        $r = Rrule::parse($rule);
+        if ($r === null || $r['COUNT'] === null) {
+            return $rule;
+        }
+        $last = static::lastOfCount($rule, $r, $localStart);
+        $parts = array_filter(explode(';', $rule), function ($p) {
+            return strpos($p, 'COUNT=') !== 0 && strpos($p, 'UNTIL=') !== 0;
+        });
+        $parts[] = 'UNTIL=' . str_replace('-', '', $last);
+        $out = implode(';', $parts);
+        return strlen($out) <= 255 ? $out : $rule;
+    }
+
+    /**
+     * The last date of a rule with COUNT ('Y-m-d'). The common ones are worked out (every n days;
+     * every n weeks on some weekdays, or a daily rule kept to some weekdays): a calendar may have
+     * hundreds of them. The others are walked from the start (Rrule), as the calendar does.
+     *
+     * @param array<string, mixed> $r Rrule::parse($rule)
+     */
+    public static function lastOfCount(string $rule, array $r, string $localStart): string
+    {
+        $count = intval($r['COUNT']);
+        $s = new \DateTimeImmutable($localStart);
+        $plain = empty($r['BYMONTH']) && empty($r['BYMONTHDAY']) && empty($r['BYSETPOS']) && $r['UNTIL'] === null;
+        $weekdays = [];
+        foreach ($r['BYDAY'] as [$n, $wd]) {
+            if ($n !== 0) {
+                $plain = false;
+            }
+            $weekdays[$wd] = true;
+        }
+        $weekdays = array_keys($weekdays);
+        sort($weekdays);
+        if ($plain && $r['FREQ'] === 'DAILY' && empty($weekdays)) {
+            return $s->modify('+' . (($count - 1) * $r['INTERVAL']) . ' day')->format('Y-m-d');
+        }
+        if ($plain && $r['FREQ'] === 'WEEKLY' && empty($weekdays)) {
+            return $s->modify('+' . (($count - 1) * $r['INTERVAL']) . ' week')->format('Y-m-d');
+        }
+        if ($plain && !empty($weekdays) && ($r['FREQ'] === 'WEEKLY' || ($r['FREQ'] === 'DAILY' && $r['INTERVAL'] === 1))) {
+            $interval = $r['FREQ'] === 'WEEKLY' ? $r['INTERVAL'] : 1;
+            $dow = intval($s->format('N'));
+            // the dates of the start's own week, from the start on
+            $first = array_values(array_filter($weekdays, function ($wd) use ($dow) {
+                return $wd >= $dow;
+            }));
+            $monday = $s->modify('-' . ($dow - 1) . ' day');
+            if ($count <= count($first)) {
+                return $monday->modify('+' . ($first[$count - 1] - 1) . ' day')->format('Y-m-d');
+            }
+            $q = $count - count($first) - 1;
+            $week = 1 + intdiv($q, count($weekdays));
+            return $monday->modify('+' . ($week * $interval * 7 + $weekdays[$q % count($weekdays)] - 1) . ' day')->format('Y-m-d');
+        }
+        $far = $s->modify('+100 year')->format('Y-m-d');
+        $dates = Rrule::between($rule, $localStart, $localStart, $r['UNTIL'] ?? $far) ?? [];
+        return empty($dates) ? $localStart : strval(end($dates));
+    }
+
+    /**
      * The values of a list property (EXDATE, RDATE) as dates of the event's time zone.
      *
      * @param array<int, array{params: array<string, string>, value: string}> $props
@@ -533,6 +600,8 @@ class Ics
                 $rule = static::rule($rr['value'], $fields['tz'], $allDay);
                 if ($rule === null) {
                     $unread++;
+                } else {
+                    $rule = static::countAsUntil($rule, $allDay ? substr($start['utc'], 0, 10) : $start['local']);
                 }
             }
             $fields['rrule'] = $rule;
