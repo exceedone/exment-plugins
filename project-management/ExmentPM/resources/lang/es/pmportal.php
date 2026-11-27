@@ -2292,5 +2292,6 @@ return [
     'back_board' => 'Tablero',
     'back_gantt' => 'Gantt',
     'back_home' => 'Inicio',
+    'back_wiki' => 'Páginas wiki',
     'back_tip' => 'Volver a %s',
 ];

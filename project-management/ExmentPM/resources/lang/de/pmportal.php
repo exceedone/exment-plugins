@@ -2292,5 +2292,6 @@ return [
     'back_board' => 'Board',
     'back_gantt' => 'Gantt',
     'back_home' => 'Startseite',
+    'back_wiki' => 'Wiki-Seiten',
     'back_tip' => 'Zurück zu %s',
 ];

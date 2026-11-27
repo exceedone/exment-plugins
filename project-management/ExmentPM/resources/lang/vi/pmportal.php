@@ -2292,5 +2292,6 @@ return [
     'back_board' => 'Bảng Kanban',
     'back_gantt' => 'Gantt',
     'back_home' => 'Trang chủ',
+    'back_wiki' => 'Danh sách Wiki',
     'back_tip' => 'Quay lại %s',
 ];

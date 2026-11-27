@@ -2292,5 +2292,6 @@ return [
     'back_board' => '看板',
     'back_gantt' => '甘特图',
     'back_home' => '首页',
+    'back_wiki' => 'Wiki 列表',
     'back_tip' => '返回%s',
 ];
