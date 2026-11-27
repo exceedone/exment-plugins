@@ -160,6 +160,7 @@ class Events
             'owner' => intval($e['owner_user_id']),
             'attendees' => $att,
             'editable' => $viewer === intval($e['owner_user_id']) && strval($e['source']) === 'local',
+            'reminder' => Reminders::ready() ? DB::table(Reminders::TABLE)->where('event_id', $id)->min('minutes_before') : null,
         ];
     }
 
@@ -222,6 +223,11 @@ class Events
         if (count($attendees) > static::MAX_ATTENDEES) {
             return [null, 'attendees'];
         }
+        // the reminder (part 2): one of the choices, or none
+        $reminder = $in['reminder'] ?? '';
+        if ($reminder !== '' && $reminder !== null && !in_array(intval($reminder), Reminders::CHOICES, true)) {
+            return [null, 'reminder'];
+        }
 
         return [[
             'title' => $title,
@@ -237,6 +243,7 @@ class Events
             'visibility' => $visibility,
             'org_id' => $visibility === 'org' ? $org : null,
             'attendees' => $attendees,
+            'reminders' => ($reminder === '' || $reminder === null) ? [] : [intval($reminder)],
         ], null];
     }
 
@@ -265,11 +272,12 @@ class Events
     public static function save(?int $id, array $f, int $viewer): ?int
     {
         $attendees = $f['attendees'];
-        unset($f['attendees']);
+        $reminders = $f['reminders'] ?? null;
+        unset($f['attendees'], $f['reminders']);
         $users = getModelName(SystemTableName::USER)::withoutGlobalScopes()->whereIn('id', $attendees)->pluck('id')->map(function ($v) {
             return intval($v);
         })->all();
-        return DB::transaction(function () use ($id, $f, $viewer, $users) {
+        return DB::transaction(function () use ($id, $f, $viewer, $users, $reminders) {
             if ($id === null) {
                 $id = intval(DB::table(static::EVENTS)->insertGetId($f + [
                     'owner_user_id' => $viewer, 'source' => 'local', 'created_user_id' => $viewer, 'updated_user_id' => $viewer,
@@ -285,6 +293,12 @@ class Events
             DB::table(static::ATTENDEES)->where('event_id', $id)->whereNotIn('user_id', $users ?: [0])->delete();
             foreach ($users as $u) {
                 DB::table(static::ATTENDEES)->insertOrIgnore(['event_id' => $id, 'user_id' => $u, 'response' => $u === $viewer ? 'yes' : 'none', 'created_at' => now(), 'updated_at' => now()]);
+            }
+            if ($reminders !== null && Reminders::ready()) {
+                DB::table(Reminders::TABLE)->where('event_id', $id)->delete();
+                foreach ($reminders as $m) {
+                    DB::table(Reminders::TABLE)->insert(['event_id' => $id, 'minutes_before' => $m, 'created_at' => now(), 'updated_at' => now()]);
+                }
             }
             Log::info('gw_calendar: event ' . $id . ' saved by user ' . $viewer);
             return $id;

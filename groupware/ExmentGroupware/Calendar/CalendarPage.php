@@ -59,11 +59,18 @@ class CalendarPage
         return response()->json(['ok' => false, 'message' => $this->t('err_' . $rule)], $status);
     }
 
+    /** The reminders whose time has come, after the answer of this request (part 2). */
+    protected function remind(): void
+    {
+        Reminders::afterResponse($this->url());
+    }
+
     public function page()
     {
         if (!Events::ready()) {
             return response($this->t('not_ready'), 503);
         }
+        $this->remind();
         $me = $this->me();
         $orgs = [];
         foreach (Events::orgsOf($me) as $id) {
@@ -89,6 +96,7 @@ class CalendarPage
                     'call' => FeatureGate::allowed('exment_groupware.call') ? $this->plugin->getFullUrl('chat', 'call', 'new') : null,
                 ],
                 'lang' => trans('exment_exment_groupware::groupware.cal'),
+                'reminders' => Reminders::ready() ? Reminders::CHOICES : [],
             ],
         ]);
         foreach (['ExmentAdminCore\Admin\Layout\Content', 'Encore\Admin\Layout\Content'] as $class) {
@@ -120,6 +128,7 @@ class CalendarPage
             return $this->fail(422, 'window');
         }
         $people = array_filter(array_map('intval', explode(',', strval($request->query('people', strval($this->me()))))));
+        $this->remind();
 
         return $this->ok(['events' => Events::window($from, $to, $people, $this->me(), $this->t('busy'))]);
     }

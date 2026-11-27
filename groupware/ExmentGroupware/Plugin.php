@@ -609,7 +609,7 @@ class Plugin extends PluginPageBase
 
     protected function calendar(): Calendar\CalendarPage
     {
-        foreach (['Rrule', 'Occurrences', 'Visibility', 'JapaneseHolidays', 'Holidays', 'Events', 'CalendarPage'] as $c) {
+        foreach (['Rrule', 'Occurrences', 'Visibility', 'JapaneseHolidays', 'Holidays', 'Events', 'Reminders', 'CalendarPage'] as $c) {
             require_once __DIR__ . '/Calendar/' . $c . '.php';
         }
         return new Calendar\CalendarPage($this->plugin);
