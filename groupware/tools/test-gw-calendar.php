@@ -9,6 +9,7 @@ require __DIR__ . '/../ExmentGroupware/Calendar/Rrule.php';
 require __DIR__ . '/../ExmentGroupware/Calendar/Occurrences.php';
 require __DIR__ . '/../ExmentGroupware/Calendar/Visibility.php';
 require __DIR__ . '/../ExmentGroupware/Calendar/Reminders.php';
+require __DIR__ . '/../ExmentGroupware/Calendar/Resources.php';
 
 use App\Plugins\ExmentGroupware\Calendar\Occurrences as O;
 use App\Plugins\ExmentGroupware\Calendar\Visibility as V;
@@ -91,6 +92,30 @@ gw_cal_check('quiet hours over midnight: the bell only', R::channels('both', ['q
 $w = ['rem_now' => 'まもなく始まります', 'rem_in_minutes' => 'あと :n 分で始まります', 'rem_in_hours' => 'あと :n 時間で始まります', 'rem_in_days' => ':n 日後です'];
 gw_cal_check('the words of a reminder', R::text(0, $w) === 'まもなく始まります' && R::text(15, $w) === 'あと 15 分で始まります' && R::text(120, $w) === 'あと 2 時間で始まります' && R::text(2880, $w) === '2 日後です');
 gw_cal_check('the choices of the form are the ones accepted', R::CHOICES === [0, 5, 10, 15, 30, 60, 120, 1440, 2880]);
+
+// ---- rooms and equipment (part 3)
+use App\Plugins\ExmentGroupware\Calendar\Resources as RS;
+
+$o = function ($s, $e) {
+    return ['start' => $s, 'end' => $e];
+};
+gw_cal_check('rooms: an overlap is a clash', RS::overlaps([$o('2026-12-01 01:00:00', '2026-12-01 02:00:00')], [$o('2026-12-01 01:30:00', '2026-12-01 03:00:00')]) === [$o('2026-12-01 01:00:00', '2026-12-01 02:00:00')]);
+gw_cal_check('rooms: one ends as the other starts: no clash', RS::overlaps([$o('2026-12-01 01:00:00', '2026-12-01 02:00:00')], [$o('2026-12-01 02:00:00', '2026-12-01 03:00:00')]) === []);
+gw_cal_check('rooms: one inside the other: a clash', count(RS::overlaps([$o('2026-12-01 00:00:00', '2026-12-01 05:00:00')], [$o('2026-12-01 01:00:00', '2026-12-01 02:00:00')])) === 1);
+gw_cal_check('rooms: another day: no clash', RS::overlaps([$o('2026-12-01 01:00:00', '2026-12-01 02:00:00')], [$o('2026-12-02 01:00:00', '2026-12-02 02:00:00')]) === []);
+$many = [];
+for ($i = 1; $i <= 30; $i++) {
+    $d = sprintf('2027-01-%02d', $i);
+    $many[] = $o($d . ' 01:00:00', $d . ' 02:00:00');
+}
+gw_cal_check('rooms: a repeating clash is said at most ' . RS::MAX_CLASHES . ' times', count(RS::overlaps($many, $many)) === RS::MAX_CLASHES);
+// a repeating event against a once-only one, through the occurrences
+$weekly = ['starts_at' => '2026-12-01 01:00:00', 'ends_at' => '2026-12-01 02:00:00', 'all_day' => 0, 'tz' => 'Asia/Tokyo', 'rrule' => 'FREQ=WEEKLY', 'exdates' => null];
+$once = ['starts_at' => '2026-12-15 01:30:00', 'ends_at' => '2026-12-15 02:30:00', 'all_day' => 0, 'tz' => 'Asia/Tokyo', 'rrule' => null, 'exdates' => null];
+$mine = \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($weekly, '2026-12-01 00:00:00', '2027-01-01 00:00:00');
+$theirs = \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($once, '2026-12-01 00:00:00', '2027-01-01 00:00:00');
+$c = RS::overlaps($mine, $theirs);
+gw_cal_check('rooms: a weekly meeting clashes with a once-only one on its day only', count($c) === 1 && $c[0]['start'] === '2026-12-15 01:00:00', $c);
 
 echo $failed ? "\n$failed failed\n" : "\nall passed\n";
 exit($failed ? 1 : 0);

@@ -632,6 +632,26 @@ class PluginPage extends PluginPageBase
         return $this->calDenied() ?? $this->calendar()->holidays(request());
     }
 
+    public function calResources()
+    {
+        return $this->calDenied() ?? $this->calendar()->resources();
+    }
+
+    public function calResourceCreate()
+    {
+        return $this->calDenied() ?? $this->calendar()->saveResource(request());
+    }
+
+    public function calResourceSave($id)
+    {
+        return $this->calDenied() ?? $this->calendar()->saveResource(request(), $id);
+    }
+
+    public function calResourceEvents()
+    {
+        return $this->calDenied() ?? $this->calendar()->resourceEvents(request());
+    }
+
     public function calPeople()
     {
         return $this->calDenied() ?? $this->calendar()->people(request());

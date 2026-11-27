@@ -21,10 +21,17 @@ class ChatRetention
         return in_array($d, static::CHOICES, true) && $d > 0 ? $d : null;
     }
 
-    /** Once a day at most (a lock in the cache), not in the request's way: after the response. */
+    /**
+     * The batch of the plugin runs it (PluginBatch --param1=chat, every 5 minutes). Only on a site
+     * where the batch has not run for 3 days (no scheduler) does opening the chat run it, once a
+     * day at most (a lock in the cache), after the response.
+     */
     public static function maybe(): void
     {
         try {
+            if (\Illuminate\Support\Facades\Cache::has('gw_chat_retention_batch')) {
+                return;
+            }
             if (!\Illuminate\Support\Facades\Cache::add('gw_chat_retention', 1, 86400)) {
                 return;
             }
@@ -40,8 +47,16 @@ class ChatRetention
         });
     }
 
-    public static function run(): int
+    public static function run(bool $fromBatch = false): int
     {
+        if ($fromBatch) {
+            // the page leaves it to the batch while the batch runs
+            try {
+                \Illuminate\Support\Facades\Cache::put('gw_chat_retention_batch', 1, 3 * 86400);
+            } catch (\Throwable $e) {
+                // the page keeps doing it
+            }
+        }
         $total = 0;
         foreach (DB::table('gw_chat_rooms')->whereNotNull('retention_days')->where('retention_days', '>', 0)->get(['id', 'retention_days']) as $room) {
             $before = now()->subDays(intval($room->retention_days));

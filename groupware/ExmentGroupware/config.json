@@ -504,6 +504,42 @@
             ]
         },
         {
+            "method": "get",
+            "uri": "cal/api/resources",
+            "function": "calResources",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "cal/api/resources/events",
+            "function": "calResourceEvents",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/resource",
+            "function": "calResourceCreate",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/resource/{id}",
+            "function": "calResourceSave",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
             "method": "post",
             "uri": "chat/api/call/{id}/join",
             "function": "chatCallJoin",
