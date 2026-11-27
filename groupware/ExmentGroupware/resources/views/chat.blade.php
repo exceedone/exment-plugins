@@ -779,6 +779,22 @@ $('gwc-mem').addEventListener('click', function () {
 renderRooms();
 S.top = B.top || 0;
 if (B.open && S.rooms.some(function (r) { return r.id === B.open; })) { if (B.jump) { jump(B.open, B.jump); } else { openRoom(B.open); } }
+// from a calendar event (chat/call/new?event=): join the call going on in its room, or start one
+if (B.autocall && B.open && B.call) {
+    api(u('room', B.open)).then(function (d) {
+        var active = d && d.room ? d.room.active_call : null;
+        try { history.replaceState(null, '', location.pathname + '?room=' + B.open); } catch (e) { /* the address only */ }
+        if (active) {
+            var b = document.createElement('button');
+            b.setAttribute('data-join', String(active));
+            b.hidden = true;
+            $('gwc-list').appendChild(b);
+            b.click();
+        } else {
+            $('gwc-call').click();
+        }
+    });
+}
 poll();
 })();
 </script>

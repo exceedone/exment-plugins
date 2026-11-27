@@ -547,6 +547,11 @@
                 "admin.bootstrap",
                 "admin.pjax"
             ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/call/new",
+            "function": "chatCallNew"
         }
     ]
 }

@@ -97,6 +97,7 @@ class ChatPage
                 'ice' => ChatCall::iceServers($this->plugin->getCustomOption('call_ice')),
                 'call_max' => ChatCall::MAX_PEOPLE,
                 'jump' => intval(request()->query('message', 0)) ?: null,
+                'autocall' => request()->query('call') === '1',
             ],
         ]);
         foreach (['ExmentAdminCore\Admin\Layout\Content', 'Encore\Admin\Layout\Content'] as $class) {
@@ -151,6 +152,14 @@ class ChatPage
         });
     }
 
+    /** From a calendar event: its room (made the first time), and its call started or joined there. */
+    public function callNew(Request $request)
+    {
+        $roomId = ChatCall::roomForEvent($this->uid(), intval($request->query('event', 0)));
+
+        return redirect($this->url('') . '?room=' . $roomId . '&call=1');
+    }
+
     public function postCallJoin($id)
     {
         return $this->json(function () use ($id) {
@@ -185,6 +194,7 @@ class ChatPage
                 'id' => intval($room->id), 'kind' => $room->kind, 'name' => strval($room->name ?? ''),
                 'retention_days' => $room->retention_days !== null ? intval($room->retention_days) : 0,
                 'owner' => $me->role === 'owner', 'members' => array_keys(ChatService::memberNames(intval($id))),
+                'active_call' => \Illuminate\Support\Facades\Schema::hasTable('gw_chat_call_members') ? ChatCall::active(intval($id)) : null,
             ]];
         });
     }

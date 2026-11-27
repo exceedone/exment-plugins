@@ -56,6 +56,59 @@ class ChatCall
         return ['call' => $id, 'message' => $message, 'people' => []];
     }
 
+    /**
+     * The room of a calendar event (ISS02946 step 2): one group room per event, its attendees as
+     * members (those added later join it; nobody is taken out). Only for an attendee who may see
+     * the event (the calendar's own Visibility, through Events::callInfo).
+     */
+    public static function roomForEvent(int $uid, int $eventId): int
+    {
+        $boot = __DIR__ . '/../Calendar/Bootstrap.php';
+        if (is_file($boot)) {
+            require_once $boot;
+        }
+        $events = '\\App\\Plugins\\ExmentGroupware\\Calendar\\Events';
+        $info = class_exists($events) && method_exists($events, 'callInfo') ? $events::callInfo($eventId, $uid) : null;
+        if (!is_array($info)) {
+            abort(404);
+        }
+        $attendees = array_values(array_unique(array_map('intval', (array) ($info['attendees'] ?? []))));
+        if (!in_array($uid, $attendees, true)) {
+            abort(403);
+        }
+        $room = DB::table('gw_chat_rooms')->where('source_type', 'calendar_event')->where('source_id', $eventId)->first();
+        $now = now();
+        if (!isset($room)) {
+            $name = ChatText::cleanName('📅 ' . strval($info['title'] ?? '予定')) ?: '📅 予定';
+            $roomId = intval(DB::table('gw_chat_rooms')->insertGetId([
+                'kind' => 'group', 'name' => $name, 'source_type' => 'calendar_event', 'source_id' => $eventId,
+                'created_by' => $uid, 'created_at' => $now, 'updated_at' => $now,
+            ]));
+        } else {
+            $roomId = intval($room->id);
+        }
+        $users = ChatService::users();
+        foreach ($attendees as $i => $id) {
+            if (isset($users[$id]) && ChatService::member($id, $roomId) === null) {
+                DB::table('gw_chat_members')->insert(['room_id' => $roomId, 'user_id' => $id, 'role' => $i === 0 ? 'owner' : 'member', 'joined_at' => $now]);
+            }
+        }
+
+        return $roomId;
+    }
+
+    /** The call of a room going on now (someone in it), or null. */
+    public static function active(int $roomId): ?int
+    {
+        foreach (DB::table('gw_chat_calls')->where('room_id', $roomId)->whereNull('ended_at')->orderByDesc('id')->limit(5)->pluck('id') as $id) {
+            if (static::people(intval($id)) !== []) {
+                return intval($id);
+            }
+        }
+
+        return null;
+    }
+
     /** The people in a call now (not who left). */
     public static function people(int $callId): array
     {
