@@ -180,7 +180,7 @@ Rooms of a group or of two people (ISS02945). Off at first: Admin setting → Fe
 - Only the members of a room read it; another room or another room's file answers "not found".
 - The people who use it need the plugin's permission too: a role group with **Plugin access** to Exment Plugin Groupware (Admin setting → Role groups). Without it Exment answers 403.
 - Notices: a direct message, and a message that names you (or `@全員`), ring the bell; mail or Teams too as you chose for ExmentPM's notices (「通知」 menu of ExmentPM), when ExmentPM is there. 「知らせを止める」 turns a room's notices off for you.
-- A room's owner chooses how long it keeps its messages (30 days to 5 years, or always). Older ones, with their files, are removed once a day and written to the operation log.
+- A room's owner chooses how long it keeps its messages (30 days to 5 years, or always). Older ones, with their files, are removed by the plugin's batch (`php artisan exment:batch --name=ExmentGroupware --param1=chat`, every 5 minutes with Exment's scheduler) and written to the operation log. On a site without the scheduler, opening the chat does it once a day.
 - **Calls** (ISS02946, Feature management → **通話**, off at first): 「通話」 in a room starts a call of up to 4 people with voice; anyone can turn on a camera or share a screen. The browsers connect to each other (WebRTC, encrypted); nothing is recorded or kept on the server but the signals of the connection. The plugin's setting 「通話のサーバー（STUN / TURN）」 lists the servers that help two PCs find each other: empty, only PCs that reach each other directly (the same LAN or VPN) can talk; a public STUN server makes most networks work (the browser then tells it its IP address); strict company networks need a TURN server of your own.
 - Coming: a live connection (WebSocket), a call from a calendar event. See [docs/chat-design.md](docs/chat-design.md).
 
@@ -296,6 +296,6 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 - ルームはメンバーだけが読めます。ほかのルームやそのファイルは「見つからない」になります。
 - 使う人には、プラグインの権限も要ります：Exment Plugin Groupware の「プラグインへのアクセス」のある役割グループ（管理者設定 → 役割グループ）。ないと Exment が 403 にします。
 - 知らせ：1 対 1 のメッセージと、自分の名前（または `@全員`）のあるメッセージで、ベルが鳴ります。ExmentPM があれば、その「通知」で選んだとおりメールや Teams にも。「知らせを止める」でそのルームの知らせを止められます。
-- ルームの持ち主は、メッセージを残す期間（30 日〜5 年、またはずっと）を決められます。古いものはファイルごと 1 日 1 回消え、操作ログに残ります。
+- ルームの持ち主は、メッセージを残す期間（30 日〜5 年、またはずっと）を決められます。古いものはファイルごと、プラグインのバッチ（`php artisan exment:batch --name=ExmentGroupware --param1=chat`、Exment のスケジューラーで 5 分ごと）が消し、操作ログに残ります。スケジューラーのないサイトでは、チャットを開いたときに 1 日 1 回消します。
 - **通話**（ISS02946、機能の管理 → **通話**、初めは使わない）：ルームの「通話」で 4 人までの声の通話を始めます。だれでもカメラを使ったり、画面を共有したりできます。ブラウザーどうしで直接つなぎ（WebRTC、暗号化）、録音はしません。サーバーに残るのは、つなぐための合図だけです。プラグインの設定「通話のサーバー（STUN / TURN）」：空なら、直接つながる PC どうし（同じ LAN・VPN）だけ話せます。公開の STUN を入れると多くのネットでつながります（ブラウザーはそのサーバーに IP アドレスを知らせます）。きびしい会社のネットには、自社の TURN が要ります。
 - これから：すぐ届くつなぎ（WebSocket）、カレンダーの予定からの通話。[docs/chat-design.md](docs/chat-design.md)。

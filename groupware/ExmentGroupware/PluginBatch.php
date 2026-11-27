@@ -51,7 +51,7 @@ class PluginBatch extends PluginBatchBase
     {
         try {
             if (Schema::hasTable('gw_chat_rooms') && class_exists(Chat\ChatRetention::class)) {
-                $n = Chat\ChatRetention::run();
+                $n = Chat\ChatRetention::run(true);
                 $this->line('chat: ' . intval($n) . ' removed by the retention');
             }
         } catch (\Throwable $e) {
