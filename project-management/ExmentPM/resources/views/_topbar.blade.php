@@ -23,6 +23,9 @@
         'searching' => $tt('searching'),
         'ntc_none' => PortalDefinition::trans('ntc.none'),
         'ntc_fail' => PortalDefinition::trans('ntc.fail'),
+        'push_denied' => PortalDefinition::trans('push.denied'),
+        'push_failed' => PortalDefinition::trans('push.failed'),
+        'push_ios' => PortalDefinition::trans('push.ios_help'),
         'no_results' => $tt('no_results'),
         'more_results' => $tt('more_results'),
         'no_recent' => $tt('no_recent'),
@@ -490,6 +493,11 @@
             @if(empty($topbar['pwa']['off']))
             <a class="pp-top-mi pp-pwa-install" href="javascript:void(0);" hidden><i class="fa fa-mobile"></i><span class="nm">{{ PortalDefinition::trans('pwa.install') }}</span></a>
             @endif
+            {{-- Web Push: this browser shows the bells as notices (per person, per browser, opt-in) --}}
+            @if(!empty($topbar['push']))
+            <a class="pp-top-mi pp-push-toggle" href="javascript:void(0);" role="menuitemcheckbox" aria-checked="false" hidden
+               data-key="{{ $topbar['push']['key'] }}" data-url="{{ $topbar['push']['url'] }}"><i class="fa fa-fw"></i><span class="nm">{{ PortalDefinition::trans('push.this_device') }}</span></a>
+            @endif
             {{-- the manual of the plugin, in the language of the user (ISS02882) --}}
             <a class="pp-top-mi pp-top-manual" href="{{ \App\Plugins\ExmentPM\ManualLink::url() }}" target="_blank" rel="noopener" title="{{ \App\Plugins\ExmentPM\ManualLink::label() }}">
                 <i class="fa fa-question-circle"></i><span class="nm">{{ \App\Plugins\ExmentPM\ManualLink::label() }}</span>
@@ -640,6 +648,103 @@
     })(@json($topbar['pwa'] ?? null));
 
     var LANG = @json($topbarLang);
+
+    // Web Push: 「この端末に通知する」 asks the browser's permission and keeps this browser's
+    // subscription on the server; again, it stops (removed on the server at once). A
+    // subscription made with an older key of the site (「鍵を作り直す」) counts as off.
+    (function () {
+        var item = document.querySelector('.pp-push-toggle');
+        if (!item || !('serviceWorker' in navigator)) { return; }
+        var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (!('PushManager' in window) || !('Notification' in window)) {
+            // iPhone / iPad: only the app added to the home screen can take notices
+            if (ios && !standalone) {
+                item.hidden = false;
+                item.addEventListener('click', function () { window.alert(LANG.push_ios); });
+            }
+            return;
+        }
+        var key = item.getAttribute('data-key');
+        var url = item.getAttribute('data-url');
+        function bytes(s) {
+            var b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
+            var out = new Uint8Array(b.length);
+            for (var i = 0; i < b.length; i++) { out[i] = b.charCodeAt(i); }
+            return out;
+        }
+        // no key yet (the site's first time): the push route makes it when someone turns this on
+        var keyBytes = key ? bytes(key) : null;
+        function sameKey(sub) {
+            var k = sub && sub.options && sub.options.applicationServerKey;
+            if (!k || !keyBytes) { return false; }
+            var a = new Uint8Array(k);
+            if (a.length !== keyBytes.length) { return false; }
+            for (var i = 0; i < a.length; i++) { if (a[i] !== keyBytes[i]) { return false; } }
+            return true;
+        }
+        function call(action, sub) {
+            var token = document.querySelector('meta[name="csrf-token"]');
+            return fetch(url, {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token ? token.getAttribute('content') : '' },
+                body: JSON.stringify({ action: action, subscription: sub ? sub.toJSON() : null })
+            }).then(function (r) { return r.json().catch(function () { return null; }); });
+        }
+        function show(on) {
+            item.setAttribute('aria-checked', on ? 'true' : 'false');
+            item.querySelector('i').className = 'fa ' + (on ? 'fa-check' : 'fa-fw');
+            item.hidden = false;
+        }
+        var busy = false;
+        navigator.serviceWorker.ready.then(function (reg) {
+            return reg.pushManager.getSubscription().then(function (sub) {
+                if (sub && !sameKey(sub)) { return sub.unsubscribe().then(function () { return false; }); }
+                if (!sub || Notification.permission !== 'granted') { return false; }
+                return call('state', sub).then(function (j) {
+                    // kept for someone else (a shared browser, another person signed in before),
+                    // or removed on the server: this browser stops taking the notices
+                    if (j && j.ok && !j.on) {
+                        return sub.unsubscribe().then(function () { return false; }, function () { return false; });
+                    }
+                    return !!(j && j.on);
+                });
+            }).then(function (on) {
+                show(on);
+                item.addEventListener('click', function () {
+                    if (busy) { return; }
+                    busy = true;
+                    var done = function () { busy = false; };
+                    if (item.getAttribute('aria-checked') === 'true') {
+                        reg.pushManager.getSubscription().then(function (sub) {
+                            return sub ? call('unsubscribe', sub).then(function () { return sub.unsubscribe(); }) : null;
+                        }).then(function () { show(false); }).catch(function () { window.alert(LANG.push_failed); }).then(done);
+                        return;
+                    }
+                    Notification.requestPermission().then(function (perm) {
+                        if (perm !== 'granted') { window.alert(LANG.push_denied); return; }
+                        return reg.pushManager.getSubscription().then(function (old) {
+                            return old ? old.unsubscribe() : null;
+                        }).then(function () {
+                            return keyBytes ? keyBytes : call('key', null).then(function (j) {
+                                if (!j || !j.ok || !j.key) { throw new Error('key'); }
+                                keyBytes = bytes(j.key);
+                                return keyBytes;
+                            });
+                        }).then(function (k) {
+                            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: k });
+                        }).then(function (sub) {
+                            return call('subscribe', sub).then(function (j) {
+                                if (j && j.ok) { show(true); return; }
+                                sub.unsubscribe();
+                                window.alert(j && j.message ? j.message : LANG.push_failed);
+                            });
+                        });
+                    }).catch(function () { window.alert(LANG.push_failed); }).then(done);
+                });
+            });
+        }).catch(function () {});
+    })();
     // The issue screen keeps 最近見た per person under this key (recentPush).
     var RECENT_KEY = @json('pp_recent.u' . intval(\Exment::getUserId()));
 
@@ -867,6 +972,14 @@
         }
     })();
     syncBell();
+    // A Web Push notice opens the portal with ?notices=1: the bell's list, opened
+    (function () {
+        if (!pmBell || !/[?&]notices=1(&|$)/.test(location.search)) { return; }
+        if (window.history && history.replaceState) {
+            history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])notices=1(&|$)/, '$1').replace(/[?&]$/, '') + location.hash);
+        }
+        setTimeout(function () { if (pmBell.getAttribute('aria-expanded') !== 'true') { pmBell.click(); } }, 0);
+    })();
     (function () {
         var menu = bar.querySelector('.pp-top-notices');
         var url = menu ? menu.getAttribute('data-notices') : '';

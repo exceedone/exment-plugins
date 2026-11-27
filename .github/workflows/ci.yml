@@ -133,6 +133,8 @@ jobs:
         run: node project-management/tools/test-pm-refresh.js
       - name: ExmentPM web app service worker (offline page, assets, nothing else)
         run: node project-management/tools/test-pm-pwa.js
+      - name: ExmentPM Web Push menu item (this device on and off, a shared browser)
+        run: node project-management/tools/test-pm-push-menu.js
 
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
@@ -181,6 +183,9 @@ jobs:
         run: php project-management/tools/test-pm-git.php
       - name: ExmentPM web app (manifest, worker settings, icons)
         run: php project-management/tools/test-pm-pwa.php
+      # Web Push: RFC 8291 / 8292, the push services allowed, opt-in and out, removals (fake push service)
+      - name: ExmentPM Web Push (encryption, VAPID, subscriptions)
+        run: php project-management/tools/test-pm-push.php
       - name: ExmentPM the bell's list (a notice, where a tap goes)
         run: php project-management/tools/test-pm-notices.php
       - name: Simple by default (ExmentPM schema 30)

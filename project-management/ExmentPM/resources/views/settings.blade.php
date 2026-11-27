@@ -226,6 +226,32 @@ use App\Plugins\ExmentPM\PortalDefinition as PD;
                 @endif
             </div>
         </section>
+        {{-- Web Push (Feature management, off at first): the site's key pair. A new pair means
+             every browser has to turn 「この端末に通知する」 on again. --}}
+        @if(!empty($push))
+        <section class="pp-cfg-card" id="pp-push-box">
+            <div class="pp-cfg-head">
+                <i class="fa fa-bell"></i>
+                <h3>{{ PD::trans('push.keys_title') }}</h3>
+            </div>
+            <form class="pp-cfg-body" method="post" action="{{ $push['url'] }}" onsubmit="return window.confirm(this.getAttribute('data-confirm'));" data-confirm="{{ PD::trans('push.renew_confirm') }}">
+                {{ csrf_field() }}
+                @if($push['renewed'])
+                <div class="pp-cfg-state ok">
+                    <i class="fa fa-check-circle"></i>
+                    <div><b>{{ PD::trans('push.renewed') }}</b></div>
+                </div>
+                @endif
+                @if(!$push['https'])
+                <div class="pp-cfg-warn"><i class="fa fa-exclamation-triangle"></i>{{ PD::trans('push.not_https') }}</div>
+                @endif
+                <p class="pp-cfg-hint">{{ PD::trans('push.keys_lead') }}</p>
+                <button type="submit" class="pp-cfg-btn">
+                    <i class="fa fa-refresh"></i> {{ PD::trans('push.renew') }}
+                </button>
+            </form>
+        </section>
+        @endif
     </div>
 
     {{-- Data migration (Migrate/*, formerly the PmMigrate plugin). Plain

@@ -47,6 +47,8 @@ class PluginPage extends PluginPageBase
         PortalGitHooks::registerFeature();
         // the portal as an installable web app on phones: a feature, off at first (ISS02939)
         PortalPwa::registerFeature();
+        // Web Push for the bells, through the web app's service worker: a feature, off at first
+        PortalPush::registerFeature();
         try {
             PortalGitHooks::registerRoutes();
         } catch (\Throwable $e) {
@@ -423,6 +425,62 @@ class PluginPage extends PluginPageBase
         return response()->json(['ok' => true, 'marked' => $n, 'unread' => 0]);
     }
 
+    // Web Push (off at first): 「この端末に通知する」 of this browser, the person's own only.
+    // action: subscribe (the browser's PushSubscription), unsubscribe or state (its endpoint)
+    public function pushAction()
+    {
+        if (!PortalPush::ready()) {
+            abort(404);
+        }
+        $request = request();
+        $userId = intval(\Exment::getUserId());
+        // a page calls this a few times; a loop is stopped (30 a minute a person)
+        $limit = 'pm_portal_push:' . $userId;
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($limit, 30)) {
+            return response()->json(['ok' => false, 'error' => 'too_many'], 429);
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($limit, 60);
+        $sub = $request->input('subscription');
+        $endpoint = is_array($sub) && is_string($sub['endpoint'] ?? null) ? $sub['endpoint'] : '';
+        switch (strval($request->input('action'))) {
+            case 'key':
+                // the site's public key, made the first time (here, not on a page view)
+                $key = PortalPush::publicKey(true);
+
+                return response()->json(['ok' => $key !== '', 'key' => $key], 200, ['Cache-Control' => 'no-store']);
+            case 'subscribe':
+                $result = PortalPush::subscribe($userId, $sub, strval($request->userAgent()));
+                if (!$result['ok']) {
+                    return response()->json(['ok' => false, 'error' => $result['error'] ?? 'bad', 'message' => strval(PortalDefinition::trans('push.err_' . ($result['error'] ?? 'bad')))], 422);
+                }
+
+                return response()->json(['ok' => true, 'on' => true]);
+            case 'unsubscribe':
+                PortalPush::unsubscribe($userId, $endpoint);
+
+                return response()->json(['ok' => true, 'on' => false]);
+            case 'state':
+                return response()->json(['ok' => true, 'on' => PortalPush::subscribed($userId, $endpoint)], 200, ['Cache-Control' => 'no-store']);
+        }
+
+        return response()->json(['ok' => false, 'error' => 'bad'], 422);
+    }
+
+    // Web Push: 「鍵を作り直す」 (system administrators): a new key pair, every browser subscribes again
+    public function postPushKeys()
+    {
+        $user = \Exment::user();
+        if ($user === null || !$user->isAdministrator()) {
+            abort(403);
+        }
+        if (!PortalPush::enabled()) {
+            abort(404);
+        }
+        PortalPush::renewKeys();
+
+        return redirect(PortalDefinition::url('settings') . '?push_keys=renewed#pp-push-box');
+    }
+
     public function asset($name)
     {
         return $this->portal()->asset(request(), $name);
@@ -452,7 +510,7 @@ class PluginPage extends PluginPageBase
         }
         $assets = strval(parse_url(asset(PortalDefinition::PUBLIC_ASSET_DIR . '/'), PHP_URL_PATH) ?: '');
 
-        return response(PortalPwa::worker(PortalPwa::scope(), $assets, PortalPwa::version()), 200, [
+        return response(PortalPwa::worker(PortalPwa::scope(), $assets, PortalPwa::version(), strval(PortalDefinition::trans('pwa.app_name'))), 200, [
             'Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'no-cache', 'X-Content-Type-Options' => 'nosniff',
         ]);
     }

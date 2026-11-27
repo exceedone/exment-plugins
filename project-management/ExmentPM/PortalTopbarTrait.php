@@ -174,6 +174,9 @@ trait PortalTopbarTrait
             // the bell's own list (ISS02939 item 6)
             'notices_url' => PortalDefinition::url('notices'),
             'notices_all_url' => admin_url('notify_navbar'),
+            // Web Push (off at first): the site's public key for 「この端末に通知する」
+            // (the key is read, not made, here; the push route makes it the first time)
+            'push' => PortalPush::ready() ? ['key' => PortalPush::publicKey(), 'url' => PortalDefinition::url('push')] : null,
             // the page of the details: per event, projects muted, quiet hours
             'notify_settings_url' => PortalDefinition::url('notify-settings'),
             'notify_choices' => array_values(array_filter(PortalTeams::CHOICES, function ($choice) {

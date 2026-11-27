@@ -1845,6 +1845,24 @@ return [
         'offline_retry' => 'Try again',
         'ios_help' => 'In Safari, tap the Share button (a square with an arrow) and choose "Add to Home Screen".',
     ],
+    // Web Push for the bells (needs the web app above)
+    'push' => [
+        'feature' => 'Push notifications (Web Push)',
+        'feature_help' => 'Shows the notices of the bell as notifications on phones and computers too. Turn on "Phone app (PWA)" as well. Each person turns it on per device with "Notify this device" under ⚙. Only the subject of a notice and a link are sent, never the text of a comment.',
+        'this_device' => 'Notify this device',
+        'denied' => 'This browser does not allow notifications. Allow them in the browser\'s settings for this site.',
+        'failed' => 'The notifications could not be set. Try again later.',
+        'ios_help' => 'On iPhone and iPad, open the app added with Safari\'s Share button → "Add to Home Screen" to get notifications.',
+        'err_bad' => 'The notification settings could not be read.',
+        'err_endpoint' => 'Notifications cannot be sent to this browser\'s push service.',
+        'err_keys' => 'The notification keys of this browser are not valid.',
+        'keys_title' => 'Push notification keys',
+        'keys_lead' => 'The keys this site uses for push notifications. Making new keys turns "Notify this device" off on every device (each person turns it on again).',
+        'renew' => 'Make new keys',
+        'renew_confirm' => 'Make new keys? "Notify this device" has to be turned on again on every device.',
+        'renewed' => 'New keys were made.',
+        'not_https' => 'Push notifications cannot be sent because the address of the site (APP_URL) is not https. Set APP_URL to an https address.',
+    ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [
         'title' => 'Notices',
