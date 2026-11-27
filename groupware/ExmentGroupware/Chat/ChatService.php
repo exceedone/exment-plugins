@@ -208,6 +208,31 @@ class ChatService
     protected static function shape(int $roomId, $rows): array
     {
         $users = static::users();
+        $ids = [];
+        $replyIds = [];
+        foreach ($rows as $r) {
+            $ids[] = intval($r->id);
+            if ($r->reply_to !== null) {
+                $replyIds[] = intval($r->reply_to);
+            }
+        }
+        $reactions = [];
+        if ($ids !== [] && \Illuminate\Support\Facades\Schema::hasTable('gw_chat_reactions')) {
+            foreach (DB::table('gw_chat_reactions')->whereIn('message_id', $ids)->orderBy('id')->get() as $x) {
+                $reactions[intval($x->message_id)][$x->emoji][] = intval($x->user_id);
+            }
+        }
+        $quoted = [];
+        if ($replyIds !== []) {
+            foreach (DB::table('gw_chat_messages')->whereIn('id', array_unique($replyIds))->where('room_id', $roomId)->get() as $q) {
+                $quoted[intval($q->id)] = [
+                    'id' => intval($q->id),
+                    'name' => $q->user_id !== null ? ($users[intval($q->user_id)] ?? '') : '',
+                    'text' => $q->deleted_at !== null ? '' : ChatText::quote(strval($q->body)),
+                    'deleted' => $q->deleted_at !== null,
+                ];
+            }
+        }
         $reads = [];
         foreach (DB::table('gw_chat_members')->where('room_id', $roomId)->whereNotNull('user_id')->get(['user_id', 'last_read_id']) as $m) {
             $reads[intval($m->user_id)] = intval($m->last_read_id);
@@ -224,6 +249,8 @@ class ChatService
                 'deleted' => $deleted,
                 'edited' => $r->edited_at !== null,
                 'reply_to' => $r->reply_to !== null ? intval($r->reply_to) : null,
+                'quote' => $r->reply_to !== null ? ($quoted[intval($r->reply_to)] ?? null) : null,
+                'reactions' => (object) ($reactions[intval($r->id)] ?? []),
                 'mentions' => (array) json_decode(strval($r->mentions ?? '[]'), true),
                 'files' => $deleted ? [] : array_values(array_map(function ($f) {
                     return ['uuid' => strval($f['uuid'] ?? ''), 'name' => strval($f['name'] ?? ''), 'size' => intval($f['size'] ?? 0)];
@@ -241,9 +268,13 @@ class ChatService
      *
      * @param array<int, array{uuid: string, name: string, size: int}> $files
      */
-    public static function post(int $uid, int $roomId, string $body, array $files = []): array
+    public static function post(int $uid, int $roomId, string $body, array $files = [], ?int $replyTo = null): array
     {
         $room = static::room($uid, $roomId);
+        // a reply answers a message of the same room
+        if ($replyTo !== null && !DB::table('gw_chat_messages')->where('id', $replyTo)->where('room_id', $roomId)->exists()) {
+            $replyTo = null;
+        }
         if ($room->archived_at !== null) {
             abort(403);
         }
@@ -254,13 +285,85 @@ class ChatService
         $mentions = ChatText::mentions($body, static::memberNames($roomId), $room->kind === 'group');
         $now = now();
         $id = intval(DB::table('gw_chat_messages')->insertGetId([
-            'room_id' => $roomId, 'user_id' => $uid, 'body' => $body,
+            'room_id' => $roomId, 'user_id' => $uid, 'body' => $body, 'reply_to' => $replyTo,
             'mentions' => json_encode($mentions), 'files' => json_encode(array_values($files)), 'created_at' => $now,
         ]));
         DB::table('gw_chat_rooms')->where('id', $roomId)->update(['last_message_id' => $id, 'updated_at' => $now]);
         DB::table('gw_chat_members')->where('room_id', $roomId)->where('user_id', $uid)->update(['last_read_id' => $id]);
 
         return static::shape($roomId, DB::table('gw_chat_messages')->where('id', $id)->get())[0];
+    }
+
+    /** One's own message of a room one is in, or 404. */
+    protected static function ownMessage(int $uid, int $messageId): object
+    {
+        $m = DB::table('gw_chat_messages')->where('id', $messageId)->first();
+        if (!isset($m) || static::member($uid, intval($m->room_id)) === null) {
+            abort(404);
+        }
+        if (intval($m->user_id) !== $uid || $m->deleted_at !== null) {
+            abort(403);
+        }
+
+        return $m;
+    }
+
+    /** Change one's own message; the text before is kept in the history. */
+    public static function edit(int $uid, int $messageId, string $body): array
+    {
+        $m = static::ownMessage($uid, $messageId);
+        $room = static::room($uid, intval($m->room_id));
+        $body = ChatText::clean($body);
+        if ($body === '' && (array) json_decode(strval($m->files ?? '[]'), true) === []) {
+            throw new \InvalidArgumentException('書くことを入れてください（消すときは「消す」）。');
+        }
+        if ($body === strval($m->body)) {
+            return static::shape(intval($m->room_id), DB::table('gw_chat_messages')->where('id', $messageId)->get())[0];
+        }
+        $now = now();
+        DB::transaction(function () use ($m, $uid, $body, $room, $now) {
+            DB::table('gw_chat_revisions')->insert(['message_id' => $m->id, 'body' => $m->body, 'user_id' => $uid, 'created_at' => $now]);
+            DB::table('gw_chat_messages')->where('id', $m->id)->update([
+                'body' => $body, 'edited_at' => $now,
+                'mentions' => json_encode(ChatText::mentions($body, static::memberNames(intval($m->room_id)), $room->kind === 'group')),
+            ]);
+        });
+
+        return static::shape(intval($m->room_id), DB::table('gw_chat_messages')->where('id', $messageId)->get())[0];
+    }
+
+    /** Delete one's own message: its text goes to the history, the row says "deleted". */
+    public static function delete(int $uid, int $messageId): array
+    {
+        $m = static::ownMessage($uid, $messageId);
+        $now = now();
+        DB::transaction(function () use ($m, $uid, $now) {
+            DB::table('gw_chat_revisions')->insert(['message_id' => $m->id, 'body' => $m->body, 'user_id' => $uid, 'created_at' => $now]);
+            DB::table('gw_chat_messages')->where('id', $m->id)->update(['body' => null, 'deleted_at' => $now, 'mentions' => json_encode([])]);
+        });
+
+        return static::shape(intval($m->room_id), DB::table('gw_chat_messages')->where('id', $messageId)->get())[0];
+    }
+
+    /** Give a reaction, or take it back when it is there. */
+    public static function react(int $uid, int $messageId, string $emoji): array
+    {
+        $e = ChatText::reaction($emoji);
+        $m = DB::table('gw_chat_messages')->where('id', $messageId)->first();
+        if (!isset($m) || static::member($uid, intval($m->room_id)) === null || $m->deleted_at !== null) {
+            abort(404);
+        }
+        if ($e === null) {
+            throw new \InvalidArgumentException('そのリアクションは使えません。');
+        }
+        $q = DB::table('gw_chat_reactions')->where('message_id', $messageId)->where('user_id', $uid)->where('emoji', $e);
+        if ($q->exists()) {
+            $q->delete();
+        } else {
+            DB::table('gw_chat_reactions')->insert(['message_id' => $messageId, 'user_id' => $uid, 'emoji' => $e, 'created_at' => now()]);
+        }
+
+        return static::shape(intval($m->room_id), DB::table('gw_chat_messages')->where('id', $messageId)->get())[0];
     }
 
     public static function markRead(int $uid, int $roomId, int $upTo): void
@@ -292,15 +395,17 @@ class ChatService
             });
         }
         $reads = [];
+        $recent = [];
         if ($openRoom !== null && in_array($openRoom, array_map('intval', $roomIds), true)) {
-            $recent = DB::table('gw_chat_messages')->where('room_id', $openRoom)->orderByDesc('id')->limit(static::PAGE)->get();
-            foreach (static::shape($openRoom, $recent) as $m) {
+            $rows = DB::table('gw_chat_messages')->where('room_id', $openRoom)->orderByDesc('id')->limit(static::PAGE)->get();
+            foreach (static::shape($openRoom, $rows) as $m) {
                 $reads[$m['id']] = $m['read'];
+                $recent[] = $m;
             }
         }
         $top = intval(DB::table('gw_chat_messages')->whereIn('room_id', $roomIds ?: [0])->max('id'));
 
-        return ['messages' => $new, 'rooms' => static::rooms($uid), 'reads' => (object) $reads, 'top' => max($after, $top)];
+        return ['messages' => $new, 'rooms' => static::rooms($uid), 'reads' => (object) $reads, 'recent' => $recent, 'top' => max($after, $top)];
     }
 
     /**

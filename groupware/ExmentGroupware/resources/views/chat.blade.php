@@ -46,6 +46,22 @@
 .gwc button.b{border:1px solid var(--line);background:var(--box);border-radius:7px;padding:5px 10px}
 .gwc button.p{border:0;background:var(--acc);color:#fff;border-radius:7px;padding:6px 14px;font-weight:600}
 .gwc .off{color:var(--faint);font-size:11px;padding:4px 14px}
+.gwc-msg{position:relative}
+.gwc-msg .acts{display:none;position:absolute;top:-10px;right:0;background:var(--box);border:1px solid var(--line);border-radius:7px;padding:1px 3px;gap:2px;z-index:2}
+.gwc-msg.me .acts{right:auto;left:0}
+.gwc-msg:hover .acts,.gwc-msg:focus-within .acts{display:flex}
+.gwc-msg .acts button{border:0;background:none;padding:2px 6px;font-size:12px;color:var(--sub);cursor:pointer}
+.gwc-msg .acts button:hover{color:var(--acc)}
+.gwc-msg .q{border-left:3px solid var(--line);padding:0 6px;margin-bottom:4px;color:var(--sub);font-size:12px;cursor:pointer}
+.gwc-msg .rx{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.gwc-msg .rx button{border:1px solid var(--line);background:var(--box);border-radius:10px;padding:0 7px;font-size:12px;cursor:pointer}
+.gwc-msg .rx button.mine{border-color:var(--acc);background:var(--sel)}
+.gwc-pick{position:absolute;z-index:5;background:var(--box);border:1px solid var(--line);border-radius:8px;padding:4px;display:flex;gap:2px;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.gwc-pick button{border:0;background:none;font-size:18px;padding:2px 5px;cursor:pointer}
+.gwc-replybar{display:flex;gap:8px;align-items:center;padding:4px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--sub)}
+.gwc-replybar .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gwc-msg .ed textarea{width:100%;min-height:60px;border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.gwc-msg.hl .bub{outline:2px solid var(--acc)}
 @media (max-width:760px){
   .gwc-app{grid-template-columns:1fr}
   .gwc-app.open .gwc-side{display:none}
@@ -63,6 +79,7 @@
     <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
     <div class="gwc-list" id="gwc-list" aria-live="polite"><div class="gwc-empty">左のルームを選ぶか、新しいルームを作ってください。</div></div>
     <div class="off" id="gwc-off" hidden>しばらく何もしていないので、新しいメッセージの確かめを止めています。ページを動かすとまた確かめます。</div>
+    <div class="gwc-replybar" id="gwc-replybar" hidden><i class="fa fa-reply"></i><span class="t" id="gwc-replyt"></span><button type="button" class="b" id="gwc-replyx" aria-label="返信をやめる"><i class="fa fa-times"></i></button></div>
     <form class="gwc-comp" id="gwc-comp" hidden>
       <textarea id="gwc-body" placeholder="メッセージ（Ctrl+Enter で送る、@名前 で知らせる）" aria-label="メッセージ"></textarea>
       <div><label class="b" style="display:inline-block;cursor:pointer;border:1px solid var(--line);border-radius:7px;padding:5px 9px" title="ファイル"><i class="fa fa-paperclip"></i><input type="file" id="gwc-files" multiple hidden></label> <span class="fs" id="gwc-fs"></span></div>
@@ -123,9 +140,22 @@ function msgHtml(m, prevDay) {
     return (d !== prevDay ? '<div class="gwc-day">' + esc(d) + '</div>' : '') +
         '<div class="gwc-msg' + (mine ? ' me' : '') + (ment ? ' ment' : '') + (m.deleted ? ' del' : '') + '" data-id="' + m.id + '">' +
         (mine ? '' : '<span class="who">' + esc(m.name) + '</span>') +
+        (m.deleted ? '' : '<span class="acts"><button type="button" data-act="reply" title="返信">返信</button><button type="button" data-act="react" title="リアクション">☺</button>' +
+            (mine ? '<button type="button" data-act="edit">編集</button><button type="button" data-act="delete">消す</button>' : '') + '</span>') +
+        (m.quote ? '<div class="q" data-goto="' + m.quote.id + '">' + esc(m.quote.name) + '：' + (m.quote.deleted ? '（消されました）' : esc(m.quote.text)) + '</div>' : '') +
         '<div class="bub">' + (m.deleted ? 'このメッセージは消されました' : textHtml(m.body)) + (files ? '<div class="files">' + files + '</div>' : '') + '</div>' +
+        rxHtml(m) +
         '<span class="meta">' + esc(String(m.at).slice(11, 16)) + (m.edited ? '（編集）' : '') + (mine && m.read > 0 ? ' · 既読 ' + m.read : '') + '</span></div>';
 }
+function rxHtml(m) {
+    var keys = Object.keys(m.reactions || {});
+    if (!keys.length) { return ''; }
+    return '<div class="rx">' + keys.map(function (e) {
+        var who = m.reactions[e] || [];
+        return '<button type="button" data-rx="' + esc(e) + '" class="' + (who.indexOf(B.me) >= 0 ? 'mine' : '') + '" title="' + esc(who.map(name).join('、')) + '">' + esc(e) + ' ' + who.length + '</button>';
+    }).join('') + '</div>';
+}
+function replace(m) { for (var i = 0; i < S.msgs.length; i++) { if (S.msgs[i].id === m.id) { S.msgs[i] = m; return true; } } return false; }
 function renderMsgs(keepScroll) {
     var list = $('gwc-list');
     var atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
@@ -135,6 +165,8 @@ function renderMsgs(keepScroll) {
 }
 function openRoom(id) {
     S.room = id;
+    S.editing = false;
+    setReply(null);
     $('gwc-app').classList.add('open');
     var r = S.rooms.filter(function (x) { return x.id === id; })[0];
     $('gwc-title').textContent = r ? (r.name || '（名前なし）') : '';
@@ -176,6 +208,7 @@ function poll() {
         var mine = (d.messages || []).filter(function (m) { return m.room === S.room && !S.msgs.some(function (x) { return x.id === m.id; }); });
         if (mine.length) { S.msgs = S.msgs.concat(mine); }
         if (d.reads) { S.msgs.forEach(function (m) { if (d.reads[m.id] != null) { m.read = d.reads[m.id]; } }); }
+        (d.recent || []).forEach(function (m) { if (m.room === S.room && !S.editing) { replace(m); } });
         if (S.room) { renderMsgs(true); if (mine.length) { markRead(); } }
         renderRooms();
         schedule();
@@ -204,18 +237,87 @@ function send() {
     if (pending.some(function (f) { return f.size > B.max_file; })) { alert('25 MB をこえるファイルは送れません。'); return; }
     var fd = new FormData();
     fd.append('body', body);
+    if (S.reply) { fd.append('reply_to', S.reply); }
     pending.forEach(function (f) { fd.append('files[]', f, f.name && f.name !== 'image.png' ? f.name : ('image-' + Date.now() + '.png')); });
     $('gwc-send').disabled = true;
     api(u('post', S.room), fd).then(function (d) {
         $('gwc-send').disabled = false;
         if (!d || d.ok === false) { alert((d && d.message) || '送れませんでした'); return; }
         $('gwc-body').value = '';
-        pending = []; showFiles();
+        pending = []; showFiles(); setReply(null);
         if (!S.msgs.some(function (x) { return x.id === d.message.id; })) { S.msgs.push(d.message); }
         S.top = Math.max(S.top, d.message.id);
         renderMsgs(false);
     }).catch(function () { $('gwc-send').disabled = false; alert('送れませんでした'); });
 }
+
+// a message's actions: reply, react, edit, delete; the quote goes to the message it answers
+function setReply(id) {
+    S.reply = id;
+    var m = id ? S.msgs.filter(function (x) { return x.id === id; })[0] : null;
+    $('gwc-replybar').hidden = !m;
+    $('gwc-replyt').textContent = m ? m.name + '：' + String(m.body || '').replace(/\s+/g, ' ').slice(0, 80) : '';
+    if (m) { $('gwc-body').focus(); }
+}
+$('gwc-replyx').addEventListener('click', function () { setReply(null); });
+function pick(btn, id) {
+    var old = document.querySelector('.gwc-pick');
+    if (old) { old.parentNode.removeChild(old); }
+    var p = document.createElement('div');
+    p.className = 'gwc-pick';
+    B.reactions.forEach(function (e) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = e;
+        b.onclick = function () { p.parentNode.removeChild(p); react(id, e); };
+        p.appendChild(b);
+    });
+    btn.closest('.gwc-msg').appendChild(p);
+    setTimeout(function () { document.addEventListener('click', function off(ev) { if (!p.contains(ev.target)) { if (p.parentNode) { p.parentNode.removeChild(p); } document.removeEventListener('click', off); } }); }, 0);
+}
+function react(id, e) {
+    api(u('react', id), { emoji: e }).then(function (d) { if (d && d.message) { replace(d.message); renderMsgs(true); } });
+}
+function startEdit(el, m) {
+    S.editing = true;
+    var bub = el.querySelector('.bub');
+    bub.innerHTML = '<div class="ed"><textarea></textarea><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px"><button type="button" class="b x">やめる</button><button type="button" class="p ok">保存</button></div></div>';
+    var ta = bub.querySelector('textarea');
+    ta.value = m.body;
+    ta.focus();
+    bub.querySelector('.x').onclick = function () { S.editing = false; renderMsgs(true); };
+    bub.querySelector('.ok').onclick = function () {
+        api(u('edit', m.id), { body: ta.value }).then(function (d) {
+            if (!d || d.ok === false) { alert((d && d.message) || '保存できませんでした'); return; }
+            S.editing = false; replace(d.message); renderMsgs(true);
+        });
+    };
+}
+$('gwc-list').addEventListener('click', function (ev) {
+    var t = ev.target;
+    var el = t.closest('.gwc-msg');
+    if (!el) { return; }
+    var id = parseInt(el.getAttribute('data-id'), 10);
+    var m = S.msgs.filter(function (x) { return x.id === id; })[0];
+    if (!m) { return; }
+    var act = t.closest('[data-act]');
+    var rx = t.closest('[data-rx]');
+    var q = t.closest('[data-goto]');
+    if (rx) { react(id, rx.getAttribute('data-rx')); return; }
+    if (q) {
+        var to = $('gwc-list').querySelector('.gwc-msg[data-id="' + q.getAttribute('data-goto') + '"]');
+        if (to) { to.scrollIntoView({ block: 'center' }); to.classList.add('hl'); setTimeout(function () { to.classList.remove('hl'); }, 1500); }
+        return;
+    }
+    if (!act) { return; }
+    var a = act.getAttribute('data-act');
+    if (a === 'reply') { setReply(id); }
+    if (a === 'react') { pick(act, id); }
+    if (a === 'edit') { startEdit(el, m); }
+    if (a === 'delete' && window.confirm('このメッセージを消しますか？')) {
+        api(u('delete', id), {}).then(function (d) { if (d && d.message) { replace(d.message); renderMsgs(true); } });
+    }
+});
 
 // rooms
 $('gwc-rooms').addEventListener('click', function (ev) { var r = ev.target.closest('.gwc-room'); if (r) { openRoom(parseInt(r.getAttribute('data-id'), 10)); } });
