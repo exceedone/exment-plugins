@@ -484,7 +484,8 @@
             if (extra) { Object.keys(extra).forEach(function (k) { l.setAttribute(k, extra[k]); }); }
             document.head.appendChild(l);
         };
-        head('manifest', P.manifest);
+        // the manifest is behind the login: the browser fetches it without cookies unless told so
+        head('manifest', P.manifest, { crossorigin: 'use-credentials' });
         head('apple-touch-icon', P.icon);
         if (!document.querySelector('meta[name="theme-color"]')) {
             var m = document.createElement('meta');
