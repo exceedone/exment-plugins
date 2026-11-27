@@ -116,7 +116,7 @@ class PortalDefinition
      * First segments the portal's own routes use (config.json). A project
      * whose code reads the same is addressed by its id instead.
      */
-    const RESERVED_SEGMENTS = ['setup', 'settings', 'form-style', 'asset', 'lightapi', 'search', 'projects', 'ranking', 'view'];
+    const RESERVED_SEGMENTS = ['setup', 'settings', 'form-style', 'asset', 'lightapi', 'search', 'projects', 'ranking', 'view', 'manifest.webmanifest', 'sw.js', 'offline', 'pwa-icon'];
 
     /**
      * How a project is written in an address (ISS00440): its code, such as

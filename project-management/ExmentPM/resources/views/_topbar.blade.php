@@ -429,6 +429,10 @@
                 <i class="fa fa-cog"></i><span class="nm">{{ PortalDefinition::trans('global_settings') }}</span>
             </a>
             @endif
+            {{-- ISS02939 item 6: add the portal to the home screen (shown when the browser can) --}}
+            @if(empty($topbar['pwa']['off']))
+            <a class="pp-top-mi pp-pwa-install" href="javascript:void(0);" hidden><i class="fa fa-mobile"></i><span class="nm">{{ PortalDefinition::trans('pwa.install') }}</span></a>
+            @endif
             {{-- the manual of the plugin, in the language of the user (ISS02882) --}}
             <a class="pp-top-mi pp-top-manual" href="{{ \App\Plugins\ExmentPM\ManualLink::url() }}" target="_blank" rel="noopener" title="{{ \App\Plugins\ExmentPM\ManualLink::label() }}">
                 <i class="fa fa-question-circle"></i><span class="nm">{{ \App\Plugins\ExmentPM\ManualLink::label() }}</span>
@@ -461,6 +465,55 @@
             + "%3Cpath d='M3.5 4.5h9v2h-9zm0 3h9v2h-9zm0 3h5.5v2h-5.5z' fill='%23ffffff'/%3E%3C/svg%3E";
         document.head.appendChild(icon);
     }
+
+    // ISS02939 item 6: the portal as an installable web app. The manifest and the worker are
+    // routes of the plugin, so their scope is the portal only; taken off again when it is off.
+    (function (P) {
+        if (!P || !('serviceWorker' in navigator)) { return; }
+        if (P.off) {
+            navigator.serviceWorker.getRegistrations().then(function (list) {
+                list.forEach(function (r) { if (r.scope === P.scope) { r.unregister(); } });
+            }).catch(function () {});
+            return;
+        }
+        var head = function (rel, href, extra) {
+            if (document.querySelector('link[rel="' + rel + '"]')) { return; }
+            var l = document.createElement('link');
+            l.rel = rel;
+            l.href = href;
+            if (extra) { Object.keys(extra).forEach(function (k) { l.setAttribute(k, extra[k]); }); }
+            document.head.appendChild(l);
+        };
+        head('manifest', P.manifest);
+        head('apple-touch-icon', P.icon);
+        if (!document.querySelector('meta[name="theme-color"]')) {
+            var m = document.createElement('meta');
+            m.name = 'theme-color';
+            m.content = P.theme;
+            document.head.appendChild(m);
+        }
+        navigator.serviceWorker.register(P.sw, { scope: P.scope }).catch(function () {});
+        // 「ホーム画面に追加」: the browser's own prompt when it offered one, else how to on iOS
+        var btn = document.querySelector('.pp-pwa-install');
+        var standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        if (!btn || standalone) { return; }
+        var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (ios) { btn.hidden = false; }
+        window.addEventListener('beforeinstallprompt', function (ev) {
+            ev.preventDefault();
+            window.__ppInstall = ev;
+            btn.hidden = false;
+        });
+        btn.addEventListener('click', function () {
+            var ev = window.__ppInstall;
+            if (ev) {
+                ev.prompt();
+                ev.userChoice.then(function () { window.__ppInstall = null; btn.hidden = true; }).catch(function () {});
+            } else {
+                window.alert(@json(PortalDefinition::trans('pwa.ios_help')));
+            }
+        });
+    })(@json($topbar['pwa'] ?? null));
 
     var LANG = @json($topbarLang);
     // The issue screen keeps 最近見た per person under this key (recentPush).

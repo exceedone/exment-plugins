@@ -1826,6 +1826,17 @@ return [
         'err_type' => '无法使用此类型。',
     ],
     // chat channels of a project (ISS02939)
+    // ISS02939 item 6: the portal as an installable web app
+    'pwa' => [
+        'feature' => 'Phone app (PWA)',
+        'feature_help' => 'Lets people add Project Management to the home screen of a phone or computer and use it like an app. Without a connection it shows an offline page. No issue data is kept on the device.',
+        'app_name' => 'Project Management',
+        'install' => 'Add to home screen',
+        'offline_title' => 'You are offline',
+        'offline_line' => 'There is no internet connection. Try again when you are back online.',
+        'offline_retry' => 'Try again',
+        'ios_help' => 'In Safari, tap the Share button (a square with an arrow) and choose "Add to Home Screen".',
+    ],
     // ISS02939 item 5: Git linked to the issues by webhook
     'gitlink' => [
         'feature' => '连接 Git（Webhook）',

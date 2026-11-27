@@ -366,6 +366,11 @@ Off at first: turn on **Git link (webhook)** in **Admin settings → Feature man
 The webhook is `POST /pm-git/hook/<key>`, outside the admin pages. A firewall in front of the site may refuse its bodies (commit messages and links): on **Exment SaaS**, the AWS WAF needs one exception for the path `/pm-git/hook/` (the operator adds it).
 Webhook は管理画面の外の `POST /pm-git/hook/<キー>` です。サイトの前のファイアウォールが本文（コミットのメッセージやリンク）でことわることがあります。**Exment SaaS** では、AWS WAF に `/pm-git/hook/` の例外が 1 つ要ります（運営側が足します）。
 
+## Phone app (PWA) / スマホのアプリ
+
+Off at first: turn on **Phone app (PWA)** in **Admin settings → Feature management**. Then Project Management can be added to the home screen of a phone or a computer (the browser's install, or **⚙ → Add to home screen**; on iPhone, Safari's Share → Add to Home Screen) and opens like an app. Without a connection it shows an offline page. The service worker covers the portal's address only (`…/plugins/exment_pm/`), keeps no issue data on the device (pages always come from the server), and only keeps the portal's own script and style files. Turned off again, the worker is removed the next time the portal is opened.
+最初は使いません。**管理者設定 → 機能の管理** で **スマホのアプリ（PWA）** をオンにすると、プロジェクト管理をスマホやパソコンの「ホーム画面に追加」で、アプリのように使えます（ブラウザーのインストール、または **⚙ → ホーム画面に追加**。iPhone は Safari の共有 → ホーム画面に追加）。電波がないときは「オフラインです」の画面を出します。しくみ（サービスワーカー）が動くのはプロジェクト管理のアドレス（`…/plugins/exment_pm/`）だけで、課題のデータは端末に残しません（画面はいつもサーバーから）。残すのはプロジェクト管理のスクリプトとスタイルのファイルだけです。オフにもどすと、つぎにプロジェクト管理を開いたときに外します。
+
 ## Install / 入れ方
 
 1. Download `ExmentPM-<version>.zip` from **[Releases](https://github.com/exceedone/exment-plugins/releases)**. Do not unzip it. (PmMigrate is no longer needed.)
