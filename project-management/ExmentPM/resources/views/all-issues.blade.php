@@ -52,6 +52,16 @@
   .pp-all tr{border-bottom:1px solid var(--a-line);padding:6px 0;}
   .pp-all td{border:0;padding:2px 8px;}
   .pp-all td.c-pj,.pp-all td.c-up{font-size:11.5px;color:var(--a-mute);}
+  /* ISS02939 item 6, step 1b: the downloads on a line of their own (they ran off the screen),
+     taps of 44px for the filters, the pages and the favourites box */
+  .pp-all .pp-a-head{flex-wrap:wrap;row-gap:4px;}
+  .pp-all .pp-a-dl{order:3;flex:1 1 100%;display:flex;flex-wrap:wrap;gap:4px 14px;}
+  .pp-all .pp-a-dl a{margin-left:0;display:inline-flex;align-items:center;min-height:36px;}
+  .pp-all .pp-a-f>button,.pp-all .pp-a-bar input.q,.pp-all .pp-a-bar select{min-height:44px;}
+  .pp-all .pp-a-bar input.q{min-width:0;flex:1 1 140px;}
+  .pp-all .pp-a-head .pg button{min-width:44px;min-height:44px;}
+  .pp-all #pp-a-fav{width:20px;height:20px;}
+  .pp-all .pp-a-pop label{min-height:40px;}
 }
 </style>
 

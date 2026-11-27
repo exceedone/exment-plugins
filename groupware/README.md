@@ -9,6 +9,8 @@
 **Unreleased**
 
 - The README says that a picture cannot be pasted into Office (ibisOffice 0.8.9 in the browser takes only text), and what to do instead: [Pasting a picture into Office](#pasting-a-picture-into-office).
+- Calendar: ExmentPM's issues on the calendar (ISS02947, part 4). The new choice in the toolbar (off at first) shows **My issues**, **My projects** or one project: the issues with a start and a due date as a bar, the ones with a due date only as a mark on it, the milestones, and the dates of ExmentPM's recurring schedules that have no issue yet, as 「予定（まだ課題になっていない）」, with their moved and skipped dates. Each project has its own colour. An issue opens in ExmentPM; a date of a schedule gives **この回だけ変える** (ExmentPM's schedule page, for the project's manager). Read only, through Exment's permissions on the project and issue tables: a person sees only what they may read. Shown only when the site has ExmentPM's tables; the schedules only while ExmentPM makes their issues (its Feature management).
+- Calendar: the rooms of a day also list a room taken out of use while it still has bookings that day, marked 「使わない」.
 - The manual: a link 「マニュアル」 on the top page and in the side of the mail screen opens the manual of the plugin on exment.net in the language of the user (Japanese, Vietnamese, else English), and Exment's "?" in the header opens it on the plugin's pages (Exment 7.2.4 and later).
 - A new version of this plugin may ask for a newer ibisOffice (ISS02827). Until now the site then said ibisOffice was not installed and Office stopped. Now Office keeps opening with the version already installed, and Feature management and the page of the plugin say a newer version is there, with **ibisOffice を X に更新する**. The update installs it as an install does (checked by its SHA-256) and then deletes the older folders.
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
@@ -186,6 +188,8 @@ Coming: an export of one's own calendar with all its details, with a token of it
 **未リリース**
 
 - Office に画像を貼り付けられないこと（ブラウザー版の ibisOffice 0.8.9 は文字だけを受け取ります）と、その代わりの方法を README に書きました（[Office に画像を貼り付ける](#office-に画像を貼り付ける)）。
+- カレンダー：ExmentPM の課題をカレンダーに出せます（ISS02947 の 4）。ツールバーの新しい選択（初めは「課題を出さない」）で、**自分の課題**・**自分のプロジェクト**・1 つのプロジェクトを選びます。開始日と期限のある課題は帯で、期限だけの課題は期限の日に印で出します。マイルストーンと、ExmentPM の定期の予定のうち、まだ課題になっていない日も「予定（まだ課題になっていない）」として出します（動かした日・とばした日もそのとおり）。プロジェクトごとに色が分かれます。課題を押すと ExmentPM で開きます。定期の予定の日からは **この回だけ変える**（ExmentPM の定期の予定の画面。プロジェクトの管理者）へ進めます。読むだけで、プロジェクトと課題のテーブルの Exment の権限のとおりに、見てよいものだけを出します。ExmentPM のテーブルがあるサイトだけに出ます。定期の予定は、ExmentPM が課題を作る設定（機能の管理）のときだけです。
+- カレンダー：その日の会議室・備品に、「使わない」にした会議室・備品も、その日に予約が残っていれば「使わない」と付けて出します。
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
 - 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
