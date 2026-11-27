@@ -1310,7 +1310,7 @@
         var p = D.project || {};
         return '<nav class="pp-crumbs" aria-label="' + esc(L.bc_label) + '">' +
             (D.urls && D.urls.projects ? '<a href="' + esc(D.urls.projects) + '">' + esc(L.bc_root) + '</a><i class="fa fa-angle-right"></i>' : '') +
-            '<a href="#home">' + esc(p.name || '') + '</a><i class="fa fa-angle-right"></i>' +
+            '<a href="#home" title="' + esc(p.name || '') + '">' + esc(p.name || '') + '</a><i class="fa fa-angle-right"></i>' +
             '<a href="#issues">' + esc(L.tab_issues) + '</a><i class="fa fa-angle-right"></i>' +
             crumbParents(crumbAncestors(i)) +
             '<span aria-current="page">' + esc(i.key) + '</span></nav>';

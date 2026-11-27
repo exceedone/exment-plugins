@@ -2131,6 +2131,60 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .pp-back,.pmportal .bl-btn-sub.pp-back{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:50%;}
   .pmportal .pp-back .tx{display:none;}
 }
+/* Phone polish 2: the taps under 44px that were left after the first pass, measured at
+   390 x 844 and 360 x 800, and less height above the content. A phone only. */
+@media (max-width:760px){
+  /* less height before the content: the project head, the tabs and the gaps between them */
+  .pmportal .bl-projhead{padding-top:4px;padding-bottom:4px;margin-bottom:4px;}
+  .pmportal .bl-tabs{margin-bottom:4px;}
+  .pmportal .bl-toolbar{padding:6px 8px;margin-bottom:6px;}
+  /* the project head: the name that opens the project list, and 課題を追加 */
+  .pmportal .bl-projhead .bl-projttl .pp-pjswitch{min-height:44px;}
+  .pmportal .bl-projhead .pp-projadd{min-width:44px;min-height:44px;justify-content:center;box-sizing:border-box;}
+  /* the issue's head: the next status, 編集 and the other buttons; the status; ‹ ›; copy; the alias */
+  .pmportal .bl-dhead .bl-btn-main,.pmportal .bl-dhead .bl-btn-sub{display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;}
+  .pmportal .bl-dsum .pp-st-btn{min-height:44px;margin:0 -4px;padding:0 6px;}
+  .pmportal .bl-inav a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0;box-sizing:border-box;}
+  .pmportal .bl-dhead .pp-ikcopy{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0;margin-left:0;}
+  .pmportal .bl-dhead .pp-al-set{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin-left:0;}
+  .pmportal .bl-dsum .pp-tocmt{display:inline-flex;align-items:center;min-height:44px;}
+  .pmportal .bl-dsum .pp-dmode{min-height:44px;}
+  /* the timeline's すべて表示 / コメントのみ */
+  .pmportal .bl-tlfilter{border-radius:22px;}
+  .pmportal .bl-tlfilter button{min-height:44px;padding:0 14px;font-size:12px;}
+  /* the comment sheet: the format buttons in one row that scrolls sideways (書く / プレビュー stay at
+     its right end), the status, the notify boxes, cancel and send */
+  .pmportal .bl-cmtdock .bl-cmttools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:0 4px;gap:0;}
+  .pmportal .bl-cmtdock .bl-cmttools::-webkit-scrollbar{display:none;}
+  .pmportal .bl-cmtdock .bl-cmttools > button{flex:none;min-width:44px;min-height:44px;padding:0 6px;font-size:14px;}
+  .pmportal .bl-cmtdock .bl-cmttools .sp{flex:1 0 4px;}
+  .pmportal .bl-cmtdock .bl-cmttools .pp-md-tabs{flex:none;position:sticky;right:0;background:var(--bl-box);}
+  .pmportal .pp-md-tabs > button{min-height:44px;padding:0 12px;}
+  .pmportal .bl-cmtdock .bl-qe-in{height:44px;font-size:16px;}
+  /* iOS zooms into a field under 16px: the comment box too */
+  .pmportal .bl-cmtform textarea{font-size:16px;}
+  .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail{min-height:44px;}
+  .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail input{width:20px;height:20px;}
+  .pmportal .bl-dockfoot .bl-btn-main,.pmportal .bl-dockfoot .bl-btn-sub{min-height:44px;}
+  /* the trail: one line beside the ← (it wrapped to two or three), scrolled sideways when long */
+  .pmportal .pp-backrow{min-height:44px;margin-bottom:6px;}
+  .pmportal .pp-backrow .pp-crumbs{flex:1 1 auto;flex-wrap:nowrap;margin:0;white-space:nowrap;overflow-x:auto;scrollbar-width:none;padding-right:18px;}
+  .pmportal .pp-backrow .pp-crumbs::-webkit-scrollbar{display:none;}
+  /* each link gives way first and ends in "…" (the project's full name is in its tooltip), so the key
+     stays in view; the right end fades while there is more to scroll */
+  .pmportal .pp-backrow .pp-crumbs a{flex:0 1 auto;min-width:3em;max-width:11em;display:inline-block;min-height:44px;line-height:44px;
+    overflow:hidden;text-overflow:ellipsis;vertical-align:top;}
+  .pmportal .pp-backrow .pp-crumbs,.pmportal .bl-pillrow{
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);}
+  .pmportal .pp-backrow .pp-crumbs .fa,.pmportal .pp-backrow .pp-crumbs [aria-current]{flex:none;}
+  /* the project's issue list: the status tabs and the chips in one row that scrolls sideways;
+     the keyword and the selects */
+  .pmportal .bl-pillrow{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-bottom:6px;padding-right:18px;}
+  .pmportal .bl-pillrow::-webkit-scrollbar{display:none;}
+  .pmportal .bl-pillrow .bl-sttab,.pmportal .bl-pillrow .bl-qchip{flex:none;display:inline-flex;align-items:center;min-height:44px;
+    box-sizing:border-box;border-radius:22px;}
+  .pmportal .bl-filters > select,.pmportal .bl-filters > input,.pmportal .pp-f-at select,.pmportal .pp-f-at input:not([type=checkbox]):not([type=radio]){min-height:44px;font-size:16px;}
+}
 /* The Wiki on a phone: the list of pages above the page (it was 260px beside a squeezed page),
    and 「← Wiki 一覧」 back up to it. A wide screen has the list beside the page: no button. */
 .pmportal .pp-wback{margin-right:8px;}
