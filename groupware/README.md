@@ -6,7 +6,7 @@
 
 <a id="english"></a>
 
-**Unreleased**
+**Changed in 0.5.0**
 
 - The README says that a picture cannot be pasted into Office (ibisOffice 0.8.9 in the browser takes only text), and what to do instead: [Pasting a picture into Office](#pasting-a-picture-into-office).
 - Calendar: ExmentPM's issues on the calendar (ISS02947, part 4). The new choice in the toolbar (off at first) shows **My issues**, **My projects** or one project: the issues with a start and a due date as a bar, the ones with a due date only as a mark on it, the milestones, and the dates of ExmentPM's recurring schedules that have no issue yet, as 「予定（まだ課題になっていない）」, with their moved and skipped dates. Each project has its own colour. An issue opens in ExmentPM; a date of a schedule gives **この回だけ変える** (ExmentPM's schedule page, for the project's manager). Read only, through Exment's permissions on the project and issue tables: a person sees only what they may read. Shown only when the site has ExmentPM's tables; the schedules only while ExmentPM makes their issues (its Feature management).
@@ -16,6 +16,8 @@
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
 - Web mail: the dates of the mails are shown in the time zone the user chose in Exment (Exment 7.2.4; a user who chose none gets the time zone of the site). On an older Exment they are shown in the time zone of the browser, as before.
 - The names and descriptions in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5). Another language reads English.
+- Calendar: the ICS export address and outside calendars (ISS02947, part 5; Feature management → **カレンダーの連携（ICS）**, off at first). A person can make an ICS address of their calendar for Google Calendar or Outlook (events open to all with their title, any other as 「予定あり」 only), and read ICS addresses of other calendars into theirs every 15 minutes. See [Calendar: the ICS export and outside calendars](#calendar-links).
+- Calendar: Google Calendar and Microsoft 365 read only (ISS02947, part 6; the same feature and dialog). **Google と連携** / **Microsoft と連携** sign in with OAuth (the site's own app in the plugin's settings) and read that account's main calendar every 15 minutes. See [Google and Microsoft 365 calendars](#calendar-google-microsoft).
 
 **Changed in 0.4.7**
 
@@ -147,6 +149,54 @@ Exment does not run a mail server. Like Outlook, it connects to the server the c
 
 The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrations`).
 
+<a id="calendar-links"></a>
+
+## Calendar: the ICS export and outside calendars
+
+Part 5 of the calendar (ISS02947). Off at first: Admin setting → Feature management → **カレンダーの連携（ICS）** (`exment_groupware.calendar_links`, needs the calendar). A person allowed it gets **連携** in the calendar's toolbar.
+
+**The ICS export address.** In the 「連携」 dialog of the calendar, **URL を作る** makes an address `https://<site>/gw-calendar/ics/<token>.ics` that a calendar program (Google Calendar "From URL", Outlook, the iPhone) reads without logging in. The token is 64 random hex characters; only its SHA-256 is kept, so the address is shown once, when it is made. Once there is one, **新しい URL を作る** makes a new one and stops the old; **止める** stops it. A stopped or unknown address, a deleted person or a person no longer allowed the feature answers 404. At most 30 reads a minute for one address and 120 from one IP.
+
+- It has the person's events and the events they attend, from 30 days back to 365 days ahead.
+- **Who sees what**: the export is what somebody who is not logged in sees of that person's calendar, by the same rules as the page (Visibility, with no viewer). An event open to all (「全員」) has its title and place. Any other event (部署, 参加者だけ, 予定ありだけ, and an outside calendar shown busy) is a VEVENT of its time only: SUMMARY 「予定あり」, CLASS:PRIVATE, no UID of the event, no place. No event has its notes or attendees.
+- **Repeats are expanded**: each occurrence is one VEVENT in the window (no RRULE, EXDATE or RECURRENCE-ID in the export), so what a calendar program shows is exactly the calendar's own occurrences, moved and cancelled ones included. Times are in UTC; an all-day event is written with its dates (VALUE=DATE, the end the day after its last day). Text is escaped and lines are folded at 75 octets (RFC 5545).
+
+**Outside calendars (ICS addresses).** **カレンダーを足す**: a name, the ICS address (`https://`, `http://` or `webcal://`) and what the others see: 「予定あり」 only (the default) or the title and the place. Up to 10 per person.
+
+- The address is encrypted with `APP_KEY` and never shown again: the page shows its host only. To change it, type a new one.
+- It is read every 15 minutes, each link a little later than the others, by the plugin's batch (`php artisan exment:batch --name=ExmentGroupware --param1=calendar`) and after the answer of a calendar page (3 links at most, after the page is sent). **今すぐ読む** reads it now (once a minute).
+- Read: GET with `If-None-Match` / `If-Modified-Since` (304: nothing changes), 15 seconds (for the whole fetch, redirects included) and 5 MB at most, up to 4 redirects. VEVENTs from 30 days back to 180 days ahead, with RRULE (the part the calendar reads; another rule shows its first occurrence), EXDATE, RDATE, RECURRENCE-ID (moved or cancelled occurrences), all day, TZID (IANA names, the common Windows names, a VTIMEZONE's X-LIC-LOCATION; else the site's time zone) and STATUS:CANCELLED. An event removed there is removed here. At most 5000 events a calendar. A COUNT above 1000 is cut to 1000 (the series ends at its 1000th occurrence), and a COUNT is kept as the UNTIL of its last date. A calendar whose text takes more than 10 seconds to read is not read (its events stay as they were). The link of a person deleted or no longer allowed the feature is not read (tried again a day later).
+- The events are the person's (source=link) and cannot be changed here. The others see them as the link says.
+- A failure is kept on the link (shown as words, never the address) and the next try waits longer (up to 4 hours). A calendar it cannot read is never an error of the page.
+- **The address check**: the same as the web mail's (HostGuard). Only public addresses, and only the ports 80, 443, 8080 and 8443 (always); each redirect is checked again, and the connection goes to the address checked (no second lookup of the name; the address curl connected to is checked again). The plugin's setting **社内のネットワークのカレンダー（ICS の URL）を許可する** (`calendar_allow_private`, off at first; not the mail's setting) allows the internal network too (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7). Never: loopback, link-local (169.254/16, fe80::/10: the cloud's metadata), 0/8, multicast, and the IPv6 ranges that carry IPv4 (NAT64, Teredo, 6to4).
+
+The tables `gw_cal_links` and `gw_cal_feeds` are made when the zip is uploaded (`database/migrations`).
+
+**Things to know.**
+
+- **No proxy.** The outside calendars are fetched directly, never through an HTTP proxy (the server connects to the very address it checked, so a proxy would get round the check). A site that reaches the internet only through a proxy cannot read ICS links. The ICS export address is not affected.
+- **No session, no IP filter.** The export address has no session (a calendar program keeps no cookies). It follows Exment's maintenance mode as Exment's public pages do (and, on Exment SaaS, the tenant's expiry). It is not behind the web IP filter of the admin pages (Admin setting → IP filter), since Google's or Microsoft's servers read it from outside: whoever has the address can read it, so keep it to yourself and make a new one if it leaks.
+- **Many events in one window.** A view of the calendar (and the export) reads the repeats and the one-time events of a window separately, at most 5000 of each: with more one-time events than that in one window (many outside calendars), the earliest 5000 are shown. A window has at most 20000 occurrences: the person's own events first, then each outside calendar an equal share of the rest (the smaller ones first, what one leaves goes to the next), so one calendar of many repeats pushes out neither (a warning goes to the log).
+- **A slow calendar server.** A link read after the answer of a calendar page keeps that PHP worker (PHP-FPM) busy until it is read, 15 seconds at most (plus 10 for a large calendar), at most once a minute for the site. The page itself is already sent.
+- **Cached routes.** The ICS export address is a route the plugin adds while Exment boots (like ExmentSupportDesk's pages without login). When Laravel's routes are cached (`php artisan route:cache`), it is not there and answers 404. Do not cache the routes on a site that uses it (`php artisan route:clear` undoes it).
+
+<a id="calendar-google-microsoft"></a>
+### Google and Microsoft 365 calendars (read only)
+
+Part 6 of the calendar (ISS02947), in the same 「連携」 dialog and under the same feature (**カレンダーの連携（ICS）**). **Google と連携** / **Microsoft と連携** sign in on Google's or Microsoft's own page and read that account's main calendar into the person's calendar, like an ICS link: events with source=link from 30 days back to 180 days ahead, changed in place, removed when removed there, every 15 minutes by the same batch and page tick, at most 5000 events a calendar and the same share of a window's 20000 occurrences. Read only: nothing is ever written to Google or Microsoft. The link shows the account's email only, and **再接続** when the sign-in has expired or was revoked (`last_error` = `auth`; the events stay until then).
+
+- **The site's app.** The system administrator registers an app and enters it in the plugin's settings: **カレンダー：Google カレンダーの読みこみ** (`cal_google_client_id`, `cal_google_client_secret`; Google Cloud console, an OAuth client of the Web application type with the Google Calendar API enabled) and **カレンダー：Microsoft 365 の予定表の読みこみ** (`cal_ms_client_id`, `cal_ms_client_secret`, `cal_ms_tenant`, `organizations` when empty; Azure portal, Microsoft Graph's delegated `Calendars.Read` and `offline_access`). The redirect URI of both is `https://<site>/admin/plugins/exment_groupware/cal/oauth/callback` (the settings page shows it). The secrets are saved encrypted (Exment's encpassword). These are separate from the web mail's apps; one Google or Azure app can have both redirect URIs. A provider with no app shows no button.
+- **Scopes.** Google `https://www.googleapis.com/auth/calendar.readonly`; Microsoft `https://graph.microsoft.com/Calendars.Read offline_access`. The account's email is read from the calendar itself (Google's `calendars/primary`, Graph's `/me/calendar` owner), so no profile scope is asked.
+- **The sign-in.** Authorization code with PKCE (S256), as the web mail's. The dialog asks the server by POST (CSRF) for the address of the sign-in page; the state, its PKCE verifier and the person who started it are kept in the session for 15 minutes. The way back (`cal/oauth/callback`, behind Exment's login) is refused for an unknown state, one used already, one older than 15 minutes or one started by another person; the provider's own error text is never shown (a fixed code only). Signing in again to a link with another account removes that link's events and reads it from nothing.
+- **The tokens.** The access and refresh tokens are encrypted (APP_KEY) in `gw_cal_links.secret_enc`, never sent to the browser and never logged. An access token is renewed with the refresh token before it ends (or once after a 401); Microsoft's new refresh token is kept at once. Removing a Google link revokes its token (`oauth2.googleapis.com/revoke`, one request of 5 seconds at most, a failure ignored); Microsoft has no request to revoke one app's token, so it is only forgotten (the person can remove the app in their Microsoft account).
+- **Repeats.** Each occurrence as the provider expands it, one event here each (Google `singleEvents=true`, Graph `calendarView`); no RRULE is read. Moved and cancelled occurrences, a series cut short and the provider's own time zones are as the provider shows them.
+- **Reads.** Google: `events.list` of `primary`, the first time with `timeMin`/`timeMax` and its pages up to a `nextSyncToken`, then only the changes with it; 410 Gone reads everything again at once. Microsoft: `/me/calendarView/delta` of the window, its `@odata.nextLink` pages up to an `@odata.deltaLink`, then only the changes with it (`@removed` and cancelled events removed); 410 Gone or a lost sync state reads everything again. The cursor (`gw_cal_links.sync_state`, a new column: a deltaLink is longer than the 255 of `sync_token`) is kept only after the last page, with the events, so a read stopped halfway changes nothing. A change reads only the window it started with, so the whole window is read again once a day (`full_sync_at`).
+- **The requests.** Only `https://` on port 443 to `www.googleapis.com`, `oauth2.googleapis.com`, `graph.microsoft.com` and `login.microsoftonline.com` (a nextLink of another host is refused), each through HostGuard::checkWeb with the connection pinned to the address checked, never an internal address (even with `calendar_allow_private` on), no redirect followed, no proxy, 15 seconds and 5 MB a request, 30 seconds and 60 pages a read. A failure is a code in `last_error`, as for an ICS link.
+- **Who sees what.** The owner sees the details (not editable here). The others see 「予定あり」 (the default) or, with 「件名と場所も見せる」, the title and the place; an event marked private or confidential at Google or Microsoft is always 「予定あり」 to the others. Changing that setting shows the link's events as 「予定あり」 until the next read, which reads it all again.
+- **More rules.** The settings page never shows a saved client secret (the input is empty; saving it empty keeps the saved one). A sign-in whose answer does not grant reading the calendar (Google calendar.readonly, Microsoft Calendars.Read) is refused (`oauth_scope`). The site's app refused when renewing a token (`invalid_client`: its secret wrong or expired) is `oauth_client`, an error for the administrator, not a 「再接続」. Signing in again always reads the link in full again. Each provider's requests go to its own hosts only (Google: www.googleapis.com, oauth2.googleapis.com; Microsoft: graph.microsoft.com, login.microsoftonline.com), cursors included. **今すぐ読む** takes the link first, as the batch and the page tick do, so two reads of one link never overlap; a read also removes any extra row of one event. There is no unique index on (link_id, external_id): SQL Server, which Exment supports, treats NULLs as equal in a unique index, and the calendar's own events have neither. The tokens of a link not allowed for 30 days (no read since) are forgotten; the link and its events stay, and the person signs in again when allowed again.
+
+Coming: an export of one's own calendar with all its details, with a token of its own for the owner only (later); CalDAV (part 7), both ways (part 8).
+
 ---
 
 <a id="japanese"></a>
@@ -159,6 +209,8 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
 - 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
+- カレンダー：ICS の書き出しの URL と、ほかのカレンダーの読みこみ（ISS02947 の 5。機能の管理 → **カレンダーの連携（ICS）**、初めは使わない）。自分のカレンダーの ICS の URL を作って Google カレンダーや Outlook で見られます（「全員」の予定は件名と場所、それ以外は「予定あり」だけ）。ほかのカレンダーの ICS の URL を、15 分ごとに自分のカレンダーに読みこめます。[カレンダー：ICS の書き出しとほかのカレンダー](#calendar-links-ja) を参照。
+- カレンダー：Google カレンダー・Microsoft 365 を読むだけで読みこむ（ISS02947 の 6。同じ機能・同じ画面）。**Google と連携**・**Microsoft と連携** で OAuth でサインインし（サイトのアプリはプラグインの設定に入れます）、そのアカウントのメインのカレンダーを 15 分ごとに読みこみます。[Google カレンダー・Microsoft 365 の予定表](#calendar-google-microsoft-ja) を参照。
 
 **0.4.7 で変わったこと**
 
@@ -319,3 +371,51 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 - **通話**（ISS02946、機能の管理 → **通話**、初めは使わない）：ルームの「通話」で 4 人までの声の通話を始めます。だれでもカメラを使ったり、画面を共有したりできます。ブラウザーどうしで直接つなぎ（WebRTC、暗号化）、録音はしません。サーバーに残るのは、つなぐための合図だけです。プラグインの設定「通話のサーバー（STUN / TURN）」：空なら、直接つながる PC どうし（同じ LAN・VPN）だけ話せます。公開の STUN を入れると多くのネットでつながります（ブラウザーはそのサーバーに IP アドレスを知らせます）。きびしい会社のネットには、自社の TURN が要ります。
 - カレンダーの予定から通話：予定の「通話」で、その予定のチャットのルーム（はじめてのときに出席者で作る）を開き、そこで続いている通話に入るか、新しく始めます。予定を見られる出席者だけです。
 - これから：すぐ届くつなぎ（WebSocket）。[docs/chat-design.md](docs/chat-design.md)。
+
+<a id="calendar-links-ja"></a>
+
+## カレンダー：ICS の書き出しとほかのカレンダー
+
+カレンダーの 5 つめ（ISS02947）です。初めは使いません：管理者設定 → 機能の管理 → **カレンダーの連携（ICS）**（`exment_groupware.calendar_links`。カレンダーが要ります）。使える人には、カレンダーのツールバーに **連携** が出ます。
+
+**ICS の書き出しの URL**：カレンダーの「連携」の画面の **URL を作る** で `https://<サイト>/gw-calendar/ics/<トークン>.ics` を作ります。カレンダーのソフト（Google カレンダーの「URL で追加」・Outlook・iPhone）が、ログインなしで読みます。トークンはランダムな 16 進 64 文字で、残すのはその SHA-256 だけです。なので URL は、作ったときに 1 度だけ出ます。URL があるときは **新しい URL を作る** で新しい URL になり、前の URL は止まります。**止める** で止まります。止めた URL・ない URL・消されたユーザーや機能を使えなくなった人の URL は 404 です。1 つの URL は 1 分に 30 回、1 つの IP からは 1 分に 120 回まで読めます。
+
+- その人の予定と、その人が参加する予定を、30 日前から 365 日先まで出します。
+- **だれに何が見えるか**：ログインしていない人がその人のカレンダーを見たときと同じです（画面と同じ決まり、Visibility）。「全員」の予定は件名と場所が出ます。それ以外（部署・参加者だけ・予定ありだけ・「予定あり」と見せるほかのカレンダー）は時間だけの VEVENT です：SUMMARY は「予定あり」、CLASS:PRIVATE、予定の ID も場所もありません。メモと参加者は、どの予定でも出ません。
+- **くりかえしは展開します**：期間の中の 1 回ずつが 1 つの VEVENT です（RRULE・EXDATE・RECURRENCE-ID は書きません）。なので、動かした回・やめた回も、カレンダーの画面と同じに出ます。時刻は UTC、終日の予定は日付（VALUE=DATE、終わりは最後の日の次の日）です。文字はエスケープし、行は 75 オクテットで折り返します（RFC 5545）。
+
+**ほかのカレンダー（ICS の URL）**：**カレンダーを足す** で、名前・ICS の URL（`https://`・`http://`・`webcal://`）・ほかの人への見せ方（「予定あり」とだけ（はじめ）か、件名と場所も）を入れます。1 人 10 個までです。
+
+- URL は `APP_KEY` で暗号化し、二度と表示しません。画面に出るのはホスト名だけです。変えるときは新しい URL を入れます。
+- 15 分ごとに、リンクごとに少しずつずらして読みます。プラグインのバッチ（`php artisan exment:batch --name=ExmentGroupware --param1=calendar`）と、カレンダーの画面の答えのあと（ページを送ってから、3 つまで）です。**今すぐ読む** ですぐ読みます（1 分に 1 回）。
+- 読み方：GET で `If-None-Match`・`If-Modified-Since` を付けます（304 なら何も変えません）。15 秒（転送もふくめて全部で）・5 MB まで、転送は 4 回まで。30 日前から 180 日先までの VEVENT を、RRULE（カレンダーが読める範囲。ほかの決まりは 1 回目だけ）・EXDATE・RDATE・RECURRENCE-ID（動かした回・やめた回）・終日・TZID（IANA の名前、よくある Windows の名前、VTIMEZONE の X-LIC-LOCATION。わからなければサイトのタイムゾーン）・STATUS:CANCELLED ごと読みます。あちらで消えた予定はこちらでも消えます。1 つのカレンダーで 5000 件までです。COUNT が 1000 より大きいときは 1000 にします（1000 回目でおわり）。COUNT は最後の日の UNTIL として残します。読むのに 10 秒より長くかかるカレンダーは読みこみません（前の予定のまま）。消されたユーザーや機能を使えなくなった人のリンクは読みません（1 日あとにまたたしかめます）。
+- 読んだ予定はその人のもの（source=link）で、ここでは変えられません。ほかの人には、リンクの見せ方のとおりに見えます。
+- 読めなかったときは、そのリンクに残し（URL ではなく、ことばで出ます）、次はもっと待ってから読みます（4 時間まで）。読めないカレンダーで、画面がエラーになることはありません。
+- **URL のチェック**：Web メールと同じ HostGuard です。インターネットのアドレスだけで、ポートはいつも 80・443・8080・8443 番だけです。転送のたびにもう一度たしかめ、たしかめたアドレスにつなぎます（名前を引きなおさず、curl がつないだアドレスもたしかめます）。プラグインの設定 **社内のネットワークのカレンダー（ICS の URL）を許可する**（`calendar_allow_private`、初めはオフ。メールの設定とは別）をオンにすると、社内のネットワーク（10/8・172.16/12・192.168/16・100.64/10・fc00::/7）も使えます。ループバック・リンクローカル（169.254/16・fe80::/10。クラウドのメタデータ）・0/8・マルチキャスト・IPv4 を中に持つ IPv6（NAT64・Teredo・6to4）は、どのときも使えません。
+
+テーブル `gw_cal_links`・`gw_cal_feeds` は zip をアップロードしたときに作られます（`database/migrations`）。
+
+**気をつけること**
+
+- **プロキシは使いません**：ほかのカレンダーは、HTTP のプロキシを通さずに直接読みます（たしかめたアドレスにそのままつなぐため。プロキシを通すと、そのチェックを回り道できてしまいます）。インターネットにプロキシを通してしか出られないサイトでは、ICS の URL を読めません。ICS の書き出しの URL には関係ありません。
+- **セッションなし・IP フィルターなし**：書き出しの URL はセッションを使いません（カレンダーのソフトはクッキーを持たないため）。Exment のメンテナンスモードには、Exment の公開のページと同じように従います（Exment SaaS では、テナントの期限にも）。管理画面の Web の IP フィルター（管理者設定 → IP フィルター）はかかりません。Google や Microsoft のサーバーが外から読むためです。URL を知っている人はだれでも読めるので、人に教えず、もれたときは作りなおしてください。
+- **1 つの期間にたくさんの予定**：カレンダーの画面（と書き出し）は、期間のくりかえしの予定と 1 回だけの予定を別々に、それぞれ 5000 件まで読みます。1 つの期間に 1 回だけの予定がそれより多いとき（ほかのカレンダーがたくさんあるときなど）は、早いほうから 5000 件を出します。1 つの期間に出すのは 20000 回までです。その人自身の予定が先で、残りをほかのカレンダーで同じだけ分けます（小さいほうから。使わなかった分は次のカレンダーへ）。くりかえしの多いカレンダーが 1 つあっても、自分の予定やほかのカレンダーの予定はおし出されません（ログに警告を残します）。
+- **おそいカレンダーのサーバー**：カレンダーの画面の答えのあとに読むリンクは、読み終わるまでその PHP のワーカー（PHP-FPM）を使います。15 秒まで（大きなカレンダーではさらに 10 秒まで）、サイトで 1 分に 1 回までです。画面はもう送ってあります。
+- **ルートのキャッシュ**：ICS の書き出しの URL は、Exment が起動するときにプラグインが足すルートです（ExmentSupportDesk のログインなしのページと同じ）。Laravel のルートをキャッシュしている（`php artisan route:cache`）と、この URL はなく 404 になります。使うサイトではルートをキャッシュしないでください（`php artisan route:clear` で元に戻ります）。
+
+<a id="calendar-google-microsoft-ja"></a>
+### Google カレンダー・Microsoft 365 の予定表（読むだけ）
+
+カレンダーの 6 つめ（ISS02947）です。同じ「連携」の画面、同じ機能（**カレンダーの連携（ICS）**）です。**Google と連携**・**Microsoft と連携** で Google・Microsoft のページでサインインすると、そのアカウントのメインのカレンダーを、ICS のリンクと同じように自分のカレンダーに読みこみます。予定は source=link で、30 日前から 180 日先まで、変わったものはその場で変わり、そちらで消したものは消えます。15 分ごとに、同じバッチと画面のあとの読みこみで読みます。1 つのカレンダーで 5000 件まで、1 つの期間の 20000 回の分け方も同じです。読むだけで、Google・Microsoft には何も書きません。リンクにはアカウントのメールアドレスだけを出します。サインインが切れたり取り消されたりしたとき（`last_error` が `auth`）は **再接続** が出ます（それまでの予定は残ります）。
+
+- **サイトのアプリ**：システム管理者がアプリを登録し、プラグインの設定に入れます。**カレンダー：Google カレンダーの読みこみ**（`cal_google_client_id`・`cal_google_client_secret`。Google Cloud console で Google Calendar API を有効にし、ウェブ アプリケーションの OAuth クライアント）と **カレンダー：Microsoft 365 の予定表の読みこみ**（`cal_ms_client_id`・`cal_ms_client_secret`・`cal_ms_tenant`、空のときは `organizations`。Azure portal で Microsoft Graph の委任の `Calendars.Read` と `offline_access`）。リダイレクト URI はどちらも `https://<サイト>/admin/plugins/exment_groupware/cal/oauth/callback` です（設定の画面に出ます）。シークレットは暗号化して保存します（Exment の encpassword）。Web メールのアプリとは別の設定です。1 つの Google・Azure のアプリに、両方のリダイレクト URI を入れてもかまいません。アプリのないほうのボタンは出ません。
+- **スコープ**：Google は `https://www.googleapis.com/auth/calendar.readonly`、Microsoft は `https://graph.microsoft.com/Calendars.Read offline_access` です。アカウントのメールアドレスはカレンダーから読みます（Google の `calendars/primary`、Graph の `/me/calendar` の owner）。プロフィールのスコープは求めません。
+- **サインイン**：Web メールと同じ、認可コードと PKCE（S256）です。画面はサーバーに POST（CSRF あり）でサインインのページのアドレスを聞きます。state・PKCE の verifier・始めた人を、セッションに 15 分残します。もどり（`cal/oauth/callback`、Exment のログインのうしろ）は、知らない state・使った state・15 分より古い state・ほかの人が始めた state をことわります。プロバイダーのエラーの文は出しません（決まったコードだけ）。リンクを別のアカウントで再接続すると、そのリンクの予定を消して、はじめから読みます。
+- **トークン**：アクセストークンとリフレッシュトークンは、`gw_cal_links.secret_enc` に暗号化（APP_KEY）して残します。ブラウザーには渡さず、ログにも出しません。アクセストークンは切れる前に（または 401 のあとに 1 回）リフレッシュトークンで新しくします。Microsoft の新しいリフレッシュトークンは、すぐに残します。Google のリンクを消すと、そのトークンを取り消します（`oauth2.googleapis.com/revoke`、5 秒までの 1 回。失敗しても続けます）。Microsoft には 1 つのアプリのトークンを取り消すリクエストがないので、消すだけです（本人が Microsoft のアカウントでアプリを外せます）。
+- **くりかえし**：プロバイダーが展開した 1 回ずつを、ここで 1 つの予定にします（Google は `singleEvents=true`、Graph は `calendarView`）。RRULE は読みません。動かした回・取り消した回・途中で終わったくりかえし・プロバイダーのタイムゾーンは、プロバイダーの見せるとおりです。
+- **読み方**：Google は `primary` の `events.list` です。はじめは `timeMin`・`timeMax` でページを `nextSyncToken` まで読み、そのあとはそれで変わったものだけを読みます。410 Gone のときは、すぐにぜんぶ読みなおします。Microsoft は期間の `/me/calendarView/delta` です。`@odata.nextLink` のページを `@odata.deltaLink` まで読み、そのあとはそれで変わったものだけを読みます（`@removed` と取り消された予定は消します）。410 Gone や同期の状態がなくなったときは、ぜんぶ読みなおします。どこまで読んだか（`gw_cal_links.sync_state`、新しい列。deltaLink は `sync_token` の 255 文字より長いため）は、最後のページを予定といっしょに入れたときだけ残します。途中で止まった読みこみは何も変えません。変わったものだけの読みこみは、はじめの期間しか読まないので、1 日に 1 回は期間をぜんぶ読みなおします（`full_sync_at`）。
+- **つなぎ先**：`www.googleapis.com`・`oauth2.googleapis.com`・`graph.microsoft.com`・`login.microsoftonline.com` に、`https://` の 443 番だけです（ほかのホストの nextLink はことわります）。どれも HostGuard::checkWeb を通し、たしかめたアドレスにつなぎます。社内のネットワークのアドレスには、`calendar_allow_private` がオンでもつなぎません。転送はたどらず、プロキシも使いません。1 回のリクエストは 15 秒・5 MB まで、1 回の読みこみは 30 秒・60 ページまでです。失敗は ICS のリンクと同じく、`last_error` のコードになります。
+- **だれに何を見せるか**：本人には詳しく出します（ここでは変えられません）。ほかの人には「予定あり」（はじめの設定）か、「件名と場所も見せる」のときは件名と場所を出します。Google・Microsoft で「非公開」（private・confidential）の予定は、ほかの人にはいつも「予定あり」です。この設定を変えると、次に読むまでリンクの予定は「予定あり」になり、次はぜんぶ読みなおします。
+- **ほかのきまり**：設定の画面は、保存したクライアント シークレットを表示しません（入力は空です。空のまま保存すると、保存してあるものが残ります）。答えにカレンダーを読む許可（Google の calendar.readonly、Microsoft の Calendars.Read）がないサインインはことわります（`oauth_scope`）。トークンを新しくするときにサイトのアプリがことわられた（`invalid_client`。シークレットのまちがい・期限切れ）ときは `oauth_client` で、「再接続」ではなく管理者の直すエラーです。再接続すると、いつもリンクをぜんぶ読みなおします。どちらのプロバイダーも、そのプロバイダーのホストにだけつなぎます（Google は www.googleapis.com・oauth2.googleapis.com、Microsoft は graph.microsoft.com・login.microsoftonline.com。どこまで読んだかの URL も）。**今すぐ読む** も、バッチや画面のあとの読みこみと同じようにリンクを先にとるので、1 つのリンクを 2 つ同時に読むことはありません。読むときに、1 つの予定の余分な行も消します。(link_id, external_id) の一意のインデックスは作りません。Exment が使える SQL Server では一意のインデックスで NULL どうしが同じとされ、カレンダーの自分の予定はどちらも NULL だからです。30 日のあいだ使えないままの（そのあいだ読んでいない）リンクのトークンは消します。リンクと予定は残り、また使えるようになったら本人がサインインしなおします。
+
+これから：自分のカレンダーを詳しいまま書き出す URL（本人だけの別のトークン。のちほど）、CalDAV（7）、両方向（8）。

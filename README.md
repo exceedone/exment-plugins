@@ -15,7 +15,7 @@ Official plugins for [Exment](https://github.com/exceedone/exment), made, tested
 | Folder | Name | What it does | Status |
 |---|---|---|---|
 | [`project-management/`](project-management/) | Exment Plugin Project Management | Project and ticket management (issues, board, Gantt chart, wiki, files, read receipts, mail notification, data migration) | In use on Exment SaaS |
-| [`it-support/`](it-support/) | Exment Plugin IT Support | IT support / help desk (mail intake, no-login progress links, customer portal, SLA, knowledge base, IT assets, alert intake, reports) | Released 1.0.5 — [ExmentITSupport-1.0.5.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentITSupport-v1.0.5/ExmentITSupport-1.0.5.zip) |
+| [`support-desk/`](support-desk/) | Exment Plugin Support Desk | IT support and inquiry desk (mail intake, no-login progress links, customer portal, SLA, knowledge base, IT assets, alert intake, reports) | Not released under the new name yet (next: ExmentSupportDesk-1.1.0) |
 | [`groupware/`](groupware/) | Exment Plugin Groupware | Web mail (Xserver, KAGOYA, Microsoft 365, Gmail over IMAP and SMTP), and opening the Word, Excel and PowerPoint files of the file server in a browser Office (ibisOffice); attachments of records shown and edited | 0.4.6 in development (Office needs the file server of Exment) |
 | [`attachment-export/`](attachment-export/) | Exment Plugin Attachment Export | The attachments of the records of a list (attachments and file/image columns) in one zip, a folder a record | In development |
 | [`kintone/`](kintone/) | Exment Plugin kintone 連携 | The kintone connector of the data sync of Exment 7.3.0: the records of kintone apps imported into Exment tables, and a table made from the definition of an app | In development |
@@ -169,7 +169,7 @@ cd .github/ci && composer update --ignore-platform-req='ext-*' && vendor/bin/php
 | フォルダ | 名前 | できること | 状態 |
 |---|---|---|---|
 | [`project-management/`](project-management/) | Exment Plugin Project Management | プロジェクト管理・チケット管理（課題・ボード・ガントチャート・Wiki・ファイル・既読・メール通知・データ移行） | Exment SaaS で利用中 |
-| [`it-support/`](it-support/) | Exment Plugin IT Support | ITサポート・ヘルプデスク（メール受付・ログインなしの進み具合の共有・顧客ポータル・SLA・ナレッジ・IT 資産・監視からの起票・レポート） | 1.0.5 — [ExmentITSupport-1.0.5.zip](https://github.com/exceedone/exment-plugins/releases/download/ExmentITSupport-v1.0.5/ExmentITSupport-1.0.5.zip) |
+| [`support-desk/`](support-desk/) | Exment Plugin Support Desk（サポートデスク） | IT サポートと問い合わせの窓口（メール受付・ログインなしの進み具合の共有・顧客ポータル・SLA・ナレッジ・IT 資産・監視からの起票・レポート） | 新しい名前ではまだリリースしていません（次は ExmentSupportDesk-1.1.0） |
 | [`groupware/`](groupware/) | Exment Plugin Groupware | Web メール（Xserver・KAGOYA・Microsoft 365・Gmail に IMAP・SMTP でつなぐ）と、ファイルサーバーの Word・Excel・PowerPoint をブラウザーの Office（ibisOffice）で開いて新しい版として保存、データの添付の表示・編集 | 0.4.6 開発中（Office は Exment のファイルサーバーが必要） |
 | [`kintone/`](kintone/) | Exment Plugin kintone 連携 | kintone のアプリのレコードを Exment のテーブルに取り込む（Exment 7.3.0 のデータ同期のコネクタ）・アプリの定義からテーブルを作る | 開発中 |
 

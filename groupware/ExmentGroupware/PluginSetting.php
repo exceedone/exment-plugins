@@ -6,7 +6,7 @@ use App\Plugins\ExmentGroupware\Mail\OAuth;
 use Exceedone\Exment\Services\Plugin\PluginBase;
 
 /**
- * The plugin's settings on Exment's plugin management screen: the OAuth clients of the web mail,
+ * The plugin's settings on Exment's plugin management screen: the OAuth clients of the web mail and of the calendar,
  * the servers the mail may reach, the call's STUN / TURN, ibisOffice's place.
  *
  * A plugin whose plugin_type is a list (page, batch) has its settings class by the fixed name
@@ -62,6 +62,24 @@ class PluginSetting
         $form->exmheader('カレンダー')->hr();
         $form->select('cal_resource_clash', '会議室・備品が重なったとき')->options(['warn' => '知らせて、たしかめてから保存する', 'block' => '保存させない'])->default('warn')
             ->help('同じ会議室・備品を、重なる時間に予約しようとしたとき。初めは「知らせて、たしかめてから保存する」です。');
+        $form->switchbool('calendar_allow_private', '社内のネットワークのカレンダー（ICS の URL）を許可する')
+            ->default(0)
+            ->help('オンにすると、ほかのカレンダーの ICS の URL に、プライベート IP（10.x・172.16〜31.x・192.168.x・100.64.x・fc00::）のサーバーも使えます。ポートはいつも 80・443・8080・8443 だけで、localhost・リンクローカル（169.254.x）は使えません。社内にカレンダーのサーバーがあるオンプレミスの Exment のときだけオンにしてください（Exment SaaS ではオフのまま）。メールの「社内のネットワークのメールサーバーを許可する」とは別の設定です。');
+        // Google and Microsoft calendars, read only (ISS02947 part 6): the site's own app, its secret encrypted
+        $calRedirect = $this->plugin->getFullUrl('cal', 'oauth', 'callback');
+        // the secrets: saved encrypted and never written back into the page (an empty input keeps the saved one)
+        require_once __DIR__ . '/SettingSecretField.php';
+        \ExmentAdminCore\Admin\Form::extend('gwSettingSecret', SettingSecretField::class);
+        $secretHelp = '暗号化して保存し、ここには表示しません。空のまま保存すると、保存してあるシークレットのままです。';
+        $form->exmheader('カレンダー：Google カレンダーの読みこみ')->hr();
+        $form->description('Google Cloud console で Google Calendar API を有効にし、OAuth クライアント ID（ウェブ アプリケーション）を作ります。承認済みのリダイレクト URI に <code>' . e($calRedirect) . '</code> を入れます。スコープは https://www.googleapis.com/auth/calendar.readonly（読むだけ）です。空のときは「Google と連携」は出ません。Web メールのクライアントとは別に入れます（同じクライアントに、このリダイレクト URI を足してもかまいません）。')->escape(false);
+        $form->text('cal_google_client_id', 'クライアント ID');
+        $form->gwSettingSecret('cal_google_client_secret', 'クライアント シークレット')->help($secretHelp);
+        $form->exmheader('カレンダー：Microsoft 365 の予定表の読みこみ')->hr();
+        $form->description('Azure portal の「アプリの登録」で Web アプリを登録し、リダイレクト URI に <code>' . e($calRedirect) . '</code> を入れます。API のアクセス許可は Microsoft Graph の Calendars.Read（委任）と offline_access です（読むだけ）。空のときは「Microsoft と連携」は出ません。')->escape(false);
+        $form->text('cal_ms_client_id', 'アプリケーション（クライアント）ID');
+        $form->gwSettingSecret('cal_ms_client_secret', 'クライアント シークレット')->help($secretHelp);
+        $form->text('cal_ms_tenant', 'テナント')->help('空のときは organizations（職場・学校のアカウントならどのテナントでも）。自社だけに限るときは、テナント ID か contoso.onmicrosoft.com のようなドメイン。');
         $form->exmheader('Office')->hr();
         $form->url('ibisoffice_url', 'ibisOffice の場所（URL）')
             ->help('空にすると、このサイトにインストールした ibisOffice ' . IbisOffice::VERSION . ' を使います。ほかの場所の ibisOffice を使うときだけ、index.html のあるフォルダーの URL を入れます（例: https://office.example.com/ibisoffice/0.8.9/）。このサイトにインストールした ibisOffice があるときは、ページの中で動く ibisoffice-host.js はそちらを使います。ほかの場所のものは https のときだけ使います。');

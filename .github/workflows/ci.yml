@@ -147,9 +147,15 @@ jobs:
         run: node project-management/tools/test-pm-palette.js
       - name: Issue actions in one menu (ExmentPM)
         run: node project-management/tools/test-pm-issue-actions.js
+      # A request of the portal refused because the page expired (419): the bar with 再読み込み.
+      - name: Expired page bar (ExmentPM)
+        run: node project-management/tools/test-pm-expired.js
 
       - name: Recent updates pages (ExmentPM)
         run: php project-management/tools/test-pm-feed.php
+      # Exment's messages for the next page (an expired form) drawn on the portal's screens.
+      - name: Exment messages on the portal (ExmentPM)
+        run: php project-management/tools/test-pm-flash.php
 
       # The custom attributes of a project's issues (ExmentPM, plain PHP)
       - name: Custom attributes check (ExmentPM server)
@@ -180,6 +186,22 @@ jobs:
           php groupware/tools/test-gw-calendar.php
           node groupware/tools/test-gw-calendar.js
 
+      # The calendar's ICS export and ICS links (part 5): the text written and read, the address
+      # check, a fake client, a link read and exported again (plain PHP, no network).
+      - name: Calendar ICS check (Groupware)
+        run: php groupware/tools/test-gw-calendar-ics.php
+
+      # Google and Microsoft calendars read only (part 6): the fixed hosts, the sign-in and its state,
+      # the tokens encrypted and renewed, syncToken / deltaLink, 410, removals, busy or details, the caps
+      # (plain PHP, a fake client: nothing is sent to Google or Microsoft).
+      - name: Calendar Google and Microsoft check (Groupware)
+        run: php groupware/tools/test-gw-calendar-cloud.php
+
+      # The calendar's repeats against the walk from the start they replaced (a fixed seed, a few
+      # thousand random rules), and a COUNT read as UNTIL.
+      - name: Calendar repeats regression (Groupware)
+        run: php groupware/tools/test-gw-calendar-rrule.php
+
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
         run: node project-management/tools/test-user-timezone.js
@@ -196,7 +218,7 @@ jobs:
       - name: Markdown check (ExmentPM)
         run: node project-management/tools/test-pm-markdown.js
 
-      # The links to the manuals of ExmentPM, ExmentITSupport and ExmentGroupware.
+      # The links to the manuals of ExmentPM, ExmentSupportDesk and ExmentGroupware.
       - name: Manual links check
         run: php project-management/tools/test-manual-links.php
 
@@ -205,17 +227,22 @@ jobs:
         run: php project-management/tools/test-pm-notify-prefs.php
 
       # links to files open outside the page loading of the admin screens
-      - name: File links (ExmentPM, Groupware, IT Support)
+      - name: File links (ExmentPM, Groupware, Support Desk)
         run: php project-management/tools/check-file-links.php
 
       # The project routes without admin.morph still find a project the same way as the others.
       - name: Morph-less routes check (ExmentPM)
         run: php project-management/tools/test-pm-morph-routes.php
 
-      # Every ja key is also in en (ExmentPM, IT Support, Groupware): a key only in ja shows as
+      # Every ja key is also in en (ExmentPM, Support Desk, Groupware): a key only in ja shows as
       # "undefined" in the other languages. An error: add the en text in the same PR.
       - name: Lang keys check (ja and en)
         run: php project-management/tools/test-lang-keys.php --ja-en
+
+      # The names of ExmentSupportDesk: plugin_name, uri, uuid, feature keys, namespace, and no lang
+      # value with the old product name (IT サポート / サポート窓口 / Help desk).
+      - name: Plugin names (Support Desk)
+        run: php support-desk/tools/test-plugin-name.php
 
       # Every locale has the keys and placeholders of ja (ExmentPM) or en (the others).
       # A warning only: a new ja key waits for its translations in a later PR.
@@ -253,30 +280,35 @@ jobs:
       - name: Backlog custom fields (ExmentPMBacklog)
         run: php project-management/tools/test-pmbl-attributes.php
 
+      # The issues a run imports get the shares of their share settings, not one for whoever ran
+      # it (ExmentPMBacklog with ExmentPM's PortalRunShares, plain PHP)
+      - name: Shares of the imported issues (ExmentPMBacklog)
+        run: php project-management/tools/test-pmbl-sync-shares.php
+
       # The alerts of Zabbix, Mackerel, Alertmanager and Azure Monitor, and
-      # what they do to the tickets (ExmentITSupport, plain PHP).
-      - name: Alert intake check (ExmentITSupport)
-        run: php it-support/tools/test-alert-intake.php
+      # what they do to the tickets (ExmentSupportDesk, plain PHP).
+      - name: Alert intake check (ExmentSupportDesk)
+        run: php support-desk/tools/test-alert-intake.php
 
-      # The steps of the SLA escalation (ExmentITSupport, plain PHP).
-      - name: SLA escalation check (ExmentITSupport)
-        run: php it-support/tools/test-sla-escalation.php
+      # The steps of the SLA escalation (ExmentSupportDesk, plain PHP).
+      - name: SLA escalation check (ExmentSupportDesk)
+        run: php support-desk/tools/test-sla-escalation.php
 
-      # The fields of the request catalog (ExmentITSupport, plain PHP).
-      - name: Request catalog check (ExmentITSupport)
-        run: php it-support/tools/test-catalog-spec.php
+      # The fields of the request catalog (ExmentSupportDesk, plain PHP).
+      - name: Request catalog check (ExmentSupportDesk)
+        run: php support-desk/tools/test-catalog-spec.php
 
       # The hosts of Mackerel and Zabbix into IT assets, and which asset a host is (plain PHP).
-      - name: Asset sync check (ExmentITSupport)
-        run: php it-support/tools/test-asset-sync.php
+      - name: Asset sync check (ExmentSupportDesk)
+        run: php support-desk/tools/test-asset-sync.php
 
-      # the 受付箱 of the help desk: kinds, flows, progress (ISS02941)
-      - name: Help desk boxes (IT Support)
-        run: php it-support/tools/test-queue.php
+      # the 受付箱 of the support desk: kinds, flows, progress (ISS02941)
+      - name: Support desk boxes (Support Desk)
+        run: php support-desk/tools/test-queue.php
 
-      # what the help desk tells a chat, and Slack's marks kept as text (ISS02941)
-      - name: Help desk chat notices (IT Support)
-        run: php it-support/tools/test-chat-notices.php
+      # what the support desk tells a chat, and Slack's marks kept as text (ISS02941)
+      - name: Support desk chat notices (Support Desk)
+        run: php support-desk/tools/test-chat-notices.php
 
       # the chat of the groupware: mentions, read counts, direct rooms, the polling (ISS02945)
       - name: Groupware chat (ExmentGroupware)
@@ -295,24 +327,24 @@ jobs:
         run: php groupware/tools/test-chat-call.php
 
       # 「ExmentPM の課題にする」 and every route with its method (ISS02941)
-      - name: Help desk ExmentPM link (IT Support)
-        run: php it-support/tools/test-pm-link.php
+      - name: Support desk ExmentPM link (Support Desk)
+        run: php support-desk/tools/test-pm-link.php
 
       # the website form of a 受付箱 and the routes of the plugin (ISS02941)
-      - name: Help desk website forms (IT Support)
-        run: php it-support/tools/test-web-forms.php
+      - name: Support desk website forms (Support Desk)
+        run: php support-desk/tools/test-web-forms.php
 
       # the quote and the trial key of a ticket (ISS02941)
-      - name: Help desk quotes and trial keys (IT Support)
-        run: php it-support/tools/test-sales-link.php
+      - name: Support desk quotes and trial keys (Support Desk)
+        run: php support-desk/tools/test-sales-link.php
 
       # the chat window of a box on a website: its key, the sites that may show it, the offline rule (ISS02941)
-      - name: Help desk website chat (IT Support)
-        run: php it-support/tools/test-guest-chat.php
+      - name: Support desk website chat (Support Desk)
+        run: php support-desk/tools/test-guest-chat.php
 
       # calls with a customer by a link from a ticket (ISS02941)
-      - name: Help desk calls with customers (IT Support)
-        run: php it-support/tools/test-guest-call.php
+      - name: Support desk calls with customers (Support Desk)
+        run: php support-desk/tools/test-guest-call.php
 
       # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
       # plain PHP)

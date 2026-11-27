@@ -1636,8 +1636,8 @@ return [
         'schedule' => 'Made :count issues from the recurring schedules.',
         'schedule_dry' => 'Dry run: would make :count issues from the recurring schedules. Makes nothing.',
         'schedule_off' => 'Recurring schedules are turned off (Feature management, or the plugin settings).',
-        'schedule_shares' => 'Looked at :issues issues made by the recurring schedules and the recurring issues, and removed :removed of :count creator shares to people and organizations outside the project.',
-        'schedule_shares_dry' => 'Dry run: :count creator shares to people and organizations outside the project on :issues issues made by the recurring schedules and the recurring issues (listed above). Changes nothing. Run with --param2=apply to remove them.',
+        'schedule_shares' => 'Looked at :issues issues made by the recurring schedules and the recurring issues or imported from Backlog, and removed :removed of :count creator shares to people and organizations outside the project.',
+        'schedule_shares_dry' => 'Dry run: :count creator shares to people and organizations outside the project on :issues issues made by the recurring schedules and the recurring issues or imported from Backlog (listed above). Changes nothing. Run with --param2=apply to remove them.',
         'schedule_keys' => 'Of :issues issues, fixed :fixed of :count that showed the key of an older issue (:failed could not be fixed).',
         'schedule_keys_dry' => 'Dry run: of :issues issues, :count show the key of an older issue (listed above). Changes nothing. Run with --param2=apply to give each a key of its own.',
         'remind' => 'Reminders: :count sent for :issues issues (:skipped already sent, left out).',
@@ -2317,4 +2317,10 @@ return [
     'back_tip' => 'Back to %s',
     // ROW-1
     'row_unread' => 'Unread',
+    // Exment's messages after a form was sent (an expired page, a save), and a request refused
+    // because the page expired (419): shown in the portal, with a reload
+    'flash' => [
+        'close' => 'Close',
+        'reload' => 'Reload',
+    ],
 ];

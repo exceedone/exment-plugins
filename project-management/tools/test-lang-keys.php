@@ -12,7 +12,7 @@
 $root = dirname(__DIR__, 2);
 $plugins = [
     ['project-management/ExmentPM/resources/lang', 'pmportal.php', 'ja'],
-    ['it-support/ExmentITSupport/resources/lang', 'its.php', 'en'],
+    ['support-desk/ExmentSupportDesk/resources/lang', 'sd.php', 'en'],
     ['groupware/ExmentGroupware/resources/lang', 'groupware.php', 'en'],
 ];
 

@@ -42,6 +42,14 @@ class PluginPage extends PluginPageBase
         FeatureGate::registerCalendar($plugin);
         FeatureGate::registerChat($plugin);
         FeatureGate::registerCall($plugin);
+        // the calendar's outside calendars and its ICS export address (ISS02947 part 5): the address is
+        // read without login, so its route is added here (CalendarFeed)
+        FeatureGate::registerCalendarLinks($plugin);
+        try {
+            CalendarFeed::register();
+        } catch (\Throwable $e) {
+            \Log::error('ExmentGroupware could not add the route of the ICS export of the calendar: ' . get_class($e));
+        }
     }
 
 
@@ -625,6 +633,71 @@ class PluginPage extends PluginPageBase
     public function calReply($id)
     {
         return $this->calDenied() ?? $this->calendar()->reply(request(), $id);
+    }
+
+    // the outside calendars and the ICS export address (part 5): the calendar and its own feature
+
+    protected function calLinks(): Calendar\LinksPage
+    {
+        require_once __DIR__ . '/Calendar/Bootstrap.php';
+        return new Calendar\LinksPage($this->plugin);
+    }
+
+    protected function calLinksDenied()
+    {
+        return FeatureGate::deny(FeatureGate::CALENDAR) ?? FeatureGate::deny(FeatureGate::CALENDAR_LINKS);
+    }
+
+    public function calLinkList()
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->links();
+    }
+
+    public function calLinkCreate()
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->create(request());
+    }
+
+    public function calLinkSave($id)
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->save(request(), $id);
+    }
+
+    public function calLinkDelete($id)
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->delete($id);
+    }
+
+    public function calLinkSync($id)
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->sync($id);
+    }
+
+    // Google and Microsoft calendars (part 6): sign-in, sign-in again, the way back
+
+    public function calLinkOauth($provider)
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->oauthStart($provider);
+    }
+
+    public function calLinkReconnect($id)
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->reconnect($id);
+    }
+
+    public function calOauthCallback()
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->oauthCallback(request());
+    }
+
+    public function calFeedCreate()
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->feedCreate();
+    }
+
+    public function calFeedRevoke()
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->feedRevoke();
     }
 
     public function calHolidays()

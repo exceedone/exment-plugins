@@ -59,21 +59,21 @@ class Importer
                     $n['skipped']++;
                     continue;
                 }
-                DB::table('pmbl_links')->updateOrInsert(
+                Links::upsert(
                     ['space_host' => $host, 'kind' => 'issue', 'backlog_id' => intval($bid)],
                     [
                         'connection_id' => $connId, 'exment_id' => $eid,
                         'backlog_key' => mb_substr(strval($r['key'] ?? ''), 0, 64) ?: null,
                         'backlog_updated' => $r['updated'] ?? null,
                         'last_comment_id' => !empty($r['last_comment_id']) ? intval($r['last_comment_id']) : null,
-                        'created_at' => $now, 'updated_at' => $now,
+                        'updated_at' => $now,
                     ]
                 );
                 $n['issues']++;
                 foreach ((array) ($r['attachments'] ?? []) as $aid) {
-                    DB::table('pmbl_links')->updateOrInsert(
+                    Links::upsert(
                         ['space_host' => $host, 'kind' => 'attachment', 'backlog_id' => intval($aid)],
-                        ['connection_id' => $connId, 'exment_id' => 0, 'parent_backlog_id' => intval($bid), 'created_at' => $now, 'updated_at' => $now]
+                        ['connection_id' => $connId, 'exment_id' => 0, 'parent_backlog_id' => intval($bid), 'updated_at' => $now]
                     );
                     $n['files']++;
                 }

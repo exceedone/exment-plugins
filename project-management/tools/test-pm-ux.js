@@ -77,7 +77,7 @@ const ux = load(detail, ['qfField', 'qfKeys', 'qfValue', 'qfDayFrom', 'propsShow
 test('S19: the trail names the portal, the project and its issues, each a link', () => {
     const html = ux.crumbs({ key: 'WEB-1' });
     assert.ok(html.indexOf('href="/admin/plugins/exment_pm">プロジェクト管理</a>') > 0);
-    assert.ok(html.indexOf('href="#home">Web &lt;b&gt;</a>') > 0, 'the project name is escaped');
+    assert.ok(html.indexOf('href="#home" title="Web &lt;b&gt;">Web &lt;b&gt;</a>') > 0, 'the project name is escaped, in full in its tooltip');
     assert.ok(html.indexOf('href="#issues">課題</a>') > 0);
     assert.ok(/aria-current="page">WEB-1</.test(html));
     assert.ok(functionSource(detail, 'buildDetail').indexOf('crumbs(i)') > 0, 'drawn above the issue');
@@ -648,6 +648,78 @@ test('BACK-3: back to the list: the issue lit up, the last conditions after a re
     assert.ok(style.indexOf('@media (max-width:760px){.pmportal .pp-dbar{display:none !important;}}') < 0, 'not hidden on a phone');
     assert.ok(/\.pmportal \.pp-dbar \.bl-pill,\.pmportal \.pp-dbar \.pp-tocmt\{display:none;\}/.test(style), 'only the ←, the key and the title there');
     assert.ok(/\.pmportal \.pp-dbar\{height:52px;/.test(style), 'room for the 44px circle');
+});
+
+
+test('PHONE-2: the taps left under 44px on a phone, less height above the content, nothing on a wide screen', () => {
+    // the block of a view that starts with the given comment, up to the end of its @media
+    const block = (src, mark) => {
+        const at = src.indexOf(mark);
+        assert.ok(at >= 0, 'no block: ' + mark);
+        const open = src.indexOf('{', src.indexOf('@media', at));
+        let depth = 0;
+        for (let i = open; i < src.length; i++) {
+            if (src[i] === '{') { depth++; }
+            if (src[i] === '}' && --depth === 0) { return src.slice(src.indexOf('@media', at), i + 1); }
+        }
+        throw new Error('the block does not end: ' + mark);
+    };
+    const s = block(style, '/* Phone polish 2:');
+    assert.ok(s.startsWith('@media (max-width:760px){'), 'a phone only');
+    const has = (re, why) => assert.ok(re.test(s), why);
+    // the project head
+    has(/\.bl-projhead\{padding-top:4px;padding-bottom:4px;margin-bottom:4px;\}/, 'a lower project head');
+    has(/\.bl-tabs\{margin-bottom:4px;\}/, 'a smaller gap under the tabs');
+    has(/\.pp-pjswitch\{min-height:44px;\}/, 'the project switcher');
+    has(/\.pp-projadd\{min-width:44px;min-height:44px;/, '課題を追加');
+    // the issue
+    has(/\.bl-dhead \.bl-btn-main,\.pmportal \.bl-dhead \.bl-btn-sub\{[^}]*min-height:44px;/, 'the next status, 編集 and ⋯');
+    has(/\.bl-dsum \.pp-st-btn\{min-height:44px;/, 'the status');
+    has(/\.bl-inav a\{[^}]*min-width:44px;min-height:44px;/, 'previous and next');
+    has(/\.bl-dhead \.pp-ikcopy\{[^}]*min-width:44px;min-height:44px;/, 'copy the key');
+    has(/\.bl-dhead \.pp-al-set\{[^}]*min-width:44px;min-height:44px;/, 'the alias');
+    has(/\.bl-dsum \.pp-tocmt\{[^}]*min-height:44px;\}/, 'コメント');
+    has(/\.bl-dsum \.pp-dmode\{min-height:44px;\}/, 'かんたん');
+    has(/\.bl-tlfilter button\{min-height:44px;/, 'すべて表示 / コメントのみ');
+    // the comment sheet
+    has(/\.bl-cmtdock \.bl-cmttools\{flex-wrap:nowrap;overflow-x:auto;/, 'the format buttons in one row');
+    has(/\.bl-cmtdock \.bl-cmttools > button\{flex:none;min-width:44px;min-height:44px;/, 'the format buttons');
+    has(/\.pp-md-tabs\{flex:none;position:sticky;right:0;/, '書く / プレビュー stay in view');
+    has(/\.pp-md-tabs > button\{min-height:44px;/, '書く / プレビュー');
+    has(/\.bl-cmtdock \.bl-qe-in\{height:44px;/, 'the status select');
+    has(/\.pp-notify-mail\{min-height:44px;\}/, 'the notify boxes');
+    has(/\.pp-notify-mail input\{width:20px;height:20px;\}/, 'the notify ticks');
+    has(/\.bl-dockfoot \.bl-btn-main,\.pmportal \.bl-dockfoot \.bl-btn-sub\{min-height:44px;\}/, 'cancel and send');
+    // the trail: one line, beside the ←
+    has(/\.pp-backrow \.pp-crumbs\{[^}]*flex-wrap:nowrap;[^}]*overflow-x:auto;/, 'the trail in one line');
+    has(/\.pp-backrow \.pp-crumbs a\{flex:0 1 auto;min-width:3em;max-width:11em;[^}]*min-height:44px;line-height:44px;[^}]*overflow:hidden;text-overflow:ellipsis;/, 'its links: they give way and end in "…", so the key stays in view');
+    has(/\.pp-backrow \.pp-crumbs\{[^}]*padding-right:18px;\}/, 'room to scroll past the fade');
+    has(/\.pp-backrow \.pp-crumbs,\.pmportal \.bl-pillrow\{\s*-webkit-mask-image:linear-gradient\(to right,#000 calc\(100% - 18px\),transparent\);mask-image:/, 'the right end fades: there is more');
+    has(/\.bl-cmtform textarea\{font-size:16px;\}/, 'no iOS zoom on the comment box');
+    // the project's list
+    has(/\.bl-pillrow\{flex-wrap:nowrap;overflow-x:auto;/, 'the status tabs and chips in one row');
+    has(/\.bl-pillrow\{[^}]*padding-right:18px;\}/, 'room to scroll past the fade');
+    has(/\.bl-pillrow \.bl-sttab,\.pmportal \.bl-pillrow \.bl-qchip\{[^}]*min-height:44px;/, 'the status tabs and chips');
+    has(/\.bl-filters > select,\.pmportal \.bl-filters > input,[^{]*\{min-height:44px;/, 'the keyword and the selects');
+    // what is already there stays: the 44px ← circle (BACK-2) and the 52px bar (BACK-3)
+    assert.ok(!/\.pp-back[,{]/.test(s) && !/\.pp-dbar/.test(s), 'the ← and the bar are left alone');
+    assert.ok(/\.bl-btn-sub\.pp-back\{width:44px;height:44px;min-height:44px;/.test(style));
+    // the top bar, the dashboard and all issues
+    const top = view('_topbar.blade.php');
+    const m2 = block(top, '/* M2: a phone keeps one line');
+    assert.ok(/\/\* phone polish 2: [^*]*\*\/\s*\.pp-top\{margin-bottom:6px;\}/.test(m2), 'a smaller gap under the top bar, on a phone');
+    assert.ok(/\.pp-top \.pp-top-search input\{font-size:16px;\}/.test(m2), 'no iOS zoom on the search box');
+    const dash = block(view('list.blade.php'), '/* Phone polish 2:');
+    assert.ok(dash.startsWith('@media (max-width:760px){'));
+    assert.ok(/\.pp-dash \.pp-ph\{flex-wrap:wrap;/.test(dash), 'the panel heads wrap');
+    assert.ok(/\.pp-dash \.pp-pjh\{height:auto;min-height:24px;/.test(dash), 'the captions grow');
+    assert.ok(/\.pp-dash \.pp-pjlist \.mi\{width:40px;\}/.test(dash), '自分の担当 has room');
+    const all = block(view('all-issues.blade.php'), '/* Phone polish 2:');
+    assert.ok(all.startsWith('@media (max-width: 767px){'), 'the page\'s own break');
+    assert.ok(/#pp-a-clear,\.pp-all #pp-a-save\{min-height:44px;/.test(all), '条件を消す / 条件を保存');
+    assert.ok(/\.pp-a-dl a\{white-space:normal;/.test(all), 'a long download name wraps');
+    assert.ok(/td\.sub a::after\{content:"";position:absolute;inset:0;\}/.test(all) && /tbody tr\{position:relative;\}/.test(all), 'the whole row opens the issue');
+    assert.ok(/\.pp-all \.pp-a-bar input\.q,\.pp-all \.pp-a-bar select,\.pp-all \.pp-a-pop input\[type=search\]\{font-size:16px;\}/.test(all), 'no iOS zoom on the keyword, the selects and the pickers');
 });
 
 test('A11Y: white text on the accent: a darker fill when the accent is too light (4.5:1)', () => {

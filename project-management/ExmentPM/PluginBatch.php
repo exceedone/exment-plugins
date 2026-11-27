@@ -40,8 +40,9 @@ use Illuminate\Support\Facades\Log;
  *   for 30 minutes.
  *
  *   --param1=schedule_shares lists the creator's shares that runs of the recurring
- *           schedules and issues gave on their issues to people outside the project (a dry
- *           run); --param2=apply removes them (PortalRunShares::repair)
+ *           schedules and issues, and imports from Backlog (ExmentPMBacklog), gave on their issues
+ *           to people outside the project (a dry run); --param2=apply removes them
+ *           (PortalRunShares::repair)
  *   --param1=schedule_keys lists the issues that show the key of an older issue (a dry
  *           run); --param2=apply gives each a key of its own (PortalRecurrence::repairKeys)
  *
@@ -168,9 +169,10 @@ class PluginBatch extends PluginBatchBase
             return $this->schedules($dry);
         }
 
-        // --param1=schedule_shares: list the creator's shares that runs of the schedules gave on the
-        // issues they made to people outside the project (PortalRunShares::repair). A dry run unless
-        // --param2=apply, which removes them; a second run finds nothing more.
+        // --param1=schedule_shares: list the creator's shares that runs of the schedules (and the
+        // imports of ExmentPMBacklog) gave on the issues they made to people outside the project
+        // (PortalRunShares::repair). A dry run unless --param2=apply, which removes them; a second
+        // run finds nothing more.
         if ($target === 'schedule_shares') {
             \Exceedone\Exment\Middleware\Morph::defineMorphMap();
             $apply = strtolower(strval(array_get($options, 'param2') ?? '')) === 'apply';

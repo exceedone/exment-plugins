@@ -14,26 +14,26 @@ on:
   push:
     tags: ['*-v*']
   # again for a tag that is there (this file of main, the files of the tag):
-  # Actions -> release -> Run workflow -> the tag, e.g. ExmentITSupport-v1.0.6
+  # Actions -> release -> Run workflow -> the tag, e.g. ExmentSupportDesk-v1.1.0
   workflow_dispatch:
     inputs:
       tag:
-        description: 'The tag, e.g. ExmentITSupport-v1.0.6'
+        description: 'The tag, e.g. ExmentSupportDesk-v1.1.0'
         required: true
 
 permissions:
   contents: write
 
-# The free official plugins (ExmentPM, ExmentITSupport, ExmentGroupware) also go,
+# The free official plugins (ExmentPM, ExmentSupportDesk, ExmentGroupware) also go,
 # as the same zip and its release record NOT signed, into a pull request to
 # exceedone/exment-plugins-release (Exment bundles them, ISS00419). The key is
 # only on the computer of the person who signs; that pull request is signed there
 # (php tools/release.php sign ...) and merged. Exment uses only signed releases.
 # A fix for safety: put "security: <one line>" in the message of an annotated tag
-#   git tag -a ExmentITSupport-v1.0.6 -m "security: <note>"
+#   git tag -a ExmentSupportDesk-v1.1.0 -m "security: <note>"
 # Needs the secret OFFICIAL_PLUGINS_TOKEN (a fine-grained token: contents and pull
 # requests of exment-plugins-release only). Variables (optional):
-# EXMENT_REQUIRES_<PLUGIN NAME IN CAPITALS>, e.g. EXMENT_REQUIRES_EXMENTITSUPPORT = ">=7.2.0 <7.4"
+# EXMENT_REQUIRES_<PLUGIN NAME IN CAPITALS>, e.g. EXMENT_REQUIRES_EXMENTSUPPORTDESK = ">=7.2.0 <7.4"
 
 jobs:
   release:
@@ -100,7 +100,7 @@ jobs:
         id: official
         run: |
           case "${{ steps.plugin.outputs.name }}" in
-            ExmentPM|ExmentITSupport|ExmentGroupware) echo "yes=1" >> "$GITHUB_OUTPUT" ;;
+            ExmentPM|ExmentSupportDesk|ExmentGroupware) echo "yes=1" >> "$GITHUB_OUTPUT" ;;
             *) echo "yes=" >> "$GITHUB_OUTPUT" ;;
           esac
           # "security: <note>" in the message of the tag
