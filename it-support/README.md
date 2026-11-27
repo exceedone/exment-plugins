@@ -241,3 +241,13 @@ An IT support / help desk plugin for Exment. Requests from customers (mail, a pu
 **No-login pages**: Exment does not let a plugin's `config.json` open a route without login, on purpose. A help desk needs a door for people without an account, so this plugin registers `/support/...` itself while Exment boots (`PublicRoutes.php`), the same idea as Exment's public form: the secret in the URL opens one thing and nothing else.
 
 **AI** (classification, reply drafts, similar tickets, phone agent) is planned as a separate paid service; everything here works without it.
+
+## Website chat behind a proxy
+
+The chat window limits new chats per client IP and per box (the box's 「チャット：1 つの IP から 1 時間に始められる数」, default 5, and 「チャット：この受付箱で 1 時間に始められる数（全体）」, default 60).
+The IP is Laravel's `request()->ip()`, which follows the site's trusted proxies (Exment's TrustProxies, `ADMIN_TRUST_PROXY_IPS` in .env); a raw `X-Forwarded-For` is never read. Behind a load balancer (Exment SaaS: AWS ALB) set the trusted proxies to the balancer, or every customer has the balancer's IP and the per-IP limit becomes one for the whole site; the per-box limit bounds a burst either way.
+
+## プロキシのうしろの Web サイトのチャット
+
+チャットの窓は、新しいチャットを IP ごとと受付箱ごとに数えて止めます（受付箱の「チャット：1 つの IP から 1 時間に始められる数」初めは 5、「チャット：この受付箱で 1 時間に始められる数（全体）」初めは 60）。
+IP は Laravel の `request()->ip()` で、サイトの信頼するプロキシ（Exment の TrustProxies、.env の `ADMIN_TRUST_PROXY_IPS`）にしたがいます。`X-Forwarded-For` をそのまま読むことはしません。ロードバランサーのうしろ（Exment SaaS は AWS ALB）では、信頼するプロキシにロードバランサーを入れてください。入れないと、お客様がみなロードバランサーの IP になり、IP ごとの数がサイト全体のものになります。受付箱ごとの数は、どちらでも上限になります。
