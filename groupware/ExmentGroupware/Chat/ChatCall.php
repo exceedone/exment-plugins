@@ -116,7 +116,15 @@ class ChatCall
     {
         [$call, $room] = static::call($uid, $callId);
         if ($to === null) {
+            // only a 1:1 room has an "other one"
+            if ($room->kind !== 'direct') {
+                throw new \InvalidArgumentException('合図の相手を決めてください。');
+            }
             $to = static::other($uid, $room);
+        }
+        // the sender must be in the call too (a hangup also from who just left)
+        if ($type !== 'hangup' && !in_array($uid, static::people($callId), true)) {
+            abort(404);
         }
         // only to someone of the room who is in the call (a hangup also to who just left)
         if ($to === $uid || ChatService::member($to, intval($room->id)) === null

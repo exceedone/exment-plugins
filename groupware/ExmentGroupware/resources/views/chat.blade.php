@@ -625,11 +625,13 @@ function callPoll() {
     api(u('call_signals', id) + '?after=' + CALL.after).then(function (d) {
         if (!CALL || CALL.id !== id) { return; }
         var chain = Promise.resolve();
+        if (CALL) { CALL.people = (d.people || []).map(Number); }
         (d.signals || []).forEach(function (s) {
             CALL.after = Math.max(CALL.after, s.id);
             chain = chain.then(function () { return callOn(s); }).catch(function () { /* one bad signal: the next ones still count */ });
         });
         chain.then(function () {
+            if (CALL) { CALL.people = (d.people || []).map(Number); }
             if (d.ended) { callEnd(false); return; }
             if (CALL) { CALL.timer = setTimeout(callPoll, 1000); }
         });
@@ -639,6 +641,8 @@ function callOn(s) {
     if (!CALL) { return; }
     if (s.type === 'hangup') { dropPeer(s.from); return; }
     if (s.type === 'join') { return; }
+    // only from someone in the call (the server says who): no tile for anyone else
+    if ((CALL.people || []).indexOf(Number(s.from)) < 0) { return; }
     // an offer from someone not yet connected: they joined later, so this side is the polite one
     var p = CALL.peers[s.from] || (s.type === 'offer' ? peer(s.from, true) : null);
     if (!p) { return; }
