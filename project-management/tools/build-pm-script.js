@@ -38,6 +38,7 @@ const FILES = [
     'wiki.js',
     'files.js',            // files, Office view
     'attach-edit.js',      // attachments edited in place, their versions (ISS02938)
+    'attach-preview.js',   // attachments seen in place: download / open online, Excel, Word, PDF (ISS02938)
     'read-receipts.js',
     'writes.js',
     'typeahead.js',
