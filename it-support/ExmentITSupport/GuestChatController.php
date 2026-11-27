@@ -79,7 +79,7 @@ JS;
                 'start' => PublicRoutes::url('chat', 'api', 'start'),
                 'lines' => PublicRoutes::url('chat', 'api', 'lines'),
                 'post' => PublicRoutes::url('chat', 'api', 'post'),
-                'online' => GuestChat::online(GuestChat::agentSeen(), time()),
+                'online' => GuestChat::onlineFor($box),
                 'max' => GuestChat::MAX_BODY,
                 'robot' => $robot,
             ],

@@ -472,6 +472,29 @@ class PublicController extends Controller
         ]);
     }
 
+    /** 「通話をお願いする」 (ISS02941): a line to the agents; they send the link from the ticket. */
+    public function postCallRequest(Request $request, $token)
+    {
+        $this->guard();
+        if (!GuestCall::enabled()) {
+            return $this->notFound();
+        }
+        if (!Tokens::allow('call_request', 3)) {
+            return $this->tooMany();
+        }
+        [$row, $ticket] = $this->resolve($token);
+        if (!isset($row) || !$this->otpPassed($row, $ticket)) {
+            return $this->notFound();
+        }
+        $when = trim(mb_substr(strval($request->input('when', '')), 0, 200));
+        $email = strval($row->email ?: array_get($ticket->value, 'requester_email'));
+        Tickets::customerWrote($ticket, '📞 通話をお願いしたいです。' . ($when !== '' ? "\n都合のよい時間：" . $when : ''), 'portal', $email, strval(array_get($ticket->value, 'requester_name')));
+        Tokens::touch($row, 'call_request');
+        session()->flash('its_flash', '通話のお願いを送りました。担当者から通話のリンクをメールでお送りします。');
+
+        return redirect(Its::publicUrl('t', strval($token)));
+    }
+
     public function postReply(Request $request, $token)
     {
         $this->guard();

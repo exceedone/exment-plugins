@@ -112,9 +112,29 @@ class GuestChat
     {
         try {
             Cache::put('its_agent_seen', time(), 3600);
+            $uid = intval(\Exment::getUserId());
+            if ($uid > 0) {
+                Cache::put('its_agent_seen:' . $uid, time(), 3600);
+            }
         } catch (\Throwable $e) {
             // the window then says nobody is there
         }
+    }
+
+    /**
+     * Whether someone is there for a box: its first assignee when it has one (a box of its own
+     * people), else any agent.
+     */
+    public static function onlineFor($box): bool
+    {
+        $assignee = intval(array_get(isset($box) ? (array) $box->value : [], 'default_assignee'));
+        try {
+            $seen = $assignee > 0 ? Cache::get('its_agent_seen:' . $assignee) : Cache::get('its_agent_seen');
+        } catch (\Throwable $e) {
+            $seen = null;
+        }
+
+        return static::online($seen !== null ? intval($seen) : null, time());
     }
 
     public static function agentSeen(): ?int
@@ -319,7 +339,7 @@ class GuestChat
             'updated_at' => now(),
         ]);
 
-        return ['token' => $token, 'ticket' => strval(array_get($ticket->value, 'ticket_no')), 'online' => static::online(static::agentSeen(), time())];
+        return ['token' => $token, 'ticket' => strval(array_get($ticket->value, 'ticket_no')), 'online' => static::onlineFor($box)];
     }
 
     /** The ticket of a guest token, still good (its use moves the expiry on); else 404. */
@@ -359,7 +379,10 @@ class GuestChat
             ];
         }
 
-        return ['lines' => $out, 'online' => static::online(static::agentSeen(), time())];
+        $box = Its::table(Its::T_CATEGORY) !== null && !empty(array_get($ticket->value, 'category'))
+            ? Its::table(Its::T_CATEGORY)->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)->find(array_get($ticket->value, 'category')) : null;
+
+        return ['lines' => $out, 'online' => static::onlineFor($box)];
     }
 
     public static function post(string $token, string $body): array

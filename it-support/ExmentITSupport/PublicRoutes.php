@@ -59,6 +59,7 @@ class PublicRoutes
             Route::post('t/{token}/otp', $c . '@postOtp');
             Route::post('t/{token}/rate', $c . '@postRate');
             Route::post('t/{token}/solved', $c . '@postSolved');
+            Route::post('t/{token}/call-request', $c . '@postCallRequest');
             Route::get('t/{token}/file/{uuid}', $c . '@file');
         });
 
