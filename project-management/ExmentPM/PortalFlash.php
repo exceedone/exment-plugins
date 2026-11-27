@@ -80,6 +80,10 @@ class PortalFlash
         if (is_array($value)) {
             $value = reset($value);
         }
+        // a message marked as HTML (an Htmlable, such as Illuminate\Support\HtmlString)
+        if (is_object($value) && method_exists($value, 'toHtml')) {
+            $value = $value->toHtml();
+        }
 
         return is_scalar($value) ? strval($value) : '';
     }
