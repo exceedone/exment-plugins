@@ -2341,4 +2341,15 @@ return [
         'close' => 'Close',
         'reload' => 'Reload',
     ],
+    // the card of "My insights" of Exment (ISS02964)
+    'my_insights' => [
+        'title' => 'My issues (ExmentPM)',
+        'open' => 'Assigned to me (not finished)',
+        'overdue' => 'Overdue',
+        'due_soon' => 'Due within %s days',
+        'finished' => 'Finished in this period',
+        'hours' => 'Actual hours (issues assigned to me)',
+        'open_list' => 'Open the issues',
+        'help' => 'The ExmentPM issues whose assignees include you.',
+    ],
 ];

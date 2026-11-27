@@ -2306,4 +2306,15 @@ return [
     'back_tip' => 'Volver a %s',
     // ROW-1
     'row_unread' => 'No leído',
+    // the card of "My insights" of Exment (ISS02964)
+    'my_insights' => [
+        'title' => 'Mis tareas (ExmentPM)',
+        'open' => 'Asignadas a mí (sin terminar)',
+        'overdue' => 'Vencidas',
+        'due_soon' => 'Vencen en %s días',
+        'finished' => 'Terminadas en este período',
+        'hours' => 'Horas reales (tareas asignadas a mí)',
+        'open_list' => 'Abrir las tareas',
+        'help' => 'Las tareas de ExmentPM en las que usted está asignado.',
+    ],
 ];
