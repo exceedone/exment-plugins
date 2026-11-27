@@ -1635,8 +1635,8 @@ return [
         'schedule' => '繰り返しの予定から課題を :count 件作りました。',
         'schedule_dry' => 'ドライラン：繰り返しの予定から課題を :count 件作る予定です。何も作りません。',
         'schedule_off' => '繰り返しの予定は使わない設定です（機能の管理、またはプラグインの設定）。',
-        'schedule_shares' => '繰り返しの予定と繰り返しの課題が作った課題 :issues 件を見て、プロジェクトの外の人と組織への作成者の共有 :count 件のうち :removed 件を外しました。',
-        'schedule_shares_dry' => 'ドライラン：繰り返しの予定と繰り返しの課題が作った課題 :issues 件に、プロジェクトの外の人と組織への作成者の共有が :count 件あります（上の一覧）。何も変えません。外すには --param2=apply を付けて実行します。',
+        'schedule_shares' => '繰り返しの予定と繰り返しの課題が作った課題と Backlog から取り込んだ課題 :issues 件を見て、プロジェクトの外の人と組織への作成者の共有 :count 件のうち :removed 件を外しました。',
+        'schedule_shares_dry' => 'ドライラン：繰り返しの予定と繰り返しの課題が作った課題と Backlog から取り込んだ課題 :issues 件に、プロジェクトの外の人と組織への作成者の共有が :count 件あります（上の一覧）。何も変えません。外すには --param2=apply を付けて実行します。',
         'schedule_keys' => '課題 :issues 件のうち、古い課題と同じキーの課題 :count 件を直しました（直せなかったもの :failed）。',
         'schedule_keys_dry' => 'ドライラン：課題 :issues 件のうち、古い課題と同じキーの課題が :count 件あります（上の一覧）。何も変えません。直すには --param2=apply を付けて実行します。',
         'remind' => 'リマインド：課題 :issues 件、:count 通を送りました（送り済みで省いたもの :skipped）。',
@@ -2312,4 +2312,10 @@ return [
     'back_tip' => '%s に戻る',
     // ROW-1
     'row_unread' => '未読',
+    // Exment's messages after a form was sent (an expired page, a save), and a request refused
+    // because the page expired (419): shown in the portal, with a reload
+    'flash' => [
+        'close' => '閉じる',
+        'reload' => '再読み込み',
+    ],
 ];

@@ -21,12 +21,41 @@ class Links
 
     public static function put(int $connId, string $host, string $kind, int $backlogId, int $exmentId, ?string $key = null, ?int $parentBacklogId = null): void
     {
-        $now = Carbon::now();
-        DB::table(static::TABLE)->updateOrInsert(
+        static::upsert(
             ['space_host' => $host, 'kind' => $kind, 'backlog_id' => $backlogId],
             ['connection_id' => $connId, 'exment_id' => $exmentId, 'backlog_key' => mb_substr(strval($key), 0, 64) ?: null,
-                'parent_backlog_id' => $parentBacklogId, 'updated_at' => $now, 'created_at' => $now]
+                'parent_backlog_id' => $parentBacklogId]
         );
+    }
+
+    /**
+     * Write the link of $where: an update when it is there, else an insert. created_at only on
+     * the insert, so a link keeps the time it was first written: ExmentPM's share repair takes an
+     * imported issue's link time as the time of its import (Backlog's created_at is on the issue),
+     * and a takeover run again must not move it.
+     *
+     * @param array<string, mixed> $where
+     * @param array<string, mixed> $values
+     */
+    public static function upsert(array $where, array $values): void
+    {
+        $now = Carbon::now();
+        unset($values['created_at']);
+        $values['updated_at'] = $values['updated_at'] ?? $now;
+        $find = function () use ($where) {
+            $q = DB::table(static::TABLE);
+            foreach ($where as $column => $value) {
+                $q->where($column, $value);
+            }
+
+            return $q;
+        };
+        if ($find()->exists()) {
+            $find()->update($values);
+
+            return;
+        }
+        DB::table(static::TABLE)->insert($where + $values + ['created_at' => $now]);
     }
 
     public static function touch(int $linkId, string $updated, ?int $lastCommentId): void
