@@ -165,6 +165,13 @@ jobs:
       - name: Morning digest (ExmentPM)
         run: php project-management/tools/test-pm-digest.php
 
+      # Groupware's calendar (ISS02947): the occurrences and who sees what (plain PHP),
+      # and the page's helpers - the days of a view, overlaps, repeats, UTC, busy items (JS).
+      - name: Calendar check (Groupware)
+        run: |
+          php groupware/tools/test-gw-calendar.php
+          node groupware/tools/test-gw-calendar.js
+
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
         run: node project-management/tools/test-user-timezone.js

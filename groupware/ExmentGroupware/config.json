@@ -289,6 +289,83 @@
                 "admin.bootstrap",
                 "admin.pjax"
             ]
+        },
+        {
+            "method": "get",
+            "uri": "cal",
+            "function": "cal"
+        },
+        {
+            "method": "get",
+            "uri": "cal/api/events",
+            "function": "calEvents",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "cal/api/holidays",
+            "function": "calHolidays",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "cal/api/people",
+            "function": "calPeople",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/event",
+            "function": "calCreate",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "cal/api/event/{id}",
+            "function": "calEvent",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/event/{id}/save",
+            "function": "calSave",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/event/{id}/delete",
+            "function": "calDelete",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/event/{id}/reply",
+            "function": "calReply",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
         }
     ]
 }

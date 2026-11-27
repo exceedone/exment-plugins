@@ -22,6 +22,7 @@ class FeatureGate
 {
     const MAIL = 'exment_groupware.mail';
     const OFFICE = 'exment_groupware.office';
+    const CALENDAR = 'exment_groupware.calendar';
     /** The chat (ISS02945): new, off at first. */
     const CHAT = 'exment_groupware.chat';
     const FILE_SERVER = 'file_server';
@@ -156,6 +157,39 @@ class FeatureGate
     protected static function text(string $key, string $default): string
     {
         $name = 'exment_exment_groupware::groupware.' . $key;
-        return class_exists('Illuminate\Support\Facades\Lang') && \Illuminate\Support\Facades\Lang::has($name) ? $name : $default;
+        if (!class_exists('Illuminate\Support\Facades\Lang')) {
+            return $default;
+        }
+        // not before Exment has added the plugin's lang files: asked earlier, the translator
+        // keeps an empty group "groupware" for the request, and every trans() of the plugin
+        // gives its key back (the calendar's buttons, its 「予定あり」)
+        try {
+            $namespaces = app('translator')->getLoader()->namespaces();
+        } catch (\Throwable $e) {
+            return $default;
+        }
+        if (!array_key_exists('exment_exment_groupware', $namespaces)) {
+            return $default;
+        }
+        return \Illuminate\Support\Facades\Lang::has($name) ? $name : $default;
+    }
+
+    /**
+     * The calendar (ISS02947): a row of its own in Feature management, off at first (a new
+     * feature of the plugin: not "existing").
+     *
+     * @param \Exceedone\Exment\Model\Plugin $plugin
+     */
+    public static function registerCalendar($plugin): void
+    {
+        if (!static::available()) {
+            return;
+        }
+        call_user_func([static::FEATURES, 'register'], static::CALENDAR, [
+            'label' => static::text('feature_calendar', 'カレンダー'),
+            'description' => static::text('feature_calendar_help', '共有のカレンダー：自分・ほかの人・部署の予定を日・週・月・リストで見る、繰り返し、参加者と返事、公開の範囲（Exment Plugin Groupware）。'),
+            'endpoints' => [$plugin->getRouteUri('cal')],
+            'plugin' => $plugin->plugin_name,
+        ]);
     }
 }
