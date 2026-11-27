@@ -23,6 +23,10 @@ use Illuminate\Support\Facades\Log;
  * longer.
  *
  * The address is encrypted (APP_KEY) and never given back: the page shows its host only.
+ *
+ * Part 6: a Google or Microsoft calendar (provider google | microsoft), signed in with OAuth
+ * (CloudOAuth) and read by CloudSync at the same times, with the same limits. Its tokens are
+ * encrypted in secret_enc and never given back; the page shows the account's email only.
  */
 class Links
 {
@@ -32,6 +36,8 @@ class Links
     const BACK_DAYS = 30;
     const AHEAD_DAYS = 180;
     const SHOW_AS = ['busy', 'details'];
+    /** The providers signed in with OAuth (part 6). */
+    const CLOUD = ['google', 'microsoft'];
     /** Links read after one page's answer, and by one run of the batch. */
     const TICK_LINKS = 3;
     const BATCH_LINKS = 30;
@@ -46,6 +52,27 @@ class Links
         } catch (\Throwable $e) {
             return false;
         }
+    }
+
+    /** @var bool|null whether the columns of part 6 are there (account, sync_state, full_sync_at) */
+    protected static $cloudReady = null;
+
+    /** Whether Google and Microsoft calendars can be kept (the migration of part 6 has run). */
+    public static function cloudReady(): bool
+    {
+        if (static::$cloudReady === null) {
+            try {
+                static::$cloudReady = static::ready() && \Schema::hasColumn(static::TABLE, 'sync_state');
+            } catch (\Throwable $e) {
+                static::$cloudReady = false;
+            }
+        }
+        return static::$cloudReady;
+    }
+
+    public static function isCloud($provider): bool
+    {
+        return in_array(strval($provider), static::CLOUD, true);
     }
 
     // ---- the page --------------------------------------------------------------------
@@ -77,6 +104,9 @@ class Links
             'last_sync_at' => $l->last_sync_at !== null ? strval($l->last_sync_at) : null,
             'last_error' => $l->last_error !== null ? strval($l->last_error) : null,
             'events' => intval($l->event_count),
+            // Google and Microsoft (part 6): the account's email only, and whether to sign in again
+            'account' => static::isCloud($l->provider ?? null) ? strval($l->account ?? '') : null,
+            'reconnect' => static::isCloud($l->provider ?? null) && (empty($l->secret_enc) || strval($l->last_error ?? '') === 'auth'),
         ];
     }
 
@@ -141,11 +171,20 @@ class Links
         if (!isset($l)) {
             return 'link_not_found';
         }
+        $cloud = static::isCloud($l->provider ?? null);
+        if ($cloud) {
+            // a Google or Microsoft calendar has no address to change
+            unset($in['url']);
+        }
         [$f, $why] = static::fields($in, false);
         if ($f === null) {
             return $why;
         }
         $v = ['name' => $f['name'], 'show_as' => $f['show_as'], 'enabled' => $f['enabled'] ? 1 : 0, 'updated_at' => now()];
+        if ($cloud && ($f['show_as'] !== strval($l->show_as) || !$f['enabled'])) {
+            // read everything again: an event private there stays 「予定あり」 to the others
+            $v += ['sync_state' => null, 'full_sync_at' => null, 'next_sync_at' => static::utcNow()];
+        }
         if (isset($f['url'])) {
             // another address: read again from nothing
             $v += ['url_enc' => Crypt::encryptString($f['url']), 'url_host' => $f['url_host'], 'etag' => null, 'last_modified' => null, 'last_error' => null, 'fails' => 0, 'next_sync_at' => static::utcNow()];
@@ -160,17 +199,23 @@ class Links
         DB::transaction(function () use ($id, $v, $f, $l) {
             DB::table(static::TABLE)->where('id', $id)->update($v);
             if ($f['show_as'] !== strval($l->show_as)) {
-                DB::table(Events::EVENTS)->where('source', 'link')->where('link_id', $id)->update(['visibility' => static::visibility($f['show_as'])]);
+                // a Google or Microsoft calendar: 「予定あり」 until it is read again (then each event as it is there)
+                $vis = static::isCloud($l->provider ?? null) ? 'busy' : static::visibility($f['show_as']);
+                DB::table(Events::EVENTS)->where('source', 'link')->where('link_id', $id)->update(['visibility' => $vis]);
             }
         });
         return null;
     }
 
-    public static function delete(int $uid, int $id): bool
+    /** @param CloudOAuth|null $oauth to revoke a Google calendar's token (part 6); null: only forget it */
+    public static function delete(int $uid, int $id, ?CloudOAuth $oauth = null): bool
     {
         $l = DB::table(static::TABLE)->where('id', $id)->where('user_id', $uid)->first();
         if (!isset($l)) {
             return false;
+        }
+        if ($oauth !== null && static::isCloud($l->provider ?? null)) {
+            $oauth->revoke($l);
         }
         DB::transaction(function () use ($id) {
             static::removeEvents($id);
@@ -178,6 +223,50 @@ class Links
         });
         Log::info('gw_calendar: link ' . $id . ' removed by user ' . $uid);
         return true;
+    }
+
+    /**
+     * A Google or Microsoft calendar signed in (part 6): a new link, or the tokens of the link
+     * signed in again ($linkId, the person's own of that provider). Another account signed in
+     * again: that link's events go, and it is read from nothing.
+     *
+     * @param array<string, mixed> $secret the tokens (CloudOAuth::finish)
+     * @return array{0: int|null, 1: string|null} the link, or the rule broken
+     */
+    public static function connect(int $uid, string $provider, ?int $linkId, array $secret, string $account, string $name): array
+    {
+        if (!static::isCloud($provider) || !static::cloudReady()) {
+            return [null, 'not_ready'];
+        }
+        $enc = CloudOAuth::encryptSecret($secret);
+        if ($linkId !== null && $linkId > 0) {
+            $l = DB::table(static::TABLE)->where('id', $linkId)->where('user_id', $uid)->where('provider', $provider)->first();
+            if (!isset($l)) {
+                return [null, 'link_not_found'];
+            }
+            $v = ['secret_enc' => $enc, 'last_error' => null, 'fails' => 0, 'next_sync_at' => static::utcNow(), 'updated_at' => now()];
+            if ($account !== '' && $account !== strval($l->account ?? '')) {
+                static::removeEvents($linkId);
+                $v += ['account' => $account, 'sync_state' => null, 'full_sync_at' => null, 'event_count' => 0];
+            }
+            DB::table(static::TABLE)->where('id', $linkId)->update($v);
+            Log::info('gw_calendar: link ' . $linkId . ' signed in again by user ' . $uid);
+            return [$linkId, null];
+        }
+        if (DB::table(static::TABLE)->where('user_id', $uid)->count() >= static::MAX_PER_USER) {
+            return [null, 'link_limit'];
+        }
+        $id = intval(DB::table(static::TABLE)->insertGetId([
+            'user_id' => $uid, 'provider' => $provider, 'direction' => 'read',
+            'name' => mb_substr($name, 0, 100), 'show_as' => 'busy', 'enabled' => 1,
+            // no address (the provider's API, CloudSync); the column is required
+            'url_enc' => Crypt::encryptString($provider . ':primary'), 'url_host' => null,
+            'account' => $account !== '' ? $account : null, 'secret_enc' => $enc,
+            'last_sync_at' => null, 'last_error' => null, 'fails' => 0, 'event_count' => 0,
+            'next_sync_at' => static::utcNow(), 'created_at' => now(), 'updated_at' => now(),
+        ]));
+        Log::info('gw_calendar: link ' . $id . ' (' . $provider . ') added by user ' . $uid);
+        return [$id, null];
     }
 
     protected static function removeEvents(int $linkId): void
@@ -287,10 +376,14 @@ class Links
      *
      * @return string|null the error code, or null
      */
-    public static function sync(object $link, ?IcsFetch $fetch = null, ?string $nowUtc = null): ?string
+    public static function sync(object $link, ?IcsFetch $fetch = null, ?string $nowUtc = null, ?CloudSync $cloud = null): ?string
     {
-        $fetch = $fetch ?? new IcsFetch();
         $now = $nowUtc ?? static::utcNow();
+        if (static::isCloud($link->provider ?? null)) {
+            // Google or Microsoft (part 6)
+            return ($cloud ?? new CloudSync())->sync($link, $now);
+        }
+        $fetch = $fetch ?? new IcsFetch();
         $id = intval($link->id);
         $error = null;
         $set = [];
@@ -400,7 +493,7 @@ class Links
      *
      * @return array{read: int, failed: int}
      */
-    public static function run(int $limit, ?IcsFetch $fetch = null, int $seconds = 0): array
+    public static function run(int $limit, ?IcsFetch $fetch = null, int $seconds = 0, ?CloudSync $cloud = null): array
     {
         $out = ['read' => 0, 'failed' => 0];
         if (!static::ready()) {
@@ -409,7 +502,7 @@ class Links
         $started = microtime(true);
         $now = static::utcNow();
         $allowed = [];
-        $due = DB::table(static::TABLE)->where('enabled', 1)->where('provider', 'ics')
+        $due = DB::table(static::TABLE)->where('enabled', 1)->whereIn('provider', static::cloudReady() ? array_merge(['ics'], static::CLOUD) : ['ics'])
             ->where(function ($q) use ($now) {
                 $q->whereNull('next_sync_at')->orWhere('next_sync_at', '<=', $now);
             })->orderBy('next_sync_at')->limit($limit)->get();
@@ -440,7 +533,10 @@ class Links
                 $out['failed']++;
                 continue;
             }
-            $error = static::sync($l, $fetch);
+            if (static::isCloud($l->provider ?? null)) {
+                $cloud = $cloud ?? new CloudSync();
+            }
+            $error = static::sync($l, $fetch, null, $cloud);
             $out[$error === null ? 'read' : 'failed']++;
         }
         return $out;

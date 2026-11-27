@@ -185,6 +185,12 @@ jobs:
       - name: Calendar ICS check (Groupware)
         run: php groupware/tools/test-gw-calendar-ics.php
 
+      # Google and Microsoft calendars read only (part 6): the fixed hosts, the sign-in and its state,
+      # the tokens encrypted and renewed, syncToken / deltaLink, 410, removals, busy or details, the caps
+      # (plain PHP, a fake client: nothing is sent to Google or Microsoft).
+      - name: Calendar Google and Microsoft check (Groupware)
+        run: php groupware/tools/test-gw-calendar-cloud.php
+
       # The calendar's repeats against the walk from the start they replaced (a fixed seed, a few
       # thousand random rules), and a COUNT read as UNTIL.
       - name: Calendar repeats regression (Groupware)

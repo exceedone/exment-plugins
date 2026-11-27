@@ -673,6 +673,23 @@ class PluginPage extends PluginPageBase
         return $this->calLinksDenied() ?? $this->calLinks()->sync($id);
     }
 
+    // Google and Microsoft calendars (part 6): sign-in, sign-in again, the way back
+
+    public function calLinkOauth($provider)
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->oauthStart($provider);
+    }
+
+    public function calLinkReconnect($id)
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->reconnect($id);
+    }
+
+    public function calOauthCallback()
+    {
+        return $this->calLinksDenied() ?? $this->calLinks()->oauthCallback(request());
+    }
+
     public function calFeedCreate()
     {
         return $this->calLinksDenied() ?? $this->calLinks()->feedCreate();

@@ -14,7 +14,7 @@ foreach (['MailException', 'HostGuard'] as $gwCalClass) {
         require_once __DIR__ . '/../Mail/' . $gwCalClass . '.php';
     }
 }
-foreach (['Ics', 'IcsFetchError', 'IcsFetch', 'Links', 'Feeds', 'LinksPage'] as $gwCalClass) {
+foreach (['Ics', 'IcsFetchError', 'IcsFetch', 'Links', 'Feeds', 'CloudFetch', 'CloudOAuth', 'CloudSync', 'LinksPage'] as $gwCalClass) {
     require_once __DIR__ . '/' . $gwCalClass . '.php';
 }
 unset($gwCalClass);

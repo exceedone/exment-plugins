@@ -615,6 +615,29 @@
                 "admin.bootstrap",
                 "admin.pjax"
             ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/oauth/{provider}",
+            "function": "calLinkOauth",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "cal/api/link/{id}/reconnect",
+            "function": "calLinkReconnect",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "cal/oauth/callback",
+            "function": "calOauthCallback"
         }
     ]
 }
