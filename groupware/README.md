@@ -178,7 +178,10 @@ Rooms of a group or of two people (ISS02945). Off at first: Admin setting → Fe
 - Read counts ("既読 n") under one's own messages; unread counts in the list of rooms.
 - New messages are fetched every 3 seconds while the page is seen, every 30 seconds while it is hidden, and not at all after 30 minutes of nothing done (until the page is used again). No new server is needed (Exment SaaS too).
 - Only the members of a room read it; another room or another room's file answers "not found".
-- Coming: replies, reactions, editing, 「タスクにする」 / 「課題にする」, search, notices (bell, mail, Teams), muting, how long messages are kept. See [docs/chat-design.md](docs/chat-design.md).
+- The people who use it need the plugin's permission too: a role group with **Plugin access** to Exment Plugin Groupware (Admin setting → Role groups). Without it Exment answers 403.
+- Notices: a direct message, and a message that names you (or `@全員`), ring the bell; mail or Teams too as you chose for ExmentPM's notices (「通知」 menu of ExmentPM), when ExmentPM is there. 「知らせを止める」 turns a room's notices off for you.
+- A room's owner chooses how long it keeps its messages (30 days to 5 years, or always). Older ones, with their files, are removed once a day and written to the operation log.
+- Coming: a live connection (WebSocket), and video calls (ISS02946). See [docs/chat-design.md](docs/chat-design.md).
 
 ## できること
 
@@ -290,4 +293,7 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 - 自分のメッセージの下に「既読 n」、ルームの一覧に未読の数。
 - 新しいメッセージは、ページを見ている間は 3 秒ごと、ほかのタブのときは 30 秒ごとに確かめ、30 分なにもしないと止めます（ページを動かすとまた確かめます）。新しいサーバーは要りません（Exment SaaS でも）。
 - ルームはメンバーだけが読めます。ほかのルームやそのファイルは「見つからない」になります。
-- これから：返信・リアクション・編集・「タスクにする」／「課題にする」・探す・知らせ（ベル・メール・Teams）・知らせを止める・残す期間。[docs/chat-design.md](docs/chat-design.md)。
+- 使う人には、プラグインの権限も要ります：Exment Plugin Groupware の「プラグインへのアクセス」のある役割グループ（管理者設定 → 役割グループ）。ないと Exment が 403 にします。
+- 知らせ：1 対 1 のメッセージと、自分の名前（または `@全員`）のあるメッセージで、ベルが鳴ります。ExmentPM があれば、その「通知」で選んだとおりメールや Teams にも。「知らせを止める」でそのルームの知らせを止められます。
+- ルームの持ち主は、メッセージを残す期間（30 日〜5 年、またはずっと）を決められます。古いものはファイルごと 1 日 1 回消え、操作ログに残ります。
+- これから：すぐ届くつなぎ（WebSocket）、ビデオ通話（ISS02946）。[docs/chat-design.md](docs/chat-design.md)。

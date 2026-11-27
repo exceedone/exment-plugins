@@ -766,6 +766,16 @@ class Plugin extends PluginPageBase
         return $this->chatDenied() ?? $this->chat()->apiSearch(request());
     }
 
+    public function chatMute($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postMute(request(), $id);
+    }
+
+    public function chatRoomSettings($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postRoomSettings(request(), $id);
+    }
+
     public function chatRead($id)
     {
         return $this->chatDenied() ?? $this->chat()->postRead(request(), $id);
