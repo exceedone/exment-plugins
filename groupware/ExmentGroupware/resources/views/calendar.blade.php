@@ -39,6 +39,13 @@ var GWCAL_CFG = @json($cfg);
 .gwcal-ev.declined .ti{text-decoration:line-through;color:var(--faint)}
 .gwcal-ev.busy{background:var(--busy);border-left-color:#9aa1aa;color:#3d434b;cursor:default}
 .gwcal-ev.busy:hover{filter:none}
+/* ExmentPM (part 4): the project's colour on the left, the bar light */
+.gwcal-ev.pm{background:var(--box2);color:var(--ink);border-left:4px solid var(--acc)}
+.gwcal-ev.pm .fa{color:var(--sub)}
+.gwcal-ev.pm.sched{background:var(--box);border:1px dashed var(--line);border-left:4px solid var(--acc)}
+.gwcal-ev.pm.done .ti{text-decoration:line-through;color:var(--faint)}
+.gwcal-pmsel{height:32px;max-width:220px;padding:0 8px;border:1px solid var(--line);border-radius:7px;background:var(--box)}
+.gwcal-pmdot{display:inline-block;width:10px;height:10px;margin-right:6px;border-radius:5px;vertical-align:middle}
 /* month */
 .gwcal-mhead,.gwcal-mrow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
 .gwcal-mhead div{padding:6px 4px;text-align:center;font-size:12px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--line)}
@@ -177,6 +184,20 @@ var GWCAL_CFG = @json($cfg);
   .gwcal-pp{--name:84px}
   .gwcal-ppname{padding:4px;font-size:12px}
   .gwcal-modal{padding:8px}
+}
+/* phones: taps of 44px (36px where a row is tight), and 16px text in the fields so that iOS does not zoom in */
+@media (max-width:640px){
+  .gwcal .gb,.gwcal .gbp{min-height:44px;height:auto}
+  .gwcal .gb.sq{width:44px;min-width:44px}
+  .gwcal .gwcal-views .gb{min-width:44px}
+  .gwcal .gwcal-pmsel{height:44px;font-size:16px}
+  .gwcal .gwcal-pick input{height:44px;font-size:16px}
+  .gwcal .gwcal-f input[type=text],.gwcal .gwcal-f input[type=date],.gwcal .gwcal-f input[type=time],.gwcal .gwcal-f select{height:44px;font-size:16px}
+  .gwcal .gwcal-f textarea{font-size:16px}
+  .gwcal .gwcal-chip button{width:36px;height:36px}
+  .gwcal .gwcal-chk,.gwcal .gwcal-rooms label{min-height:36px}
+  .gwcal .gwcal-rnav{position:relative;z-index:1;flex-wrap:nowrap;align-items:center;gap:8px;margin-bottom:4px}
+  .gwcal .gwcal-rnav .gwcal-q{flex:1 1 auto;min-width:0;margin:0;text-align:center}
 }
 </style>
 <div class="gwcal-bar" id="gwcal-bar"></div>
@@ -356,10 +377,45 @@ function holidayLabel(h) {
     if (!h) { return ''; }
     return h.name || t({ holiday: 'holiday', off: 'company_off', work: 'company_work' }[h.kind] || 'holiday');
 }
+// ExmentPM's layer (part 4): the choice of the toolbar ('off', 'mine', 'projects', 'p<id>') as the query of cal/api/pm.
+function pmQuery(sel) {
+    if (sel === 'mine' || sel === 'projects') { return { filter: sel }; }
+    var m = /^p(\d+)$/.exec(String(sel || ''));
+    return m ? { filter: 'project', project: m[1] } : null;
+}
+// An item of ExmentPM: an issue (a bar, or its due date), a milestone, a date of a schedule with no issue yet.
+function pmNode(it) {
+    var n = document.createElement('button');
+    n.type = 'button';
+    n.className = 'gwcal-ev pm' + (it.pm === 'schedule' ? ' sched' : '') + (it.done ? ' done' : '');
+    if (/^#[0-9a-fA-F]{6}$/.test(String(it.color || ''))) { n.style.borderLeftColor = it.color; }
+    var ic = it.pm === 'milestone' ? 'fa-flag-checkered' : it.pm === 'schedule' ? 'fa-clock-o' : it.kind === 'bar' ? 'fa-tasks' : 'fa-flag';
+    var i = document.createElement('i');
+    i.className = 'fa ' + ic;
+    i.setAttribute('aria-hidden', 'true');
+    n.appendChild(i);
+    var ti = document.createElement('span');
+    ti.className = 'ti';
+    ti.textContent = it.title || '';
+    n.appendChild(ti);
+    var what = it.pm === 'schedule' ? t('pm_pending') : it.pm === 'milestone' ? t('pm_milestone') : it.due ? t('pm_due') + ' ' + it.due : '';
+    n.setAttribute('title', (it.title || '') + (what ? ' (' + what + ')' : '') + (it.project_name ? ' - ' + it.project_name : ''));
+    return n;
+}
+// The rooms of a day: the rooms in use, and the ones taken out of use that still have bookings that day.
+function roomsOfDay(rooms, events) {
+    var out = [];
+    (rooms || []).forEach(function (room) {
+        var mine = (events || []).filter(function (e) { return (e.resources || []).indexOf(room.id) >= 0; });
+        if (room.enabled || mine.length) { out.push({ room: room, events: mine, off: !room.enabled }); }
+    });
+    return out;
+}
 // One event as a node. A busy one is the busy label and nothing else (its time only in the tooltip).
 function evNode(it, opts) {
     opts = opts || {};
     var n;
+    if (it.pm) { return pmNode(it); }
     if (it.busy || it.id == null) {
         n = document.createElement('div');
         n.className = 'gwcal-ev busy';
@@ -399,7 +455,9 @@ var S = {
     view: VIEWS.indexOf(stored(VKEY)) >= 0 ? stored(VKEY) : (NARROW ? 'list' : 'week'),
     span: stored('gwcal.span') === 'day' || stored('gwcal.span') === 'week' ? stored('gwcal.span') : (NARROW ? 'day' : 'week'),
     anchor: startOfDay(new Date()),
-    people: [], names: {}, items: [], byPerson: {}, hol: {}, seq: 0, range: null
+    people: [], names: {}, items: [], byPerson: {}, hol: {}, seq: 0, range: null,
+    // ExmentPM's layer: off at first, the choice kept in the browser
+    pm: C.pm && pmQuery(stored('gwcal.pm')) ? stored('gwcal.pm') : 'off'
 };
 (function () {
     var ids = [];
@@ -571,8 +629,30 @@ var viewBtns = {};
         rb.appendChild(document.createTextNode(' ' + t('rooms')));
         bar.appendChild(rb);
     }
+    if (C.pm && U.pm) { bar.appendChild(pmSelect()); }
     bar.appendChild(nw);
 })();
+// ExmentPM's layer: not shown, my issues, my projects, one project (the ones the viewer may read)
+function pmSelect() {
+    var sel = el('select', 'gwcal-pmsel');
+    sel.setAttribute('aria-label', t('pm_layer'));
+    sel.title = t('pm_layer');
+    var add = function (parent, value, text) { var o = el('option', '', text); o.value = value; parent.appendChild(o); };
+    add(sel, 'off', t('pm_off'));
+    add(sel, 'mine', t('pm_mine'));
+    add(sel, 'projects', t('pm_projects'));
+    var projects = C.pm.projects || [];
+    if (projects.length) {
+        var g = el('optgroup');
+        g.label = t('pm_project_group');
+        projects.forEach(function (p) { add(g, 'p' + p.id, p.name); });
+        sel.appendChild(g);
+    }
+    sel.value = S.pm;
+    if (sel.value !== S.pm) { S.pm = 'off'; sel.value = 'off'; }
+    sel.addEventListener('change', function () { S.pm = sel.value; store('gwcal.pm', S.pm); load(); });
+    return sel;
+}
 var peoplePicker = makePicker(S.people, t('people_add'), function (ids) {
     S.people = ids;
     store('gwcal.people', JSON.stringify(ids));
@@ -627,12 +707,14 @@ function load() {
     } else {
         evs = api(U.events, { from: w.from, to: w.to, people: C.me });
     }
-    Promise.all([evs, hol, S.view === 'people' ? ensureNames(S.people) : null]).then(function (res) {
+    var pq = C.pm && U.pm && S.view !== 'people' ? pmQuery(S.pm) : null;
+    var pm = pq ? api(U.pm, { from: dayKey(r.from), to: dayKey(r.to), filter: pq.filter, project: pq.project }) : null;
+    Promise.all([evs, hol, S.view === 'people' ? ensureNames(S.people) : null, pm]).then(function (res) {
         if (seq !== S.seq) { return; }
-        var e = res[0], h = res[1];
-        showError(e.ok ? (h.ok ? '' : h.message) : e.message);
+        var e = res[0], h = res[1], p = res[3];
+        showError(e.ok ? (h.ok ? (p && !p.ok ? p.message : '') : h.message) : e.message);
         S.hol = h.ok && h.days && typeof h.days === 'object' ? h.days : {};
-        S.items = S.view === 'people' ? [] : (e.events || []);
+        S.items = S.view === 'people' ? [] : (e.events || []).concat(p && p.ok ? (p.events || []) : []);
         S.byPerson = S.view === 'people' ? (e.by || {}) : {};
         if (S.view === 'people') { peoplePicker.draw(); }
         draw();
@@ -663,7 +745,7 @@ function sorted(list) {
 }
 function openable(n, it) {
     // a busy one opens nothing (and a click on it does not make a new event either)
-    n.addEventListener('click', function (e) { e.stopPropagation(); if (n.tagName === 'BUTTON') { openEvent(it); } });
+    n.addEventListener('click', function (e) { e.stopPropagation(); if (n.tagName === 'BUTTON') { if (it.pm) { openPm(it); } else { openEvent(it); } } });
     return n;
 }
 function goDay(d) { S.view = 'day'; S.anchor = startOfDay(d); load(); }
@@ -838,8 +920,17 @@ function showModal(nodes) {
     clear(dlg);
     nodes.forEach(function (n) { if (n) { dlg.appendChild(n); } });
     m.hidden = false;
+    modalBelowHeader();
     var f = dlg.querySelector('[data-focus]') || dlg.querySelector('input,select,textarea,button');
     if (f) { f.focus(); }
+}
+function modalBelowHeader() {
+    var m = $('gwcal-modal');
+    if (!m || m.hidden) { return; }
+    // the admin header is drawn above this layer: start the dialog below what shows of it
+    var hd = document.querySelector('header.main-header');
+    var under = hd ? Math.max(0, Math.round(hd.getBoundingClientRect().bottom)) : 0;
+    m.style.paddingTop = under > 0 ? (under + 8) + 'px' : '';
 }
 function closeModal() {
     $('gwcal-modal').hidden = true;
@@ -880,6 +971,35 @@ function showMessage(title, msg) {
     f.appendChild(el('span', 'sp'));
     f.appendChild(btn('gb', t('close'), closeModal));
     showModal([dlgHead(title), b, f]);
+}
+// An item of ExmentPM: an issue or a milestone opens in ExmentPM; a date of a schedule says what it is.
+function openPm(it) {
+    if (it.pm !== 'schedule') { if (it.url) { window.location.href = it.url; } return; }
+    var b = el('div', 'gwcal-dbody');
+    b.appendChild(dlgRow('fa-clock-o', t('pm_pending')));
+    b.appendChild(dlgRow('fa-calendar', fmtLong(it)));
+    var pn = el('span');
+    var dot = el('span', 'gwcal-pmdot');
+    if (/^#[0-9a-fA-F]{6}$/.test(String(it.color || ''))) { dot.style.background = it.color; }
+    pn.appendChild(dot);
+    pn.appendChild(document.createTextNode(it.project_name || ''));
+    b.appendChild(dlgRow('fa-folder-o', pn));
+    if (it.original && it.original !== it.start) { b.appendChild(dlgRow('fa-repeat', t('pm_original') + ' ' + it.original)); }
+    var f = el('div', 'gwcal-dfoot');
+    if (it.change_url) {
+        var a = el('a', 'gb', t('pm_change_one'));
+        a.href = it.change_url;
+        a.title = t('pm_change_help');
+        f.appendChild(a);
+    }
+    if (it.url) {
+        var o = el('a', 'gb', t('pm_open_project'));
+        o.href = it.url;
+        f.appendChild(o);
+    }
+    f.appendChild(el('span', 'sp'));
+    f.appendChild(btn('gb', t('close'), closeModal));
+    showModal([dlgHead(it.title || ''), b, f]);
 }
 function openEvent(it) {
     if (!it || it.busy || it.id == null) { return; }
@@ -1208,10 +1328,11 @@ function roomName(id) {
 function openRooms(day) {
     day = day || (S.view === 'day' ? S.anchor : startOfDay(new Date()));
     var b = el('div', 'gwcal-dbody');
-    var nav = el('div', 'gwcal-nav');
-    var pv = btn('gb sq', null, function () { openRooms(addDays(day, -1)); }, t('prev'));
+    // its own class and labels: not taken for the toolbar's arrows behind the dialog
+    var nav = el('div', 'gwcal-nav gwcal-rnav');
+    var pv = btn('gb sq', null, function () { openRooms(addDays(day, -1)); }, t('prev_day'));
     pv.appendChild(icon('fa-chevron-left'));
-    var nx = btn('gb sq', null, function () { openRooms(addDays(day, 1)); }, t('next'));
+    var nx = btn('gb sq', null, function () { openRooms(addDays(day, 1)); }, t('next_day'));
     nx.appendChild(icon('fa-chevron-right'));
     nav.appendChild(pv);
     nav.appendChild(el('span', 'gwcal-q', fmtDate(day, { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' })));
@@ -1219,8 +1340,9 @@ function openRooms(day) {
     b.appendChild(nav);
     var list = el('ul', 'gwcal-rlist');
     b.appendChild(list);
-    var rooms = roomsUsable();
-    if (!rooms.length) { list.appendChild(el('li', 'off', t('rooms_none'))); }
+    // with the rooms taken out of use: the bookings they still have show (taking a room out keeps its events)
+    var rooms = (C.resources || []).slice().sort(function (a, b) { return (b.enabled ? 1 : 0) - (a.enabled ? 1 : 0); }).slice(0, 30);
+    if (!roomsUsable().length) { list.appendChild(el('li', 'off', t('rooms_none'))); }
     var foot = el('div', 'gwcal-dfoot');
     if (C.resources_admin) { foot.appendChild(btn('gb', t('rooms_manage'), function () { manageRooms(); })); }
     foot.appendChild(el('span', 'sp'));
@@ -1229,12 +1351,11 @@ function openRooms(day) {
     if (!rooms.length) { return; }
     api(U.resource_events, { from: toUtc(day), to: toUtc(addDays(day, 1)), ids: rooms.map(function (r) { return r.id; }).join(',') }).then(function (r) {
         if (!r.ok) { list.appendChild(el('li', 'off', r.message)); return; }
-        rooms.forEach(function (room) {
+        roomsOfDay(rooms, r.events).forEach(function (x) {
             var li = el('li');
-            li.appendChild(el('span', 'n', room.name));
-            var mine = (r.events || []).filter(function (e) { return (e.resources || []).indexOf(room.id) >= 0; });
-            if (!mine.length) { li.appendChild(el('span', 'b', t('rooms_free'))); }
-            mine.forEach(function (e) { li.appendChild(el('span', 'b', fmtRange(e) + '  ' + (e.title || ''))); });
+            li.appendChild(el('span', 'n' + (x.off ? ' off' : ''), x.room.name + (x.off ? ' (' + t('rooms_off') + ')' : '')));
+            if (!x.events.length) { li.appendChild(el('span', 'b', t('rooms_free'))); }
+            x.events.forEach(function (e) { li.appendChild(el('span', 'b', fmtRange(e) + '  ' + (e.title || ''))); });
             list.appendChild(li);
         });
     });
@@ -1300,6 +1421,9 @@ function manageRooms(edit) {
 }
 
 // ---- keys, clicks, the clock ---------------------------------------------------------
+// the header's height changes with the width: keep an open dialog below it
+listen(window, 'resize', function () { if (document.body.contains(root)) { modalBelowHeader(); } });
+listen(window, 'orientationchange', function () { if (document.body.contains(root)) { modalBelowHeader(); } });
 listen(document, 'keydown', function (e) {
     if (!document.body.contains(root)) { return; }
     if (e.key === 'Escape') {
@@ -1335,3 +1459,7 @@ load();
 })();
 </script>
 @endverbatim
+{{-- the outside calendars and the ICS export (part 5): its button and dialog, for a person allowed them --}}
+@if (!empty($gwcalLinks))
+@include('exment_exment_groupware::calendar_links', ['links' => $gwcalLinks])
+@endif

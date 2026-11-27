@@ -132,6 +132,9 @@ use App\Plugins\ExmentPM\PortalDefinition as PD;
         }
     </style>
 
+    {{-- Exment's messages for this page (an expired form, a migration) and the 419 bar --}}
+    @include(PD::view('_flash'))
+
     <div class="pp-cfg-guide">
         <i class="fa fa-info-circle"></i>
         <div class="tx">

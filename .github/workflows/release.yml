@@ -33,7 +33,7 @@ permissions:
 #   git tag -a ExmentITSupport-v1.0.6 -m "security: <note>"
 # Needs the secret OFFICIAL_PLUGINS_TOKEN (a fine-grained token: contents and pull
 # requests of exment-plugins-release only). Variables (optional):
-# EXMENT_REQUIRES_<PLUGIN NAME IN CAPITALS>, e.g. EXMENT_REQUIRES_EXMENTITSUPPORT = ">=7.2.0 <7.3"
+# EXMENT_REQUIRES_<PLUGIN NAME IN CAPITALS>, e.g. EXMENT_REQUIRES_EXMENTITSUPPORT = ">=7.2.0 <7.4"
 
 jobs:
   release:
@@ -133,7 +133,7 @@ jobs:
           if [ -n "$prev" ] && [ -f "$prev" ]; then
             min="$(php -r '$r = json_decode((string) file_get_contents($argv[1]), true); echo is_array($r) ? ($r["security_min"] ?? "") : "";' "$prev")"
           fi
-          set -- "$base.zip" "$base.json" "${REQUIRES:->=7.2.0 <7.3}" ">=8.2"
+          set -- "$base.zip" "$base.json" "${REQUIRES:->=7.2.0 <7.4}" ">=8.2"
           if [ -n "$NOTE" ]; then set -- "$@" --security "$NOTE"; elif [ -n "$min" ]; then set -- "$@" --security-min "$min"; fi
           php official/tools/release.php make "$@"
           cd official

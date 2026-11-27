@@ -463,7 +463,8 @@ class PortalSchedule
             $row->parent_id = $project->id;
             $row->parent_type = $project->custom_table->table_name;
             $row->setValue($value);
-            $row->save();
+            // no creator's share for whoever's page load ran the schedule (PortalRunShares)
+            PortalRunShares::saveNew($row);
             $by = intval($s->updated_user_id ?? 0) ?: intval($tpl->created_user_id);
             DB::table(getDBTableName($issueTable))->where('id', $row->id)->update(['created_user_id' => $by, 'updated_user_id' => $by]);
             DB::table(static::ITEMS)->where('schedule_id', intval($s->id))->where('original_date', $original)->update(['issue_id' => intval($row->id)]);

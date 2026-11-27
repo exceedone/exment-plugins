@@ -166,6 +166,15 @@
     .pp-dash .pp-pj-name{white-space:normal;overflow-wrap:anywhere;line-height:1.3;padding:4px 0;}
 }
 
+/* ISS02939 item 6, step 1b: a phone. Taps of 44px for the star, the menu, the panel links and
+   the tabs; the column captions wrap instead of being cut (「自分の担当」). */
+@media (max-width:760px){
+    .pp-dash .pp-star{min-width:36px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
+    .pp-dash .pp-pj-more,.pp-dash .pp-pjlist .pp-pj-more{width:44px;height:44px;}
+    .pp-dash .pp-ph-right a,.pp-dash .pp-dfold a{display:inline-flex;align-items:center;min-height:44px;}
+    .pp-dash .pp-tabs button{min-height:44px;}
+    .pp-dash .pp-pjh span{white-space:normal;line-height:1.15;overflow-wrap:anywhere;}
+}
 /* project tree on the dashboard (fold, drag) */
 .pp-dash .pp-pj[hidden]{display:none !important;}
 .pp-dash .pp-dtgl-slot{flex:none;width:16px;display:inline-flex;justify-content:center;}
@@ -291,6 +300,16 @@
 .pp-dash .pp-fd .ln2 .key{font-family:Menlo,Consolas,monospace;font-size:11.5px;font-weight:700;color:#3c8dbc;}
 .pp-dash .pp-fd:hover .ln2{text-decoration:underline;}
 .pp-dash .pp-fd .ex{font-size:11.5px;color:var(--d-mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Phone polish 2: the panel heads wrap instead of running off, the column captions grow
+   with their words (「自分の担当」 was cut at 30px), and a subject takes two lines, not one cut short. */
+@media (max-width:760px){
+    .pp-dash .pp-ph{flex-wrap:wrap;row-gap:4px;padding:8px 12px;}
+    .pp-dash .pp-ph .pp-ph-right{white-space:normal;}
+    .pp-dash .pp-pjh{height:auto;min-height:24px;padding-top:3px;padding-bottom:3px;align-items:flex-end;}
+    .pp-dash .pp-pjlist .mi{width:40px;}
+    .pp-dash .pp-row .sub{white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+}
 </style>
 
 <div class="pp-dash">

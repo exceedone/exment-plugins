@@ -486,7 +486,7 @@ class Syncer
     {
         for ($try = 0; ; $try++) {
             try {
-                $this->saveQuietly($row, $value);
+                $this->saveQuietly($row, $value, $isNew);
 
                 return;
             } catch (ValidationException $e) {
@@ -534,12 +534,84 @@ class Syncer
 
     /**
      * @param array<string, mixed> $value
+     * @param bool $isNew a new issue: saved by newIssueSaver() when there is one
      */
-    protected function saveQuietly($row, array $value): void
+    protected function saveQuietly($row, array $value, bool $isNew = false): void
     {
         $row->saved_notify(false);
         $row->setValue($value);
+        $save = $isNew ? static::newIssueSaver() : null;
+        if ($save !== null) {
+            $save($row);
+
+            return;
+        }
         $row->save();
+    }
+
+    /** ExmentPM's save of a row a run makes by itself (ExmentPM 1.7.26 or later). */
+    const RUN_SHARES = 'App\\Plugins\\ExmentPM\\PortalRunShares';
+
+    /**
+     * How a new issue is saved. A run of 「今すぐ同期」 happens in the request of the admin who
+     * pressed it, and Exment gives the user of the request (and, by the setting of the automatic
+     * share, their organizations) a share on every row made in it. An imported issue is Backlog's,
+     * not theirs: ExmentPM's PortalRunShares::saveNew() keeps that share off, so the issue gets the
+     * shares of its share settings, the same as when the batch imports it with nobody logged in.
+     * The project's members reach it through the project.
+     *
+     * ExmentPM's classes load once Exment has registered ExmentPM's folder, which a request of
+     * this plugin's page does not always do (a cached route, say): then ExmentPM's folder is
+     * registered here, once. With an older ExmentPM, or when it cannot be loaded, a plain save as
+     * before, and a warning in the log once.
+     */
+    public static function newIssueSaver(): ?callable
+    {
+        $class = static::RUN_SHARES;
+        if (!class_exists($class) && !static::$pmLoadTried) {
+            static::$pmLoadTried = true;
+            static::loadExmentPM();
+        }
+        if (class_exists($class) && method_exists($class, 'saveNew')) {
+            return [$class, 'saveNew'];
+        }
+        if (!static::$plainSaveWarned) {
+            static::$plainSaveWarned = true;
+            try {
+                Log::warning('pm_backlog: ExmentPM\'s PortalRunShares::saveNew() is not available (ExmentPM 1.7.26 or later is needed), so the new issues of a run in a user\'s request are saved with a plain save and get the creator\'s share of that user.');
+            } catch (\Throwable $e) {
+                // no log (outside Exment)
+            }
+        }
+
+        return null;
+    }
+
+    /** @var bool whether newIssueSaver() tried to register ExmentPM's folder */
+    protected static $pmLoadTried = false;
+
+    /** @var bool whether newIssueSaver() logged that it falls back to the plain save */
+    protected static $plainSaveWarned = false;
+
+    /** Register ExmentPM's folder with Exment's class loader, as Exment does for a plugin it runs. */
+    protected static function loadExmentPM(): void
+    {
+        $model = 'Exceedone\\Exment\\Model\\Plugin';
+        if (!class_exists($model) || !method_exists($model, 'getPluginByName')) {
+            return;
+        }
+        try {
+            $plugin = $model::getPluginByName('ExmentPM');
+            if ($plugin && method_exists($plugin, 'requirePlugin')) {
+                $plugin->requirePlugin();
+            }
+        } catch (\Throwable $e) {
+            try {
+                Log::warning('pm_backlog: ExmentPM could not be loaded: ' . $e->getMessage());
+            } catch (\Throwable $e2) {
+                // no log (outside Exment)
+            }
+        }
     }
 
     /**

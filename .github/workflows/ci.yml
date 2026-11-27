@@ -149,9 +149,15 @@ jobs:
         run: node project-management/tools/test-pm-palette.js
       - name: Issue actions in one menu (ExmentPM)
         run: node project-management/tools/test-pm-issue-actions.js
+      # A request of the portal refused because the page expired (419): the bar with 再読み込み.
+      - name: Expired page bar (ExmentPM)
+        run: node project-management/tools/test-pm-expired.js
 
       - name: Recent updates pages (ExmentPM)
         run: php project-management/tools/test-pm-feed.php
+      # Exment's messages for the next page (an expired form) drawn on the portal's screens.
+      - name: Exment messages on the portal (ExmentPM)
+        run: php project-management/tools/test-pm-flash.php
 
       # The custom attributes of a project's issues (ExmentPM, plain PHP)
       - name: Custom attributes check (ExmentPM server)
@@ -184,6 +190,16 @@ jobs:
         run: |
           php groupware/tools/test-gw-calendar.php
           node groupware/tools/test-gw-calendar.js
+
+      # The calendar's ICS export and ICS links (part 5): the text written and read, the address
+      # check, a fake client, a link read and exported again (plain PHP, no network).
+      - name: Calendar ICS check (Groupware)
+        run: php groupware/tools/test-gw-calendar-ics.php
+
+      # The calendar's repeats against the walk from the start they replaced (a fixed seed, a few
+      # thousand random rules), and a COUNT read as UNTIL.
+      - name: Calendar repeats regression (Groupware)
+        run: php groupware/tools/test-gw-calendar-rrule.php
 
       # Times in the time zone of the user: ExmentPM's clock, Groupware's mail dates.
       - name: User time zone check (scripts)
@@ -236,6 +252,11 @@ jobs:
       - name: Recurring schedule dates (ExmentPM)
         run: php project-management/tools/test-pm-rrule.php
 
+      # The shares of the issues a schedule makes, the repair of the old ones, and the keys of
+      # the copies (ExmentPM, plain PHP)
+      - name: Schedule issue shares and keys (ExmentPM)
+        run: php project-management/tools/test-pm-schedule-shares.php
+
       # The holidays, the business days and the dates of the reminders (ExmentPM, ISS00432)
       - name: Business calendar and reminder dates (ExmentPM)
         run: |
@@ -249,6 +270,11 @@ jobs:
       # Backlog's custom fields as ExmentPM's custom attributes (ExmentPMBacklog, plain PHP)
       - name: Backlog custom fields (ExmentPMBacklog)
         run: php project-management/tools/test-pmbl-attributes.php
+
+      # The issues a run imports get the shares of their share settings, not one for whoever ran
+      # it (ExmentPMBacklog with ExmentPM's PortalRunShares, plain PHP)
+      - name: Shares of the imported issues (ExmentPMBacklog)
+        run: php project-management/tools/test-pmbl-sync-shares.php
 
       # The alerts of Zabbix, Mackerel, Alertmanager and Azure Monitor, and
       # what they do to the tickets (ExmentITSupport, plain PHP).

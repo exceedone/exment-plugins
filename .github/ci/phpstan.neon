@@ -27,6 +27,8 @@ parameters:
             - ../../project-management/tools/test-pm-digest.php
             # also the test of Web Push (and stand-ins of Log, app() and config())
             - ../../project-management/tools/test-pm-push.php
+            # Groupware's test of the calendar's ICS declares stand-ins of Laravel's facades (DB, Crypt...)
+            - ../../groupware/tools/test-gw-calendar-ics.php
             # IT Support's connectors of the data sync (7.3.0), and their test in an Exment 7.3
             - ../../it-support/ExmentITSupport/Sync
             - ../../it-support/tools/test-asset-sync-db.php

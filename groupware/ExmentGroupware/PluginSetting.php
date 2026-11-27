@@ -62,6 +62,9 @@ class PluginSetting
         $form->exmheader('カレンダー')->hr();
         $form->select('cal_resource_clash', '会議室・備品が重なったとき')->options(['warn' => '知らせて、たしかめてから保存する', 'block' => '保存させない'])->default('warn')
             ->help('同じ会議室・備品を、重なる時間に予約しようとしたとき。初めは「知らせて、たしかめてから保存する」です。');
+        $form->switchbool('calendar_allow_private', '社内のネットワークのカレンダー（ICS の URL）を許可する')
+            ->default(0)
+            ->help('オンにすると、ほかのカレンダーの ICS の URL に、プライベート IP（10.x・172.16〜31.x・192.168.x・100.64.x・fc00::）のサーバーも使えます。ポートはいつも 80・443・8080・8443 だけで、localhost・リンクローカル（169.254.x）は使えません。社内にカレンダーのサーバーがあるオンプレミスの Exment のときだけオンにしてください（Exment SaaS ではオフのまま）。メールの「社内のネットワークのメールサーバーを許可する」とは別の設定です。');
         $form->exmheader('Office')->hr();
         $form->url('ibisoffice_url', 'ibisOffice の場所（URL）')
             ->help('空にすると、このサイトにインストールした ibisOffice ' . IbisOffice::VERSION . ' を使います。ほかの場所の ibisOffice を使うときだけ、index.html のあるフォルダーの URL を入れます（例: https://office.example.com/ibisoffice/0.8.9/）。このサイトにインストールした ibisOffice があるときは、ページの中で動く ibisoffice-host.js はそちらを使います。ほかの場所のものは https のときだけ使います。');

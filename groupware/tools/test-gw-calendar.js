@@ -52,7 +52,7 @@ function test(name, fn) {
 function fakeDocument() {
     function node(tag) {
         const n = {
-            tagName: tag.toUpperCase(), className: '', attrs: {}, children: [], _text: '',
+            tagName: tag.toUpperCase(), className: '', attrs: {}, style: {}, children: [], _text: '',
             setAttribute(k, v) { this.attrs[k] = String(v); },
             appendChild(c) { this.children.push(c); return c; },
             addEventListener() {},
@@ -244,6 +244,134 @@ test('a holiday\'s label: its name, or the kind', () => {
     assert.strictEqual(T.holidayLabel({ name: '', kind: 'off' }), '会社の休み');
     assert.strictEqual(T.holidayLabel({ name: '', kind: 'work' }), '休日出勤');
     assert.strictEqual(H.t('more', 3), 'ほか 3 件');
+});
+
+/* ---------------------------------------------------- ExmentPM (part 4) ------ */
+const PMLANG = { pm_pending: '予定（まだ課題になっていない）', pm_milestone: 'マイルストーン', pm_due: '期限' };
+const pmNodeOf = (doc) => new Function(
+    'var L = ' + JSON.stringify(PMLANG) + '; var document = arguments[0];\n' +
+    ['t', 'pmNode', 'evNode'].map((n) => functionSource(source, n)).join('\n') +
+    '\nreturn evNode;'
+)(doc);
+test('ExmentPM: the choice of the toolbar as the query', () => {
+    const P = load(['pmQuery']);
+    assert.deepStrictEqual(P.pmQuery('mine'), { filter: 'mine' });
+    assert.deepStrictEqual(P.pmQuery('projects'), { filter: 'projects' });
+    assert.deepStrictEqual(P.pmQuery('p12'), { filter: 'project', project: '12' });
+    assert.strictEqual(P.pmQuery('off'), null);
+    assert.strictEqual(P.pmQuery('p12;x'), null);
+    assert.strictEqual(P.pmQuery(null), null);
+});
+test('ExmentPM: an issue is a button in its project\'s colour, its title as text', () => {
+    const evNode = pmNodeOf(fakeDocument());
+    const n = evNode({ pm: 'issue', kind: 'bar', start: '2026-12-01', end: '2026-12-05', all_day: true, title: 'ISS1 <b>見積</b>', project_name: 'P', color: '#0f8a6a', due: '2026-12-04', done: true });
+    assert.strictEqual(n.tagName, 'BUTTON'); // it opens (no id: not taken for a busy one)
+    assert.strictEqual(n.textContent, 'ISS1 <b>見積</b>');
+    assert.ok(/\bpm\b/.test(n.className) && /\bdone\b/.test(n.className), n.className);
+    assert.strictEqual(n.style.borderLeftColor, '#0f8a6a');
+    assert.strictEqual(n.attrs.title, 'ISS1 <b>見積</b> (期限 2026-12-04) - P');
+});
+test('ExmentPM: a date of a schedule says it is not an issue yet; a colour that is not one is not set', () => {
+    const evNode = pmNodeOf(fakeDocument());
+    const n = evNode({ pm: 'schedule', start: '2026-12-05', end: '2026-12-06', all_day: true, title: '月次報告', color: 'red;background:url(x)' });
+    assert.ok(/\bsched\b/.test(n.className));
+    assert.strictEqual(n.style.borderLeftColor, undefined);
+    assert.strictEqual(n.attrs.title, '月次報告 (予定（まだ課題になっていない）)');
+});
+test('the rooms of a day: a room taken out of use shows while it has bookings that day', () => {
+    const R = load(['roomsOfDay']);
+    const rooms = [{ id: 1, name: 'A', enabled: true }, { id: 2, name: 'B', enabled: false }, { id: 3, name: 'C', enabled: false }];
+    const out = R.roomsOfDay(rooms, [{ resources: [2], title: '定例' }]);
+    assert.deepStrictEqual(out.map((x) => [x.room.name, x.off, x.events.length]), [['A', false, 0], ['B', true, 1]]);
+    assert.deepStrictEqual(R.roomsOfDay(rooms, []).map((x) => x.room.name), ['A']);
+});
+
+/* ---------------------------------------------------- phones ------ */
+// the rules of the page's <style>: { 'selector': { prop: value } }, from the top level or one @media block
+const style = verbatim.slice(verbatim.indexOf('<style>') + 7, verbatim.indexOf('</style>'));
+function cssRules(css) {
+    const out = {};
+    css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/([^{}]+)\{([^{}]*)\}/g, (m, sel, body) => {
+        const decls = {};
+        body.split(';').forEach((d) => {
+            const i = d.indexOf(':');
+            if (i > 0) { decls[d.slice(0, i).trim()] = d.slice(i + 1).trim(); }
+        });
+        sel.split(',').forEach((s) => { const k = s.trim().replace(/\s+/g, ' '); out[k] = Object.assign(out[k] || {}, decls); });
+    });
+    return out;
+}
+// the @media block that follows a comment (its body, by counting braces)
+function mediaAfter(css, comment) {
+    const at = css.indexOf(comment);
+    assert.ok(at >= 0, 'no block after: ' + comment);
+    const open = css.indexOf('{', css.indexOf('@media', at));
+    let depth = 0;
+    for (let i = open; i < css.length; i++) {
+        if (css[i] === '{') { depth++; }
+        if (css[i] === '}' && --depth === 0) { return { query: css.slice(css.indexOf('@media', at), open).trim(), body: css.slice(open + 1, i) }; }
+    }
+    throw new Error('the block does not end');
+}
+const topLevel = cssRules(style.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, ''));
+const phone = mediaAfter(style, '/* phones: taps of 44px');
+const P = cssRules(phone.body);
+const px = (v) => parseFloat(String(v || '').replace('px', ''));
+test('phones: the rules are in their own block for narrow screens', () => {
+    assert.strictEqual(phone.query, '@media (max-width:640px)');
+});
+test('phones: the toolbar, the view switches, prev / next, today, the dialogs\' buttons: 44px tall; the arrows 44px wide', () => {
+    assert.strictEqual(px(P['.gwcal .gb']['min-height']), 44);
+    assert.strictEqual(px(P['.gwcal .gbp']['min-height']), 44);
+    assert.strictEqual(P['.gwcal .gb'].height, 'auto');
+    assert.strictEqual(px(P['.gwcal .gb.sq'].width), 44);
+    assert.strictEqual(px(P['.gwcal .gb.sq']['min-width']), 44);
+    assert.strictEqual(px(P['.gwcal .gwcal-views .gb']['min-width']), 44);
+});
+test('phones: the selects and inputs are 44px tall and 16px (no zoom on focus); small taps 36px at least', () => {
+    ['.gwcal .gwcal-pmsel', '.gwcal .gwcal-pick input', '.gwcal .gwcal-f input[type=text]', '.gwcal .gwcal-f input[type=date]', '.gwcal .gwcal-f input[type=time]', '.gwcal .gwcal-f select'].forEach((s) => {
+        assert.ok(P[s], s + ' has no phone rule');
+        assert.strictEqual(px(P[s].height), 44, s);
+        assert.strictEqual(P[s]['font-size'], '16px', s);
+    });
+    assert.strictEqual(P['.gwcal .gwcal-f textarea']['font-size'], '16px');
+    assert.ok(px(P['.gwcal .gwcal-chip button'].width) >= 36 && px(P['.gwcal .gwcal-chip button'].height) >= 36);
+    assert.ok(px(P['.gwcal .gwcal-chk']['min-height']) >= 36 && px(P['.gwcal .gwcal-rooms label']['min-height']) >= 36);
+});
+test('phones: the rooms dialog\'s day arrows are on top, on one row, with labels of their own', () => {
+    const r = P['.gwcal .gwcal-rnav'];
+    assert.deepStrictEqual([r.position, r['z-index'], r['flex-wrap']], ['relative', '1', 'nowrap']);
+    const rooms = functionSource(source, 'openRooms');
+    assert.ok(/el\('div', 'gwcal-nav gwcal-rnav'\)/.test(rooms), 'the rooms dialog\'s arrows have no class of their own');
+    assert.ok(/t\('prev_day'\)/.test(rooms) && /t\('next_day'\)/.test(rooms), 'the rooms dialog\'s arrows are labelled as the toolbar\'s');
+    ['ja', 'en'].forEach((l) => {
+        const lang = fs.readFileSync(path.join(__dirname, '..', 'ExmentGroupware', 'resources', 'lang', l, 'groupware.php'), 'utf8');
+        assert.ok(/'prev_day' => '[^']+'/.test(lang) && /'next_day' => '[^']+'/.test(lang), l + ' has no prev_day / next_day');
+    });
+});
+test('a dialog starts below the admin header (drawn above it), again on resize and orientationchange', () => {
+    const run = (bottom, hidden) => {
+        const m = { hidden: !!hidden, style: { paddingTop: 'x' } };
+        const doc = { querySelector: (s) => (s === 'header.main-header' && bottom != null ? { getBoundingClientRect: () => ({ bottom }) } : null) };
+        new Function('$', 'document', functionSource(source, 'modalBelowHeader') + '\nmodalBelowHeader();')(() => m, doc);
+        return m.style.paddingTop;
+    };
+    assert.strictEqual(run(100), '108px');       // the phone header, 100px tall
+    assert.strictEqual(run(50.4), '58px');
+    assert.strictEqual(run(null), '');           // no header: the stylesheet's padding
+    assert.strictEqual(run(-40), '');            // scrolled out of view
+    assert.strictEqual(run(100, true), 'x');     // a closed dialog is left alone
+    assert.ok(/m\.hidden = false;\s*modalBelowHeader\(\);/.test(functionSource(source, 'showModal')), 'showModal does not place the dialog');
+    assert.ok(/listen\(window, 'resize', function \(\) \{[^}]*modalBelowHeader\(\)/.test(source), 'not again on resize');
+    assert.ok(/listen\(window, 'orientationchange', function \(\) \{[^}]*modalBelowHeader\(\)/.test(source), 'not again on orientationchange');
+});
+test('wide screens do not change: the buttons and the layer select stay 32px', () => {
+    assert.strictEqual(topLevel['.gwcal .gb'].height, '32px');
+    assert.strictEqual(topLevel['.gwcal .gb.sq'].width, '32px');
+    assert.strictEqual(topLevel['.gwcal .gbp'].height, '32px');
+    assert.strictEqual(topLevel['.gwcal-pmsel'].height, '32px');
+    assert.strictEqual(topLevel['.gwcal-pick input'].height, '32px');
+    assert.ok(!topLevel['.gwcal .gwcal-rnav'] && !topLevel['.gwcal-rnav'], 'the rooms arrows have a rule outside the phone block');
 });
 
 if (failed) {
