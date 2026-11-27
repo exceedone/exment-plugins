@@ -170,7 +170,12 @@ Part 5 of the calendar (ISS02947). Off at first: Admin setting → Feature manag
 
 The tables `gw_cal_links` and `gw_cal_feeds` are made when the zip is uploaded (`database/migrations`).
 
-Coming: Google and Microsoft calendars read only (part 6), CalDAV (part 7), both ways (part 8).
+**Things to know.**
+
+- **No proxy.** The outside calendars are fetched directly, never through an HTTP proxy (the server connects to the very address it checked, so a proxy would get round the check). A site that reaches the internet only through a proxy cannot read ICS links. The ICS export address is not affected.
+- **Cached routes.** The ICS export address is a route the plugin adds while Exment boots (like ExmentITSupport's pages without login). When Laravel's routes are cached (`php artisan route:cache`), it is not there and answers 404. Do not cache the routes on a site that uses it (`php artisan route:clear` undoes it).
+
+Coming: an export of one's own calendar with all its details, with a token of its own for the owner only (later); Google and Microsoft calendars read only (part 6), CalDAV (part 7), both ways (part 8).
 
 ---
 
@@ -368,4 +373,9 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 
 テーブル `gw_cal_links`・`gw_cal_feeds` は zip をアップロードしたときに作られます（`database/migrations`）。
 
-これから：Google・Microsoft のカレンダーを読む（6）、CalDAV（7）、両方向（8）。
+**気をつけること**
+
+- **プロキシは使いません**：ほかのカレンダーは、HTTP のプロキシを通さずに直接読みます（たしかめたアドレスにそのままつなぐため。プロキシを通すと、そのチェックを回り道できてしまいます）。インターネットにプロキシを通してしか出られないサイトでは、ICS の URL を読めません。ICS の書き出しの URL には関係ありません。
+- **ルートのキャッシュ**：ICS の書き出しの URL は、Exment が起動するときにプラグインが足すルートです（ExmentITSupport のログインなしのページと同じ）。Laravel のルートをキャッシュしている（`php artisan route:cache`）と、この URL はなく 404 になります。使うサイトではルートをキャッシュしないでください（`php artisan route:clear` で元に戻ります）。
+
+これから：自分のカレンダーを詳しいまま書き出す URL（本人だけの別のトークン。のちほど）、Google・Microsoft のカレンダーを読む（6）、CalDAV（7）、両方向（8）。
