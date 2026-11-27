@@ -124,6 +124,9 @@ jobs:
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
 
+      - name: Markdown help of the editors (ExmentPM)
+        run: node project-management/tools/test-pm-md.js
+
       # The custom attributes on the screen (ISS02939): the JSON a save sends,
       # how a value reads, the filters, the sort and the bulk edit.
       - name: Custom attributes check (ExmentPM screen)
@@ -185,6 +188,10 @@ jobs:
       # how each person gets the notices: per event, projects muted, quiet hours (ExmentPM)
       - name: Notice settings (ExmentPM)
         run: php project-management/tools/test-pm-notify-prefs.php
+
+      # links to files open outside the page loading of the admin screens
+      - name: File links (ExmentPM, Groupware, IT Support)
+        run: php project-management/tools/check-file-links.php
 
       # The project routes without admin.morph still find a project the same way as the others.
       - name: Morph-less routes check (ExmentPM)
