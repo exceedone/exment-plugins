@@ -486,6 +486,10 @@ class PublicController extends Controller
         if (!isset($row) || !$this->otpPassed($row, $ticket)) {
             return $this->notFound();
         }
+        // only a ticket still going: a call is not asked for (nor a closed ticket opened) by a POST
+        if (!in_array(strval(array_get($ticket->value, 'status')), Its::ACTIVE_STATUSES, true)) {
+            return $this->notFound();
+        }
         $when = trim(mb_substr(strval($request->input('when', '')), 0, 200));
         $email = strval($row->email ?: array_get($ticket->value, 'requester_email'));
         Tickets::customerWrote($ticket, '📞 通話をお願いしたいです。' . ($when !== '' ? "\n都合のよい時間：" . $when : ''), 'portal', $email, strval(array_get($ticket->value, 'requester_name')));
