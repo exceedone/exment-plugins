@@ -2112,4 +2112,13 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-md-tabs > button{border:0;background:var(--bl-box);padding:2px 10px;font-size:12px;color:var(--bl-sub);cursor:pointer;}
 .pmportal .pp-md-tabs > button + button{border-left:1px solid var(--bl-line);}
 .pmportal .pp-md-tabs > button.on{background:var(--bl-hover);color:var(--bl-ink);font-weight:600;}
+/* BACK-1: a quiet 「← 課題一覧」 before the trail, and in the bar that stays on scroll */
+.pmportal .pp-backrow{display:flex;align-items:center;gap:10px;min-width:0;}
+.pmportal .pp-backrow .pp-crumbs{min-width:0;}
+.pmportal .pp-back{flex:none;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;font-size:12px;white-space:nowrap;}
+.pmportal #pp-issue-rows tr.pp-back-flash > td{background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));transition:background .6s;}
+@media (max-width:760px){
+  .pmportal .pp-back{padding:4px 9px;min-height:32px;}
+  .pmportal .pp-back .tx{display:none;}
+}
 </style>

@@ -168,7 +168,7 @@
         });
         // The way back is the trail above the issue (S19): where it sits, each
         // step a link, with no big button of its own.
-        var head = crumbs(i) + '<div class="bl-dhead">' + tag(i.ty) +
+        var head = '<div class="pp-backrow">' + backButton('') + crumbs(i) + '</div>' + '<div class="bl-dhead">' + tag(i.ty) +
             '<span class="bl-key" style="font-size:14px;">' + esc(i.key) + '</span>' + ikCopyButton(i) +
             // ISS00248: the alias, and a way to set it
             (local.al ? '<span class="pp-al-d" title="' + esc(L.alias) + '">' + esc(local.al) + '</span>' : '') +
@@ -1670,7 +1670,7 @@
         var bar = document.getElementById('pp-dbar');
         if (!bar) { return; }
         bar.dataset.id = String(i.id);
-        bar.innerHTML = '<a class="pp-dbar-back" href="#issues" title="' + esc(L.back) + '"><i class="fa fa-angle-left"></i> ' + esc(L.tab_issues) + '</a>' +
+        bar.innerHTML = backButton('pp-dbar-back') +
             '<span class="bl-key">' + esc(i.key) + '</span>' +
             '<span class="t" role="button" tabindex="0" title="' + esc(i.subject) + '">' + esc(i.subject) + '</span>' + pill(i.st) +
             '<a class="pp-tocmt" href="javascript:void(0);"><i class="fa fa-comments-o"></i> ' + esc(L.to_comments) + '<span class="n"></span></a>';

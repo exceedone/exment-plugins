@@ -26,7 +26,7 @@ function test(name, fn) {
     }
 }
 
-const start = detail.indexOf("var head = crumbs(i)");
+const start = detail.indexOf("var head = ");
 const head = detail.slice(start, detail.indexOf("'<div class=\"pp-move\" hidden></div>'", start));
 const menuAt = head.indexOf('<span class="m" hidden>');
 
