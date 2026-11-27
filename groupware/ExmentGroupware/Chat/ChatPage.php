@@ -69,8 +69,12 @@ class ChatPage
                     'direct' => $this->url('api/direct/__ID__'),
                     'poll' => $this->url('api/poll'),
                     'file' => $this->url('file/__ID__'),
+                    'edit' => $this->url('api/message/__ID__/edit'),
+                    'delete' => $this->url('api/message/__ID__/delete'),
+                    'react' => $this->url('api/message/__ID__/react'),
                 ],
                 'max_file' => ChatService::MAX_FILE_BYTES,
+                'reactions' => ChatText::REACTIONS,
             ],
         ]);
         foreach (['ExmentAdminCore\Admin\Layout\Content', 'Encore\Admin\Layout\Content'] as $class) {
@@ -163,7 +167,30 @@ class ChatPage
                 $files[] = ['uuid' => $key, 'name' => $name, 'size' => intval($up->getSize()), 'path' => $path];
             }
 
-            return ['message' => ChatService::post($uid, intval($id), strval($request->input('body', '')), $files)];
+            $reply = intval($request->input('reply_to', 0)) ?: null;
+
+            return ['message' => ChatService::post($uid, intval($id), strval($request->input('body', '')), $files, $reply)];
+        });
+    }
+
+    public function postEdit(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            return ['message' => ChatService::edit($this->uid(), intval($id), strval($request->input('body', '')))];
+        });
+    }
+
+    public function postDelete($id)
+    {
+        return $this->json(function () use ($id) {
+            return ['message' => ChatService::delete($this->uid(), intval($id))];
+        });
+    }
+
+    public function postReact(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            return ['message' => ChatService::react($this->uid(), intval($id), strval($request->input('emoji', '')))];
         });
     }
 

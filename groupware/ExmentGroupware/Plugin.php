@@ -721,6 +721,21 @@ class Plugin extends PluginPageBase
         return $this->chatDenied() ?? $this->chat()->postMessage(request(), $id);
     }
 
+    public function chatEdit($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postEdit(request(), $id);
+    }
+
+    public function chatDelete($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postDelete($id);
+    }
+
+    public function chatReact($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postReact(request(), $id);
+    }
+
     public function chatRead($id)
     {
         return $this->chatDenied() ?? $this->chat()->postRead(request(), $id);

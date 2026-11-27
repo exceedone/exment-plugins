@@ -366,6 +366,33 @@
                 "admin.bootstrap",
                 "admin.pjax"
             ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/message/{id}/edit",
+            "function": "chatEdit",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/message/{id}/delete",
+            "function": "chatDelete",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/message/{id}/react",
+            "function": "chatReact",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
         }
     ]
 }

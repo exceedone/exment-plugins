@@ -37,5 +37,8 @@ $check('poll: 3 s seen', T::pollDelay(true, 10) === 3);
 $check('poll: 30 s hidden', T::pollDelay(false, 10) === 30);
 $check('poll: stop after 30 min idle', T::pollDelay(true, 1800) === null && T::pollDelay(false, 4000) === null);
 
+$check('reaction: from the list', T::reaction('👍') === '👍' && T::reaction('<b>') === null && T::reaction(null) === null);
+$check('quote: one line, at most 80', T::quote("a\n\nb") === 'a b' && mb_strlen(T::quote(str_repeat('あ', 100))) === 81);
+
 echo "\n", $bad === 0 ? "all passed ($ok)" : "$bad failed, $ok passed", "\n";
 exit($bad === 0 ? 0 : 1);
