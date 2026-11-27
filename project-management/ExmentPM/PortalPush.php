@@ -41,6 +41,8 @@ class PortalPush
     const MAX_PER_FLUSH = 3;
     /** Bells kept for after the answer in one request. */
     const MAX_PENDING = 200;
+    /** Seconds one flush may take (after the answer); the bells left stay in the list only. */
+    const DEADLINE = 20;
 
     /** @var PortalPushStore|null a test gives its own */
     public static $store;
@@ -56,6 +58,12 @@ class PortalPush
 
     /** @var bool */
     protected static $registered = false;
+
+    /** @var string|null the public key, read once a request */
+    protected static $publicKey = null;
+
+    /** @var callable|null fn(): float, the clock (a test gives its own) */
+    public static $clock;
 
     // ---- the feature -----------------------------------------------------
 
@@ -113,7 +121,10 @@ class PortalPush
             if (!$make) {
                 return null;
             }
-            $row = static::makeKeys();
+            // two first requests at once make one pair: the second finds the first's
+            $row = static::store()->locked(function () {
+                return static::store()->keys() ?? static::makeKeys();
+            });
         }
         $public = PortalPushCrypto::unb64u($row['public_key']);
         $private = PortalChannels::decrypt($row['private_enc']);
@@ -133,9 +144,11 @@ class PortalPush
      */
     public static function renewKeys(): int
     {
-        static::makeKeys();
+        return intval(static::store()->locked(function () {
+            static::makeKeys();
 
-        return static::store()->deleteAll();
+            return static::store()->deleteAll();
+        }));
     }
 
     /**
@@ -148,16 +161,28 @@ class PortalPush
         $pair = PortalPushCrypto::newKeyPair();
         $row = ['public_key' => PortalPushCrypto::b64u($pair['public']), 'private_enc' => PortalChannels::encrypt($pair['private'])];
         static::store()->putKeys($row['public_key'], $row['private_enc']);
+        static::$publicKey = $row['public_key'];
 
         return $row;
     }
 
-    /** The public key as the browsers take it (applicationServerKey), or ''. */
-    public static function publicKey(): string
+    /**
+     * The public key as the browsers take it (applicationServerKey), or '' when there is none
+     * yet. Read once a request, nothing decrypted; made only when asked ($make: the push route).
+     */
+    public static function publicKey(bool $make = false): string
     {
-        $keys = static::siteKeys();
+        if (static::$publicKey === null || (static::$publicKey === '' && $make)) {
+            if ($make) {
+                $keys = static::siteKeys(true);
+                static::$publicKey = $keys === null ? '' : PortalPushCrypto::b64u($keys['public']);
+            } else {
+                $row = static::store()->keys();
+                static::$publicKey = $row === null ? '' : $row['public_key'];
+            }
+        }
 
-        return $keys === null ? '' : PortalPushCrypto::b64u($keys['public']);
+        return static::$publicKey;
     }
 
     // ---- subscriptions -----------------------------------------------------
@@ -245,7 +270,16 @@ class PortalPush
         if ($old !== null) {
             $store->update(intval($old['id']), $values);
         } else {
-            $store->insert($values + ['last_sent_at' => null]);
+            try {
+                $store->insert($values + ['last_sent_at' => null]);
+            } catch (\Throwable $e) {
+                // the same browser twice at once: the unique endpoint_hash refused the second row
+                $old = $store->byHash($hash);
+                if ($old === null) {
+                    throw $e;
+                }
+                $store->update(intval($old['id']), $values);
+            }
         }
         // the oldest browsers beyond the limit go
         foreach (array_slice($store->forUser($userId), static::MAX_PER_USER) as $row) {
@@ -317,11 +351,42 @@ class PortalPush
     }
 
     /** The site's address, the VAPID subject. */
-    public static function siteUrl(): string
+    public static function siteUrl(): ?string
     {
-        $url = rtrim(strval(config('app.url')), '/');
+        $fromRequest = '';
+        try {
+            $fromRequest = strval(url('/'));
+        } catch (\Throwable $e) {
+            // no URL generator (a command early on)
+        }
 
-        return $url !== '' ? $url : rtrim(url('/'), '/');
+        return static::httpsOf([strval(config('app.url')), $fromRequest]);
+    }
+
+    /**
+     * The first https address of the site, or null. Apple's and Mozilla's push services refuse a
+     * VAPID subject that is not https (or mailto:, which is not used: no e-mail address), so
+     * with none the feature is shown as not ready and nothing is sent.
+     *
+     * @param array<int, string> $candidates APP_URL, then the address of the request
+     */
+    public static function httpsOf(array $candidates): ?string
+    {
+        foreach ($candidates as $url) {
+            $url = rtrim(trim($url), '/');
+            $p = parse_url($url);
+            if (is_array($p) && strtolower(strval($p['scheme'] ?? '')) === 'https' && strval($p['host'] ?? '') !== '') {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    /** On and able to send: the feature, and an https address of the site for VAPID. */
+    public static function ready(): bool
+    {
+        return static::enabled() && static::siteUrl() !== null;
     }
 
     /**
@@ -356,9 +421,11 @@ class PortalPush
 
     /**
      * What the answer does to the row: 2xx sent; 404 / 410 (gone) or a 5th failure in a row remove it.
+     * 401 / 403 is the site's side (the VAPID key or subject refused), not the browser's: logged,
+     * the row kept as it was.
      *
      * @param array<string, mixed> $sub
-     * @return string sent | removed | failed
+     * @return string sent | removed | failed | refused
      */
     public static function record(array $sub, int $status): string
     {
@@ -368,6 +435,11 @@ class PortalPush
             $store->update($id, ['failures' => 0, 'last_sent_at' => date('Y-m-d H:i:s')]);
 
             return 'sent';
+        }
+        if ($status === 401 || $status === 403) {
+            Log::warning('pm_portal web push: the push service refused the site\'s VAPID signature (' . $status . '); check that the site\'s address is https, or make new keys');
+
+            return 'refused';
         }
         $failures = intval($sub['failures'] ?? 0) + 1;
         if ($status === 404 || $status === 410 || $status === 0 || $failures >= static::MAX_FAILURES) {
@@ -383,14 +455,21 @@ class PortalPush
     /**
      * One bell to every browser of the person. Never throws.
      *
-     * @return array<string, int> how many sent / removed / failed
+     * @param float|null $deadline the clock's time after which nothing more is sent
+     * @return array<string, int> how many sent / removed / failed / refused
      */
-    public static function sendTo(int $userId, string $subject, ?callable $post = null, ?string $link = null): array
+    public static function sendTo(int $userId, string $subject, ?callable $post = null, ?string $link = null, ?float $deadline = null): array
     {
-        $out = ['sent' => 0, 'removed' => 0, 'failed' => 0];
+        $out = ['sent' => 0, 'removed' => 0, 'failed' => 0, 'refused' => 0];
         try {
             $subs = static::store()->forUser($userId);
             if (empty($subs)) {
+                return $out;
+            }
+            $site = static::siteUrl();
+            if ($site === null) {
+                Log::warning('pm_portal web push: not sent, the site has no https address (APP_URL)');
+
                 return $out;
             }
             $keys = static::siteKeys(false);
@@ -399,8 +478,10 @@ class PortalPush
             }
             $post = $post ?? static::$post ?? static::httpPost();
             $payload = static::payload($subject, $link ?? static::link());
-            $site = static::siteUrl();
             foreach ($subs as $sub) {
+                if ($deadline !== null && static::now() >= $deadline) {
+                    break;
+                }
                 try {
                     $status = static::deliver($sub, $payload, $keys, $site, $post);
                 } catch (\Throwable $e) {
@@ -415,6 +496,11 @@ class PortalPush
         }
 
         return $out;
+    }
+
+    protected static function now(): float
+    {
+        return floatval(static::$clock !== null ? (static::$clock)() : microtime(true));
     }
 
     /** @return callable fn(string $url, array $headers, string $body): int */
@@ -457,11 +543,28 @@ class PortalPush
         }
     }
 
-    /** Send what was kept: the newest few bells of each person. Never throws. */
+    /**
+     * A queue job ended (Illuminate\Queue\Events\JobProcessed): a worker sends what the job's
+     * bells were. A job run in the request (the sync queue, Exment's default) does not: its
+     * bells wait for terminating, after the answer, with the limit of the request.
+     *
+     * @param object $event
+     */
+    public static function jobProcessed($event, ?callable $post = null): void
+    {
+        $job = $event->job ?? null;
+        if ($job instanceof \Illuminate\Queue\Jobs\SyncJob || static::pendingCount() === 0) {
+            return;
+        }
+        static::flush($post);
+    }
+
+    /** Send what was kept: the newest few bells of each person, for at most DEADLINE seconds. Never throws. */
     public static function flush(?callable $post = null): void
     {
         $pending = static::$pending;
         static::$pending = [];
+        $deadline = static::now() + static::DEADLINE;
         $byUser = [];
         foreach (array_reverse($pending) as $p) {
             if (count($byUser[$p['user']] ?? []) < static::MAX_PER_FLUSH) {
@@ -470,7 +573,12 @@ class PortalPush
         }
         foreach ($byUser as $userId => $subjects) {
             foreach (array_reverse($subjects) as $subject) {
-                static::sendTo(intval($userId), $subject, $post);
+                if (static::now() >= $deadline) {
+                    Log::warning('pm_portal web push: the time for one request was used up, the other bells are in the list only');
+
+                    return;
+                }
+                static::sendTo(intval($userId), $subject, $post, null, $deadline);
             }
         }
     }

@@ -1903,6 +1903,7 @@ return [
         'renew' => '鍵を作り直す',
         'renew_confirm' => '鍵を作り直しますか？すべての端末で、もう一度「この端末に通知する」をオンにする必要があります。',
         'renewed' => '鍵を作り直しました。',
+        'not_https' => 'サイトのアドレス（APP_URL）が https ではないので、プッシュ通知は送れません。APP_URL を https のアドレスにしてください。',
     ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [

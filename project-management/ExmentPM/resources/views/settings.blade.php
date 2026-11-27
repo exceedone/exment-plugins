@@ -239,6 +239,9 @@ use App\Plugins\ExmentPM\PortalDefinition as PD;
                     <div><b>{{ PD::trans('push.renewed') }}</b></div>
                 </div>
                 @endif
+                @if(!$push['https'])
+                <div class="pp-cfg-warn"><i class="fa fa-exclamation-triangle"></i>{{ PD::trans('push.not_https') }}</div>
+                @endif
                 <p class="pp-cfg-hint">{{ PD::trans('push.keys_lead') }}</p>
                 <button type="submit" class="pp-cfg-btn">
                     <i class="fa fa-refresh"></i> {{ PD::trans('push.renew') }}

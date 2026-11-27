@@ -429,14 +429,25 @@ class PluginPage extends PluginPageBase
     // action: subscribe (the browser's PushSubscription), unsubscribe or state (its endpoint)
     public function pushAction()
     {
-        if (!PortalPush::enabled()) {
+        if (!PortalPush::ready()) {
             abort(404);
         }
         $request = request();
         $userId = intval(\Exment::getUserId());
+        // a page calls this a few times; a loop is stopped (30 a minute a person)
+        $limit = 'pm_portal_push:' . $userId;
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($limit, 30)) {
+            return response()->json(['ok' => false, 'error' => 'too_many'], 429);
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($limit, 60);
         $sub = $request->input('subscription');
         $endpoint = is_array($sub) && is_string($sub['endpoint'] ?? null) ? $sub['endpoint'] : '';
         switch (strval($request->input('action'))) {
+            case 'key':
+                // the site's public key, made the first time (here, not on a page view)
+                $key = PortalPush::publicKey(true);
+
+                return response()->json(['ok' => $key !== '', 'key' => $key], 200, ['Cache-Control' => 'no-store']);
             case 'subscribe':
                 $result = PortalPush::subscribe($userId, $sub, strval($request->userAgent()));
                 if (!$result['ok']) {

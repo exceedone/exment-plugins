@@ -74,6 +74,23 @@ class PortalPushStore
         return $row === null ? null : ['public_key' => strval($row->public_key), 'private_enc' => strval($row->private_enc)];
     }
 
+    /**
+     * Run $f under the lock of the key pair (Laravel's cache lock), so two requests do not make
+     * two pairs. A cache without locks: run as it is (putKeys keeps one row either way).
+     *
+     * @return mixed what $f gives
+     */
+    public function locked(callable $f)
+    {
+        try {
+            $lock = \Illuminate\Support\Facades\Cache::lock('pm_portal_push_keys', 30);
+        } catch (\Throwable $e) {
+            return $f();
+        }
+
+        return $lock->block(10, $f);
+    }
+
     /** One pair only: the old one goes. */
     public function putKeys(string $public, string $privateEnc): void
     {

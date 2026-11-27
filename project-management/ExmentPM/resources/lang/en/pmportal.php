@@ -1854,6 +1854,7 @@ return [
         'renew' => 'Make new keys',
         'renew_confirm' => 'Make new keys? "Notify this device" has to be turned on again on every device.',
         'renewed' => 'New keys were made.',
+        'not_https' => 'Push notifications cannot be sent because the address of the site (APP_URL) is not https. Set APP_URL to an https address.',
     ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [

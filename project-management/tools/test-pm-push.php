@@ -25,9 +25,16 @@ namespace {
 
         return unserialize(openssl_decrypt(substr($raw, 16), 'aes-256-cbc', $GLOBALS['__test_app_key'], OPENSSL_RAW_DATA, substr($raw, 0, 16)));
     }
+    // APP_URL and the address of the request (a test changes them)
+    $GLOBALS['__test_app_url'] = 'https://pm.example.invalid/';
+    $GLOBALS['__test_url'] = 'https://pm.example.invalid';
     function config($key)
     {
-        return $key === 'app.url' ? 'https://pm.example.invalid/' : null;
+        return $key === 'app.url' ? $GLOBALS['__test_app_url'] : null;
+    }
+    function url($path = null)
+    {
+        return $GLOBALS['__test_url'];
     }
     $GLOBALS['__test_terminating'] = [];
     function app()
@@ -50,6 +57,16 @@ namespace Illuminate\Support\Facades {
         {
             static::$lines[] = $m;
         }
+    }
+}
+
+namespace Illuminate\Queue\Jobs {
+    // the job of the sync queue (run inside the request) and one of a worker
+    class SyncJob
+    {
+    }
+    class RedisJob
+    {
     }
 }
 
@@ -139,6 +156,15 @@ namespace {
         public function keys(): ?array
         {
             return $this->keyRow;
+        }
+
+        public $locks = 0;
+
+        public function locked(callable $f)
+        {
+            $this->locks++;
+
+            return $f();
         }
 
         public function putKeys(string $public, string $privateEnc): void
@@ -418,7 +444,129 @@ namespace {
     $sent = [];
     $res = P::sendTo(7, 'x', $fake, 'u');
     $check('a row of another address: no request, removed', count($sent) === 0 && $res['removed'] === 1 && count($store->subs) === 0, $res);
-    $check('nobody subscribed: nothing sent', P::sendTo(99, 'x', $fake, 'u') === ['sent' => 0, 'removed' => 0, 'failed' => 0] && count($sent) === 0);
+    $check('nobody subscribed: nothing sent', P::sendTo(99, 'x', $fake, 'u') === ['sent' => 0, 'removed' => 0, 'failed' => 0, 'refused' => 0] && count($sent) === 0);
+
+    // 401 / 403: the site's VAPID refused, not the browser's fault: logged, the row kept as it was
+    foreach ([401, 403] as $status) {
+        $store->subs = [];
+        P::subscribe(7, $sub($e1, $ua1, $ua1Auth), '');
+        Illuminate\Support\Facades\Log::$lines = [];
+        $answers = array_fill(0, 6, $status);
+        for ($i = 0; $i < 6; $i++) {
+            $res = P::sendTo(7, 'x', $fake, 'u');
+        }
+        $check($status . ' six times: the subscription is kept, no failure counted, logged', count($store->subs) === 1 && $store->forUser(7)[0]['failures'] === 0
+            && $res['refused'] === 1 && strpos(implode("\n", Illuminate\Support\Facades\Log::$lines), 'VAPID') !== false, [$res, Illuminate\Support\Facades\Log::$lines]);
+    }
+
+    // the VAPID subject must be https (Apple and Mozilla refuse an http one)
+    $check('https: APP_URL when it is https', P::httpsOf(['https://a.invalid/', 'https://b.invalid']) === 'https://a.invalid');
+    $check('https: the request\'s address when APP_URL is http (behind a TLS proxy)', P::httpsOf(['http://a.invalid', 'https://b.invalid/']) === 'https://b.invalid');
+    $check('https: none of them, none', P::httpsOf(['http://a.invalid', 'http://b.invalid', '']) === null && P::httpsOf(['https://']) === null);
+    $GLOBALS['__test_app_url'] = 'http://pm.example.invalid';
+    $GLOBALS['__test_url'] = 'https://pm.example.invalid';
+    $check('APP_URL http, the request https: the request\'s', P::siteUrl() === 'https://pm.example.invalid');
+    $GLOBALS['__test_url'] = 'http://pm.example.invalid';
+    $store->subs = [];
+    P::subscribe(7, $sub($e1, $ua1, $ua1Auth), '');
+    $sent = [];
+    $res = P::sendTo(7, 'x', $fake, 'u');
+    $check('no https address: nothing sent, the subscription kept, not ready', count($sent) === 0 && count($store->subs) === 1 && P::siteUrl() === null && !P::ready(), $res);
+    $GLOBALS['__test_app_url'] = 'https://pm.example.invalid/';
+    $GLOBALS['__test_url'] = 'https://pm.example.invalid';
+    $check('https again: ready', P::ready());
+
+    // aud: no :443
+    $hdr443 = C::vapid('https://fcm.googleapis.com:443/fcm/send/x', 'https://pm.example.invalid', $site['public'], $site['private']);
+    preg_match('/t=[^.]+\.([^.]+)\./', $hdr443, $m443);
+    $hdr8443 = C::vapid('https://push.example.invalid:8443/x', 'https://pm.example.invalid', $site['public'], $site['private']);
+    preg_match('/t=[^.]+\.([^.]+)\./', $hdr8443, $m8443);
+    $check('VAPID aud: an explicit :443 is dropped, another port kept', json_decode(C::unb64u($m443[1]), true)['aud'] === 'https://fcm.googleapis.com'
+        && json_decode(C::unb64u($m8443[1]), true)['aud'] === 'https://push.example.invalid:8443');
+
+    // the sync queue (Exment's default) runs the bell's job inside the request: nothing sent then
+    $store->subs = [];
+    P::subscribe(7, $sub($e1, $ua1, $ua1Auth), '');
+    $sent = [];
+    P::bellCreated((object) ['target_user_id' => 7, 'notify_subject' => 'from a job']);
+    P::jobProcessed((object) ['job' => new Illuminate\Queue\Jobs\SyncJob()], $fake);
+    $check('JobProcessed of a sync job: nothing sent in the request, the bell waits for terminating', count($sent) === 0 && P::pendingCount() === 1);
+    P::jobProcessed((object) ['job' => new Illuminate\Queue\Jobs\RedisJob()], $fake);
+    $check('JobProcessed of a worker\'s job: sent at its end', count($sent) === 1 && P::pendingCount() === 0);
+    $sent = [];
+    P::jobProcessed((object) ['job' => new Illuminate\Queue\Jobs\RedisJob()], $fake);
+    $check('JobProcessed with nothing kept: nothing sent', count($sent) === 0);
+
+    // one flush stops after DEADLINE seconds (a fake clock: each push takes 15 s)
+    $store->subs = [];
+    foreach ([21, 22, 23] as $u) {
+        P::subscribe($u, $sub('https://web.push.apple.com/user-' . $u), '');
+        P::bellCreated((object) ['target_user_id' => $u, 'notify_subject' => 'to ' . $u]);
+    }
+    $t = 1000.0;
+    P::$clock = function () use (&$t) {
+        return $t;
+    };
+    $sent = [];
+    $slow = function ($url, $headers, $body) use (&$sent, &$t) {
+        $sent[] = $url;
+        $t += 15;
+
+        return 201;
+    };
+    Illuminate\Support\Facades\Log::$lines = [];
+    P::flush($slow);
+    P::$clock = null;
+    $check('flush: stops once ' . P::DEADLINE . ' s are used up', count($sent) === 2 && P::pendingCount() === 0 && strpos(implode("\n", Illuminate\Support\Facades\Log::$lines), 'used up') !== false, $sent);
+
+    // the public key: read on a page view, made only when asked (the push route)
+    $resetKey = \Closure::bind(function () {
+        static::$publicKey = null;
+    }, null, P::class);
+    $store->keyRow = null;
+    $store->locks = 0;
+    $resetKey();
+    $check('a page view: no key made', P::publicKey() === '' && $store->keyRow === null);
+    $made = P::publicKey(true);
+    $check('the push route: the key made, under the lock', $made !== '' && $store->keyRow['public_key'] === $made && $store->locks === 1);
+    $store->keyRow = ['public_key' => 'changed', 'private_enc' => 'x'];
+    $check('read once a request (no decrypting on a page view)', P::publicKey() === $made);
+    $resetKey();
+    $check('the next request reads the row', P::publicKey() === 'changed');
+    $store->keyRow = null;
+    $resetKey();
+
+    // the same browser twice at once: the second insert hits the unique endpoint_hash
+    class RaceStore extends MemoryStore
+    {
+        public $blind = 1;
+
+        public function byHash(string $hash): ?array
+        {
+            if ($this->blind > 0) {
+                $this->blind--;
+
+                return null;
+            }
+
+            return parent::byHash($hash);
+        }
+
+        public function insert(array $row): int
+        {
+            if (parent::byHash($row['endpoint_hash']) !== null) {
+                throw new \RuntimeException('SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry');
+            }
+
+            return parent::insert($row);
+        }
+    }
+    $race = new RaceStore();
+    P::$store = $race;
+    $race->insert(['user_id' => 7, 'endpoint' => $e1, 'endpoint_hash' => hash('sha256', $e1), 'p256dh' => C::b64u($ua1['public']), 'auth' => C::b64u($ua1Auth)]);
+    $r = P::subscribe(8, $sub($e1, $ua1, $ua1Auth), '');
+    $check('a duplicate insert: the row is updated instead (no error)', $r === ['ok' => true] && count($race->subs) === 1 && $race->forUser(8), $r);
+    P::$store = $store;
 
     $check('device names', P::deviceName('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1') === 'Safari / iPhone'
         && P::deviceName('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36 Edg/131.0') === 'Edge / Windows'

@@ -188,10 +188,9 @@ class PluginEvent extends PluginEventBase
         Event::listen('eloquent.created: ' . NotifyNavbar::class, function ($bell) {
             PortalPush::bellCreated($bell);
         });
-        Event::listen('Illuminate\Queue\Events\JobProcessed', function () {
-            if (PortalPush::pendingCount() > 0) {
-                PortalPush::flush();
-            }
+        // (not a job of the sync queue, which runs inside the request: those wait for terminating)
+        Event::listen('Illuminate\Queue\Events\JobProcessed', function ($event) {
+            PortalPush::jobProcessed($event);
         });
 
         // A project key lock is let go after the save commits; a save that is

@@ -159,7 +159,7 @@ class PortalPushCrypto
     {
         $parts = parse_url($endpoint);
         $aud = strtolower(strval($parts['scheme'] ?? 'https')) . '://' . strtolower(strval($parts['host'] ?? ''))
-            . (isset($parts['port']) ? ':' . intval($parts['port']) : '');
+            . (isset($parts['port']) && intval($parts['port']) !== 443 ? ':' . intval($parts['port']) : '');
         $claims = ['aud' => $aud, 'exp' => ($now ?? time()) + 12 * 3600, 'sub' => $subject];
         $input = static::b64u(strval(json_encode(['typ' => 'JWT', 'alg' => 'ES256'])))
             . '.' . static::b64u(strval(json_encode($claims, JSON_UNESCAPED_SLASHES)));

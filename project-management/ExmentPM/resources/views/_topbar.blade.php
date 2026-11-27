@@ -482,7 +482,7 @@
             <a class="pp-top-mi pp-pwa-install" href="javascript:void(0);" hidden><i class="fa fa-mobile"></i><span class="nm">{{ PortalDefinition::trans('pwa.install') }}</span></a>
             @endif
             {{-- Web Push: this browser shows the bells as notices (per person, per browser, opt-in) --}}
-            @if(!empty($topbar['push']['key']))
+            @if(!empty($topbar['push']))
             <a class="pp-top-mi pp-push-toggle" href="javascript:void(0);" role="menuitemcheckbox" aria-checked="false" hidden
                data-key="{{ $topbar['push']['key'] }}" data-url="{{ $topbar['push']['url'] }}"><i class="fa fa-fw"></i><span class="nm">{{ PortalDefinition::trans('push.this_device') }}</span></a>
             @endif
@@ -589,15 +589,17 @@
         }
         var key = item.getAttribute('data-key');
         var url = item.getAttribute('data-url');
-        var keyBytes = (function (s) {
+        function bytes(s) {
             var b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
             var out = new Uint8Array(b.length);
             for (var i = 0; i < b.length; i++) { out[i] = b.charCodeAt(i); }
             return out;
-        })(key);
+        }
+        // no key yet (the site's first time): the push route makes it when someone turns this on
+        var keyBytes = key ? bytes(key) : null;
         function sameKey(sub) {
             var k = sub && sub.options && sub.options.applicationServerKey;
-            if (!k) { return false; }
+            if (!k || !keyBytes) { return false; }
             var a = new Uint8Array(k);
             if (a.length !== keyBytes.length) { return false; }
             for (var i = 0; i < a.length; i++) { if (a[i] !== keyBytes[i]) { return false; } }
@@ -621,7 +623,14 @@
             return reg.pushManager.getSubscription().then(function (sub) {
                 if (sub && !sameKey(sub)) { return sub.unsubscribe().then(function () { return false; }); }
                 if (!sub || Notification.permission !== 'granted') { return false; }
-                return call('state', sub).then(function (j) { return !!(j && j.on); });
+                return call('state', sub).then(function (j) {
+                    // kept for someone else (a shared browser, another person signed in before),
+                    // or removed on the server: this browser stops taking the notices
+                    if (j && j.ok && !j.on) {
+                        return sub.unsubscribe().then(function () { return false; }, function () { return false; });
+                    }
+                    return !!(j && j.on);
+                });
             }).then(function (on) {
                 show(on);
                 item.addEventListener('click', function () {
@@ -639,7 +648,13 @@
                         return reg.pushManager.getSubscription().then(function (old) {
                             return old ? old.unsubscribe() : null;
                         }).then(function () {
-                            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes });
+                            return keyBytes ? keyBytes : call('key', null).then(function (j) {
+                                if (!j || !j.ok || !j.key) { throw new Error('key'); }
+                                keyBytes = bytes(j.key);
+                                return keyBytes;
+                            });
+                        }).then(function (k) {
+                            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: k });
                         }).then(function (sub) {
                             return call('subscribe', sub).then(function (j) {
                                 if (j && j.ok) { show(true); return; }
