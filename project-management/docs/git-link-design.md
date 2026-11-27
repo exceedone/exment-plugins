@@ -71,7 +71,7 @@ Unique (hook_id, kind, ref, issue_id): a delivery sent again, or a PR edited, up
 With the hook's 「マージで処理済みにする」 on: a PR (MR) whose title or body says
 `fixes|closes|resolves KEY` (英語の大小・日本語の「KEY を修正」 is not read) and that is merged moves
 that issue to the first done status of its project (`is_done` of the status list), with a system
-comment 「PR #12（owner/repo）のマージで処理済みにしました」. Never reopens; never touches an issue
+line of its own on the issue's history (by 「Git（owner/repo）」, with the PR's link; the status change of no user is shown by the same). Never reopens; never touches an issue
 already done. Once per PR and issue: only when the PR's line was not merged before, so an issue
 opened again by hand is left alone when the PR is edited later. The issue must be one the PR links.
 

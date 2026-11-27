@@ -342,10 +342,38 @@ class PortalGitHooks
             }
             $issue->setValue($statusCol, strval($list->first()->id));
             $issue->save();
-            PortalAttachEdit::note($issue, strval(PortalDefinition::trans('gitlink.closed_note', ['pr' => '#' . $it['ref'], 'repo' => strval($hook->repo)])));
+            // the line of the issue's history: by 「Git（owner/repo）」 with the PR's link, not by nobody
+            DB::table(static::EVENTS)->updateOrInsert(
+                ['hook_id' => $hook->id, 'kind' => 'close', 'ref' => $it['ref'], 'issue_id' => $issueId],
+                ['project_id' => $hook->project_id, 'title' => $it['title'], 'author' => static::by($hook), 'url' => $it['url'],
+                    'branch' => $it['branch'], 'state' => 'merged', 'occurred_at' => now(), 'updated_at' => now(), 'created_at' => now()]
+            );
         } catch (\Throwable $e) {
             Log::warning('pm_portal git hook ' . $hook->id . ': issue ' . $issueId . ' could not be moved to done: ' . $e->getMessage());
         }
+    }
+
+    /** Who a change of the webhook is shown as: 「Git（owner/repo）」. */
+    public static function by(object $hook): string
+    {
+        return 'Git（' . strval($hook->repo) . '）';
+    }
+
+    /**
+     * The issues' status changes the webhook made (its "close" lines), for the history lines of
+     * no user: [time, who, the PR's link, its number].
+     *
+     * @return array<int, array{ts: int, who: string, url: ?string, ref: string}>
+     */
+    public static function closers(int $issueId): array
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable(static::EVENTS)) {
+            return [];
+        }
+
+        return DB::table(static::EVENTS)->where('issue_id', $issueId)->where('kind', 'close')->get()->map(function ($e) {
+            return ['ts' => intval(strtotime(strval($e->occurred_at))), 'who' => strval($e->author), 'url' => $e->url, 'ref' => strval($e->ref)];
+        })->values()->all();
     }
 
     /** The issue's id when it is an issue of the project, else null. */

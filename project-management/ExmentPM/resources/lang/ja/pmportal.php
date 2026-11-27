@@ -404,6 +404,7 @@ return [
     'git_open' => 'オープン',
     'git_merged' => 'マージ済み',
     'git_closed' => 'クローズ',
+    'git_done' => 'マージで処理済みにしました',
     // ISS00440: the copy button by the issue key
     'ik_copied' => '課題キーと件名をコピーしました',
     'ik_key_copied' => '課題キーをコピーしました',
@@ -1897,7 +1898,6 @@ return [
         'add' => 'つなぐ',
         'err_repo' => 'リポジトリーは owner/name の形で書いてください。',
         'err_many' => 'つなげるのは 1 つのプロジェクトで 20 までです。',
-        'closed_note' => 'プルリクエスト :pr（:repo）のマージで処理済みにしました。',
     ],
     'channels' => [
         'feature' => 'プロジェクト管理：チャットへのお知らせ',

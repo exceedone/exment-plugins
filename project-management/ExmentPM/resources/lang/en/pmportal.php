@@ -404,6 +404,7 @@ return [
     'git_open' => 'open',
     'git_merged' => 'merged',
     'git_closed' => 'closed',
+    'git_done' => 'marked done by the merge',
     // ISS00440: the copy button by the issue key
     'ik_copied' => 'Copied the issue key and subject',
     'ik_key_copied' => 'Copied the issue key',
@@ -1848,7 +1849,6 @@ return [
         'add' => 'Connect',
         'err_repo' => 'Write the repository as owner/name.',
         'err_many' => 'A project can connect at most 20 repositories.',
-        'closed_note' => 'Marked done by the merge of pull request :pr (:repo).',
     ],
     'channels' => [
         'feature' => 'Project management: chat notifications',
