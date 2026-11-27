@@ -11,6 +11,8 @@
   --bl-accent-ink:var(--exm-ui-accent-strong,#2c6e5b);--bl-accent-line:var(--exm-ui-accent-ring,#bfe3d6);
   --bl-ink:var(--exm-ui-text,#24323f);--bl-sub:var(--exm-ui-text-sub,#6b7a88);
   --bl-line:var(--exm-ui-line,#dfe5ea);--bl-bg:var(--exm-ui-bg-sub,#f5f7f9);--bl-faint:var(--exm-ui-text-faint,#8b99a5);--bl-box:#ffffff;--bl-box2:#f5f7f9;--bl-chip:#eef3f6;--bl-hover:var(--exm-ui-accent-soft,#f2f8f5);--bl-red:var(--exm-ui-danger,#d9534f);--bl-amber:#eda62a;
+  --bl-unread:var(--exm-ui-info,#2f80ed);--bl-row-hover:color-mix(in srgb, var(--bl-ink) 5%, var(--bl-box));
+  --bl-row-sel:color-mix(in srgb, var(--bl-accent) 14%, var(--bl-box));
   /* design tokens (ISS00287): soft separator, muted text, radius, shadow, type scale, spacing, focus ring */
   --bl-line2:var(--exm-ui-line-soft,#e9eef2);--bl-muted:var(--bl-faint);
   --bl-radius:var(--exm-ui-radius-sm,6px);--bl-radius-s:4px;--bl-radius-pill:999px;
@@ -274,14 +276,9 @@
    are the unread mark, and with a blue theme (ex1task) a child read long ago looked unread. */
 /* └ branch mark: dark accent, bold and a bit larger so it reads at a glance (snoro 2026-11-18) */
 .pmportal .bl-list .pp-tbr{color:var(--bl-accent-d);margin-right:4px;font-weight:800;font-size:15px;line-height:1;}
-.pmportal .bl-list tr.pp-tkid td{background:color-mix(in srgb, #6b7a88 5%, var(--bl-box));}
-.pmportal .bl-list tr.pp-tkid.pp-td2 td{background:color-mix(in srgb, #6b7a88 9%, var(--bl-box));}
-.pmportal .bl-list tr.pp-tkid.pp-td3 td{background:color-mix(in srgb, #6b7a88 13%, var(--bl-box));}
-.pmportal .bl-list tr.pp-tkid.pp-td4 td{background:color-mix(in srgb, #6b7a88 17%, var(--bl-box));}
-/* an unread child: the unread tint over the child's (the cells' own colour would hide the row's) */
-.pmportal .bl-list tbody tr.pp-tkid.pp-unread td{background:color-mix(in srgb, #2f80ed 6%, var(--bl-box));}
+/* ROW-1: a child row is white like its parent; the thin guide, └ and the indent say it is a child */
+.pmportal .bl-list tr.pp-tkid .pp-tind{background:linear-gradient(var(--bl-line),var(--bl-line)) no-repeat calc(100% - 22px) 0 / 1px 100%;}
 .pmportal .pp-rollup{line-height:1.2;margin-top:2px;white-space:nowrap;}
-.pmportal .bl-list tr.pp-tkid:hover td{background:var(--bl-hover,var(--exm-ui-accent-soft,#f2f8f5));}
 .pmportal .bl-list tr.pp-tpar td.sub{font-weight:700;}
 .pmportal .bl-fmine{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);background:var(--bl-box);
   color:var(--bl-sub);font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;white-space:nowrap;}
@@ -301,7 +298,7 @@
 
 .pmportal .bl-list th.chk,.pmportal .bl-list td.chk{width:30px;padding-left:12px;padding-right:0;}
 .pmportal .bl-list th.chk input,.pmportal .bl-list td.chk input{cursor:pointer;margin:0;vertical-align:middle;}
-.pmportal .bl-list tbody tr.sel{background:color-mix(in srgb, var(--bl-accent) 8%, var(--bl-box));}
+.pmportal .bl-list tbody tr.sel{background:var(--bl-row-sel);}
 
 /* Pager. Count on the left, page buttons in the middle, how many per page on
    the right - the order they get read in. */
@@ -359,7 +356,7 @@
 .pmportal .bl-list th.sorted .ar{opacity:1;}
 .pmportal .bl-list td{padding:8px 10px;border-bottom:1px solid var(--bl-line2,#edf1f5);vertical-align:middle;}
 .pmportal .bl-list tbody tr{cursor:pointer;}
-.pmportal .bl-list tbody tr:hover{background:var(--bl-hover);}
+.pmportal .bl-list tbody tr:hover{background:var(--bl-row-hover);}
 .pmportal .bl-list .sub{font-weight:600;}
 /* Every other column holds a short value that does not wrap, so the auto
    layout used to hand the subject whatever was left: 90px at 1440px wide,
@@ -1565,10 +1562,12 @@ body.pp-ib-open{overflow:hidden;}
    unread mail. The bar is drawn inside the first cell, so the subjects of read
    and unread rows start at the same place (a dot before the subject pushed it
    right - snoro 2026-11-19). */
-.pmportal .bl-list tbody tr.pp-unread{background:color-mix(in srgb, #2f80ed 6%, var(--bl-box));}
-.pmportal .bl-list tbody tr.pp-unread.sel{background:color-mix(in srgb, var(--bl-accent) 10%, color-mix(in srgb, #2f80ed 6%, var(--bl-box)));}
+/* ROW-1: unread is a blue ●, a bold subject and the blue left edge - no tint, so it never looks like
+   the pointer (a neutral grey) or a ticked row (the accent); readable without colour by ● and bold */
 .pmportal .bl-list tbody tr.pp-unread td.sub{font-weight:700;}
-.pmportal .bl-list tbody tr.pp-unread > td:first-child{box-shadow:inset 3px 0 0 #2f80ed;}
+.pmportal .bl-list tbody tr.pp-unread td.sub::before{content:"\25CF";color:var(--bl-unread);font-size:10px;margin-right:5px;vertical-align:1px;}
+.pmportal .bl-list tbody tr.pp-unread > td:first-child{box-shadow:inset 3px 0 0 var(--bl-unread);}
+.pmportal .pp-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 /* Move an issue to another project: the panel under the detail head. */
 .pmportal .pp-move{margin:8px 0 4px;}
 .pmportal .pp-move-in{padding:10px 12px;border:1px solid var(--bl-line);border-radius:6px;background:var(--bl-box);font-size:13px;}
