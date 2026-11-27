@@ -499,6 +499,9 @@
     @endif
 </nav>
 
+{{-- Exment's messages for this page (an expired form, a save) and the bar for a request refused as expired (419) --}}
+@include(PortalDefinition::view('_flash'))
+
 <script>
 (function () {
     var bar = document.getElementById('pp-top');

@@ -2310,4 +2310,10 @@ return [
     'back_tip' => 'Back to %s',
     // ROW-1
     'row_unread' => 'Unread',
+    // Exment's messages after a form was sent (an expired page, a save), and a request refused
+    // because the page expired (419): shown in the portal, with a reload
+    'flash' => [
+        'close' => 'Close',
+        'reload' => 'Reload',
+    ],
 ];
