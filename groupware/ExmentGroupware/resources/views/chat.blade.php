@@ -72,6 +72,15 @@
 .gwc-panel .it small{color:var(--faint)}
 .gwc-panel .it.done .t{text-decoration:line-through;color:var(--faint)}
 .gwc-main{position:relative}
+.gwc-call{position:fixed;right:16px;bottom:16px;width:min(560px,calc(100% - 32px));background:#111;color:#fff;border-radius:12px;z-index:1090;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
+.gwc-call video{width:100%;max-height:60vh;background:#000;display:none}
+.gwc-call video.on{display:block}
+.gwc-call .bar{display:flex;gap:8px;align-items:center;padding:8px 10px}
+.gwc-call .bar .st{flex:1;font-size:12px;color:#ccc}
+.gwc-call .bar button{border:0;border-radius:18px;padding:6px 12px;background:#333;color:#fff;cursor:pointer}
+.gwc-call .bar button.on{background:#2563c9}
+.gwc-call .bar button.end{background:#e5484d}
+.gwc-msg .join{margin-top:4px}
 @media (max-width:760px){
   .gwc-app{grid-template-columns:1fr}
   .gwc-app.open .gwc-side{display:none}
@@ -87,7 +96,7 @@
     <div class="gwc-rooms" id="gwc-rooms" role="list"></div>
   </aside>
   <section class="gwc-main">
-    <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-mute" hidden></button> <button type="button" class="b" id="gwc-tasks"><i class="fa fa-check-square-o"></i> タスク</button> <button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
+    <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-call" hidden><i class="fa fa-phone"></i> 通話</button> <button type="button" class="b" id="gwc-mute" hidden></button> <button type="button" class="b" id="gwc-tasks"><i class="fa fa-check-square-o"></i> タスク</button> <button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
     <div class="gwc-list" id="gwc-list" aria-live="polite"><div class="gwc-empty">左のルームを選ぶか、新しいルームを作ってください。</div></div>
     <div class="off" id="gwc-off" hidden>しばらく何もしていないので、新しいメッセージの確かめを止めています。ページを動かすとまた確かめます。</div>
     <div class="gwc-replybar" id="gwc-replybar" hidden><i class="fa fa-reply"></i><span class="t" id="gwc-replyt"></span><button type="button" class="b" id="gwc-replyx" aria-label="返信をやめる"><i class="fa fa-times"></i></button></div>
@@ -155,7 +164,7 @@ function msgHtml(m, prevDay) {
             '<button type="button" data-act="task" title="タスクにする">タスク</button>' + (B.pm ? '<button type="button" data-act="issue" title="ExmentPM の課題にする">課題</button>' : '') +
             (mine ? '<button type="button" data-act="edit">編集</button><button type="button" data-act="delete">消す</button>' : '') + '</span>') +
         (m.quote ? '<div class="q" data-goto="' + m.quote.id + '">' + esc(m.quote.name) + '：' + (m.quote.deleted ? '（消されました）' : esc(m.quote.text)) + '</div>' : '') +
-        '<div class="bub">' + (m.deleted ? 'このメッセージは消されました' : textHtml(m.body)) + (files ? '<div class="files">' + files + '</div>' : '') + '</div>' +
+        '<div class="bub">' + (m.deleted ? 'このメッセージは消されました' : textHtml(m.body)) + (files ? '<div class="files">' + files + '</div>' : '') + callJoinHtml(m, mine) + '</div>' +
         rxHtml(m) + tkHtml(m) +
         '<span class="meta">' + esc(String(m.at).slice(11, 16)) + (m.edited ? '（編集）' : '') + (mine && m.read > 0 ? ' · 既読 ' + m.read : '') + '</span></div>';
 }
@@ -194,6 +203,7 @@ function openRoom(id, then) {
     $('gwc-title').textContent = r ? (r.name || '（名前なし）') : '';
     $('gwc-mem').hidden = !(r && r.kind === 'group');
     showMute();
+    $('gwc-call').hidden = !(B.call && r && r.kind === 'direct');
     $('gwc-comp').hidden = false;
     renderRooms();
     $('gwc-list').innerHTML = '<div class="gwc-empty"><i class="fa fa-spinner fa-spin"></i></div>';
@@ -455,6 +465,160 @@ $('gwc-mute').addEventListener('click', function () {
     if (!r) { return; }
     api(u('mute', S.room), { muted: !r.muted }).then(function (d) { if (d && d.rooms) { S.rooms = d.rooms; renderRooms(); showMute(); } });
 });
+
+// ---- calls from a 1:1 room (ISS02946): WebRTC browser to browser, signals through the server ----
+var CALL = null;
+function callJoinHtml(m, mine) {
+    var c = !m.deleted && /^📞 通話 #(\d+) を始めました$/.exec(String(m.body || ''));
+    if (!c || mine || !B.call) { return ''; }
+    return '<div class="join"><button type="button" class="p" data-join="' + c[1] + '"><i class="fa fa-phone"></i> 参加</button></div>';
+}
+function callBox() {
+    var w = document.createElement('div');
+    w.className = 'gwc-call';
+    w.innerHTML = '<video autoplay playsinline></video><audio autoplay></audio><div class="bar"><span class="st"></span>' +
+        '<button type="button" class="mu" title="マイク"><i class="fa fa-microphone"></i></button>' +
+        '<button type="button" class="sh" title="画面を共有"><i class="fa fa-desktop"></i> 画面</button>' +
+        '<button type="button" class="end"><i class="fa fa-phone"></i> 切る</button></div>';
+    document.body.appendChild(w);
+    return w;
+}
+function callStatus(t) { if (CALL) { CALL.box.querySelector('.st').textContent = t; } }
+function callSend(type, payload) {
+    if (!CALL) { return; }
+    return api(u('call_signal', CALL.id), { type: type, payload: payload === undefined ? null : payload });
+}
+function callSetup(id, polite) {
+    if (CALL) { alert('もう通話中です。'); return null; }
+    var pc = new RTCPeerConnection({ iceServers: B.ice || [] });
+    CALL = { id: id, pc: pc, polite: polite, after: 0, making: false, ignore: false, box: callBox(), screen: null, mic: null, timer: null, ready: false };
+    var box = CALL.box;
+    pc.onicecandidate = function (e) { if (e.candidate) { callSend('ice', e.candidate.toJSON()); } };
+    pc.ontrack = function (e) {
+        if (e.track.kind === 'video') {
+            var v = box.querySelector('video');
+            v.srcObject = new MediaStream([e.track]);
+            v.classList.add('on');
+            e.track.onended = e.track.onmute = function () { v.classList.remove('on'); };
+            e.track.onunmute = function () { v.classList.add('on'); };
+        } else {
+            box.querySelector('audio').srcObject = e.streams[0] || new MediaStream([e.track]);
+        }
+    };
+    pc.onconnectionstatechange = function () {
+        var st = pc.connectionState;
+        callStatus(st === 'connected' ? '通話中' : st === 'failed' ? 'つながりませんでした（ネットワークの中つぎが要るかもしれません）' : st === 'disconnected' ? '切れそうです…' : '');
+    };
+    // a new offer when a screen is shared or stopped (the polite one gives way on a clash)
+    pc.onnegotiationneeded = function () {
+        if (!CALL || !CALL.ready) { return; }
+        CALL.making = true;
+        pc.setLocalDescription().then(function () { return callSend('offer', pc.localDescription.toJSON()); }).finally(function () { if (CALL) { CALL.making = false; } });
+    };
+    box.querySelector('.end').onclick = function () { callEnd(true); };
+    box.querySelector('.mu').onclick = function () {
+        if (!CALL || !CALL.mic) { return; }
+        var t = CALL.mic.getAudioTracks()[0];
+        t.enabled = !t.enabled;
+        this.classList.toggle('on', !t.enabled);
+        this.innerHTML = t.enabled ? '<i class="fa fa-microphone"></i>' : '<i class="fa fa-microphone-slash"></i>';
+    };
+    box.querySelector('.sh').onclick = function () {
+        var btn = this;
+        if (!CALL) { return; }
+        if (CALL.screen) { stopShare(); return; }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) { alert('このブラウザーは画面の共有ができません。'); return; }
+        navigator.mediaDevices.getDisplayMedia({ video: true }).then(function (stream) {
+            var track = stream.getVideoTracks()[0];
+            CALL.screen = { stream: stream, sender: pc.addTrack(track, stream) };
+            btn.classList.add('on');
+            track.onended = stopShare;
+        }).catch(function () { /* the person said no */ });
+    };
+    function stopShare() {
+        if (!CALL || !CALL.screen) { return; }
+        CALL.screen.stream.getTracks().forEach(function (t) { t.stop(); });
+        try { pc.removeTrack(CALL.screen.sender); } catch (e) { /* gone already */ }
+        CALL.screen = null;
+        box.querySelector('.sh').classList.remove('on');
+    }
+    return pc;
+}
+function callMic() {
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
+        CALL.mic = stream;
+        stream.getTracks().forEach(function (t) { CALL.pc.addTrack(t, stream); });
+    });
+}
+function callPoll() {
+    if (!CALL) { return; }
+    var id = CALL.id;
+    api(u('call_signals', id) + '?after=' + CALL.after).then(function (d) {
+        if (!CALL || CALL.id !== id) { return; }
+        var chain = Promise.resolve();
+        (d.signals || []).forEach(function (s) {
+            CALL.after = Math.max(CALL.after, s.id);
+            chain = chain.then(function () { return callOn(s); });
+        });
+        chain.then(function () {
+            if (d.ended) { callEnd(false); return; }
+            if (CALL) { CALL.timer = setTimeout(callPoll, 1000); }
+        });
+    }).catch(function () { if (CALL) { CALL.timer = setTimeout(callPoll, 2000); } });
+}
+function callOn(s) {
+    var pc = CALL.pc;
+    if (s.type === 'hangup') { callEnd(false); return; }
+    if (s.type === 'join') {
+        // the one who started makes the first offer
+        CALL.ready = true;
+        return pc.setLocalDescription().then(function () { return callSend('offer', pc.localDescription.toJSON()); });
+    }
+    if (s.type === 'offer' || s.type === 'answer') {
+        var clash = s.type === 'offer' && (CALL.making || pc.signalingState !== 'stable');
+        CALL.ignore = !CALL.polite && clash;
+        if (CALL.ignore) { return; }
+        return pc.setRemoteDescription(s.payload).then(function () {
+            CALL.ready = true;
+            if (s.type === 'offer') {
+                return pc.setLocalDescription().then(function () { return callSend('answer', pc.localDescription.toJSON()); });
+            }
+        });
+    }
+    if (s.type === 'ice' && s.payload) {
+        return pc.addIceCandidate(s.payload).catch(function () { if (!CALL.ignore) { /* a late one */ } });
+    }
+}
+function callEnd(tell) {
+    if (!CALL) { return; }
+    var c = CALL;
+    CALL = null;
+    clearTimeout(c.timer);
+    if (tell) { api(u('call_end', c.id), {}); }
+    [c.mic, c.screen && c.screen.stream].forEach(function (st) { if (st) { st.getTracks().forEach(function (t) { t.stop(); }); } });
+    try { c.pc.close(); } catch (e) { /* closed */ }
+    if (c.box.parentNode) { c.box.parentNode.removeChild(c.box); }
+}
+$('gwc-call').addEventListener('click', function () {
+    if (!S.room || !window.RTCPeerConnection) { alert('このブラウザーでは通話できません。'); return; }
+    api(u('call_start', S.room), {}).then(function (d) {
+        if (!d || d.ok === false) { alert((d && d.message) || '通話を始められませんでした'); return; }
+        if (!callSetup(d.call, false)) { return; }
+        callStatus('相手が参加するのを待っています…');
+        callMic().then(callPoll).catch(function () { alert('マイクを使えませんでした（ブラウザーの許可を見てください）。'); callEnd(true); });
+    });
+});
+$('gwc-list').addEventListener('click', function (ev) {
+    var j = ev.target.closest('[data-join]');
+    if (!j) { return; }
+    ev.stopPropagation();
+    if (!window.RTCPeerConnection) { alert('このブラウザーでは通話できません。'); return; }
+    var id = parseInt(j.getAttribute('data-join'), 10);
+    if (!callSetup(id, true)) { return; }
+    callStatus('つないでいます…');
+    callMic().then(function () { return callSend('join'); }).then(callPoll).catch(function () { alert('マイクを使えませんでした（ブラウザーの許可を見てください）。'); callEnd(true); });
+}, true);
+window.addEventListener('beforeunload', function () { if (CALL) { callEnd(true); } });
 
 // rooms
 $('gwc-rooms').addEventListener('click', function (ev) { var r = ev.target.closest('.gwc-room'); if (r) { openRoom(parseInt(r.getAttribute('data-id'), 10)); } });

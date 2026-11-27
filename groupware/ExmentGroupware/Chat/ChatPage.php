@@ -81,12 +81,19 @@ class ChatPage
                     'issue' => $this->url('api/message/__ID__/issue'),
                     'search' => $this->url('api/search'),
                     'mute' => $this->url('api/room/__ID__/mute'),
+                    'call_start' => $this->url('api/room/__ID__/call'),
+                    'call_signal' => $this->url('api/call/__ID__/signal'),
+                    'call_signals' => $this->url('api/call/__ID__/signals'),
+                    'call_end' => $this->url('api/call/__ID__/end'),
                     'settings' => $this->url('api/room/__ID__/settings'),
                 ],
                 'max_file' => ChatService::MAX_FILE_BYTES,
                 'reactions' => ChatText::REACTIONS,
                 'pm' => ChatTasks::pmAvailable() && ChatTasks::pmCanCreate(),
                 'retention' => ChatRetention::CHOICES,
+                // calls from a 1:1 room (ISS02946): on, and the STUN / TURN servers of the setting
+                'call' => \App\Plugins\ExmentGroupware\FeatureGate::allowed(\App\Plugins\ExmentGroupware\FeatureGate::CALL),
+                'ice' => ChatCall::iceServers($this->plugin->getCustomOption('call_ice')),
                 'jump' => intval(request()->query('message', 0)) ?: null,
             ],
         ]);
@@ -100,6 +107,38 @@ class ChatPage
         }
 
         return $view;
+    }
+
+    // ---- calls (ISS02946) -------------------------------------------------------
+
+    public function postCallStart($id)
+    {
+        return $this->json(function () use ($id) {
+            return ChatCall::start($this->uid(), intval($id), $this->url(''));
+        });
+    }
+
+    public function postCallSignal(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            ChatCall::signal($this->uid(), intval($id), strval($request->input('type')), $request->input('payload'));
+
+            return [];
+        });
+    }
+
+    public function apiCallSignals(Request $request, $id)
+    {
+        return $this->json(function () use ($request, $id) {
+            return ChatCall::signals($this->uid(), intval($id), intval($request->query('after', 0)));
+        });
+    }
+
+    public function postCallEnd($id)
+    {
+        return $this->json(function () use ($id) {
+            return ChatCall::end($this->uid(), intval($id));
+        });
     }
 
     public function apiRooms()

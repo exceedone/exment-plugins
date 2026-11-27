@@ -465,6 +465,42 @@
                 "admin.bootstrap",
                 "admin.pjax"
             ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/room/{id}/call",
+            "function": "chatCallStart",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/call/{id}/signal",
+            "function": "chatCallSignal",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/api/call/{id}/signals",
+            "function": "chatCallSignals",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/call/{id}/end",
+            "function": "chatCallEnd",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
         }
     ]
 }
