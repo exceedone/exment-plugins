@@ -89,6 +89,15 @@
             <button class="btn primary" type="submit"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>送る</button>
         </div>
     </form>
+    @if(\App\Plugins\ExmentITSupport\GuestCall::enabled() && in_array($st, $Its::ACTIVE_STATUSES, true))
+    <div class="sep">または</div>
+    <form method="post" action="{{ $Its::publicUrl('t', $token, 'call-request') }}">
+        @csrf
+        <label for="call-when" style="display:block;margin-bottom:4px">担当者と通話で話したいとき（声と画面の共有、ブラウザーで）</label>
+        <input type="text" id="call-when" name="when" maxlength="200" placeholder="都合のよい時間（なくてもかまいません）" style="width:100%;margin-bottom:8px">
+        <button class="btn" type="submit">通話をお願いする</button>
+    </form>
+    @endif
     @if(in_array($st, $Its::ACTIVE_STATUSES, true))
     <div class="sep">または</div>
     <form method="post" action="{{ $Its::publicUrl('t', $token, 'solved') }}" onsubmit="return confirm('解決にします。よろしいですか？')">
