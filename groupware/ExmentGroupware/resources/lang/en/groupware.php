@@ -143,7 +143,7 @@ return [
         'feed_active' => 'An address made on :date is in use.',
         'feed_used' => 'Last read on :date.',
         'feed_create' => 'Make an address',
-        'feed_regen' => 'Make a new one',
+        'feed_regen' => 'Make a new address',
         'feed_revoke' => 'Stop',
         'feed_regen_ask' => 'A new address stops the current one. Make a new one?',
         'feed_revoke_ask' => 'Calendars reading this address will no longer show your events. Stop it?',

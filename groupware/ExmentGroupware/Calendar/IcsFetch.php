@@ -28,12 +28,20 @@ class IcsFetch
     protected $resolve;
     /** @var float the time limit of a whole fetch, seconds */
     protected $timeout;
+    /** @var callable|null the clock, seconds (null: microtime; the tests give a fake one) */
+    protected $clock;
 
-    public function __construct(?callable $client = null, ?callable $resolve = null, float $timeout = self::TIMEOUT)
+    public function __construct(?callable $client = null, ?callable $resolve = null, float $timeout = self::TIMEOUT, ?callable $clock = null)
     {
         $this->client = $client;
         $this->resolve = $resolve;
         $this->timeout = $timeout;
+        $this->clock = $clock;
+    }
+
+    protected function now(): float
+    {
+        return $this->clock !== null ? floatval(($this->clock)()) : microtime(true);
     }
 
     /**
@@ -51,9 +59,9 @@ class IcsFetch
             $headers['If-Modified-Since'] = $lastModified;
         }
         // one time limit for the whole fetch, redirects included
-        $deadline = microtime(true) + $this->timeout;
+        $deadline = $this->now() + $this->timeout;
         for ($hop = 0; $hop <= static::MAX_REDIRECTS; $hop++) {
-            $left = $deadline - microtime(true);
+            $left = $deadline - $this->now();
             if ($left <= 0) {
                 throw new IcsFetchError('network');
             }

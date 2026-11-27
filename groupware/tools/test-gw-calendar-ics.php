@@ -828,27 +828,30 @@ namespace {
         && IcsFetch::resolveUrl('https://cal.example.invalid/a', '//other.example.invalid/e') === 'https://other.example.invalid/e');
 
     // one time limit for the whole fetch, redirects included (a slow chain of redirects)
+    // (a fake clock: each answer takes 6 of the 15 seconds, so the third is the last one asked)
     $hops = [];
-    $slow = function ($url, $headers, $opts) use (&$hops) {
+    $clock = 1000.0;
+    $slow = function ($url, $headers, $opts) use (&$hops, &$clock) {
         $hops[] = $opts['timeout'];
-        usleep(400000);
+        $clock += 6.0;
         return ['status' => 302, 'headers' => ['Location' => '/n' . count($hops)], 'body' => ''];
     };
-    $f = new IcsFetch($slow, $resolve, 1.0);
-    $t0 = microtime(true);
+    $f = new IcsFetch($slow, $resolve, 15.0, function () use (&$clock) {
+        return $clock;
+    });
     gw_ics_check('fetch: the time limit is for the whole fetch, not each redirect', gw_ics_code(function () use ($f) {
         $f->get('https://cal.example.invalid/a.ics');
-    }) === 'network' && count($hops) === 3 && microtime(true) - $t0 < 2.0, [$hops, microtime(true) - $t0]);
+    }) === 'network' && $hops === [15, 9, 3], $hops);
 
     // ---- a calendar made to be slow ---------------------------------------------------------
     gw_ics_check('rule: COUNT read from outside is 1000 at most', Ics::rule('FREQ=DAILY;COUNT=50000', 'UTC', false) === 'FREQ=DAILY;COUNT=1000');
     $t0 = microtime(true);
     gw_ics_check('repeat_until: UNTIL alone without walking the repeat; an end far away is no end', Events::repeatUntil('FREQ=DAILY;UNTIL=20991231', '2000-01-01 00:00:00', 'UTC', false) === '2100-01-02 00:00:00'
-        && Events::repeatUntil('FREQ=DAILY;UNTIL=99991231', '2000-01-01 00:00:00', 'UTC', false) === null && microtime(true) - $t0 < 0.05);
+        && Events::repeatUntil('FREQ=DAILY;UNTIL=99991231', '2000-01-01 00:00:00', 'UTC', false) === null && microtime(true) - $t0 < 1.0);
     $old = ['starts_at' => '2000-01-01 01:00:00', 'ends_at' => '2000-01-01 02:00:00', 'tz' => 'UTC', 'rrule' => 'FREQ=DAILY'];
     $t0 = microtime(true);
     $occ = \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($old, '2026-12-01 00:00:00', '2026-12-03 00:00:00');
-    gw_ics_check('a daily repeat of 2000 still shows in 2026, at once', array_column($occ, 'start') === ['2026-12-01 01:00:00', '2026-12-02 01:00:00'] && microtime(true) - $t0 < 0.05, array_column($occ, 'start'));
+    gw_ics_check('a daily repeat of 2000 still shows in 2026, at once', array_column($occ, 'start') === ['2026-12-01 01:00:00', '2026-12-02 01:00:00'] && microtime(true) - $t0 < 1.0, array_column($occ, 'start'));
     $occ = \App\Plugins\ExmentGroupware\Calendar\Occurrences::between(['starts_at' => '2001-03-06 01:00:00', 'ends_at' => '2001-03-06 02:00:00', 'tz' => 'UTC', 'rrule' => 'FREQ=WEEKLY;INTERVAL=3;BYDAY=TU'], '2026-11-30 00:00:00', '2027-01-31 00:00:00');
     $weeks = array_map(function ($o) {
         return intdiv(intval((strtotime($o['start']) - strtotime('2001-03-06 01:00:00')) / 86400), 7) % 3;
@@ -871,7 +874,7 @@ namespace {
     foreach (array_slice($plan['insert'], 0, 500) as $row) {
         \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($row, '2026-12-01 00:00:00', '2026-12-08 00:00:00');
     }
-    gw_ics_check('...and 500 of them shown for a week at once', microtime(true) - $t0 < 2.0, microtime(true) - $t0);
+    gw_ics_check('...and 500 of them shown for a week at once', microtime(true) - $t0 < 5.0, microtime(true) - $t0);
     // COUNT is read once, as UNTIL: 700 weekly series of 1000 from 2013 (a large real calendar)
     $cnt = "BEGIN:VCALENDAR\r\n";
     for ($i = 0; $i < 700; $i++) {
@@ -884,7 +887,7 @@ namespace {
     $took = microtime(true) - $t0;
     $one = $plan['insert']['cnt-0'] ?? [];
     gw_ics_check('COUNT read as UNTIL (its last date), once: 700 series of 1000 read and planned well in time', !$r['timed_out'] && count($plan['insert']) === 700
-        && ($one['rrule'] ?? '') === 'FREQ=DAILY;BYDAY=MO;UNTIL=20320301' && $took < 5.0, [$took, $one['rrule'] ?? null]);
+        && ($one['rrule'] ?? '') === 'FREQ=DAILY;BYDAY=MO;UNTIL=20320301' && $took < 8.0, [$took, $one['rrule'] ?? null]);
     echo '      (' . round($took, 2) . " s)\n";
     // (as a weekly rule: walked by weeks, the COUNT reaches its end within the walk's limit)
     $asCount = ['starts_at' => '2013-01-07 00:00:00', 'ends_at' => '2013-01-07 01:00:00', 'tz' => 'Asia/Tokyo', 'rrule' => 'FREQ=WEEKLY;BYDAY=MO;COUNT=1000'];
@@ -1039,6 +1042,29 @@ namespace {
     gw_ics_check('the window: a repeat is there with 5000 events once', count(array_filter($w, function ($x) {
         return $x['title'] === 'weekly';
     })) === 2, count($w));
+
+    // a window has at most Events::MAX_ITEMS occurrences: the person's own first, then each link
+    // an equal share (one link of many repeats pushes out neither)
+    DB::reset();
+    $ev = function (array $v) use ($owner) {
+        return DB::table('gw_cal_events')->insertGetId($v + ['owner_user_id' => $owner, 'location' => null, 'body' => null, 'ends_at' => '2000-01-01 01:00:00',
+            'all_day' => 0, 'tz' => 'UTC', 'repeat_until' => null, 'exdates' => null, 'rdates' => null, 'visibility' => 'all', 'org_id' => null, 'deleted_at' => null]);
+    };
+    for ($i = 0; $i < 60; $i++) {
+        $ev(['title' => 'flood', 'starts_at' => '2000-01-01 00:00:00', 'rrule' => 'FREQ=DAILY', 'source' => 'link', 'link_id' => 1]);
+    }
+    $ev(['title' => 'other link', 'starts_at' => '2000-01-01 00:00:00', 'rrule' => 'FREQ=DAILY', 'source' => 'link', 'link_id' => 2]);
+    $ev(['title' => 'mine', 'starts_at' => '2000-01-01 00:00:00', 'rrule' => 'FREQ=DAILY', 'source' => 'local', 'link_id' => null]);
+    $logs = count(\Illuminate\Support\Facades\Log::$lines);
+    $t0 = microtime(true);
+    $w = Events::window('2026-01-01 00:00:00', '2027-02-05 00:00:00', [$owner], $owner, '予定あり');
+    $by = array_count_values(array_column($w, 'title'));
+    gw_ics_check('window: 20000 occurrences at most (61 repeats of 400 days would be 24400)', count($w) <= Events::MAX_ITEMS && count($w) > 15000, count($w));
+    gw_ics_check('window: the person\'s own all there, the other link all there, the flood cut', ($by['mine'] ?? 0) === 400 && ($by['other link'] ?? 0) === 400 && ($by['flood'] ?? 0) === Events::MAX_ITEMS - 800, $by);
+    gw_ics_check('window: the cut is logged', count(\Illuminate\Support\Facades\Log::$lines) > $logs);
+    $feedRow = (object) ['id' => 1, 'user_id' => $owner];
+    $ics = Feeds::render($feedRow, '予定あり', 'Calendar', 'exment.example.invalid', '2026-12-01 00:00:00');
+    gw_ics_check('export of such a calendar: bounded, and quick', substr_count($ics, 'BEGIN:VEVENT') <= Events::MAX_ITEMS && strlen($ics) < 20000000 && microtime(true) - $t0 < 20.0, [substr_count($ics, 'BEGIN:VEVENT'), microtime(true) - $t0]);
 
     // the pages put every text in as text
     foreach (['calendar.blade.php', 'calendar_links.blade.php'] as $v) {

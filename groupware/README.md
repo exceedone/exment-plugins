@@ -152,7 +152,7 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 
 Part 5 of the calendar (ISS02947). Off at first: Admin setting → Feature management → **カレンダーの連携（ICS）** (`exment_groupware.calendar_links`, needs the calendar). A person allowed it gets **連携** in the calendar's toolbar.
 
-**The ICS export address.** **URL を作る** makes an address `https://<site>/gw-calendar/ics/<token>.ics` that a calendar program (Google Calendar "From URL", Outlook, the iPhone) reads without logging in. The token is 64 random hex characters; only its SHA-256 is kept, so the address is shown once, when it is made. **作りなおす** makes a new one and stops the old; **止める** stops it. A stopped or unknown address, a deleted person or a person no longer allowed the feature answers 404. At most 30 reads a minute for one address and 120 from one IP.
+**The ICS export address.** In the 「連携」 dialog of the calendar, **URL を作る** makes an address `https://<site>/gw-calendar/ics/<token>.ics` that a calendar program (Google Calendar "From URL", Outlook, the iPhone) reads without logging in. The token is 64 random hex characters; only its SHA-256 is kept, so the address is shown once, when it is made. Once there is one, **新しい URL を作る** makes a new one and stops the old; **止める** stops it. A stopped or unknown address, a deleted person or a person no longer allowed the feature answers 404. At most 30 reads a minute for one address and 120 from one IP.
 
 - It has the person's events and the events they attend, from 30 days back to 365 days ahead.
 - **Who sees what**: the export is what somebody who is not logged in sees of that person's calendar, by the same rules as the page (Visibility, with no viewer). An event open to all (「全員」) has its title and place. Any other event (部署, 参加者だけ, 予定ありだけ, and an outside calendar shown busy) is a VEVENT of its time only: SUMMARY 「予定あり」, CLASS:PRIVATE, no UID of the event, no place. No event has its notes or attendees.
@@ -173,7 +173,8 @@ The tables `gw_cal_links` and `gw_cal_feeds` are made when the zip is uploaded (
 
 - **No proxy.** The outside calendars are fetched directly, never through an HTTP proxy (the server connects to the very address it checked, so a proxy would get round the check). A site that reaches the internet only through a proxy cannot read ICS links. The ICS export address is not affected.
 - **No session, no IP filter.** The export address has no session (a calendar program keeps no cookies). It follows Exment's maintenance mode as Exment's public pages do (and, on Exment SaaS, the tenant's expiry). It is not behind the web IP filter of the admin pages (Admin setting → IP filter), since Google's or Microsoft's servers read it from outside: whoever has the address can read it, so keep it to yourself and make a new one if it leaks.
-- **Many events in one window.** A view of the calendar (and the export) reads the repeats and the one-time events of a window separately, at most 5000 of each: with more one-time events than that in one window (many outside calendars), the earliest 5000 are shown.
+- **Many events in one window.** A view of the calendar (and the export) reads the repeats and the one-time events of a window separately, at most 5000 of each: with more one-time events than that in one window (many outside calendars), the earliest 5000 are shown. A window has at most 20000 occurrences: the person's own events first, then each outside calendar an equal share of the rest (the smaller ones first, what one leaves goes to the next), so one calendar of many repeats pushes out neither (a warning goes to the log).
+- **A slow calendar server.** A link read after the answer of a calendar page keeps that PHP worker (PHP-FPM) busy until it is read, 15 seconds at most (plus 10 for a large calendar), at most once a minute for the site. The page itself is already sent.
 - **Cached routes.** The ICS export address is a route the plugin adds while Exment boots (like ExmentITSupport's pages without login). When Laravel's routes are cached (`php artisan route:cache`), it is not there and answers 404. Do not cache the routes on a site that uses it (`php artisan route:clear` undoes it).
 
 Coming: an export of one's own calendar with all its details, with a token of its own for the owner only (later); Google and Microsoft calendars read only (part 6), CalDAV (part 7), both ways (part 8).
@@ -356,7 +357,7 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 
 カレンダーの 5 つめ（ISS02947）です。初めは使いません：管理者設定 → 機能の管理 → **カレンダーの連携（ICS）**（`exment_groupware.calendar_links`。カレンダーが要ります）。使える人には、カレンダーのツールバーに **連携** が出ます。
 
-**ICS の書き出しの URL**：**URL を作る** で `https://<サイト>/gw-calendar/ics/<トークン>.ics` を作ります。カレンダーのソフト（Google カレンダーの「URL で追加」・Outlook・iPhone）が、ログインなしで読みます。トークンはランダムな 16 進 64 文字で、残すのはその SHA-256 だけです。なので URL は、作ったときに 1 度だけ出ます。**作りなおす** で新しい URL になり、前の URL は止まります。**止める** で止まります。止めた URL・ない URL・消されたユーザーや機能を使えなくなった人の URL は 404 です。1 つの URL は 1 分に 30 回、1 つの IP からは 1 分に 120 回まで読めます。
+**ICS の書き出しの URL**：カレンダーの「連携」の画面の **URL を作る** で `https://<サイト>/gw-calendar/ics/<トークン>.ics` を作ります。カレンダーのソフト（Google カレンダーの「URL で追加」・Outlook・iPhone）が、ログインなしで読みます。トークンはランダムな 16 進 64 文字で、残すのはその SHA-256 だけです。なので URL は、作ったときに 1 度だけ出ます。URL があるときは **新しい URL を作る** で新しい URL になり、前の URL は止まります。**止める** で止まります。止めた URL・ない URL・消されたユーザーや機能を使えなくなった人の URL は 404 です。1 つの URL は 1 分に 30 回、1 つの IP からは 1 分に 120 回まで読めます。
 
 - その人の予定と、その人が参加する予定を、30 日前から 365 日先まで出します。
 - **だれに何が見えるか**：ログインしていない人がその人のカレンダーを見たときと同じです（画面と同じ決まり、Visibility）。「全員」の予定は件名と場所が出ます。それ以外（部署・参加者だけ・予定ありだけ・「予定あり」と見せるほかのカレンダー）は時間だけの VEVENT です：SUMMARY は「予定あり」、CLASS:PRIVATE、予定の ID も場所もありません。メモと参加者は、どの予定でも出ません。
@@ -377,7 +378,8 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 
 - **プロキシは使いません**：ほかのカレンダーは、HTTP のプロキシを通さずに直接読みます（たしかめたアドレスにそのままつなぐため。プロキシを通すと、そのチェックを回り道できてしまいます）。インターネットにプロキシを通してしか出られないサイトでは、ICS の URL を読めません。ICS の書き出しの URL には関係ありません。
 - **セッションなし・IP フィルターなし**：書き出しの URL はセッションを使いません（カレンダーのソフトはクッキーを持たないため）。Exment のメンテナンスモードには、Exment の公開のページと同じように従います（Exment SaaS では、テナントの期限にも）。管理画面の Web の IP フィルター（管理者設定 → IP フィルター）はかかりません。Google や Microsoft のサーバーが外から読むためです。URL を知っている人はだれでも読めるので、人に教えず、もれたときは作りなおしてください。
-- **1 つの期間にたくさんの予定**：カレンダーの画面（と書き出し）は、期間のくりかえしの予定と 1 回だけの予定を別々に、それぞれ 5000 件まで読みます。1 つの期間に 1 回だけの予定がそれより多いとき（ほかのカレンダーがたくさんあるときなど）は、早いほうから 5000 件を出します。
+- **1 つの期間にたくさんの予定**：カレンダーの画面（と書き出し）は、期間のくりかえしの予定と 1 回だけの予定を別々に、それぞれ 5000 件まで読みます。1 つの期間に 1 回だけの予定がそれより多いとき（ほかのカレンダーがたくさんあるときなど）は、早いほうから 5000 件を出します。1 つの期間に出すのは 20000 回までです。その人自身の予定が先で、残りをほかのカレンダーで同じだけ分けます（小さいほうから。使わなかった分は次のカレンダーへ）。くりかえしの多いカレンダーが 1 つあっても、自分の予定やほかのカレンダーの予定はおし出されません（ログに警告を残します）。
+- **おそいカレンダーのサーバー**：カレンダーの画面の答えのあとに読むリンクは、読み終わるまでその PHP のワーカー（PHP-FPM）を使います。15 秒まで（大きなカレンダーではさらに 10 秒まで）、サイトで 1 分に 1 回までです。画面はもう送ってあります。
 - **ルートのキャッシュ**：ICS の書き出しの URL は、Exment が起動するときにプラグインが足すルートです（ExmentITSupport のログインなしのページと同じ）。Laravel のルートをキャッシュしている（`php artisan route:cache`）と、この URL はなく 404 になります。使うサイトではルートをキャッシュしないでください（`php artisan route:clear` で元に戻ります）。
 
 これから：自分のカレンダーを詳しいまま書き出す URL（本人だけの別のトークン。のちほど）、Google・Microsoft のカレンダーを読む（6）、CalDAV（7）、両方向（8）。

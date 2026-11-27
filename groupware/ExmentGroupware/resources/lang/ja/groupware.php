@@ -143,7 +143,7 @@ return [
         'feed_active' => ':date に作った URL を使っています。',
         'feed_used' => '最後に読まれたのは :date です。',
         'feed_create' => 'URL を作る',
-        'feed_regen' => '作りなおす',
+        'feed_regen' => '新しい URL を作る',
         'feed_revoke' => '止める',
         'feed_regen_ask' => '新しい URL を作ると、今の URL は使えなくなります。作りなおしますか？',
         'feed_revoke_ask' => 'この URL を止めると、そこから読んでいるカレンダーに予定が出なくなります。止めますか？',

@@ -71,6 +71,9 @@ class CalendarFeed
     public function show($token)
     {
         $notFound = response('Not Found', 404, ['Content-Type' => 'text/plain; charset=utf-8', 'X-Robots-Tag' => 'noindex', 'Cache-Control' => 'no-store']);
+        // an address read by machines outside: never Laravel's debug page, whatever happens (even
+        // an error the catch below cannot take, as out of memory, is then a plain error page)
+        config(['app.debug' => false]);
         try {
             require_once __DIR__ . '/Calendar/Bootstrap.php';
             $token = strval($token);
