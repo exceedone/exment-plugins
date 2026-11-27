@@ -85,6 +85,7 @@ class ChatPage
                     'call_signal' => $this->url('api/call/__ID__/signal'),
                     'call_signals' => $this->url('api/call/__ID__/signals'),
                     'call_end' => $this->url('api/call/__ID__/end'),
+                    'call_join' => $this->url('api/call/__ID__/join'),
                     'settings' => $this->url('api/room/__ID__/settings'),
                 ],
                 'max_file' => ChatService::MAX_FILE_BYTES,
@@ -94,6 +95,7 @@ class ChatPage
                 // calls from a 1:1 room (ISS02946): on, and the STUN / TURN servers of the setting
                 'call' => \App\Plugins\ExmentGroupware\FeatureGate::allowed(\App\Plugins\ExmentGroupware\FeatureGate::CALL),
                 'ice' => ChatCall::iceServers($this->plugin->getCustomOption('call_ice')),
+                'call_max' => ChatCall::MAX_PEOPLE,
                 'jump' => intval(request()->query('message', 0)) ?: null,
             ],
         ]);
@@ -128,7 +130,8 @@ class ChatPage
             if (is_string($json) && $json !== '' && !is_array($payload)) {
                 throw new \InvalidArgumentException('合図を読めませんでした。');
             }
-            ChatCall::signal($this->uid(), intval($id), strval($request->input('type')), $payload);
+            $to = intval($request->input('to', 0)) ?: null;
+            ChatCall::signal($this->uid(), intval($id), strval($request->input('type')), $payload, $to);
 
             return [];
         });
@@ -144,7 +147,14 @@ class ChatPage
     public function postCallEnd($id)
     {
         return $this->json(function () use ($id) {
-            return ChatCall::end($this->uid(), intval($id));
+            return ChatCall::leave($this->uid(), intval($id));
+        });
+    }
+
+    public function postCallJoin($id)
+    {
+        return $this->json(function () use ($id) {
+            return ChatCall::join($this->uid(), intval($id));
         });
     }
 

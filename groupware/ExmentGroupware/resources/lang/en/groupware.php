@@ -106,5 +106,5 @@ return [
     'feature_chat' => 'Chat',
     'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
     'feature_call' => 'Calls',
-    'feature_call_help' => 'Call from a one-to-one chat room, with voice and a shared screen (browser to browser, not recorded).',
+    'feature_call_help' => 'Call from a chat room, up to 4 people, with voice, camera and a shared screen (browser to browser, not recorded).',
 ];

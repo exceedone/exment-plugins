@@ -785,6 +785,11 @@ class PluginPage extends PluginPageBase
         return $this->callDenied() ?? $this->chat()->apiCallSignals(request(), $id);
     }
 
+    public function chatCallJoin($id)
+    {
+        return $this->callDenied() ?? $this->chat()->postCallJoin($id);
+    }
+
     public function chatCallEnd($id)
     {
         return $this->callDenied() ?? $this->chat()->postCallEnd($id);
