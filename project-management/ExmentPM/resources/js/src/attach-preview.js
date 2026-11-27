@@ -305,6 +305,18 @@
                 go();
             }).catch(go);
         }
+        // a picture of the same file already drawn beside the link (the issue's list: a.th next to a.n)
+        function pvHasPicture(a) {
+            if (a.querySelector('img')) { return true; }
+            var href = a.getAttribute('href');
+            var row = a.closest('.row, li, tr') || a.parentNode;
+            var imgs = row ? row.querySelectorAll('img') : [];
+            for (var i = 0; i < imgs.length; i++) {
+                var holder = imgs[i].closest('a[href]');
+                if ((holder && holder.getAttribute('href') === href) || imgs[i].getAttribute('src') === href) { return true; }
+            }
+            return false;
+        }
         function pvCards(root) {
             if (!root || !root.querySelectorAll) { return; }
             var links = root.querySelectorAll('a[data-pvdone]:not([data-pvc])');
@@ -314,7 +326,7 @@
                 var name = pvName(a);
                 var kind = pvKind(name);
                 // the issue's list draws pictures itself; a card for what can be shown as text, a sheet, a picture in a comment
-                if (!kind || (kind === 'image' && a.querySelector('img'))) { continue; }
+                if (!kind || (kind === 'image' && pvHasPicture(a))) { continue; }
                 var place = a.closest('.pp-cmt-body, .bl-cmt-body, li, p, td, div') || a.parentNode;
                 var many = place.querySelectorAll('a[data-pvdone]').length > PV_FOLD_COUNT;
                 var card = pvCard(a.getAttribute('href'), name, many);
