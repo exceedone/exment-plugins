@@ -155,6 +155,10 @@ function rxHtml(m) {
         return '<button type="button" data-rx="' + esc(e) + '" class="' + (who.indexOf(B.me) >= 0 ? 'mine' : '') + '" title="' + esc(who.map(name).join('、')) + '">' + esc(e) + ' ' + who.length + '</button>';
     }).join('') + '</div>';
 }
+// what the list shows of the messages: drawn again only when it changes
+function sig() {
+    return JSON.stringify(S.msgs.map(function (m) { return [m.id, m.body, m.deleted, m.edited, m.read, m.reactions, m.tasks, m.quote, m.files]; }));
+}
 function replace(m) { for (var i = 0; i < S.msgs.length; i++) { if (S.msgs[i].id === m.id) { S.msgs[i] = m; return true; } } return false; }
 function renderMsgs(keepScroll) {
     var list = $('gwc-list');
@@ -204,13 +208,23 @@ function poll() {
         S.busy = false;
         if (!d || d.ok === false) { schedule(); return; }
         S.top = Math.max(S.top, d.top || 0);
+        // drawn again only when something changed, and never under an edit or an open picker:
+        // the box being written, the picker, a highlight, the hovered tools and a selection stay
+        var roomsBefore = JSON.stringify(S.rooms), msgsBefore = sig();
         S.rooms = d.rooms || S.rooms;
         var mine = (d.messages || []).filter(function (m) { return m.room === S.room && !S.msgs.some(function (x) { return x.id === m.id; }); });
         if (mine.length) { S.msgs = S.msgs.concat(mine); }
-        if (d.reads) { S.msgs.forEach(function (m) { if (d.reads[m.id] != null) { m.read = d.reads[m.id]; } }); }
-        (d.recent || []).forEach(function (m) { if (m.room === S.room && !S.editing) { replace(m); } });
-        if (S.room) { renderMsgs(true); if (mine.length) { markRead(); } }
-        renderRooms();
+        if (!S.editing) {
+            if (d.reads) { S.msgs.forEach(function (m) { if (d.reads[m.id] != null) { m.read = d.reads[m.id]; } }); }
+            (d.recent || []).forEach(function (m) { if (m.room === S.room) { replace(m); } });
+        }
+        if (S.room && sig() !== msgsBefore) {
+            if (!S.editing && !document.querySelector('.gwc-pick')) { renderMsgs(true); } else { S.stale = true; }
+            if (mine.length) { markRead(); }
+        } else if (S.room && S.stale && !S.editing && !document.querySelector('.gwc-pick')) {
+            S.stale = false; renderMsgs(true);
+        }
+        if (JSON.stringify(S.rooms) !== roomsBefore) { renderRooms(); }
         schedule();
     }).catch(function () { S.busy = false; schedule(); });
 }
