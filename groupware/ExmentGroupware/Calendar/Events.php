@@ -20,6 +20,8 @@ class Events
     const MAX_ATTENDEES = 100;
     const MAX_WINDOW_DAYS = 400;
     const MAX_PEOPLE = 50;
+    /** The occurrences of one window at most (the views and the ICS export): an outside calendar of many repeats must not run out of memory. */
+    const MAX_ITEMS = 20000;
 
     public static function ready(): bool
     {
@@ -61,29 +63,34 @@ class Events
             return [];
         }
         $attending = DB::table(static::ATTENDEES)->whereIn('user_id', $people)->pluck('event_id')->all();
-        $rows = DB::table(static::EVENTS)->whereNull('deleted_at')
-            ->where('starts_at', '<', $to)
-            ->where(function ($q) use ($people, $attending) {
-                $q->whereIn('owner_user_id', $people);
-                if (!empty($attending)) {
-                    $q->orWhereIn('id', $attending);
-                }
-            })
-            ->where(function ($q) use ($from) {
-                // once: still on at $from; a repeat: not over before $from
-                $q->where(function ($once) use ($from) {
-                    $once->whereNull('rrule')->where('ends_at', '>', $from);
-                })->orWhere(function ($rep) use ($from) {
-                    $rep->whereNotNull('rrule')->where(function ($u) use ($from) {
-                        $u->whereNull('repeat_until')->orWhere('repeat_until', '>=', $from);
-                    });
-                })->orWhereNotNull('rdates');
-            })
-            ->orderBy('starts_at')->limit(5000)->get();
-        if ($rows->isEmpty()) {
+        $base = function () use ($to, $people, $attending) {
+            return DB::table(static::EVENTS)->whereNull('deleted_at')
+                ->where('starts_at', '<', $to)
+                ->where(function ($q) use ($people, $attending) {
+                    $q->whereIn('owner_user_id', $people);
+                    if (!empty($attending)) {
+                        $q->orWhereIn('id', $attending);
+                    }
+                });
+        };
+        // the repeats not over before $from, and the events once still on at $from: each with its
+        // own limit, so many events once (an outside calendar's) never push a repeat out
+        $repeats = $base()->where(function ($q) use ($from) {
+            $q->where(function ($rep) use ($from) {
+                $rep->whereNotNull('rrule')->where(function ($u) use ($from) {
+                    $u->whereNull('repeat_until')->orWhere('repeat_until', '>=', $from);
+                });
+            })->orWhereNotNull('rdates');
+        })->orderBy('starts_at')->limit(5000)->get()->all();
+        $once = $base()->whereNull('rrule')->whereNull('rdates')->where('ends_at', '>', $from)
+            ->orderBy('starts_at')->limit(5000)->get()->all();
+        $rows = array_merge($repeats, $once);
+        if (empty($rows)) {
             return [];
         }
-        $ids = $rows->pluck('id')->all();
+        $ids = array_map(function ($r) {
+            return $r->id;
+        }, $rows);
         $attendees = [];
         foreach (DB::table(static::ATTENDEES)->whereIn('event_id', $ids)->get() as $a) {
             $attendees[intval($a->event_id)][intval($a->user_id)] = strval($a->response);
@@ -99,37 +106,77 @@ class Events
             }
         }
         $viewerOrgs = static::orgsOf($viewer);
-        $out = [];
+        // the calendar's own events first, then each outside calendar (link) with an equal share
+        // of what is left: MAX_ITEMS at most, so that the many repeats of one link can neither run
+        // out the memory nor push out the person's own events or another link's
+        $groups = ['local' => []];
         foreach ($rows as $row) {
-            $e = (array) $row;
-            $eid = intval($e['id']);
-            $att = $attendees[$eid] ?? [];
-            $level = Visibility::of($e, $viewer, array_keys($att), $viewerOrgs);
-            foreach (Occurrences::between($e, $from, $to, $overrides[$eid] ?? []) as $occ) {
-                $item = [
-                    'id' => $eid,
-                    'start' => $occ['start'],
-                    'end' => $occ['end'],
-                    'original' => $occ['original'],
-                    'all_day' => boolval($e['all_day']),
-                    'title' => $occ['title'] ?? strval($e['title']),
-                    'location' => $occ['location'] ?? strval($e['location'] ?? ''),
-                    'owner' => intval($e['owner_user_id']),
-                    'attendees' => array_keys($att),
-                    'mine' => $att[$viewer] ?? null,
-                    'repeat' => !empty($e['rrule']) || !empty($e['rdates']),
-                    'changed' => $occ['changed'],
-                    'visibility' => strval($e['visibility']),
-                    'resources' => $rooms[$eid] ?? [],
-                    'editable' => $viewer > 0 && $viewer === intval($e['owner_user_id']) && strval($e['source']) === 'local',
-                ];
-                $out[] = Visibility::shown($item, $level, $busyLabel);
+            $groups[strval($row->source ?? 'local') === 'link' ? 'link:' . intval($row->link_id ?? 0) : 'local'][] = $row;
+        }
+        // the smaller links first: what one leaves of its share goes to the ones after it
+        $local = $groups['local'];
+        unset($groups['local']);
+        uasort($groups, function ($a, $b) {
+            return count($a) <=> count($b);
+        });
+        $groups = ['local' => $local] + $groups;
+        $out = [];
+        $cut = false;
+        $left = count($groups);
+        foreach ($groups as $key => $list) {
+            $left--;
+            $cap = $key === 'local' ? static::MAX_ITEMS : min(static::MAX_ITEMS, count($out) + intdiv(max(0, static::MAX_ITEMS - count($out)), $left + 1));
+            foreach ($list as $row) {
+                static::expand($out, (array) $row, $from, $to, $viewer, $busyLabel, $attendees, $overrides, $rooms, $viewerOrgs, $cap);
+                if (count($out) >= $cap) {
+                    $cut = true;
+                    break;
+                }
             }
+        }
+        if ($cut) {
+            Log::warning('gw_calendar: more occurrences in one window than its limit (' . static::MAX_ITEMS . '): some of an outside calendar\'s left out');
         }
         usort($out, function ($a, $b) {
             return strcmp($a['start'], $b['start']);
         });
         return $out;
+    }
+
+    /**
+     * One event's occurrences in a window, as the viewer may see them, added to $out up to $cap.
+     *
+     * @param array<int, array<string, mixed>> $out
+     * @param array<string, mixed> $e
+     */
+    protected static function expand(array &$out, array $e, string $from, string $to, int $viewer, string $busyLabel, array $attendees, array $overrides, array $rooms, array $viewerOrgs, int $cap): void
+    {
+        $eid = intval($e['id']);
+        $att = $attendees[$eid] ?? [];
+        $level = Visibility::of($e, $viewer, array_keys($att), $viewerOrgs);
+        foreach (Occurrences::between($e, $from, $to, $overrides[$eid] ?? []) as $occ) {
+            if (count($out) >= $cap) {
+                return;
+            }
+            $item = [
+                'id' => $eid,
+                'start' => $occ['start'],
+                'end' => $occ['end'],
+                'original' => $occ['original'],
+                'all_day' => boolval($e['all_day']),
+                'title' => $occ['title'] ?? strval($e['title']),
+                'location' => $occ['location'] ?? strval($e['location'] ?? ''),
+                'owner' => intval($e['owner_user_id']),
+                'attendees' => array_keys($att),
+                'mine' => $att[$viewer] ?? null,
+                'repeat' => !empty($e['rrule']) || !empty($e['rdates']),
+                'changed' => $occ['changed'],
+                'visibility' => strval($e['visibility']),
+                'resources' => $rooms[$eid] ?? [],
+                'editable' => $viewer > 0 && $viewer === intval($e['owner_user_id']) && strval($e['source']) === 'local',
+            ];
+            $out[] = Visibility::shown($item, $level, $busyLabel);
+        }
     }
 
     /**
@@ -358,6 +405,14 @@ class Events
         $r = Rrule::parse($rrule);
         if ($r === null || ($r['UNTIL'] === null && $r['COUNT'] === null)) {
             return null;
+        }
+        if ($r['COUNT'] === null && strcmp($r['UNTIL'], '2200-01-01') >= 0) {
+            // an end so far away (UNTIL=99991231) is no end
+            return null;
+        }
+        if ($r['COUNT'] === null) {
+            // UNTIL alone: its day (no need to walk the repeat: this is only a filter of the queries)
+            return (new \DateTimeImmutable($r['UNTIL']))->modify('+2 day')->format('Y-m-d') . ' 00:00:00';
         }
         $localStart = $allDay ? substr($startsUtc, 0, 10)
             : (new \DateTimeImmutable($startsUtc, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone($tz))->format('Y-m-d');
