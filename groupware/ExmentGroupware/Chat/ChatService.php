@@ -176,7 +176,12 @@ class ChatService
         if ($room->kind !== 'group' || $me->role !== 'owner') {
             abort(403);
         }
-        $values = ['retention_days' => ChatRetention::clean($retention), 'updated_at' => now()];
+        // a period not among the choices is refused, the saved one stays (0 or empty: always)
+        $raw = trim(strval($retention ?? ''));
+        if ($raw !== '' && $raw !== '0' && ChatRetention::clean($raw) === null) {
+            throw new \InvalidArgumentException('残す期間は、えらぶ中から決めてください。');
+        }
+        $values = ['retention_days' => ChatRetention::clean($raw), 'updated_at' => now()];
         if ($name !== null) {
             $name = ChatText::cleanName($name);
             if ($name === '') {
