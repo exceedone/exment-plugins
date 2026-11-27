@@ -195,17 +195,17 @@
 }
 
 /* add issue ------------------------------------------------------------ */
-.pp-top .pp-top-addwrap>button{background:var(--bl-accent,var(--exm-ui-accent,#4caf93));color:#fff;border-radius:6px;height:32px;
+.pp-top .pp-top-addwrap>button{background:var(--bl-accent-fill,var(--bl-accent,var(--exm-ui-accent,#4caf93)));color:#fff;border-radius:6px;height:32px;
     margin:6px 0 6px 6px;padding:0 13px;}
-.pp-top .pp-top-addwrap>button:hover{background:var(--bl-accent-d,var(--exm-ui-accent-strong,#3d9a80));}
+.pp-top .pp-top-addwrap>button:hover{background:var(--bl-accent-fill-d,var(--bl-accent-d,var(--exm-ui-accent-strong,#3d9a80)));}
 .pp-top .pp-top-addwrap .fa-caret-down{color:rgba(255,255,255,.8);}
 
 /* ==== UX-D ==== */
 /* S5: inside a project, add to it at once; ▾ beside it for another one. */
 .pp-top .pp-top-addwrap.split{align-items:center;margin:6px 0 6px 6px;}
 .pp-top .pp-top-addwrap.split>.pp-top-addmain{display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;
-    background:var(--bl-accent,var(--exm-ui-accent,#4caf93));color:#fff;border-radius:6px 0 0 6px;white-space:nowrap;font-weight:600;}
-.pp-top .pp-top-addwrap.split>.pp-top-addmain:hover{background:var(--bl-accent-d,var(--exm-ui-accent-strong,#3d9a80));color:#fff;}
+    background:var(--bl-accent-fill,var(--bl-accent,var(--exm-ui-accent,#4caf93)));color:#fff;border-radius:6px 0 0 6px;white-space:nowrap;font-weight:600;}
+.pp-top .pp-top-addwrap.split>.pp-top-addmain:hover{background:var(--bl-accent-fill-d,var(--bl-accent-d,var(--exm-ui-accent-strong,#3d9a80)));color:#fff;}
 .pp-top .pp-top-addwrap.split>button{margin:0;border-radius:0 6px 6px 0;padding:0 9px;
     border-left:1px solid rgba(255,255,255,.35);}
 .pp-top .pp-top-addmain:focus-visible{outline:2px solid var(--bl-accent,var(--exm-ui-accent,#4caf93));outline-offset:1px;}
@@ -510,6 +510,69 @@
             + "%3Cpath d='M3.5 4.5h9v2h-9zm0 3h9v2h-9zm0 3h5.5v2h-5.5z' fill='%23ffffff'/%3E%3C/svg%3E";
         document.head.appendChild(icon);
     }
+
+    // Text on the site's accent (保存, 送信, 「← 課題一覧」, 「＋ 課題を追加」): white on the
+    // classic green accent is 2.67:1, under the 4.5:1 normal text needs (WCAG AA). When
+    // the accent is too light for the text on it, those buttons are filled with a shade
+    // of it just dark enough (--bl-accent-fill, and --bl-accent-fill-d under the pointer);
+    // an accent that reads well already (Modern blue) is left as it is, and so is
+    // everything else drawn in the accent (borders, lines, links).
+    function ppRgb(s) {
+        var m = String(s || '').match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+        return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+    }
+    function ppLum(c) {
+        var ch = c.map(function (v) {
+            v = v / 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+    }
+    function ppContrast(a, b) {
+        var x = ppLum(a), y = ppLum(b);
+        return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+    }
+    // null: the accent is fine as it is. Else the fill and its hover, mixed toward
+    // black under light text (toward white under dark text) in small steps.
+    function ppAccentFill(accent, text) {
+        if (ppContrast(accent, text) >= 4.5) { return null; }
+        var to = ppLum(text) > 0.4 ? 0 : 255;
+        var mix = function (t) { return accent.map(function (v) { return Math.round(v + (to - v) * t); }); };
+        for (var i = 1; i <= 50; i++) {
+            var c = mix(i / 50);
+            if (ppContrast(c, text) >= 4.5) { return { fill: c, hover: mix(Math.min(1, i / 50 + 0.12)) }; }
+        }
+        return null;
+    }
+    function ppAccentFit(host) {
+        var probe = document.createElement('span');
+        probe.style.display = 'none';
+        host.appendChild(probe);
+        probe.style.color = 'var(--bl-accent,var(--exm-ui-accent,#4caf93))';
+        var accent = ppRgb(window.getComputedStyle(probe).color);
+        probe.style.color = 'var(--bl-on-accent,var(--exm-ui-on-accent,#fff))';
+        var text = ppRgb(window.getComputedStyle(probe).color);
+        host.removeChild(probe);
+        var f = accent && text ? ppAccentFill(accent, text) : null;
+        var html = document.documentElement.style;
+        if (f) {
+            html.setProperty('--bl-accent-fill', 'rgb(' + f.fill.join(',') + ')');
+            html.setProperty('--bl-accent-fill-d', 'rgb(' + f.hover.join(',') + ')');
+        } else {
+            html.removeProperty('--bl-accent-fill');
+            html.removeProperty('--bl-accent-fill-d');
+        }
+    }
+    try {
+        ppAccentFit(bar);
+        var ppDarkMq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        if (ppDarkMq && !window.__ppAccentMq) {
+            window.__ppAccentMq = true;
+            // once per window: a page swapped in by pjax has its own bar, looked up again
+            var refit = function () { var b = document.getElementById('pp-top'); if (b) { ppAccentFit(b); } };
+            if (ppDarkMq.addEventListener) { ppDarkMq.addEventListener('change', refit); } else if (ppDarkMq.addListener) { ppDarkMq.addListener(refit); }
+        }
+    } catch (e) { /* the accent as it is */ }
 
     // ISS02939 item 6: the portal as an installable web app. The manifest and the worker are
     // routes of the plugin, so their scope is the portal only; taken off again when it is off.
