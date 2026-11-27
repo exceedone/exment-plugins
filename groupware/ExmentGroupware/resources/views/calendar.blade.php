@@ -139,6 +139,18 @@ var GWCAL_CFG = @json($cfg);
 .gwcal-dfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 18px 16px;border-top:1px solid var(--line2)}
 .gwcal-dfoot .sp{flex:1}
 .gwcal-q{margin:4px 0 6px;font-size:14px}
+/* rooms and equipment (part 3) */
+.gwcal-rooms{display:flex;flex-wrap:wrap;gap:4px 14px}
+.gwcal-rooms label{display:inline-flex;align-items:center;gap:6px;font-weight:400;color:inherit;font-size:13px;cursor:pointer}
+.gwcal-clash{margin:0 0 10px;padding:9px 12px;border-radius:8px;background:#fff6e0;color:#7a5200;border:1px solid #f0d58a}
+.gwcal-clash ul{margin:6px 0 8px;padding-left:18px}
+.gwcal-rlist{list-style:none;margin:0;padding:0}
+.gwcal-rlist li{padding:8px 0;border-bottom:1px solid var(--line2)}
+.gwcal-rlist .n{font-weight:600}
+.gwcal-rlist .b{display:block;margin-top:3px;font-size:12px;color:var(--sub)}
+.gwcal-rlist .off{color:var(--sub)}
+.gwcal-rows{display:flex;flex-wrap:wrap;gap:8px}
+.gwcal-rows>.gwcal-f{flex:1 1 140px}
 /* form */
 .gwcal-f{display:block;margin:0 0 10px;min-width:0}
 .gwcal-f>label,.gwcal-f>.lb{display:block;margin:0 0 3px;font-weight:600;color:var(--sub);font-size:12px}
@@ -552,7 +564,14 @@ var viewBtns = {};
     var nw = btn('gbp gwcal-new', null, function () { openForm(null, null, null, newValues(S.view === 'day' ? S.anchor : null)); });
     nw.appendChild(icon('fa-plus'));
     nw.appendChild(document.createTextNode(t('new')));
-    bar.appendChild(nav); bar.appendChild(labelNode); bar.appendChild(views); bar.appendChild(nw);
+    bar.appendChild(nav); bar.appendChild(labelNode); bar.appendChild(views);
+    if (roomsUsable().length || C.resources_admin) {
+        var rb = btn('gb', null, function () { openRooms(); });
+        rb.appendChild(icon('fa-building-o'));
+        rb.appendChild(document.createTextNode(' ' + t('rooms')));
+        bar.appendChild(rb);
+    }
+    bar.appendChild(nw);
 })();
 var peoplePicker = makePicker(S.people, t('people_add'), function (ids) {
     S.people = ids;
@@ -902,6 +921,7 @@ function showDetail(ev, it) {
     }
     b.appendChild(dlgRow('fa-user', t('owner') + ': ' + nameOf(ev.owner)));
     if (ev.reminder !== null && ev.reminder !== undefined) { b.appendChild(dlgRow('fa-bell-o', t('f_reminder') + ': ' + remLabel(ev.reminder))); }
+    if ((ev.resources || []).length) { b.appendChild(dlgRow('fa-building-o', t('f_rooms') + ': ' + ev.resources.map(roomName).join(', '))); }
     if (me) {
         var rp = el('div');
         rp.appendChild(el('div', '', t('reply')));
@@ -1096,15 +1116,53 @@ function openForm(ev, it, scope, init) {
     var remS = select('gwcal-f-rem', remOpts, ev && ev.reminder !== null && ev.reminder !== undefined ? String(ev.reminder) : '');
     var remF = field(t('f_reminder'), remS);
     if ((C.reminders || []).length) { b.appendChild(remF); }
+    // the rooms and equipment (part 3): the ones in use, and the ones the event has
+    var had = ev ? (ev.resources || []) : [];
+    var offered = (C.resources || []).filter(function (r) { return r.enabled || had.indexOf(r.id) >= 0; });
+    var roomBoxes = [];
+    var roomF = el('div', 'gwcal-f');
+    roomF.appendChild(el('div', 'lb', t('f_rooms')));
+    var rw = el('div', 'gwcal-rooms');
+    offered.forEach(function (r) {
+        var lab = el('label');
+        var cb = el('input');
+        cb.type = 'checkbox';
+        cb.value = String(r.id);
+        cb.checked = had.indexOf(r.id) >= 0;
+        roomBoxes.push(cb);
+        lab.appendChild(cb);
+        lab.appendChild(document.createTextNode(r.name + (r.capacity ? ' (' + t('capacity_n', r.capacity) + ')' : '')));
+        rw.appendChild(lab);
+    });
+    roomF.appendChild(rw);
+    if (offered.length) { b.appendChild(roomF); }
     // one occurrence keeps its times, title and place only: the rest is of all of them
-    if (one) { [repF, notes.parentNode, pf, visS.parentNode, orgF, remF].forEach(function (n) { n.hidden = true; }); }
+    if (one) { [repF, notes.parentNode, pf, visS.parentNode, orgF, remF, roomF].forEach(function (n) { n.hidden = true; }); }
+    var clashBox = el('div', 'gwcal-clash');
+    clashBox.hidden = true;
+    b.insertBefore(clashBox, b.firstChild);
     var f = el('div', 'gwcal-dfoot');
-    var save = btn('gbp', t('save'), submit);
+    var save = btn('gbp', t('save'), function () { submit(false); });
     f.appendChild(save);
     f.appendChild(el('span', 'sp'));
     f.appendChild(btn('gb', t('cancel'), function () { if (ev) { showDetail(ev, it); } else { closeModal(); } }));
     function fail(m) { err.textContent = m; err.hidden = false; save.disabled = false; err.scrollIntoView && err.scrollIntoView({ block: 'nearest' }); }
-    function submit() {
+    function showClash(r, canGo) {
+        clear(clashBox);
+        clashBox.appendChild(el('div', '', r.message));
+        var ul = el('ul');
+        (r.clashes || []).forEach(function (c) {
+            (c.times || []).slice(0, 5).forEach(function (tm) {
+                ul.appendChild(el('li', '', c.name + ': ' + fmtLong({ start: tm.start, end: tm.end, all_day: allDay.checked })));
+            });
+        });
+        clashBox.appendChild(ul);
+        if (canGo) { clashBox.appendChild(btn('gb', t('clash_go'), function () { submit(true); })); }
+        clashBox.hidden = false;
+        save.disabled = false;
+        clashBox.scrollIntoView && clashBox.scrollIntoView({ block: 'nearest' });
+    }
+    function submit(ignoreClash) {
         var fv = { title: title.value, all_day: allDay.checked, sd: sd.value, st: st.value, ed: ed.value, et: et.value };
         var bad = formCheck(fv);
         if (bad) { fail(t(bad)); return; }
@@ -1116,11 +1174,18 @@ function openForm(ev, it, scope, init) {
             visibility: visS.value, org_id: visS.value === 'org' ? org.value : '', attendees: picker.ids,
             reminder: remS.value
         };
+        if (offered.length && !one) {
+            p.resources_set = '1';
+            p.resources = roomBoxes.filter(function (x) { return x.checked; }).map(function (x) { return x.value; });
+        }
+        if (ignoreClash === true) { p.ignore_clash = '1'; }
         if (ev && one) { p.scope = 'one'; p.original = it.original; }
         if (ev && !one) { p.scope = 'all'; p.exdates = ev.exdates || []; }
         save.disabled = true;
         err.hidden = true;
+        clashBox.hidden = true;
         api(ev ? U.event + '/' + ev.id + '/save' : U.event, p, true).then(function (r) {
+            if (!r.ok && r.clashes) { showClash(r, r.status === 409); return; }
             if (!r.ok) { fail(r.message); return; }
             closeModal();
             toast(t('saved'));
@@ -1128,9 +1193,110 @@ function openForm(ev, it, scope, init) {
         });
     }
     b.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && !e.target.closest('.gwcal-pick')) { e.preventDefault(); submit(); }
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && !e.target.closest('.gwcal-pick')) { e.preventDefault(); submit(false); }
     });
     showModal([dlgHead(ev ? t('edit') : t('new')), b, f]);
+}
+
+// ---- rooms and equipment (part 3) -----------------------------------------------------
+function roomsUsable() { return (C.resources || []).filter(function (r) { return r.enabled; }); }
+function roomName(id) {
+    var r = (C.resources || []).filter(function (x) { return x.id === id; })[0];
+    return r ? r.name : '#' + id;
+}
+// the rooms of a day: what is booked when (a busy one shows only that it is taken)
+function openRooms(day) {
+    day = day || (S.view === 'day' ? S.anchor : startOfDay(new Date()));
+    var b = el('div', 'gwcal-dbody');
+    var nav = el('div', 'gwcal-nav');
+    var pv = btn('gb sq', null, function () { openRooms(addDays(day, -1)); }, t('prev'));
+    pv.appendChild(icon('fa-chevron-left'));
+    var nx = btn('gb sq', null, function () { openRooms(addDays(day, 1)); }, t('next'));
+    nx.appendChild(icon('fa-chevron-right'));
+    nav.appendChild(pv);
+    nav.appendChild(el('span', 'gwcal-q', fmtDate(day, { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' })));
+    nav.appendChild(nx);
+    b.appendChild(nav);
+    var list = el('ul', 'gwcal-rlist');
+    b.appendChild(list);
+    var rooms = roomsUsable();
+    if (!rooms.length) { list.appendChild(el('li', 'off', t('rooms_none'))); }
+    var foot = el('div', 'gwcal-dfoot');
+    if (C.resources_admin) { foot.appendChild(btn('gb', t('rooms_manage'), function () { manageRooms(); })); }
+    foot.appendChild(el('span', 'sp'));
+    foot.appendChild(btn('gb', t('close'), closeModal));
+    showModal([dlgHead(t('rooms')), b, foot]);
+    if (!rooms.length) { return; }
+    api(U.resource_events, { from: toUtc(day), to: toUtc(addDays(day, 1)), ids: rooms.map(function (r) { return r.id; }).join(',') }).then(function (r) {
+        if (!r.ok) { list.appendChild(el('li', 'off', r.message)); return; }
+        rooms.forEach(function (room) {
+            var li = el('li');
+            li.appendChild(el('span', 'n', room.name));
+            var mine = (r.events || []).filter(function (e) { return (e.resources || []).indexOf(room.id) >= 0; });
+            if (!mine.length) { li.appendChild(el('span', 'b', t('rooms_free'))); }
+            mine.forEach(function (e) { li.appendChild(el('span', 'b', fmtRange(e) + '  ' + (e.title || ''))); });
+            list.appendChild(li);
+        });
+    });
+}
+// the list (a system administrator): add, rename, take out of use
+function manageRooms(edit) {
+    var b = el('div', 'gwcal-dbody');
+    var err = el('div', 'gwcal-err');
+    err.hidden = true;
+    b.appendChild(err);
+    var list = el('ul', 'gwcal-rlist');
+    (C.resources || []).forEach(function (r) {
+        var li = el('li');
+        li.appendChild(el('span', 'n' + (r.enabled ? '' : ' off'), r.name + (r.enabled ? '' : ' (' + t('rooms_off') + ')')));
+        li.appendChild(document.createTextNode(' '));
+        li.appendChild(btn('gb', t('edit'), function () { manageRooms(r); }));
+        list.appendChild(li);
+    });
+    b.appendChild(list);
+    var h = el('div', 'lb', edit ? t('edit') + ': ' + edit.name : t('rooms_add'));
+    h.style.margin = '14px 0 6px';
+    h.style.fontWeight = '600';
+    b.appendChild(h);
+    var nm = input('text', 'gwcal-r-name', edit ? edit.name : '');
+    nm.maxLength = 100;
+    nm.setAttribute('data-focus', '1');
+    var kind = select('gwcal-r-kind', [['room', t('kind_room')], ['equipment', t('kind_equipment')]], edit ? edit.kind : 'room');
+    var cap = input('text', 'gwcal-r-cap', edit && edit.capacity ? edit.capacity : '');
+    cap.inputMode = 'numeric';
+    var note = input('text', 'gwcal-r-note', edit ? edit.note : '');
+    note.maxLength = 500;
+    var on = el('input');
+    on.type = 'checkbox';
+    on.id = 'gwcal-r-on';
+    on.checked = edit ? !!edit.enabled : true;
+    b.appendChild(field(t('room_name'), nm));
+    var rows = el('div', 'gwcal-rows');
+    rows.appendChild(field(t('room_kind'), kind));
+    rows.appendChild(field(t('room_capacity'), cap));
+    b.appendChild(rows);
+    b.appendChild(field(t('room_note'), note));
+    var ol = el('label', 'gwcal-chk');
+    ol.appendChild(on);
+    ol.appendChild(document.createTextNode(t('rooms_in_use')));
+    b.appendChild(ol);
+    var foot = el('div', 'gwcal-dfoot');
+    var sv = btn('gbp', t('save'), function () {
+        sv.disabled = true;
+        err.hidden = true;
+        api(edit ? U.resource + '/' + edit.id : U.resource, { name: nm.value, kind: kind.value, capacity: cap.value, note: note.value, enabled: on.checked ? '1' : '0' }, true).then(function (r) {
+            sv.disabled = false;
+            if (!r.ok) { err.textContent = r.message; err.hidden = false; return; }
+            C.resources = r.resources || [];
+            toast(t('saved'));
+            manageRooms();
+        });
+    });
+    foot.appendChild(sv);
+    if (edit) { foot.appendChild(btn('gb', t('cancel'), function () { manageRooms(); })); }
+    foot.appendChild(el('span', 'sp'));
+    foot.appendChild(btn('gb', t('rooms'), function () { openRooms(); }));
+    showModal([dlgHead(t('rooms_manage')), b, foot]);
 }
 
 // ---- keys, clicks, the clock ---------------------------------------------------------
