@@ -404,7 +404,7 @@ return [
     'git_open' => 'đang mở',
     'git_merged' => 'đã merge',
     'git_closed' => 'đã đóng',
-    'git_done' => 'marked done by the merge',
+    'git_done' => 'đã đánh dấu đã xử lý khi merge',
     // ISS00440: the copy button by the issue key
     'ik_copied' => 'Đã sao chép khóa và tiêu đề của vấn đề',
     'ik_key_copied' => 'Đã sao chép khóa vấn đề',
@@ -1829,24 +1829,24 @@ return [
     // chat channels of a project (ISS02939)
     // ISS02939 item 6: the portal as an installable web app
     'pwa' => [
-        'feature' => 'Phone app (PWA)',
-        'feature_help' => 'Lets people add Project Management to the home screen of a phone or computer and use it like an app. Without a connection it shows an offline page. No issue data is kept on the device.',
-        'app_name' => 'Project Management',
-        'install' => 'Add to home screen',
-        'offline_title' => 'You are offline',
-        'offline_line' => 'There is no internet connection. Try again when you are back online.',
-        'offline_retry' => 'Try again',
-        'ios_help' => 'In Safari, tap the Share button (a square with an arrow) and choose "Add to Home Screen".',
+        'feature' => 'Ứng dụng điện thoại (PWA)',
+        'feature_help' => 'Cho phép thêm Quản lý dự án vào màn hình chính của điện thoại hoặc máy tính và dùng như một ứng dụng. Khi không có kết nối sẽ hiện trang ngoại tuyến. Không lưu dữ liệu vấn đề trên thiết bị.',
+        'app_name' => 'Quản lý dự án',
+        'install' => 'Thêm vào màn hình chính',
+        'offline_title' => 'Bạn đang ngoại tuyến',
+        'offline_line' => 'Không có kết nối Internet. Hãy thử lại khi đã kết nối.',
+        'offline_retry' => 'Thử lại',
+        'ios_help' => 'Trong Safari, nhấn nút Chia sẻ (hình vuông có mũi tên) rồi chọn "Thêm vào MH chính".',
     ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [
-        'title' => 'Notices',
-        'read_all' => 'Mark all read',
-        'close' => 'Close',
-        'loading' => 'Loading…',
-        'all' => 'All notifications',
-        'none' => 'No notices.',
-        'fail' => 'The notices could not be loaded.',
+        'title' => 'Thông báo',
+        'read_all' => 'Đánh dấu tất cả đã đọc',
+        'close' => 'Đóng',
+        'loading' => 'Đang tải…',
+        'all' => 'Tất cả thông báo',
+        'none' => 'Không có thông báo.',
+        'fail' => 'Không tải được thông báo.',
     ],
     // ISS02939 item 5: Git linked to the issues by webhook
     'gitlink' => [
@@ -2304,4 +2304,6 @@ return [
     'back_home' => 'Trang chủ',
     'back_wiki' => 'Danh sách Wiki',
     'back_tip' => 'Quay lại %s',
+    // ROW-1
+    'row_unread' => 'Chưa đọc',
 ];

@@ -404,7 +404,7 @@ return [
     'git_open' => 'abierta',
     'git_merged' => 'fusionada',
     'git_closed' => 'cerrada',
-    'git_done' => 'marked done by the merge',
+    'git_done' => 'marcada como resuelta por la fusión',
     // ISS00440: the copy button by the issue key
     'ik_copied' => 'Se copiaron la clave y el asunto de la incidencia',
     'ik_key_copied' => 'Se copió la clave de la incidencia',
@@ -1829,24 +1829,24 @@ return [
     // chat channels of a project (ISS02939)
     // ISS02939 item 6: the portal as an installable web app
     'pwa' => [
-        'feature' => 'Phone app (PWA)',
-        'feature_help' => 'Lets people add Project Management to the home screen of a phone or computer and use it like an app. Without a connection it shows an offline page. No issue data is kept on the device.',
-        'app_name' => 'Project Management',
-        'install' => 'Add to home screen',
-        'offline_title' => 'You are offline',
-        'offline_line' => 'There is no internet connection. Try again when you are back online.',
-        'offline_retry' => 'Try again',
-        'ios_help' => 'In Safari, tap the Share button (a square with an arrow) and choose "Add to Home Screen".',
+        'feature' => 'App para el móvil (PWA)',
+        'feature_help' => 'Permite añadir la gestión de proyectos a la pantalla de inicio del móvil o del ordenador y usarla como una app. Sin conexión muestra una página sin conexión. No se guardan datos de las incidencias en el dispositivo.',
+        'app_name' => 'Gestión de proyectos',
+        'install' => 'Añadir a la pantalla de inicio',
+        'offline_title' => 'Sin conexión',
+        'offline_line' => 'No hay conexión a internet. Vuelva a intentarlo cuando tenga conexión.',
+        'offline_retry' => 'Reintentar',
+        'ios_help' => 'En Safari, toque el botón Compartir (un cuadrado con una flecha) y elija «Añadir a pantalla de inicio».',
     ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [
-        'title' => 'Notices',
-        'read_all' => 'Mark all read',
-        'close' => 'Close',
-        'loading' => 'Loading…',
-        'all' => 'All notifications',
-        'none' => 'No notices.',
-        'fail' => 'The notices could not be loaded.',
+        'title' => 'Avisos',
+        'read_all' => 'Marcar todo como leído',
+        'close' => 'Cerrar',
+        'loading' => 'Cargando…',
+        'all' => 'Todas las notificaciones',
+        'none' => 'No hay avisos.',
+        'fail' => 'No se pudieron cargar los avisos.',
     ],
     // ISS02939 item 5: Git linked to the issues by webhook
     'gitlink' => [
@@ -2304,4 +2304,6 @@ return [
     'back_home' => 'Inicio',
     'back_wiki' => 'Páginas wiki',
     'back_tip' => 'Volver a %s',
+    // ROW-1
+    'row_unread' => 'No leído',
 ];

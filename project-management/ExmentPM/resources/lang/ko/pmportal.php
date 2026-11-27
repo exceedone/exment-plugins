@@ -404,7 +404,7 @@ return [
     'git_open' => '열림',
     'git_merged' => '병합됨',
     'git_closed' => '닫힘',
-    'git_done' => 'marked done by the merge',
+    'git_done' => '병합으로 처리 완료했습니다',
     // ISS00440: the copy button by the issue key
     'ik_copied' => '이슈 키와 제목을 복사했습니다',
     'ik_key_copied' => '이슈 키를 복사했습니다',
@@ -1829,24 +1829,24 @@ return [
     // chat channels of a project (ISS02939)
     // ISS02939 item 6: the portal as an installable web app
     'pwa' => [
-        'feature' => 'Phone app (PWA)',
-        'feature_help' => 'Lets people add Project Management to the home screen of a phone or computer and use it like an app. Without a connection it shows an offline page. No issue data is kept on the device.',
-        'app_name' => 'Project Management',
-        'install' => 'Add to home screen',
-        'offline_title' => 'You are offline',
-        'offline_line' => 'There is no internet connection. Try again when you are back online.',
-        'offline_retry' => 'Try again',
-        'ios_help' => 'In Safari, tap the Share button (a square with an arrow) and choose "Add to Home Screen".',
+        'feature' => '스마트폰 앱(PWA)',
+        'feature_help' => '프로젝트 관리를 스마트폰이나 컴퓨터의 "홈 화면에 추가"로 앱처럼 쓸 수 있게 합니다. 연결이 없을 때는 "오프라인입니다" 화면을 표시합니다. 과제 데이터는 기기에 남기지 않습니다.',
+        'app_name' => '프로젝트 관리',
+        'install' => '홈 화면에 추가',
+        'offline_title' => '오프라인입니다',
+        'offline_line' => '인터넷에 연결되어 있지 않습니다. 연결되면 다시 시도해 주세요.',
+        'offline_retry' => '다시 시도',
+        'ios_help' => 'Safari의 공유 버튼(□에 ↑)에서 "홈 화면에 추가"를 선택해 주세요.',
     ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [
-        'title' => 'Notices',
-        'read_all' => 'Mark all read',
-        'close' => 'Close',
-        'loading' => 'Loading…',
-        'all' => 'All notifications',
-        'none' => 'No notices.',
-        'fail' => 'The notices could not be loaded.',
+        'title' => '알림',
+        'read_all' => '모두 읽음',
+        'close' => '닫기',
+        'loading' => '불러오는 중…',
+        'all' => '모든 알림',
+        'none' => '알림이 없습니다.',
+        'fail' => '알림을 불러오지 못했습니다.',
     ],
     // ISS02939 item 5: Git linked to the issues by webhook
     'gitlink' => [
@@ -2304,4 +2304,6 @@ return [
     'back_home' => '홈',
     'back_wiki' => '위키 목록',
     'back_tip' => '%s(으)로 돌아가기',
+    // ROW-1
+    'row_unread' => '읽지 않음',
 ];

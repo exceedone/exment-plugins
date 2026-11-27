@@ -404,7 +404,7 @@ return [
     'git_open' => '打开',
     'git_merged' => '已合并',
     'git_closed' => '已关闭',
-    'git_done' => 'marked done by the merge',
+    'git_done' => '已通过合并标记为已处理',
     // ISS00440: the copy button by the issue key
     'ik_copied' => '已复制任务键和主题',
     'ik_key_copied' => '已复制任务键',
@@ -1829,24 +1829,24 @@ return [
     // chat channels of a project (ISS02939)
     // ISS02939 item 6: the portal as an installable web app
     'pwa' => [
-        'feature' => 'Phone app (PWA)',
-        'feature_help' => 'Lets people add Project Management to the home screen of a phone or computer and use it like an app. Without a connection it shows an offline page. No issue data is kept on the device.',
-        'app_name' => 'Project Management',
-        'install' => 'Add to home screen',
-        'offline_title' => 'You are offline',
-        'offline_line' => 'There is no internet connection. Try again when you are back online.',
-        'offline_retry' => 'Try again',
-        'ios_help' => 'In Safari, tap the Share button (a square with an arrow) and choose "Add to Home Screen".',
+        'feature' => '手机应用（PWA）',
+        'feature_help' => '可以通过手机或电脑的"添加到主屏幕"，像应用一样使用项目管理。没有网络时显示"离线"页面。不会在设备上保存问题的数据。',
+        'app_name' => '项目管理',
+        'install' => '添加到主屏幕',
+        'offline_title' => '已离线',
+        'offline_line' => '没有连接到互联网。连接后请重试。',
+        'offline_retry' => '重试',
+        'ios_help' => '请在 Safari 中点击分享按钮（方框加箭头），然后选择"添加到主屏幕"。',
     ],
     // ISS02939 item 6: the bell's list in the portal
     'ntc' => [
-        'title' => 'Notices',
-        'read_all' => 'Mark all read',
-        'close' => 'Close',
-        'loading' => 'Loading…',
-        'all' => 'All notifications',
-        'none' => 'No notices.',
-        'fail' => 'The notices could not be loaded.',
+        'title' => '通知',
+        'read_all' => '全部标为已读',
+        'close' => '关闭',
+        'loading' => '加载中…',
+        'all' => '所有通知',
+        'none' => '没有通知。',
+        'fail' => '无法加载通知。',
     ],
     // ISS02939 item 5: Git linked to the issues by webhook
     'gitlink' => [
@@ -2304,4 +2304,6 @@ return [
     'back_home' => '首页',
     'back_wiki' => 'Wiki 列表',
     'back_tip' => '返回%s',
+    // ROW-1
+    'row_unread' => '未读',
 ];
