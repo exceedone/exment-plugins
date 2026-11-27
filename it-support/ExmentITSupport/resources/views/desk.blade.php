@@ -549,6 +549,11 @@ function renderTicket(draft) {
         '<label class="d-switch"><span>開くときに確認のコード</span><span class="d-tg"><input type="checkbox" data-p="require_otp"' + (t.require_otp ? ' checked' : '') + '><span></span></span></label>' +
         '<div class="d-time"><span><i class="fa fa-clock-o" aria-hidden="true"></i> 作業時間 合計</span><b>' + t.time_spent + ' 分</b></div></div>';
     h += '<div class="d-sec"><h4><i class="fa fa-clock-o" aria-hidden="true"></i>SLA</h4>' + slaBlock(t) + '</div>';
+    if (t.call_on) {
+        h += '<div class="d-sec"><h4><i class="fa fa-phone" aria-hidden="true"></i>通話</h4>' + (t.requester_email
+            ? '<button type="button" class="its-btn small" id="d-call-link"><i class="fa fa-phone" aria-hidden="true"></i>通話のリンクを送る</button><div class="its-sub">お客様にリンク（30 分・はじめに開いたブラウザーだけ）をメールし、声と画面の共有で話します。</div>'
+            : '<div class="its-sub">お客様のメールアドレスがないので、リンクを送れません。</div>') + '</div>';
+    }
     if (t.quotes_on && t.box_kind === 'quote') {
         h += '<div class="d-sec"><h4><i class="fa fa-file-text-o" aria-hidden="true"></i>見積</h4>' + (t.quote
             ? (t.quote.url ? '<a href="' + esc(t.quote.url) + '" target="_blank" rel="noopener"><b>' + esc(t.quote.title) + '</b></a>' : '<b>' + esc(t.quote.title) + '</b>') + (t.quote.total ? ' <span class="its-sub">' + esc(t.quote.total) + '</span>' : '')
@@ -610,8 +615,120 @@ function saveDraft() { try { var b = $('d-body'); if (b && S.ticket) { if (b.val
 function loadDraft(id) { try { return localStorage.getItem(draftKey(id)) || ''; } catch (e) { return ''; } }
 function update(data, msg) { return api(u('update', S.sel), data).then(function (r) { if (r.ok === false) { toast(r.message || '保存できませんでした', true); } else { toast(msg || '保存しました'); } load(true); openTicket(S.sel, true); }); }
 
+// ---- a call with the customer by a link (ISS02941): the agent's side --------------------------
+var CALL = null;
+function callSend(type, payload) {
+    if (!CALL) { return Promise.resolve(); }
+    // one JSON text, past the server's trimming of input strings (an SDP ends with CRLF)
+    return api(u('call_signal', CALL.id), { type: type, payload_json: payload == null ? '' : JSON.stringify(payload) });
+}
+function callOpen(id, ice, t) {
+    var w = document.createElement('div');
+    w.className = 'd-call';
+    w.style.cssText = 'position:fixed;right:16px;bottom:16px;width:min(520px,calc(100% - 32px));background:#111;color:#fff;border-radius:12px;z-index:1090;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden';
+    w.innerHTML = '<video autoplay playsinline style="width:100%;max-height:50vh;background:#000;display:none"></video><audio autoplay></audio>' +
+        '<div style="padding:8px 10px"><div class="st" style="font-size:12px;color:#ccc;margin-bottom:6px"></div>' +
+        '<textarea class="nt" rows="2" placeholder="通話のメモ（切るとチケットの社内メモになります）" style="width:100%;border-radius:6px;border:0;padding:4px 6px;color:#111"></textarea>' +
+        '<div style="display:flex;gap:6px;margin-top:6px"><button type="button" class="mu its-btn small">マイク</button><button type="button" class="sh its-btn small">画面</button><span style="flex:1"></span><button type="button" class="end its-btn small" style="background:#e5484d;color:#fff">切る</button></div></div>';
+    document.body.appendChild(w);
+    var pc = new RTCPeerConnection({ iceServers: ice });
+    CALL = { id: id, pc: pc, box: w, after: 0, mic: null, screen: null, timer: null, making: false, ready: false, ticket: t.id };
+    var stx = function (s) { if (CALL) { w.querySelector('.st').textContent = s; } };
+    stx('お客様がリンクを開くのを待っています…');
+    pc.onicecandidate = function (e) { if (e.candidate) { callSend('ice', e.candidate.toJSON()); } };
+    pc.ontrack = function (e) {
+        var v = w.querySelector('video');
+        if (e.track.kind === 'video') {
+            v.srcObject = new MediaStream([e.track]); v.style.display = 'block';
+            e.track.onended = e.track.onmute = function () { v.style.display = 'none'; };
+            e.track.onunmute = function () { v.style.display = 'block'; };
+        } else { w.querySelector('audio').srcObject = e.streams[0] || new MediaStream([e.track]); }
+    };
+    pc.onconnectionstatechange = function () {
+        var s = pc.connectionState;
+        stx(s === 'connected' ? '通話中' : s === 'failed' ? 'つながりませんでした（ネットワークの中つぎが要るかもしれません）' : s === 'disconnected' ? '切れそうです…' : 'つないでいます…');
+    };
+    pc.onnegotiationneeded = function () {
+        if (!CALL || !CALL.ready) { return; }
+        CALL.making = true;
+        pc.setLocalDescription().then(function () { return callSend('offer', pc.localDescription.toJSON()); }).finally(function () { if (CALL) { CALL.making = false; } });
+    };
+    w.querySelector('.end').onclick = function () { callClose(true); };
+    w.querySelector('.mu').onclick = function () { if (!CALL || !CALL.mic) { return; } var tr = CALL.mic.getAudioTracks()[0]; tr.enabled = !tr.enabled; this.textContent = tr.enabled ? 'マイク' : 'マイク（切）'; };
+    w.querySelector('.sh').onclick = function () {
+        var btn = this;
+        if (!CALL) { return; }
+        if (CALL.screen) { CALL.screen.stream.getTracks().forEach(function (x) { x.stop(); }); try { pc.removeTrack(CALL.screen.sender); } catch (e) { /* gone */ } CALL.screen = null; btn.textContent = '画面'; return; }
+        navigator.mediaDevices.getDisplayMedia({ video: true }).then(function (stream) {
+            var track = stream.getVideoTracks()[0];
+            CALL.screen = { stream: stream, sender: pc.addTrack(track, stream) };
+            btn.textContent = '画面（止める）';
+            track.onended = function () { if (CALL && CALL.screen) { btn.click(); } };
+        }).catch(function () { /* said no */ });
+    };
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        CALL.mic = stream;
+        stream.getTracks().forEach(function (x) { pc.addTrack(x, stream); });
+        callPoll();
+    }).catch(function () { toast('マイクを使えませんでした（ブラウザーの許可を見てください）。', true); callClose(true); });
+}
+function callPoll() {
+    if (!CALL) { return; }
+    var id = CALL.id;
+    api(u('call_signals', id) + '?after=' + CALL.after).then(function (d) {
+        if (!CALL || CALL.id !== id) { return; }
+        var chain = Promise.resolve();
+        (d.signals || []).forEach(function (s) { CALL.after = Math.max(CALL.after, s.id); chain = chain.then(function () { return callOn(s); }).catch(function () { /* one bad signal */ }); });
+        chain.then(function () { if (d.ended) { callClose(false); return; } if (CALL) { CALL.timer = setTimeout(callPoll, 1000); } });
+    }).catch(function () { if (CALL) { CALL.timer = setTimeout(callPoll, 2000); } });
+}
+function callOn(s) {
+    var pc = CALL.pc;
+    if (s.type === 'hangup') { toast('お客様が通話を終えました。'); callClose(true); return; }
+    if (s.type === 'join') {
+        // the agent makes the first offer (the customer is the polite side)
+        CALL.ready = true;
+        return pc.setLocalDescription().then(function () { return callSend('offer', pc.localDescription.toJSON()); });
+    }
+    if (s.type === 'offer' || s.type === 'answer') {
+        if (s.type === 'offer' && (CALL.making || pc.signalingState !== 'stable')) { return; }
+        var desc = s.payload || {};
+        if (desc.sdp && !/\r\n$/.test(desc.sdp)) { desc = { type: desc.type, sdp: desc.sdp + '\r\n' }; }
+        return pc.setRemoteDescription(desc).then(function () {
+            CALL.ready = true;
+            if (s.type === 'offer') { return pc.setLocalDescription().then(function () { return callSend('answer', pc.localDescription.toJSON()); }); }
+        });
+    }
+    if (s.type === 'ice' && s.payload) { return pc.addIceCandidate(s.payload).catch(function () { /* late */ }); }
+}
+function callClose(tell) {
+    if (!CALL) { return; }
+    var c = CALL;
+    CALL = null;
+    clearTimeout(c.timer);
+    var notes = c.box.querySelector('.nt').value;
+    if (tell) { api(u('call_end', c.id), { notes: notes }).then(function () { if (S.sel === c.ticket) { openTicket(c.ticket, true); } }); }
+    [c.mic, c.screen && c.screen.stream].forEach(function (st) { if (st) { st.getTracks().forEach(function (x) { x.stop(); }); } });
+    try { c.pc.close(); } catch (e) { /* closed */ }
+    if (c.box.parentNode) { c.box.parentNode.removeChild(c.box); }
+}
+window.addEventListener('beforeunload', function () { if (CALL) { callClose(true); } });
+
 function bindTicket() {
     var t = S.ticket;
+    var cl = $('d-call-link');
+    if (cl) {
+        cl.onclick = function () {
+            if (CALL) { toast('もう通話中です。', true); return; }
+            cl.disabled = true;
+            api(u('call_link', t.id), {}).then(function (r) {
+                cl.disabled = false;
+                if (!r || r.ok === false) { toast((r && r.message) || 'できませんでした', true); return; }
+                toast(r.mailed ? '通話のリンクを送りました。お客様が開くのを待っています。' : 'リンクはできましたが、メールを送れませんでした。', !r.mailed);
+                callOpen(r.call, r.ice || [], t);
+            });
+        };
+    }
     var qm = $('d-quote-make');
     if (qm) {
         qm.onclick = function () {

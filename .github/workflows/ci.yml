@@ -289,6 +289,10 @@ jobs:
       - name: Help desk website chat (IT Support)
         run: php it-support/tools/test-guest-chat.php
 
+      # calls with a customer by a link from a ticket (ISS02941)
+      - name: Help desk calls with customers (IT Support)
+        run: php it-support/tools/test-guest-call.php
+
       # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
       # plain PHP)
       - name: kintone API check (ExmentKintone)

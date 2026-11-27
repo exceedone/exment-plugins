@@ -32,6 +32,8 @@ class Feature
     const WEB_FORM = 'exment_it_support.web_form';
     /** The chat window of a box on a website (ISS02941): new, off at first. */
     const WEB_CHAT = 'exment_it_support.web_chat';
+    /** Calls with a customer by a link from a ticket (ISS02941): new, off at first. */
+    const GUEST_CALL = 'exment_it_support.guest_call';
     /** The quote of the sales pack and the trial key of a ticket (ISS02941): new, off at first. */
     const SALES_LINK = 'exment_it_support.sales_link';
 
@@ -82,6 +84,14 @@ class Feature
             'requires' => static::DESK,
             'existing' => false,
         ]);
+        $core::register(static::GUEST_CALL, [
+            'label' => $lang . 'guest_call',
+            'description' => $lang . 'guest_call_help',
+            'endpoints' => [],
+            'plugin' => $plugin->plugin_name,
+            'requires' => static::DESK,
+            'existing' => false,
+        ]);
         $core::register(static::WEB_CHAT, [
             'label' => $lang . 'web_chat',
             'description' => $lang . 'web_chat_help',
@@ -115,7 +125,7 @@ class Feature
             return true;
         }
         $core = static::CORE;
-        if (in_array($key, [static::PM_LINK, static::WEB_FORM, static::SALES_LINK, static::WEB_CHAT], true) && !$core::enabled(static::DESK)) {
+        if (in_array($key, [static::PM_LINK, static::WEB_FORM, static::SALES_LINK, static::WEB_CHAT, static::GUEST_CALL], true) && !$core::enabled(static::DESK)) {
             return false;
         }
         if ($key === static::PORTAL && !$core::enabled(static::DESK)) {

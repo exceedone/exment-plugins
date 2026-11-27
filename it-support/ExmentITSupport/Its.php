@@ -192,6 +192,8 @@ class Its
         'chat_teams_url' => '',
         'chat_slack_url' => '',
         'chat_webhook_url' => '',
+        // calls with customers by a link (ISS02941): the STUN / TURN servers, empty until decided
+        'call_ice' => '',
         // No-login sharing.
         'public_enabled' => '1',
         'link_days_after_close' => '30',
