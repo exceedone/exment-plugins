@@ -266,6 +266,11 @@ jobs:
       - name: Backlog custom fields (ExmentPMBacklog)
         run: php project-management/tools/test-pmbl-attributes.php
 
+      # The issues a run imports get the shares of their share settings, not one for whoever ran
+      # it (ExmentPMBacklog with ExmentPM's PortalRunShares, plain PHP)
+      - name: Shares of the imported issues (ExmentPMBacklog)
+        run: php project-management/tools/test-pmbl-sync-shares.php
+
       # The alerts of Zabbix, Mackerel, Alertmanager and Azure Monitor, and
       # what they do to the tickets (ExmentITSupport, plain PHP).
       - name: Alert intake check (ExmentITSupport)
