@@ -93,7 +93,15 @@ function errText(code) {
     code = String(code || '');
     var m = /^http_(\d+)$/.exec(code);
     if (m) { return t('e_http', { n: m[1] }); }
-    return typeof L['e_' + code] === 'string' ? L['e_' + code] : t('e_failed');
+    if (typeof L['e_' + code] === 'string') { return L['e_' + code]; }
+    return typeof L['err_' + code] === 'string' ? L['err_' + code] : t('e_failed');
+}
+// Google and Microsoft (part 6)
+var CLOUD = ['google', 'microsoft'];
+function isCloud(p) { return CLOUD.indexOf(String(p || '')) >= 0; }
+// to the provider's sign-in page (an https address the server made)
+function signIn(url) {
+    if (/^https:\/\//.test(String(url || ''))) { window.location.assign(url); } else { toast(t('e_oauth_failed'), true); }
 }
 
 // ---- the dialog (the calendar's own) --------------------------------------------
@@ -209,7 +217,10 @@ function render() {
     state.links.forEach(function (l) {
         var li = el('li');
         li.appendChild(el('span', 'n', l.name));
-        var meta = [l.host, l.show_as === 'details' ? t('show_details') : t('show_busy')];
+        // Google or Microsoft (part 6): the provider and the account's email; an ICS link: its host
+        var cloud = isCloud(l.provider);
+        var meta = cloud ? [t('provider_' + l.provider), l.account] : [l.host];
+        meta.push(l.show_as === 'details' ? t('show_details') : t('show_busy'));
         if (!l.enabled) { meta.push(t('link_off')); } else {
             meta.push(l.last_sync_at ? t('last_sync', { date: when(l.last_sync_at) }) : t('never'));
             if (l.last_sync_at) { meta.push(t('events_n', { n: l.events })); }
@@ -217,6 +228,17 @@ function render() {
         li.appendChild(el('span', 'm', meta.filter(Boolean).join(' · ')));
         if (l.last_error) { li.appendChild(el('span', 'm err', errText(l.last_error))); }
         var a = el('div', 'acts');
+        if (cloud && l.reconnect) {
+            var rb = btn('gbp', t('reconnect'), function () {
+                rb.disabled = true;
+                api(K.urls.link + '/' + l.id + '/reconnect', {}, true).then(function (r) {
+                    rb.disabled = false;
+                    if (!r.ok) { toast(r.message, true); return; }
+                    signIn(r.redirect);
+                });
+            });
+            a.appendChild(rb);
+        }
         a.appendChild(btn('gb', t('link_edit'), function () { form(l); }));
         if (l.enabled) {
             var sb = btn('gb', t('link_sync'), function () {
@@ -252,6 +274,27 @@ function render() {
         add.appendChild(btn('gb', t('link_add'), function () { form(null); }));
         b.appendChild(add);
     }
+    // Google and Microsoft (part 6): only the providers whose app the site has
+    var providers = CLOUD.filter(function (p) { return K.cloud && K.cloud[p]; });
+    if (providers.length) {
+        b.appendChild(el('h4', '', t('cloud_title')));
+        b.appendChild(el('p', 'help', t('cloud_help')));
+        if (state.links.length < (K.max || 10)) {
+            var ca = el('div', 'acts');
+            providers.forEach(function (p) {
+                var cb = btn('gb', t('connect_' + p), function () {
+                    cb.disabled = true;
+                    api(K.urls.oauth + '/' + p, {}, true).then(function (r) {
+                        cb.disabled = false;
+                        if (!r.ok) { toast(r.message, true); return; }
+                        signIn(r.redirect);
+                    });
+                });
+                ca.appendChild(cb);
+            });
+            b.appendChild(ca);
+        }
+    }
     var foot = el('div', 'gwcal-dfoot');
     foot.appendChild(el('span', 'sp'));
     foot.appendChild(btn('gb', t('close'), close));
@@ -285,9 +328,9 @@ function form(l) {
     url.autocomplete = 'off';
     url.spellcheck = false;
     url.maxLength = 2000;
-    // the address is never given back: empty keeps it
+    // the address is never given back: empty keeps it (a Google or Microsoft calendar has none)
     url.placeholder = l ? t('link_url_keep') : 'https://';
-    b.appendChild(field(t('link_url'), url));
+    if (!(l && isCloud(l.provider))) { b.appendChild(field(t('link_url'), url)); }
     var sel = el('select');
     [['busy', t('show_busy')], ['details', t('show_details')]].forEach(function (o) {
         var op = el('option', '', o[1]);
@@ -336,6 +379,22 @@ var nw = bar.querySelector('.gwcal-new');
 var old = bar.querySelector('.gwcal-lkbtn');
 if (old) { old.parentNode.removeChild(old); }
 bar.insertBefore(ob, nw || null);
+
+// back from a Google or Microsoft sign-in (part 6): the dialog again, with a word of how it went
+// (a fixed code of the server, as words of this page; taken off the address)
+(function () {
+    var m = /[?&]gwcal_links=([a-z_]{1,40})(?:&|$)/.exec(window.location.search);
+    if (!m) { return; }
+    try {
+        var u = new URL(window.location.href);
+        u.searchParams.delete('gwcal_links');
+        window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+    } catch (e) { /* the address stays */ }
+    load().then(function () {
+        render();
+        if (m[1] === 'connected') { toast(t('oauth_connected')); } else { toast(errText(m[1]), true); }
+    });
+})();
 })();
 </script>
 @endverbatim

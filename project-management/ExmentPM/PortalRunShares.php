@@ -21,8 +21,11 @@ use Illuminate\Support\Facades\Log;
  * plugins add, the same as when the batch runs with nobody logged in. The project's members
  * reach the issue through the project, as for every issue.
  *
+ * ExmentPMBacklog saves the issues its 「今すぐ同期」 imports with saveNew() too.
+ *
  * repair() takes back the creator's shares that runs gave before this, on the issues the
- * schedules made and on the copies of the recurring issues:
+ * schedules made, on the copies of the recurring issues and on the issues ExmentPMBacklog
+ * imported:
  *
  *   php artisan exment:batch --name=ExmentPM --param1=schedule_shares                 (dry run: lists them)
  *   php artisan exment:batch --name=ExmentPM --param1=schedule_shares --param2=apply  (removes them)
@@ -37,6 +40,9 @@ class PortalRunShares
 
     /** A creator's share is written in the same save as its issue: seconds either side. */
     const WINDOW = 300;
+
+    /** Which Backlog issue became which issue, kept by ExmentPMBacklog (its Links::TABLE). */
+    const BACKLOG_LINKS = 'pmbl_links';
 
     /**
      * The rows saveNew() is saving, by object id: the row, the user of the request and their
@@ -326,9 +332,46 @@ class PortalRunShares
     }
 
     /**
+     * The issues ExmentPMBacklog imported, each with the time of its import: the time of the link
+     * the import writes right after the save. Its 「今すぐ同期」 runs in the request of the admin
+     * who pressed it, and before its own save kept the creator's share off (ExmentPMBacklog's
+     * Syncer::newIssueSaver) the admin and their organizations got one on every issue it made.
+     * The import writes Backlog's own created_at on the issue, so that time cannot tell which
+     * shares were written in the save; the link's time can.
+     *
+     * @return array<int, int> issue id => Unix time
+     */
+    protected static function importedFromBacklog(): array
+    {
+        if (!\Schema::hasTable(self::BACKLOG_LINKS)) {
+            return [];
+        }
+        $out = [];
+        $links = DB::table(self::BACKLOG_LINKS)->where('kind', 'issue')->where('exment_id', '>', 0)->whereNotNull('created_at')
+            ->get(['exment_id', 'created_at']);
+        foreach ($links as $link) {
+            $at = strtotime(strval($link->created_at));
+            if ($at !== false) {
+                $out[intval($link->exment_id)] = $at;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * When the issue was made, for the window of leaks(): the import's time for an issue
+     * ExmentPMBacklog imported (its created_at is Backlog's), else its created_at.
+     */
+    public static function madeAt(?int $importedAt, ?int $createdAt): ?int
+    {
+        return $importedAt ?? $createdAt;
+    }
+
+    /**
      * Find (and with $apply, remove) the creator's shares that runs gave on the issues they made
-     * (madeByRuns), by leaks(). Safe to run again: what it removed is gone, and nothing else
-     * matches.
+     * (madeByRuns) and on the issues ExmentPMBacklog imported (importedFromBacklog), by leaks().
+     * Safe to run again: what it removed is gone, and nothing else matches.
      *
      * @return array{issues: int, found: array<int, array<string, mixed>>, removed: int}
      */
@@ -342,7 +385,10 @@ class PortalRunShares
             return $out;
         }
         $projects = [];
-        foreach (array_chunk(static::madeByRuns($issueTable), 200) as $chunk) {
+        $imported = static::importedFromBacklog();
+        $ids = array_values(array_unique(array_merge(static::madeByRuns($issueTable), array_keys($imported))));
+        sort($ids);
+        foreach (array_chunk($ids, 200) as $chunk) {
             $issues = $issueTable->getValueModel()->newQueryWithoutScopes()->whereIn('id', $chunk)->get();
             $byIssue = [];
             foreach (CustomValueAuthoritable::where('parent_type', $issueTable->table_name)->whereIn('parent_id', $chunk)->get() as $share) {
@@ -373,8 +419,9 @@ class PortalRunShares
                     $projects[$pid] = [$userRoles, $value === null ? [] : PortalMembership::orgRoles($value, true)];
                 }
                 [$userRoles, $orgRoles] = $projects[$pid];
-                $madeAt = $issue->created_at ? strtotime(strval($issue->created_at)) : false;
-                $leaks = static::leaks($byIssue[intval($issue->id)], PortalMembership::wantedShares($issue), $userRoles, $orgRoles, $madeAt === false ? null : $madeAt);
+                $createdAt = $issue->created_at ? strtotime(strval($issue->created_at)) : false;
+                $madeAt = static::madeAt($imported[intval($issue->id)] ?? null, $createdAt === false ? null : $createdAt);
+                $leaks = static::leaks($byIssue[intval($issue->id)], PortalMembership::wantedShares($issue), $userRoles, $orgRoles, $madeAt);
                 foreach ($leaks as $s) {
                     $out['found'][] = $s + ['issue' => intval($issue->id), 'key' => PortalDefinition::issueKeyOf($issue), 'project' => $pid];
                 }

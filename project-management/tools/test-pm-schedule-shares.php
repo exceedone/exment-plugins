@@ -161,6 +161,24 @@ ok(S::leaks([$share(1, U, 1, E, null, 1)], [], $roles, $orgRoles, $t) === [], 'a
 ok(S::leaks([$share(1, U, 1, E, $t - S::WINDOW - 1, 1)], [], $roles, $orgRoles, $t) === [], 'a share older than the issue: nothing');
 ok(count(S::leaks([$share(1, U, 1, E, $t + S::WINDOW, 1)], [], $roles, $orgRoles, $t)) === 1, 'within the window: found');
 
+// an issue ExmentPMBacklog imported in the admin's request (user 1, not on the project): the import
+// writes Backlog's created_at on it (two years before), so the window is the import's time
+$imported = $t + 30;
+$backlogCreated = $t - 2 * 365 * 86400;
+$bl = [
+    $share(1, U, 1, E, $imported + 1, 1),   // the admin's creator's share: a leak
+    $share(2, O, 11, E, $imported + 1, 1),  // their organization: a leak
+    $share(3, U, 2, E, $imported + 1, 1),   // the assignee's: stays
+    $share(4, O, 21, E, $imported + 1, 1),  // a member organization: stays
+    $share(5, U, 1, E, $imported + 7 * 86400, 1), // the admin shared it with themself by hand a week later: stays
+];
+ok(S::madeAt($imported, $backlogCreated) === $imported, 'an imported issue: made at the import, not at Backlog\'s created');
+ok(S::madeAt(null, $t) === $t, 'any other issue: its created_at');
+ok(S::madeAt(null, null) === null, 'no time at all: none');
+ok(S::leaks($bl, $wanted, $roles, $orgRoles, $backlogCreated) === [], 'with Backlog\'s created_at nothing would be found (why the import\'s time is used)');
+ok(array_column(S::leaks($bl, $wanted, $roles, $orgRoles, S::madeAt($imported, $backlogCreated)), 'id') === [1, 2], 'with the import\'s time: the admin\'s share and their organization', json_encode(array_column(S::leaks($bl, $wanted, $roles, $orgRoles, $imported), 'id')));
+ok(S::leaks([$share(1, U, 5, E, $imported, 5)], [], $roles, $orgRoles, $imported) === [], 'an import run by the project\'s manager: their share stays');
+
 // --- the keys of the copies ------------------------------------------------------------------------
 $types = ['issue_key' => 'auto_number', 'subject' => 'text', 'attachments' => 'file', 'source_key' => 'text', 'source_url' => 'url', 'actual_h' => 'decimal'];
 $def = ['issue' => ['subject' => 'subject', 'actual' => 'actual_h'], 'issue_extra' => PortalSchema::ISSUE_COLUMNS];
