@@ -14,6 +14,10 @@ foreach (['MailException', 'HostGuard'] as $gwCalClass) {
         require_once __DIR__ . '/../Mail/' . $gwCalClass . '.php';
     }
 }
+// the secrets of the settings (Google and Microsoft calendars, part 6)
+if (!class_exists('App\\Plugins\\ExmentGroupware\\SecretOption', false)) {
+    require_once __DIR__ . '/../SecretOption.php';
+}
 foreach (['Ics', 'IcsFetchError', 'IcsFetch', 'Links', 'Feeds', 'CloudFetch', 'CloudOAuth', 'CloudSync', 'LinksPage'] as $gwCalClass) {
     require_once __DIR__ . '/' . $gwCalClass . '.php';
 }
