@@ -260,6 +260,10 @@
     .pp-top .pp-ntc-close{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--bl-sub,#6b7a88) !important;font-size:16px !important;}
     .pp-top .pp-ntc-head button{min-height:44px;}
     .pp-top .pp-ntc{padding:12px 16px;}
+    /* the sheet sits in two stacking contexts (the bar, Exment's content): both rise while it is open,
+       above Exment's header; and no gap at the right (the menus keep 32px from the edge) */
+    .pp-top .pp-top-belldd .pp-top-notices{max-width:none;}
+    .content-wrapper:has(.pp-top-notices:not([hidden])),.pp-top:has(.pp-top-notices:not([hidden])){z-index:1101;}
     .pp-top .pp-top-burger[aria-expanded="true"],.pp-top .pp-top-stgl[aria-expanded="true"]{color:var(--bl-accent-d,var(--exm-ui-accent-strong,#3d9a80));}
     .pp-top .pp-top-burger{order:0;}
     /* a basis of 0: a wrapping row breaks on the basis, before anything shrinks */
@@ -785,6 +789,15 @@
         }
     })();
     syncBell();
+    (function () {
+        var menu = bar.querySelector('.pp-top-notices');
+        var url = menu ? menu.getAttribute('data-notices') : '';
+        if (!url || !pmBell) { return; }
+        fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) { if (j && j.ok && alive()) { setBellCount(j.unread); } })
+            .catch(function () {});
+    })();
     window.addEventListener('resize', function onBellResize() {
         if (!alive()) { window.removeEventListener('resize', onBellResize); return; }
         syncBell();
