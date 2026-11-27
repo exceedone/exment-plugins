@@ -1838,6 +1838,16 @@ return [
         'offline_retry' => 'Try again',
         'ios_help' => 'In Safari, tap the Share button (a square with an arrow) and choose "Add to Home Screen".',
     ],
+    // ISS02939 item 6: the bell's list in the portal
+    'ntc' => [
+        'title' => 'Notices',
+        'read_all' => 'Mark all read',
+        'close' => 'Close',
+        'loading' => 'Loading…',
+        'all' => 'All notifications',
+        'none' => 'No notices.',
+        'fail' => 'The notices could not be loaded.',
+    ],
     // ISS02939 item 5: Git linked to the issues by webhook
     'gitlink' => [
         'feature' => 'Conexión con Git (webhook)',

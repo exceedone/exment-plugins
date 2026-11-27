@@ -164,6 +164,8 @@ jobs:
         run: php project-management/tools/test-pm-git.php
       - name: ExmentPM web app (manifest, worker settings, icons)
         run: php project-management/tools/test-pm-pwa.php
+      - name: ExmentPM the bell's list (a notice, where a tap goes)
+        run: php project-management/tools/test-pm-notices.php
       - name: Simple by default (ExmentPM schema 30)
         run: php project-management/tools/test-pm-features.php
 

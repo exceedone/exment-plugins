@@ -21,6 +21,8 @@
     // validator rejects a multi-line array inside directive parentheses.
     $topbarLang = [
         'searching' => $tt('searching'),
+        'ntc_none' => PortalDefinition::trans('ntc.none'),
+        'ntc_fail' => PortalDefinition::trans('ntc.fail'),
         'no_results' => $tt('no_results'),
         'more_results' => $tt('more_results'),
         'no_recent' => $tt('no_recent'),
@@ -222,15 +224,46 @@
 /* the phone-only controls */
 .pp-top .pp-top-burger,.pp-top .pp-top-stgl,.pp-top .pp-top-curpj{display:none;}
 .pp-top .pp-top-bell[hidden]{display:none;}
+/* the bell's list (ISS02939 item 6) */
+/* one bell per screen: inside the portal its own (the same unread count), Exment's hidden.
+   This style is part of the portal's page: Exment's bell comes back on its other pages. */
+.main-header .navbar-notify{display:none !important;}
+.pp-top .pp-top-bell{position:relative;}
+.pp-top .pp-top-bell .n{position:absolute;top:6px;right:3px;min-width:16px;padding:0 4px;border-radius:8px;
+    background:var(--bl-red,#d9534f);color:#fff;font-size:10px;line-height:16px;text-align:center;}
+.pp-top .pp-top-notices{width:380px;min-width:0;max-width:calc(100vw - 16px);max-height:520px;padding:0;display:flex;flex-direction:column;}
+.pp-top .pp-top-notices[hidden]{display:none;}
+.pp-top .pp-ntc-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bl-line,#e3e8ec);}
+.pp-top .pp-ntc-head .t{font-weight:700;flex:1;}
+.pp-top .pp-ntc-head button{border:0;background:none;color:var(--bl-accent-d,#3d9a80);cursor:pointer;min-height:36px;padding:0 6px;font-size:12px;}
+.pp-top .pp-ntc-close{display:none;}
+.pp-top .pp-ntc-list{overflow-y:auto;flex:1;}
+.pp-top .pp-ntc{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--bl-line,#eef1f3);color:inherit;text-decoration:none;min-height:44px;box-sizing:border-box;}
+.pp-top .pp-ntc:hover{background:var(--bl-hover,#f2f8f5);}
+.pp-top .pp-ntc .dot{flex:none;width:8px;height:8px;margin-top:6px;border-radius:50%;background:transparent;}
+.pp-top .pp-ntc.unread .dot{background:var(--bl-accent,#4caf93);}
+.pp-top .pp-ntc.unread .s{font-weight:700;}
+.pp-top .pp-ntc .b{min-width:0;flex:1;}
+.pp-top .pp-ntc .s{display:block;overflow-wrap:anywhere;line-height:1.4;}
+.pp-top .pp-ntc .at{display:block;font-size:11px;color:var(--bl-faint,#8a97a3);margin-top:2px;}
+.pp-top .pp-ntc-all{display:block;padding:10px 12px;text-align:center;font-size:12px;border-top:1px solid var(--bl-line,#e3e8ec);}
 /* M2: a phone keeps one line - ☰, the project, search, the bell, add. */
 @media (max-width:760px){
     .pp-top{padding:0 4px;gap:0;align-items:center;}
     .pp-top .pp-top-burger,.pp-top .pp-top-stgl,.pp-top .pp-top-bell{display:flex;align-items:center;justify-content:center;
         flex:none;width:40px;height:44px;border:0;background:none;color:inherit;font-size:16px;cursor:pointer;padding:0;}
-    .pp-top .pp-top-bell{position:relative;}
     .pp-top .pp-top-bell[hidden]{display:none;}
-    .pp-top .pp-top-bell .n{position:absolute;top:6px;right:3px;min-width:16px;padding:0 4px;border-radius:8px;
-        background:var(--bl-red,#d9534f);color:#fff;font-size:10px;line-height:16px;text-align:center;}
+    /* the bell's list on a phone: the whole screen, above the home bar */
+    .pp-top .pp-top-belldd{order:3;flex:none;}
+    .pp-top .pp-top-notices{position:fixed;top:0;left:0;right:0;bottom:0;width:auto;max-width:none;max-height:none;z-index:1100;border-radius:0;
+        padding-bottom:env(safe-area-inset-bottom,0);padding-top:env(safe-area-inset-top,0);}
+    .pp-top .pp-ntc-close{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--bl-sub,#6b7a88) !important;font-size:16px !important;}
+    .pp-top .pp-ntc-head button{min-height:44px;}
+    .pp-top .pp-ntc{padding:12px 16px;}
+    /* the sheet sits in two stacking contexts (the bar, Exment's content): both rise while it is open,
+       above Exment's header; and no gap at the right (the menus keep 32px from the edge) */
+    .pp-top .pp-top-belldd .pp-top-notices{max-width:none;}
+    .content-wrapper:has(.pp-top-notices:not([hidden])),.pp-top:has(.pp-top-notices:not([hidden])){z-index:1101;}
     .pp-top .pp-top-burger[aria-expanded="true"],.pp-top .pp-top-stgl[aria-expanded="true"]{color:var(--bl-accent-d,var(--exm-ui-accent-strong,#3d9a80));}
     .pp-top .pp-top-burger{order:0;}
     /* a basis of 0: a wrapping row breaks on the basis, before anything shrinks */
@@ -248,8 +281,8 @@
     .pp-top .pp-top-addwrap span{display:none;}
     .pp-top .pp-top-addwrap:not(.split)>button .fa-caret-down{display:none;}
     /* the rest: under the first line, one per row, while ☰ is open */
-    .pp-top > .pp-top-home,.pp-top > .pp-top-dd:not(.pp-top-pjdd):not(.pp-top-addwrap),.pp-top > .pp-top-upgrade{display:none;order:10;}
-    .pp-top.pp-top-more > .pp-top-home,.pp-top.pp-top-more > .pp-top-dd:not(.pp-top-pjdd):not(.pp-top-addwrap){display:flex;flex:1 1 100%;
+    .pp-top > .pp-top-home,.pp-top > .pp-top-dd:not(.pp-top-pjdd):not(.pp-top-addwrap):not(.pp-top-belldd),.pp-top > .pp-top-upgrade{display:none;order:10;}
+    .pp-top.pp-top-more > .pp-top-home,.pp-top.pp-top-more > .pp-top-dd:not(.pp-top-pjdd):not(.pp-top-addwrap):not(.pp-top-belldd){display:flex;flex:1 1 100%;
         border-top:1px solid var(--bl-line2,#eef2f5);}
     .pp-top.pp-top-more > .pp-top-upgrade{display:inline-flex;margin:6px 8px;}
     .pp-top.pp-top-more > .pp-top-dd > button{flex:1 1 auto;justify-content:flex-start;}
@@ -349,11 +382,23 @@
     <button type="button" class="pp-top-stgl" aria-expanded="false" title="{{ $tt('search_ph') }}" aria-label="{{ $tt('search_ph') }}">
         <i class="fa fa-search"></i>
     </button>
-    {{-- The bell of Exment, on a phone whose header hides it (Exment 7.2):
-         shown by the script only then, with the same count. --}}
-    <a class="pp-top-bell" href="{{ admin_url('notify_navbar') }}" hidden title="{{ PortalDefinition::trans('top_bell') }}" aria-label="{{ PortalDefinition::trans('top_bell') }}">
-        <i class="fa fa-bell-o"></i><span class="n" hidden></span>
-    </a>
+    {{-- The bell (ISS02939 item 6): the person's own newest notices, a dropdown on a wide screen
+         and a sheet on a phone, where Exment's list is a desktop table. A notice opens through
+         Exment (marked read on the way). --}}
+    <div class="pp-top-dd pp-top-belldd">
+        <button type="button" class="pp-top-bell" aria-haspopup="true" aria-expanded="false" title="{{ PortalDefinition::trans('top_bell') }}" aria-label="{{ PortalDefinition::trans('top_bell') }}">
+            <i class="fa fa-bell-o"></i><span class="n" hidden></span>
+        </button>
+        <div class="pp-top-menu pp-top-menu-r pp-top-notices" data-notices="{{ $topbar['notices_url'] ?? '' }}" hidden role="dialog" aria-label="{{ PortalDefinition::trans('top_bell') }}">
+            <div class="pp-ntc-head">
+                <span class="t">{{ PortalDefinition::trans('ntc.title') }}</span>
+                <button type="button" class="pp-ntc-readall" hidden>{{ PortalDefinition::trans('ntc.read_all') }}</button>
+                <button type="button" class="pp-ntc-close" aria-label="{{ PortalDefinition::trans('ntc.close') }}"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="pp-ntc-list"><div class="pp-top-none">{{ PortalDefinition::trans('ntc.loading') }}</div></div>
+            <a class="pp-ntc-all" href="{{ $topbar['notices_all_url'] ?? admin_url('notify_navbar') }}">{{ PortalDefinition::trans('ntc.all') }}</a>
+        </div>
+    </div>
 
     <div class="pp-top-search">
         <i class="fa fa-search"></i>
@@ -590,6 +635,7 @@
             closeAll();
             if (menu && !wasOpen) {
                 if (menu.hasAttribute('data-recent')) { fillRecent(menu); }
+                if (menu.hasAttribute('data-notices')) { loadNotices(menu); }
                 menu.hidden = false;
                 btn.setAttribute('aria-expanded', 'true');
                 if (menu.hasAttribute('data-projects')) {
@@ -656,21 +702,102 @@
         if (bar.getBoundingClientRect().top < 0 && bar.scrollIntoView) { bar.scrollIntoView({ block: 'start' }); }
         if (pjMenu.hidden) { btn.click(); }
     };
-    // Exment's bell, where the header hides it on a phone (Exment 7.2): a
-    // copy on this bar, with the same count, so a phone has the way to the
-    // notices. Where Exment shows its own (7.3), this one stays away.
+    // The bell (ISS02939 item 6): the person's own newest notices, in a menu (a sheet on a
+    // phone). Its count follows Exment's bell while that one is on the page, and the list's
+    // own count once the list was opened.
     var pmBell = bar.querySelector('.pp-top-bell');
+    function setBellCount(count) {
+        var n = pmBell ? pmBell.querySelector('.n') : null;
+        count = String(count == null ? '' : count).trim();
+        if (n) { n.textContent = count; n.hidden = count === '' || count === '0'; }
+    }
     function syncBell() {
         if (!pmBell || !alive()) { return; }
         var ex = document.querySelector('.navbar-notify .container-notify');
-        var narrow = window.matchMedia && window.matchMedia('(max-width:760px)').matches;
-        pmBell.hidden = !(ex && narrow && ex.offsetParent === null);
-        var label = ex ? ex.querySelector('.label') : null;
-        var n = pmBell.querySelector('.n');
-        var count = label ? String(label.textContent || '').trim() : '';
-        if (n) { n.textContent = count; n.hidden = count === '' || count === '0'; }
+        // Exment takes its badge off and puts it back with the new count; none means none unread
+        if (ex) {
+            var label = ex.querySelector('.label');
+            setBellCount(label ? label.textContent : '');
+        }
     }
+    function loadNotices(menu) {
+        var list = menu.querySelector('.pp-ntc-list');
+        var readAll = menu.querySelector('.pp-ntc-readall');
+        fetch(menu.getAttribute('data-notices'), { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) {
+                if (!j || !j.ok) { throw new Error('notices'); }
+                list.textContent = '';
+                (j.items || []).forEach(function (it) {
+                    var a = document.createElement('a');
+                    a.className = 'pp-ntc' + (it.read ? '' : ' unread');
+                    a.href = String(it.url || '');
+                    var dot = document.createElement('span');
+                    dot.className = 'dot';
+                    var b = document.createElement('span');
+                    b.className = 'b';
+                    b.appendChild(span('s', it.subject));
+                    b.appendChild(span('at', it.at));
+                    a.appendChild(dot);
+                    a.appendChild(b);
+                    list.appendChild(a);
+                });
+                if (!(j.items || []).length) {
+                    var d = document.createElement('div');
+                    d.className = 'pp-top-none';
+                    d.textContent = LANG.ntc_none;
+                    list.appendChild(d);
+                }
+                setBellCount(j.unread);
+                if (readAll) { readAll.hidden = !(j.unread > 0); }
+            })
+            .catch(function () {
+                list.textContent = '';
+                var d = document.createElement('div');
+                d.className = 'pp-top-none';
+                d.textContent = LANG.ntc_fail;
+                list.appendChild(d);
+            });
+    }
+    (function () {
+        var menu = bar.querySelector('.pp-top-notices');
+        if (!menu) { return; }
+        // the menu's own buttons do not close it (the bar closes menus on a click elsewhere)
+        menu.addEventListener('click', function (ev) {
+            if (!ev.target.closest('a')) { ev.stopPropagation(); }
+        });
+        var close = menu.querySelector('.pp-ntc-close');
+        if (close) { close.addEventListener('click', function () { closeAll(); }); }
+        var readAll = menu.querySelector('.pp-ntc-readall');
+        if (readAll) {
+            readAll.addEventListener('click', function () {
+                var token = document.querySelector('meta[name="csrf-token"]');
+                readAll.disabled = true;
+                fetch(menu.getAttribute('data-notices') + '/read-all', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': token ? token.getAttribute('content') : '' }
+                }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+                    readAll.disabled = false;
+                    if (!j || !j.ok) { return; }
+                    menu.querySelectorAll('.pp-ntc.unread').forEach(function (a) { a.classList.remove('unread'); });
+                    readAll.hidden = true;
+                    setBellCount(0);
+                    var exLabel = document.querySelector('.navbar-notify .container-notify .label');
+                    if (exLabel) { exLabel.textContent = ''; }
+                }).catch(function () { readAll.disabled = false; });
+            });
+        }
+    })();
     syncBell();
+    (function () {
+        var menu = bar.querySelector('.pp-top-notices');
+        var url = menu ? menu.getAttribute('data-notices') : '';
+        if (!url || !pmBell) { return; }
+        fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) { if (j && j.ok && alive()) { setBellCount(j.unread); } })
+            .catch(function () {});
+    })();
     window.addEventListener('resize', function onBellResize() {
         if (!alive()) { window.removeEventListener('resize', onBellResize); return; }
         syncBell();

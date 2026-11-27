@@ -249,7 +249,9 @@ test('M2: a phone keeps the bar on one line; it stays one line from 1200px', () 
     assert.ok(/class="pp-top-burger"/.test(topbar) && /class="pp-top-stgl"/.test(topbar));
     assert.ok(/\.pp-top \.pp-top-pjdd\{order:1;flex:1 1 0;min-width:0;\}/.test(topbar), 'the project shrinks before the row wraps');
     assert.ok(/@media \(min-width:1200px\)\{\s*\.pp-top\{flex-wrap:nowrap;\}/.test(topbar));
-    assert.ok(/pmBell\.hidden = !\(ex && narrow && ex\.offsetParent === null\)/.test(topbar), 'the copy of the bell only where Exment hides its own');
+    // ISS02939 item 6: one bell per screen: the portal's (its list), Exment's hidden inside the portal
+    assert.ok(/\.main-header \.navbar-notify\{display:none !important;\}/.test(topbar), "Exment's bell hidden in the portal");
+    assert.ok(/class="pp-top-menu pp-top-menu-r pp-top-notices" data-notices=/.test(topbar), "the portal's bell opens its list");
 });
 
 test('S4, M3: the project head on one line, the name opens the project list', () => {

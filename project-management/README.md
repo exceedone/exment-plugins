@@ -375,6 +375,10 @@ Webhook は管理画面の外の `POST /pm-git/hook/<キー>` です。サイト
 
 Off at first: turn on **Phone app (PWA)** in **Admin settings → Feature management**. Then Project Management can be added to the home screen of a phone or a computer (the browser's install, or **⚙ → Add to home screen**; on iPhone, Safari's Share → Add to Home Screen) and opens like an app. Without a connection it shows an offline page. The service worker covers the portal's address only (`…/plugins/exment_pm/`), keeps no issue data on the device (pages always come from the server), and only keeps the portal's own script and style files. Turned off again, the worker is removed the next time the portal is opened.
 最初は使いません。**管理者設定 → 機能の管理** で **スマホのアプリ（PWA）** をオンにすると、プロジェクト管理をスマホやパソコンの「ホーム画面に追加」で、アプリのように使えます（ブラウザーのインストール、または **⚙ → ホーム画面に追加**。iPhone は Safari の共有 → ホーム画面に追加）。電波がないときは「オフラインです」の画面を出します。しくみ（サービスワーカー）が動くのはプロジェクト管理のアドレス（`…/plugins/exment_pm/`）だけで、課題のデータは端末に残しません（画面はいつもサーバーから）。残すのはプロジェクト管理のスクリプトとスタイルのファイルだけです。オフにもどすと、つぎにプロジェクト管理を開いたときに外します。
+## Notices / お知らせ
+
+The bell on the portal's top bar opens the person's own newest 30 notices, unread first: a menu on a wide screen, the whole screen on a phone (Exment's own list is a table made for a desktop). A tap opens the issue (and marks the notice read, through Exment), **Mark all read** marks the person's own notices read, and **All notifications** opens Exment's list.
+ポータルの上のバーのベルで、自分のお知らせの新しい 30 件を、まだ読んでいないものから出します。広い画面ではメニュー、スマホでは画面いっぱいです（Exment のお知らせの一覧はパソコン向けの表です）。押すと課題を開き（Exment を通るので既読になります）、**すべて既読** で自分のお知らせを既読にし、**すべての通知** で Exment の一覧を開きます。
 
 ## Install / 入れ方
 

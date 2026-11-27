@@ -410,6 +410,19 @@ class PluginPage extends PluginPageBase
         return $this->portal()->mailIssue(request(), $id, $issue_id);
     }
 
+    // the notices of the bell inside the portal (ISS02939 item 6): the person's own only
+    public function notices()
+    {
+        return response()->json(array_merge(['ok' => true], PortalNotices::list(intval(\Exment::getUserId()))), 200, ['Cache-Control' => 'no-store']);
+    }
+
+    public function noticesReadAll()
+    {
+        $n = PortalNotices::readAll(intval(\Exment::getUserId()));
+
+        return response()->json(['ok' => true, 'marked' => $n, 'unread' => 0]);
+    }
+
     public function asset($name)
     {
         return $this->portal()->asset(request(), $name);
