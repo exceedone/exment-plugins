@@ -8,6 +8,7 @@
 
 **Unreleased**
 
+- Calls: when the setting 「通話のサーバー（STUN / TURN）」 names a server outside the site (such as `stun.l.google.com`), the setting says under the field what the browsers tell it and which `host:port` a firewall must allow, and the call screen says it once with a link to the manual. See [Call servers and outside connections](#call-servers-and-outside-connections).
 - The manual: a link 「マニュアル」 on the top page and in the side of the mail screen opens the manual of the plugin on exment.net in the language of the user (Japanese, Vietnamese, else English), and Exment's "?" in the header opens it on the plugin's pages (Exment 7.2.4 and later).
 - A new version of this plugin may ask for a newer ibisOffice (ISS02827). Until now the site then said ibisOffice was not installed and Office stopped. Now Office keeps opening with the version already installed, and Feature management and the page of the plugin say a newer version is there, with **ibisOffice を X に更新する**. The update installs it as an install does (checked by its SHA-256) and then deletes the older folders.
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
@@ -144,6 +145,7 @@ The table `gw_mail_accounts` is made when the zip is uploaded (`database/migrati
 
 **未リリース**
 
+- 通話：設定の「通話のサーバー（STUN / TURN）」にサイトでない外のサーバー（`stun.l.google.com` など）があるとき、欄の下に、ブラウザーがそのサーバーに知らせることと、ファイアウォールで許可する `ホスト:ポート` を出します。通話の画面でも 1 回だけ、マニュアルへのリンクと出します。[通話のサーバーと外への接続](#通話のサーバーと外への接続)。
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
 - 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
@@ -184,6 +186,17 @@ Rooms of a group or of two people (ISS02945). Off at first: Admin setting → Fe
 - **Calls** (ISS02946, Feature management → **通話**, off at first): 「通話」 in a room starts a call of up to 4 people with voice; anyone can turn on a camera or share a screen. The browsers connect to each other (WebRTC, encrypted); nothing is recorded or kept on the server but the signals of the connection. The plugin's setting 「通話のサーバー（STUN / TURN）」 lists the servers that help two PCs find each other: empty, only PCs that reach each other directly (the same LAN or VPN) can talk; a public STUN server makes most networks work (the browser then tells it its IP address); strict company networks need a TURN server of your own.
 - A call from a calendar event: 「通話」 on an event (the calendar's) opens the event's own chat room, made the first time with its attendees, and joins the call going on there or starts one. Only attendees who may see the event.
 - Coming: a live connection (WebSocket). See [docs/chat-design.md](docs/chat-design.md).
+
+### Call servers and outside connections
+
+The setting 「通話のサーバー（STUN / TURN）」 of the plugin (Exment's plugin management) lists the STUN / TURN servers that help the browsers of a call find each other, one per line (`stun:host:port`, `turn:host:port|user|password`).
+
+- **Empty**: no outside server is used. Only browsers that reach each other directly (the same LAN or VPN) can talk.
+- **A server that is not this site** (for example the public `stun:stun.l.google.com:19302`): when a call starts, the browser tells that server its IP address, so that the other side can be reached. The voice, the screen and the chat do not pass through a STUN server. A TURN server relays the voice and the screen (still encrypted) when the browsers cannot reach each other directly.
+- Browsers connect to these servers over **UDP** (for example `stun.l.google.com:19302`; `turns:` uses TCP). A company firewall or policy may block that. The settings screen lists under the field each `host:port (protocol)` to allow.
+- To make no outside connection, leave the setting empty, or run your own STUN / TURN server (coturn, for example) and enter it.
+
+While a server outside the site is set, the settings screen says so under the field, and the call screen says once in each browser 「通話をつなぐために、外のサーバー（host）を使います」 (in the language of the user) with a link to the manual.
 
 ## できること
 
@@ -301,3 +314,14 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 - **通話**（ISS02946、機能の管理 → **通話**、初めは使わない）：ルームの「通話」で 4 人までの声の通話を始めます。だれでもカメラを使ったり、画面を共有したりできます。ブラウザーどうしで直接つなぎ（WebRTC、暗号化）、録音はしません。サーバーに残るのは、つなぐための合図だけです。プラグインの設定「通話のサーバー（STUN / TURN）」：空なら、直接つながる PC どうし（同じ LAN・VPN）だけ話せます。公開の STUN を入れると多くのネットでつながります（ブラウザーはそのサーバーに IP アドレスを知らせます）。きびしい会社のネットには、自社の TURN が要ります。
 - カレンダーの予定から通話：予定の「通話」で、その予定のチャットのルーム（はじめてのときに出席者で作る）を開き、そこで続いている通話に入るか、新しく始めます。予定を見られる出席者だけです。
 - これから：すぐ届くつなぎ（WebSocket）。[docs/chat-design.md](docs/chat-design.md)。
+
+### 通話のサーバーと外への接続
+
+設定の「通話のサーバー（STUN / TURN）」（Exment のプラグインの設定）には、通話のブラウザーどうしが相手を見つけるための STUN / TURN のサーバーを 1 行に 1 つ入れます（`stun:ホスト:ポート`、`turn:ホスト:ポート|ユーザー|パスワード`）。
+
+- **空のとき**：外のサーバーは使いません。直接つながるブラウザーどうし（同じ LAN・VPN）だけ話せます。
+- **このサイトでない外のサーバーのとき**（たとえば公開の `stun:stun.l.google.com:19302`）：通話を始めると、相手からつながれるように、ブラウザーはその外のサーバーに IP アドレスを知らせます。声・画面・チャットの中身は STUN のサーバーを通りません。TURN のサーバーは、ブラウザーどうしが直接つながらないときに、声と画面を暗号化したまま中つぎします。
+- ブラウザーは **UDP** でそのサーバーにつなぎます（たとえば `stun.l.google.com:19302`。`turns:` は TCP）。会社のファイアウォールや決まり（ポリシー）で止められていることがあります。設定の画面の欄の下に、許可する `ホスト:ポート（プロトコル）` を並べます。
+- 外につながないようにするには、設定を空にするか、自社で STUN / TURN のサーバー（coturn など）を立てて、その場所を入れてください。
+
+外のサーバーを入れているあいだは、設定の画面の欄の下にそのことを出し、通話の画面では、ブラウザーごとに 1 回だけ「通話をつなぐために、外のサーバー（ホスト）を使います」とマニュアルへのリンクを出します。

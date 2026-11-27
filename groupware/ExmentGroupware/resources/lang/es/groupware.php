@@ -131,4 +131,16 @@ return [
     'feature_chat_help' => 'Hable en salas de grupo y uno a uno, con @menciones, recuento de lecturas y archivos (Exment Plugin Groupware).',
     'feature_call' => 'Llamadas',
     'feature_call_help' => 'Llame desde una sala de chat, hasta 4 personas, con voz, cámara y pantalla compartida (directamente entre navegadores, sin grabación).',
+    // a setting of the call with a server outside this site
+    'call_outside' => [
+        'title' => 'Calls reach an outside server',
+        'lead' => 'This setting has servers that are not this site (:hosts).',
+        'ip' => 'When a call starts, the browser tells these servers its IP address. The voice, the screen and the chat do not pass through a STUN server.',
+        'turn' => 'A TURN server relays the voice and the screen, still encrypted, when the browsers cannot reach each other directly.',
+        'firewall' => 'Browsers reach these servers over UDP (or TCP). A company firewall or policy may block them. These are the ones to allow:',
+        'avoid' => 'To make no outside connection, leave this empty (calls then work only inside one LAN or VPN), or run your own STUN / TURN server (coturn, for example) and enter it here.',
+        'note' => 'To connect the call, an outside server (:hosts) is used.',
+        'more' => 'Learn more',
+        'close' => 'Close',
+    ],
 ];

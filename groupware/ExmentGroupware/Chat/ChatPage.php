@@ -95,6 +95,7 @@ class ChatPage
                 // calls from a 1:1 room (ISS02946): on, and the STUN / TURN servers of the setting
                 'call' => \App\Plugins\ExmentGroupware\FeatureGate::allowed(\App\Plugins\ExmentGroupware\FeatureGate::CALL),
                 'ice' => ChatCall::iceServers($this->plugin->getCustomOption('call_ice')),
+                'ice_outside' => ChatCall::outsideNote($this->plugin->getCustomOption('call_ice'), \App\Plugins\ExmentGroupware\ManualLink::url()),
                 'call_max' => ChatCall::MAX_PEOPLE,
                 'jump' => intval(request()->query('message', 0)) ?: null,
                 'autocall' => request()->query('call') === '1',

@@ -131,4 +131,16 @@ return [
     'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
     'feature_call' => 'Calls',
     'feature_call_help' => 'Call from a chat room, up to 4 people, with voice, camera and a shared screen (browser to browser, not recorded).',
+    // a setting of the call with a server outside this site
+    'call_outside' => [
+        'title' => 'Calls reach an outside server',
+        'lead' => 'This setting has servers that are not this site (:hosts).',
+        'ip' => 'When a call starts, the browser tells these servers its IP address. The voice, the screen and the chat do not pass through a STUN server.',
+        'turn' => 'A TURN server relays the voice and the screen, still encrypted, when the browsers cannot reach each other directly.',
+        'firewall' => 'Browsers reach these servers over UDP (or TCP). A company firewall or policy may block them. These are the ones to allow:',
+        'avoid' => 'To make no outside connection, leave this empty (calls then work only inside one LAN or VPN), or run your own STUN / TURN server (coturn, for example) and enter it here.',
+        'note' => 'To connect the call, an outside server (:hosts) is used.',
+        'more' => 'Learn more',
+        'close' => 'Close',
+    ],
 ];

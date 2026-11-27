@@ -2,6 +2,7 @@
 
 namespace App\Plugins\ExmentGroupware;
 
+use App\Plugins\ExmentGroupware\Chat\ChatCall;
 use App\Plugins\ExmentGroupware\Mail\OAuth;
 use Exceedone\Exment\Services\Plugin\PluginBase;
 
@@ -59,6 +60,11 @@ class PluginSetting
         $form->exmheader('通話（チャット）')->hr();
         $form->textarea('call_ice', '通話のサーバー（STUN / TURN）')->rows(3)
             ->help('1 行に 1 つ。STUN は stun:ホスト:ポート、TURN は turn:ホスト:ポート|ユーザー|パスワード。空のときは、2 台の PC が直接つながるとき（同じ LAN・VPN）だけ通話できます。公開の STUN（例: stun:stun.l.google.com:19302）を入れると、多くの家や会社のネットからつながりますが、ブラウザーはその外のサーバーに自分の IP アドレスを知らせます。TURN のパスワードは、通話する人のブラウザーに渡ります。');
+        // a server outside this site: what the browsers tell it, and what a firewall must let through
+        $outside = ChatCall::outsideNoticeHtml(ChatCall::outsideSummary($this->plugin->getCustomOption('call_ice')), 'alert alert-warning');
+        if ($outside !== '') {
+            $form->description($outside)->escape(false);
+        }
         $form->exmheader('カレンダー')->hr();
         $form->select('cal_resource_clash', '会議室・備品が重なったとき')->options(['warn' => '知らせて、たしかめてから保存する', 'block' => '保存させない'])->default('warn')
             ->help('同じ会議室・備品を、重なる時間に予約しようとしたとき。初めは「知らせて、たしかめてから保存する」です。');

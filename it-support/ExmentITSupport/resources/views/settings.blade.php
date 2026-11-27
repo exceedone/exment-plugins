@@ -108,6 +108,7 @@
             <label for="s-chat-teams">Teams のワークフローの URL</label><input type="text" inputmode="url" id="s-chat-teams" name="chat_teams_url" value="" placeholder="{{ $s['chat_teams_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
             <label for="s-chat-slack">Slack の Incoming Webhook の URL</label><input type="text" inputmode="url" id="s-chat-slack" name="chat_slack_url" value="" placeholder="{{ $s['chat_slack_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://hooks.slack.com/...' }}" autocomplete="off">
             <label for="s-call-ice" class="top">お客様との通話のサーバー（STUN / TURN）</label><textarea id="s-call-ice" name="call_ice" rows="2" placeholder="1 行に 1 つ。stun:ホスト:ポート、turn:ホスト:ポート|ユーザー|パスワード">{{ $s['call_ice'] }}</textarea>
+            @if($callOutside !== '')<span></span>{!! $callOutside !!}@endif
             <label for="s-chat-hook">Webhook の URL</label><input type="text" inputmode="url" id="s-chat-hook" name="chat_webhook_url" value="" placeholder="{{ $s['chat_webhook_url'] !== '' ? '（保存済み。変えるときだけ入力。消すときは -）' : 'https://...' }}" autocomplete="off">
         </div>
         <div class="its-sub its-foot">URL は暗号化して保存します。保存したあと <button type="submit" class="its-btn small" formaction="{{ $Its::url('settings', 'chat-test') }}"><i class="fa fa-paper-plane" aria-hidden="true"></i>試しに送る</button> で届くか確かめられます。Webhook には JSON（event・ticket_no・subject・box・title・lines・url）を送ります。</div>

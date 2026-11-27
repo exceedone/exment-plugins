@@ -131,4 +131,16 @@ return [
     'feature_chat_help' => '在群组和一对一的聊天室中交谈，支持 @提及、已读人数和文件（Exment Plugin Groupware）。',
     'feature_call' => '通话',
     'feature_call_help' => '从聊天室发起最多 4 人的语音、摄像头和屏幕共享通话（浏览器之间直接连接，不录音）。',
+    // a setting of the call with a server outside this site
+    'call_outside' => [
+        'title' => 'Calls reach an outside server',
+        'lead' => 'This setting has servers that are not this site (:hosts).',
+        'ip' => 'When a call starts, the browser tells these servers its IP address. The voice, the screen and the chat do not pass through a STUN server.',
+        'turn' => 'A TURN server relays the voice and the screen, still encrypted, when the browsers cannot reach each other directly.',
+        'firewall' => 'Browsers reach these servers over UDP (or TCP). A company firewall or policy may block them. These are the ones to allow:',
+        'avoid' => 'To make no outside connection, leave this empty (calls then work only inside one LAN or VPN), or run your own STUN / TURN server (coturn, for example) and enter it here.',
+        'note' => 'To connect the call, an outside server (:hosts) is used.',
+        'more' => 'Learn more',
+        'close' => 'Close',
+    ],
 ];

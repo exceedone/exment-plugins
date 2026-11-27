@@ -17,4 +17,16 @@ return [
         'web_form' => 'IT 지원: 웹사이트 폼',
         'web_form_help' => '접수함마다 웹사이트에 넣을 폼(Exment 공개 폼)을 만듭니다. 보낸 내용은 그 접수함의 티켓이 됩니다. Exment 7.3.0 이상.',
     ],
+    // a setting of the call with a server outside this site
+    'call_outside' => [
+        'title' => 'Calls reach an outside server',
+        'lead' => 'This setting has servers that are not this site (:hosts).',
+        'ip' => 'When a call starts, the browsers of the agent and of the customer each tell these servers their IP address. The voice and the screen do not pass through a STUN server.',
+        'turn' => 'A TURN server relays the voice and the screen, still encrypted, when the browsers cannot reach each other directly.',
+        'firewall' => 'Browsers reach these servers over UDP (or TCP). A company firewall or policy may block them. These are the ones to allow:',
+        'avoid' => 'To make no outside connection, leave this empty (calls then work only inside one LAN or VPN), or run your own STUN / TURN server (coturn, for example) and enter it here.',
+        'note' => 'To connect the call, an outside server (:hosts) is used.',
+        'more' => 'Learn more',
+        'close' => 'Close',
+    ],
 ];
