@@ -16,14 +16,22 @@ namespace {
     function encrypt($value)
     {
         $iv = random_bytes(16);
+        $c = $iv . openssl_encrypt(serialize($value), 'aes-256-cbc', $GLOBALS['__test_app_key'], OPENSSL_RAW_DATA, $iv);
 
-        return base64_encode($iv . openssl_encrypt(serialize($value), 'aes-256-cbc', $GLOBALS['__test_app_key'], OPENSSL_RAW_DATA, $iv));
+        return base64_encode(hash_hmac('sha256', $c, $GLOBALS['__test_app_key'], true) . $c);
     }
     function decrypt($payload)
     {
-        $raw = base64_decode($payload);
+        $raw = strval(base64_decode($payload));
+        $c = substr($raw, 32);
+        $plain = strlen($raw) > 48 && hash_equals(hash_hmac('sha256', $c, $GLOBALS['__test_app_key'], true), substr($raw, 0, 32))
+            ? openssl_decrypt(substr($c, 16), 'aes-256-cbc', $GLOBALS['__test_app_key'], OPENSSL_RAW_DATA, substr($c, 0, 16)) : false;
+        if ($plain === false) {
+            // as Laravel's: a payload of another key throws
+            throw new \RuntimeException('The payload is invalid.');
+        }
 
-        return unserialize(openssl_decrypt(substr($raw, 16), 'aes-256-cbc', $GLOBALS['__test_app_key'], OPENSSL_RAW_DATA, substr($raw, 0, 16)));
+        return unserialize($plain);
     }
     // APP_URL and the address of the request (a test changes them)
     $GLOBALS['__test_app_url'] = 'https://pm.example.invalid/';
@@ -312,6 +320,12 @@ namespace {
     $row = $store->forUser(7)[0];
     $check('opt-in: the endpoint\'s sha256 is kept (unique key)', $row['endpoint_hash'] === hash('sha256', $e1) && strlen($row['endpoint_hash']) === 64);
     $check('opt-in: the device name from the user agent', $row['device'] === 'Chrome / Android', $row['device']);
+    $check('at rest: the endpoint is encrypted (the application key), not in the row in plain', strpos($row['endpoint'], 'app:') === 0
+        && strpos(json_encode($row), 'fcm.googleapis.com') === false && strpos(json_encode($row), 'test-device-1') === false, $row['endpoint']);
+    $check('at rest: p256dh and auth encrypted, the plain columns empty', strpos($row['p256dh_enc'], 'app:') === 0 && strpos($row['auth_enc'], 'app:') === 0
+        && $row['p256dh'] === '' && $row['auth'] === '' && strpos(json_encode($row), C::b64u($ua1['public'])) === false && strpos(json_encode($row), C::b64u($ua1Auth)) === false);
+    $check('at rest: they decrypt to what the browser sent', P::open($row['endpoint']) === $e1 && P::open($row['p256dh_enc']) === C::b64u($ua1['public']) && P::open($row['auth_enc']) === C::b64u($ua1Auth));
+    $check('a value encrypted with another key: none (not taken as plain)', @P::open('app:' . base64_encode(random_bytes(40))) === null && P::open('') === null);
     $check('opt-in: the state of this browser is on', P::subscribed(7, $e1) && !P::subscribed(8, $e1));
     $check('opt-in: an address on *.invalid is refused', P::subscribe(7, $sub('https://push.example.invalid/x'))['error'] === 'endpoint' && count($store->subs) === 1);
     $check('opt-in: http is refused', P::subscribe(7, $sub('http://fcm.googleapis.com/fcm/send/x'))['error'] === 'endpoint');
@@ -451,6 +465,14 @@ namespace {
     $sent = [];
     $res = P::sendTo(7, 'x', $fake, 'u');
     $check('a row of another address: no request, removed', count($sent) === 0 && $res['removed'] === 1 && count($store->subs) === 0, $res);
+    // a row written before the values were encrypted (until the upgrade ran): still sent
+    $store->insert(['user_id' => 7, 'endpoint' => $e1, 'endpoint_hash' => hash('sha256', $e1), 'p256dh' => C::b64u($ua1['public']), 'auth' => C::b64u($ua1Auth)]);
+    $sent = [];
+    $res = P::sendTo(7, 'old row', $fake, 'u');
+    $check('an old plain row: sent, readable by the browser', $res['sent'] === 1 && $sent[0]['url'] === $e1
+        && json_decode(strval(uaDecrypt($sent[0]['body'], $ua1['private'], $ua1['public'], $ua1Auth)), true)['title'] === 'old row', $res);
+    $store->subs = [];
+    $sent = [];
     $check('nobody subscribed: nothing sent', P::sendTo(99, 'x', $fake, 'u') === ['sent' => 0, 'removed' => 0, 'failed' => 0, 'refused' => 0] && count($sent) === 0);
 
     // 401 / 403: the site's VAPID refused, not the browser's fault: logged, the row kept as it was

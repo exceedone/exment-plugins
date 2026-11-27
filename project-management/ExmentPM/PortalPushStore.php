@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\DB;
  * the site's key pair (pm_portal_push_keys, one row). PortalPush works through this class only,
  * so a test gives an in-memory one.
  *
- * A subscription row: user_id, endpoint, endpoint_hash (sha256 of the endpoint, unique),
- * p256dh, auth, device, failures, last_sent_at, created_at, updated_at.
+ * A subscription row: user_id, endpoint (encrypted), endpoint_hash (sha256 of the endpoint,
+ * unique: the lookups), p256dh_enc and auth_enc (the browser's keys, encrypted; the old plain
+ * columns p256dh and auth are left empty), device, failures, last_sent_at, created_at, updated_at.
  */
 class PortalPushStore
 {
@@ -20,7 +21,8 @@ class PortalPushStore
     public function exists(): bool
     {
         try {
-            return \Schema::hasTable(static::SUBS) && \Schema::hasTable(static::KEYS);
+            // the encrypted columns come with an upgrade: until it ran, the feature stays off
+            return \Schema::hasTable(static::SUBS) && \Schema::hasTable(static::KEYS) && \Schema::hasColumn(static::SUBS, 'p256dh_enc');
         } catch (\Throwable $e) {
             return false;
         }

@@ -85,6 +85,8 @@ the bells. The list of what was weak and what changed goes into the PR.
 - `PortalPush` (the feature, subscriptions, sending), `PortalPushCrypto` (RFC 8291 / 8292 with
   openssl), `PortalPushStore` (the rows). The key pair is in its own table `pm_portal_push_keys`
   (one row: the public key, the private key's PEM encrypted), next to `pm_portal_push_subs`.
+  A subscription is kept encrypted too (the endpoint, `p256dh_enc`, `auth_enc`; the upgrade
+  `2026_12_01` encrypts the rows kept before), decrypted only to send; `endpoint_hash` finds it.
 - The feature is on only with `exment_pm.pwa` on too.
 - The link of every notice is the portal with `?notices=1`: the bell's list (#221) opens.
   The service worker follows links inside the portal only.
