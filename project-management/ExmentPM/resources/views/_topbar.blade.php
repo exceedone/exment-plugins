@@ -225,6 +225,9 @@
 .pp-top .pp-top-burger,.pp-top .pp-top-stgl,.pp-top .pp-top-curpj{display:none;}
 .pp-top .pp-top-bell[hidden]{display:none;}
 /* the bell's list (ISS02939 item 6) */
+/* one bell per screen: inside the portal its own (the same unread count), Exment's hidden.
+   This style is part of the portal's page: Exment's bell comes back on its other pages. */
+.main-header .navbar-notify{display:none !important;}
 .pp-top .pp-top-bell{position:relative;}
 .pp-top .pp-top-bell .n{position:absolute;top:6px;right:3px;min-width:16px;padding:0 4px;border-radius:8px;
     background:var(--bl-red,#d9534f);color:#fff;font-size:10px;line-height:16px;text-align:center;}
@@ -707,8 +710,11 @@
     function syncBell() {
         if (!pmBell || !alive()) { return; }
         var ex = document.querySelector('.navbar-notify .container-notify');
-        var label = ex ? ex.querySelector('.label') : null;
-        if (label) { setBellCount(label.textContent); }
+        // Exment takes its badge off and puts it back with the new count; none means none unread
+        if (ex) {
+            var label = ex.querySelector('.label');
+            setBellCount(label ? label.textContent : '');
+        }
     }
     function loadNotices(menu) {
         var list = menu.querySelector('.pp-ntc-list');
