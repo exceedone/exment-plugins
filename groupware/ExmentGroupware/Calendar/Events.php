@@ -38,9 +38,10 @@ class Events
             if (!isset($user)) {
                 return [];
             }
+            // the loaded collection: pluck('id') on the relation's query is ambiguous with its join (MySQL 1052)
             return array_values(array_map(function ($v) {
                 return intval($v);
-            }, $user->belong_organizations()->pluck('id')->all()));
+            }, $user->belong_organizations->pluck('id')->all()));
         } catch (\Throwable $e) {
             return [];
         }
@@ -297,9 +298,19 @@ class Events
      */
     public static function override(int $id, string $originalUtc, ?array $change, int $viewer): bool
     {
-        $owner = DB::table(static::EVENTS)->whereNull('deleted_at')->where('id', $id)->where('owner_user_id', $viewer)->where('source', 'local')->exists();
-        if (!$owner) {
+        $event = DB::table(static::EVENTS)->whereNull('deleted_at')->where('id', $id)->where('owner_user_id', $viewer)->where('source', 'local')->first();
+        if (!isset($event)) {
             return false;
+        }
+        // the title and the place of the occurrence only when they are its own: else it follows
+        // the event (a new title of all the occurrences reaches a moved one too)
+        if ($change !== null) {
+            if (strval($change['title'] ?? '') === strval($event->title)) {
+                $change['title'] = null;
+            }
+            if (strval($change['location'] ?? '') === strval($event->location ?? '')) {
+                $change['location'] = null;
+            }
         }
         DB::table(static::OVERRIDES)->updateOrInsert(['event_id' => $id, 'original_start' => $originalUtc], [
             'cancelled' => $change === null ? 1 : 0,

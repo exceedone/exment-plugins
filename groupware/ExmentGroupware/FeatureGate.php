@@ -140,7 +140,21 @@ class FeatureGate
     protected static function text(string $key, string $default): string
     {
         $name = 'exment_exment_groupware::groupware.' . $key;
-        return class_exists('Illuminate\Support\Facades\Lang') && \Illuminate\Support\Facades\Lang::has($name) ? $name : $default;
+        if (!class_exists('Illuminate\Support\Facades\Lang')) {
+            return $default;
+        }
+        // not before Exment has added the plugin's lang files: asked earlier, the translator
+        // keeps an empty group "groupware" for the request, and every trans() of the plugin
+        // gives its key back (the calendar's buttons, its 「予定あり」)
+        try {
+            $namespaces = app('translator')->getLoader()->namespaces();
+        } catch (\Throwable $e) {
+            return $default;
+        }
+        if (!array_key_exists('exment_exment_groupware', $namespaces)) {
+            return $default;
+        }
+        return \Illuminate\Support\Facades\Lang::has($name) ? $name : $default;
     }
 
     /**
