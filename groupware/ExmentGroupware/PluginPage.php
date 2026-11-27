@@ -730,6 +730,11 @@ class PluginPage extends PluginPageBase
         return $this->calDenied() ?? $this->calendar()->people(request());
     }
 
+    public function calPm()
+    {
+        return $this->calDenied() ?? $this->calendar()->pm(request());
+    }
+
     // ---- the chat (ISS02945) ------------------------------------------------
 
     protected function chat(): \App\Plugins\ExmentGroupware\Chat\ChatPage

@@ -45,6 +45,17 @@
 .pp-all .chip{display:inline-block;border-radius:9px;padding:1px 8px;color:#fff;font-size:11px;white-space:nowrap;}
 .pp-all .late{color:var(--a-red);font-weight:700;}
 .pp-all .mute{color:var(--a-mute);}
+/* Phone polish 2: 条件を消す and 条件を保存 are 44px; the downloads never run past the right edge
+   (a long name wraps); the whole row opens its issue (the key and the subject were the only links). */
+@media (max-width: 767px){
+  .pp-all #pp-a-clear,.pp-all #pp-a-save{min-height:44px;padding:0 10px;}
+  .pp-all .pp-a-head .pp-a-dl{min-width:0;max-width:100%;}
+  .pp-all .pp-a-head .pp-a-dl a{white-space:normal;overflow-wrap:anywhere;}
+  .pp-all #pp-a-list tbody tr{position:relative;}
+  .pp-all #pp-a-list td.sub a::after{content:"";position:absolute;inset:0;}
+  /* iOS zooms into a field under 16px: the keyword, the selects and the pickers' search */
+  .pp-all .pp-a-bar input.q,.pp-all .pp-a-bar select,.pp-all .pp-a-pop input[type=search]{font-size:16px;}
+}
 @media (max-width: 767px){
   .pp-all .pp-a-wrap{padding:8px;}
   .pp-all table thead{display:none;}
@@ -52,6 +63,16 @@
   .pp-all tr{border-bottom:1px solid var(--a-line);padding:6px 0;}
   .pp-all td{border:0;padding:2px 8px;}
   .pp-all td.c-pj,.pp-all td.c-up{font-size:11.5px;color:var(--a-mute);}
+  /* ISS02939 item 6, step 1b: the downloads on a line of their own (they ran off the screen),
+     taps of 44px for the filters, the pages and the favourites box */
+  .pp-all .pp-a-head{flex-wrap:wrap;row-gap:4px;}
+  .pp-all .pp-a-dl{order:3;flex:1 1 100%;display:flex;flex-wrap:wrap;gap:4px 14px;}
+  .pp-all .pp-a-dl a{margin-left:0;display:inline-flex;align-items:center;min-height:36px;}
+  .pp-all .pp-a-f>button,.pp-all .pp-a-bar input.q,.pp-all .pp-a-bar select{min-height:44px;}
+  .pp-all .pp-a-bar input.q{min-width:0;flex:1 1 140px;}
+  .pp-all .pp-a-head .pg button{min-width:44px;min-height:44px;}
+  .pp-all #pp-a-fav{width:20px;height:20px;}
+  .pp-all .pp-a-pop label{min-height:40px;}
 }
 </style>
 

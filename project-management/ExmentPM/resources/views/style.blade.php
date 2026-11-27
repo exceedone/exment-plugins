@@ -63,9 +63,9 @@
 .pmportal .bl-tab i{margin-right:5px;}
 .pmportal .bl-tab:hover{color:var(--bl-ink);}
 .pmportal .bl-tab.active{color:var(--bl-accent-d);border-bottom-color:var(--bl-accent);}
-.pmportal .bl-addissue{margin-left:auto;background:var(--bl-accent);color:#fff !important;border-radius:var(--bl-radius-s,4px);
+.pmportal .bl-addissue{margin-left:auto;background:var(--bl-accent-fill,var(--bl-accent));color:#fff !important;border-radius:var(--bl-radius-s,4px);
   padding:6px 14px;font-weight:700;text-decoration:none !important;}
-.pmportal .bl-addissue:hover{background:var(--bl-accent-d);}
+.pmportal .bl-addissue:hover{background:var(--bl-accent-fill-d,var(--bl-accent-d));}
 .pmportal .bl-tabsearch{margin-left:10px;position:relative;}
 .pmportal .bl-tabsearch input{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:5px 8px 5px 28px;width:200px;}
 .pmportal .bl-tabsearch .fa{position:absolute;left:9px;top:8px;color:var(--bl-faint);}
@@ -699,7 +699,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
 .pmportal .bl-tlfilter{display:inline-flex;border:1px solid var(--bl-line);border-radius:14px;overflow:hidden;}
 .pmportal .bl-tlfilter button{background:var(--bl-box);border:0;color:var(--bl-sub);cursor:pointer;
   font-size:11px;font-weight:600;padding:3px 12px;}
-.pmportal .bl-tlfilter button.on{background:var(--bl-accent);color:#fff;}
+.pmportal .bl-tlfilter button.on{background:var(--bl-accent-fill,var(--bl-accent));color:#fff;}
 .pmportal .bl-tlexpand{background:transparent;border:0;color:var(--bl-sub);cursor:pointer;font-size:11px;font-weight:600;padding:3px 8px;}
 .pmportal .bl-tlexpand:hover{color:var(--bl-accent-d);}
 .pmportal .bl-tl .txt.clip{max-height:260px;overflow:hidden;}
@@ -755,7 +755,7 @@ body.pp-dock-on .main-footer{margin-bottom:var(--pp-dock-h,0px);}
   color:var(--bl-accent-ink,#2c6e5b);border-radius:14px;padding:1px 9px;font-weight:600;cursor:pointer;}
 .pmportal .bl-chip.off{background:#f4f6f8;border-color:#dfe5ea;color:var(--bl-faint);}
 .pmportal .bl-notifyrow select{border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:4px 6px;font-size:12px;}
-.pmportal .bl-btn-main{background:var(--bl-accent);color:#fff;border:0;border-radius:var(--bl-radius-s,4px);padding:7px 18px;
+.pmportal .bl-btn-main{background:var(--bl-accent-fill,var(--bl-accent));color:#fff;border:0;border-radius:var(--bl-radius-s,4px);padding:7px 18px;
   font-weight:700;cursor:pointer;}
 .pmportal .bl-btn-main[disabled]{opacity:.6;}
 .pmportal .bl-btn-sub{background:var(--bl-box);border:1px solid var(--bl-line);border-radius:var(--bl-radius-s,4px);padding:6px 12px;
@@ -1416,8 +1416,8 @@ body.pp-ib-open{overflow:hidden;}
 @keyframes pp-skel{from{background-position:200% 0;}to{background-position:-200% 0;}}
 
 /* ---- the accent flows into the embedded widgets' primary buttons ---- */
-.pmportal .bl-app .btn-primary{background:var(--bl-accent) !important;border-color:var(--bl-accent-d) !important;}
-.pmportal .bl-app .btn-primary:hover,.pmportal .bl-app .btn-primary:focus{background:var(--bl-accent-d) !important;}
+.pmportal .bl-app .btn-primary{background:var(--bl-accent-fill,var(--bl-accent)) !important;border-color:var(--bl-accent-fill-d,var(--bl-accent-d)) !important;}
+.pmportal .bl-app .btn-primary:hover,.pmportal .bl-app .btn-primary:focus{background:var(--bl-accent-fill-d,var(--bl-accent-d)) !important;}
 
 /* ==== ISS00287 polish: list, detail head, hover/focus, phone width ==== */
 /* ---- issue list: roomier rows, soft separators, sticky header ---- */
@@ -1522,7 +1522,7 @@ body.pp-ib-open{overflow:hidden;}
 /* ---- hover / focus ---- */
 .pmportal .bl-btn-main,.pmportal .bl-btn-sub,.pmportal .bl-sttab,.pmportal .bl-qchip,.pmportal .bl-fmine,
 .pmportal .bl-tab,.pmportal .bl-addissue,.pmportal .bl-dback{transition:background-color .12s ease,border-color .12s ease,color .12s ease,box-shadow .12s ease;}
-.pmportal .bl-btn-main:hover:not([disabled]){background:var(--bl-accent-d);}
+.pmportal .bl-btn-main:hover:not([disabled]){background:var(--bl-accent-fill-d,var(--bl-accent-d));}
 .pmportal .bl-bulk .bl-btn-main.armed:hover:not([disabled]){background:var(--bl-red);filter:brightness(.92);}
 .pmportal .bl-btn-sub:hover{border-color:var(--bl-accent);color:var(--bl-accent-d);text-decoration:none;}
 .pmportal .bl-sttab:hover{border-color:var(--bl-accent);color:var(--bl-accent-d);}
@@ -1589,7 +1589,7 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-rvp.wait{border-color:#e0b458;background:color-mix(in srgb, #eda62a 10%, var(--bl-box));}
 .pmportal .pp-rvp.ok{border-color:color-mix(in srgb, #2e9e6b 55%, var(--bl-line));background:color-mix(in srgb, #2e9e6b 9%, var(--bl-box));}
 .pmportal .pp-rvp.ok .s{color:#2e9e6b;}
-.pmportal .pp-rvbtn{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border:1px solid var(--bl-accent);border-radius:12px;background:var(--bl-accent);color:#fff;font-size:12px;font-weight:700;line-height:20px;cursor:pointer;}
+.pmportal .pp-rvbtn{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border:1px solid var(--bl-accent-fill,var(--bl-accent));border-radius:12px;background:var(--bl-accent-fill,var(--bl-accent));color:#fff;font-size:12px;font-weight:700;line-height:20px;cursor:pointer;}
 .pmportal .pp-rvbtn:hover{filter:brightness(.94);}
 .pmportal .pp-rvbtn.undo{border:0;background:none;color:var(--bl-sub);font-weight:400;padding:2px 2px;text-decoration:underline;}
 .pmportal .pp-rvbtn[disabled]{opacity:.6;cursor:default;}
@@ -2121,15 +2121,69 @@ body.pp-ib-open{overflow:hidden;}
 .pmportal .pp-back{flex:none;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;font-size:12px;white-space:nowrap;}
 /* BACK-2: filled with the site's accent so it is seen at once (snoro 2026-11-28); the same class on the
    issue, in the bar that stays on scroll and on a wiki page (.bl-btn-sub.pp-back) */
-.pmportal .pp-back,.pmportal .bl-btn-sub.pp-back{background:var(--bl-accent);border:1px solid var(--bl-accent);color:var(--bl-on-accent);
+.pmportal .pp-back,.pmportal .bl-btn-sub.pp-back{background:var(--bl-accent-fill,var(--bl-accent));border:1px solid var(--bl-accent-fill,var(--bl-accent));color:var(--bl-on-accent);
   font-weight:700;min-height:30px;padding:4px 12px;border-radius:var(--bl-radius-s,4px);text-decoration:none;}
-.pmportal .pp-back:hover,.pmportal .bl-btn-sub.pp-back:hover{background:var(--bl-accent-d);border-color:var(--bl-accent-d);color:var(--bl-on-accent);}
+.pmportal .pp-back:hover,.pmportal .bl-btn-sub.pp-back:hover{background:var(--bl-accent-fill-d,var(--bl-accent-d));border-color:var(--bl-accent-fill-d,var(--bl-accent-d));color:var(--bl-on-accent);}
 .pmportal .pp-back:focus-visible,.pmportal .bl-btn-sub.pp-back:focus-visible{outline:2px solid var(--bl-accent-d);outline-offset:2px;color:var(--bl-on-accent);}
 .pmportal .pp-back .fa{color:inherit;}
 .pmportal #pp-issue-rows tr.pp-back-flash > td{background:color-mix(in srgb, var(--bl-accent) 16%, var(--bl-box));transition:background .6s;}
 @media (max-width:760px){
   .pmportal .pp-back,.pmportal .bl-btn-sub.pp-back{width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:50%;}
   .pmportal .pp-back .tx{display:none;}
+}
+/* Phone polish 2: the taps under 44px that were left after the first pass, measured at
+   390 x 844 and 360 x 800, and less height above the content. A phone only. */
+@media (max-width:760px){
+  /* less height before the content: the project head, the tabs and the gaps between them */
+  .pmportal .bl-projhead{padding-top:4px;padding-bottom:4px;margin-bottom:4px;}
+  .pmportal .bl-tabs{margin-bottom:4px;}
+  .pmportal .bl-toolbar{padding:6px 8px;margin-bottom:6px;}
+  /* the project head: the name that opens the project list, and 課題を追加 */
+  .pmportal .bl-projhead .bl-projttl .pp-pjswitch{min-height:44px;}
+  .pmportal .bl-projhead .pp-projadd{min-width:44px;min-height:44px;justify-content:center;box-sizing:border-box;}
+  /* the issue's head: the next status, 編集 and the other buttons; the status; ‹ ›; copy; the alias */
+  .pmportal .bl-dhead .bl-btn-main,.pmportal .bl-dhead .bl-btn-sub{display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;}
+  .pmportal .bl-dsum .pp-st-btn{min-height:44px;margin:0 -4px;padding:0 6px;}
+  .pmportal .bl-inav a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0;box-sizing:border-box;}
+  .pmportal .bl-dhead .pp-ikcopy{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0;margin-left:0;}
+  .pmportal .bl-dhead .pp-al-set{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin-left:0;}
+  .pmportal .bl-dsum .pp-tocmt{display:inline-flex;align-items:center;min-height:44px;}
+  .pmportal .bl-dsum .pp-dmode{min-height:44px;}
+  /* the timeline's すべて表示 / コメントのみ */
+  .pmportal .bl-tlfilter{border-radius:22px;}
+  .pmportal .bl-tlfilter button{min-height:44px;padding:0 14px;font-size:12px;}
+  /* the comment sheet: the format buttons in one row that scrolls sideways (書く / プレビュー stay at
+     its right end), the status, the notify boxes, cancel and send */
+  .pmportal .bl-cmtdock .bl-cmttools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:0 4px;gap:0;}
+  .pmportal .bl-cmtdock .bl-cmttools::-webkit-scrollbar{display:none;}
+  .pmportal .bl-cmtdock .bl-cmttools > button{flex:none;min-width:44px;min-height:44px;padding:0 6px;font-size:14px;}
+  .pmportal .bl-cmtdock .bl-cmttools .sp{flex:1 0 4px;}
+  .pmportal .bl-cmtdock .bl-cmttools .pp-md-tabs{flex:none;position:sticky;right:0;background:var(--bl-box);}
+  .pmportal .pp-md-tabs > button{min-height:44px;padding:0 12px;}
+  .pmportal .bl-cmtdock .bl-qe-in{height:44px;font-size:16px;}
+  /* iOS zooms into a field under 16px: the comment box too */
+  .pmportal .bl-cmtform textarea{font-size:16px;}
+  .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail{min-height:44px;}
+  .pmportal .bl-dockbody .bl-boxhead .pp-notify-mail input{width:20px;height:20px;}
+  .pmportal .bl-dockfoot .bl-btn-main,.pmportal .bl-dockfoot .bl-btn-sub{min-height:44px;}
+  /* the trail: one line beside the ← (it wrapped to two or three), scrolled sideways when long */
+  .pmportal .pp-backrow{min-height:44px;margin-bottom:6px;}
+  .pmportal .pp-backrow .pp-crumbs{flex:1 1 auto;flex-wrap:nowrap;margin:0;white-space:nowrap;overflow-x:auto;scrollbar-width:none;padding-right:18px;}
+  .pmportal .pp-backrow .pp-crumbs::-webkit-scrollbar{display:none;}
+  /* each link gives way first and ends in "…" (the project's full name is in its tooltip), so the key
+     stays in view; the right end fades while there is more to scroll */
+  .pmportal .pp-backrow .pp-crumbs a{flex:0 1 auto;min-width:3em;max-width:11em;display:inline-block;min-height:44px;line-height:44px;
+    overflow:hidden;text-overflow:ellipsis;vertical-align:top;}
+  .pmportal .pp-backrow .pp-crumbs,.pmportal .bl-pillrow{
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);}
+  .pmportal .pp-backrow .pp-crumbs .fa,.pmportal .pp-backrow .pp-crumbs [aria-current]{flex:none;}
+  /* the project's issue list: the status tabs and the chips in one row that scrolls sideways;
+     the keyword and the selects */
+  .pmportal .bl-pillrow{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-bottom:6px;padding-right:18px;}
+  .pmportal .bl-pillrow::-webkit-scrollbar{display:none;}
+  .pmportal .bl-pillrow .bl-sttab,.pmportal .bl-pillrow .bl-qchip{flex:none;display:inline-flex;align-items:center;min-height:44px;
+    box-sizing:border-box;border-radius:22px;}
+  .pmportal .bl-filters > select,.pmportal .bl-filters > input,.pmportal .pp-f-at select,.pmportal .pp-f-at input:not([type=checkbox]):not([type=radio]){min-height:44px;font-size:16px;}
 }
 /* The Wiki on a phone: the list of pages above the page (it was 260px beside a squeezed page),
    and 「← Wiki 一覧」 back up to it. A wide screen has the list beside the page: no button. */
@@ -2141,5 +2195,25 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-wiki > .bl-card-box.pp-pinned{position:static !important;max-height:none !important;width:auto !important;}
   .pmportal .bl-wiki.pp-wtree-pinned > .bl-card-box:nth-child(2){grid-column:auto;}
   .pmportal .bl-wtree{max-height:40vh;overflow:auto;}
+}
+/* ISS02939 item 6, step 1b: a phone (A15's measures at 390 x 844 and 360 x 800).
+   Taps of 44px for the small controls of the project bar and the trail; the comment
+   sheet above the home bar; a short screen (the keyboard open) gives the sheet the height. */
+@media (max-width:760px){
+  .pmportal .bl-projhead .bl-dback-proj,.pmportal .bl-projttl .bl-projset{display:inline-flex;align-items:center;justify-content:center;
+    min-width:44px;min-height:44px;box-sizing:border-box;}
+  .pmportal .bl-projmore{width:44px;height:44px;}
+  .pmportal .pp-crumbs a{display:inline-flex;align-items:center;min-height:36px;}
+  .pmportal .bl-cmtdock{padding-bottom:env(safe-area-inset-bottom,0px);}
+  .pmportal .bl-dockbar{min-height:44px;}
+  .pmportal .bl-dockclose{min-width:44px;min-height:44px;}
+  .pmportal .pp-ed-hint{margin:6px 8px 0;padding:4px 8px;font-size:12px;}
+  .pmportal .pp-dmode-hint{font-size:11.5px;padding:0 0 0 7px;}
+  .pmportal .pp-dmode-hint .x{min-width:44px;min-height:44px;}
+}
+@media (max-width:760px) and (max-height:620px){
+  .pmportal .bl-cmtdock{max-height:calc(100dvh - 8px);}
+  .pmportal .bl-dockhead{padding:4px 12px;}
+  .pmportal .bl-dockbody{padding:8px 10px 0;}
 }
 </style>

@@ -249,8 +249,8 @@
 .pmportal .pp-set-btn{border:1px solid var(--bl-line);background:var(--bl-box);color:var(--bl-ink);border-radius:4px;
   padding:7px 15px;font-size:12.5px;cursor:pointer;white-space:nowrap;flex:none;}
 .pmportal .pp-set-btn:hover{background:var(--bl-hover);}
-.pmportal .pp-set-btn.main{background:var(--bl-accent);border-color:var(--bl-accent);color:#fff;font-weight:700;}
-.pmportal .pp-set-btn.main:hover{background:var(--bl-accent-d);}
+.pmportal .pp-set-btn.main{background:var(--bl-accent-fill,var(--bl-accent));border-color:var(--bl-accent-fill,var(--bl-accent));color:#fff;font-weight:700;}
+.pmportal .pp-set-btn.main:hover{background:var(--bl-accent-fill-d,var(--bl-accent-d));}
 .pmportal .pp-set-btn.dg{background:var(--bl-red);border-color:var(--bl-red);color:#fff;font-weight:700;}
 .pmportal .pp-set-btn:disabled{opacity:.55;cursor:default;}
 .pmportal .pp-set-link{color:var(--bl-accent-d);cursor:pointer;font-size:12px;}
