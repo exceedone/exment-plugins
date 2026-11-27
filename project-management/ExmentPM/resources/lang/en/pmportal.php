@@ -1633,6 +1633,8 @@ return [
         'schedule' => 'Made :count issues from the recurring schedules.',
         'schedule_dry' => 'Dry run: would make :count issues from the recurring schedules. Makes nothing.',
         'schedule_off' => 'Recurring schedules are turned off (Feature management, or the plugin settings).',
+        'schedule_shares' => 'Looked at :issues issues made by the recurring schedules, and removed :removed of :count creator shares to people and organizations outside the project.',
+        'schedule_shares_dry' => 'Dry run: :count creator shares to people and organizations outside the project on :issues issues made by the recurring schedules (listed above). Changes nothing. Run with --param2=apply to remove them.',
         'remind' => 'Reminders: :count sent for :issues issues (:skipped already sent, left out).',
         'remind_dry' => 'Dry run: would send :count for :issues issues (:skipped already sent, left out). Sends nothing.',
         'remind_off' => 'Reminders are turned off (Feature management, or the plugin settings).',

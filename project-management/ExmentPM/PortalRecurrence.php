@@ -298,7 +298,8 @@ class PortalRecurrence
             $row->parent_id = $issue->parent_id;
             $row->parent_type = $issue->parent_type;
             $row->setValue($value);
-            $row->save();
+            // no creator's share for whoever's page load made the copy (PortalRunShares)
+            PortalRunShares::saveNew($row);
 
             // Its creator's, as if they had raised it themselves.
             DB::table($db)->where('id', $row->id)->update([
@@ -317,6 +318,39 @@ class PortalRecurrence
     }
 
     /**
+     * An issue's values without what belongs to that issue alone: its files, its key (an auto
+     * number: Exment numbers only an empty one, so a copy that kept it would show the same key as
+     * the issue it came from, where a new issue gets the next one), where it was imported from, the
+     * work done on it and how it ended.
+     *
+     * @param array<string, mixed> $value
+     * @param array<string, string> $types column name => column type
+     * @param array<string, mixed> $def
+     * @return array<string, mixed>
+     */
+    public static function withoutOwn(array $value, array $types, array $def): array
+    {
+        foreach ($types as $name => $type) {
+            if (in_array($type, ['file', 'image', 'auto_number'], true)) {
+                unset($value[$name]);
+            }
+        }
+        $is = (array) ($def['issue'] ?? []);
+        $extra = (array) ($def['issue_extra'] ?? PortalSchema::ISSUE_COLUMNS);
+        $names = [$is['key'] ?? 'issue_key', $is['actual'] ?? null, $extra['resolution'] ?? null];
+        foreach (['source_key', 'source_url', 'source_created_by', 'source_created_at', 'source_updated_by', 'source_updated_at'] as $k) {
+            $names[] = $extra[$k] ?? PortalSchema::ISSUE_COLUMNS[$k];
+        }
+        foreach ($names as $name) {
+            if (!empty($name)) {
+                unset($value[$name]);
+            }
+        }
+
+        return $value;
+    }
+
+    /**
      * What the next issue starts with: the same issue, opened afresh.
      *
      * @return array<string, mixed>
@@ -324,21 +358,11 @@ class PortalRecurrence
     public static function copyValues(CustomTable $issue_table, $issue, $project, array $plan, array $def): array
     {
         $is = (array) array_get($def, 'issue', []);
-        $extra = (array) array_get($def, 'issue_extra', PortalSchema::ISSUE_COLUMNS);
-        $value = (array) $issue->value;
-
-        // Files belong to the issue they were added to.
+        $types = [];
         foreach ($issue_table->custom_columns as $c) {
-            if (in_array($c->column_type, ['file', 'image'], true)) {
-                unset($value[$c->column_name]);
-            }
+            $types[strval($c->column_name)] = strval($c->column_type);
         }
-        // Work done and how it ended belong to the old one too.
-        foreach ([array_get($is, 'actual'), array_get($extra, 'resolution')] as $name) {
-            if (!empty($name)) {
-                unset($value[$name]);
-            }
-        }
+        $value = static::withoutOwn((array) $issue->value, $types, $def);
         if (!empty(array_get($is, 'progress')) && array_key_exists($is['progress'], $value)) {
             $value[$is['progress']] = 0;
         }

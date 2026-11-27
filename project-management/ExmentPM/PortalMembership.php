@@ -621,23 +621,8 @@ class PortalMembership
     public static function ensureShares(CustomValue $row): int
     {
         $table = $row->custom_table;
-        if (!isset($table) || is_nullorempty($table->share_settings)) {
-            return 0;
-        }
-        $wanted = [];
-        foreach ($table->share_settings as $setting) {
-            $column = array_get($setting, 'share_column');
-            if (!$column instanceof CustomColumn || !in_array($column->column_type, [SystemTableName::USER, SystemTableName::ORGANIZATION], true)) {
-                continue;
-            }
-            $edit = array_get($setting, 'share_permission') == \Exceedone\Exment\Enums\SharePermission::EDIT;
-            foreach (static::ids(array_get((array) $row->value, $column->column_name)) as $id) {
-                $key = $column->column_type . ':' . $id;
-                // the stronger share of two settings naming the same one
-                $wanted[$key] = ($wanted[$key] ?? false) || $edit;
-            }
-        }
-        if (empty($wanted)) {
+        $wanted = static::wantedShares($row);
+        if (!isset($table) || empty($wanted)) {
             return 0;
         }
         $held = [];
@@ -670,6 +655,36 @@ class PortalMembership
             CustomValueAuthoritable::insert($chunk);
         }
         return count($insert);
+    }
+
+    /**
+     * The shares the share settings of the row's table give the people and the organizations its
+     * columns name: "user:5" or "organization:2" => whether it is an edit share (the stronger one
+     * when two settings name the same). Empty for a table without share settings.
+     *
+     * @return array<string, bool>
+     */
+    public static function wantedShares(CustomValue $row): array
+    {
+        $table = $row->custom_table;
+        if (!isset($table) || is_nullorempty($table->share_settings)) {
+            return [];
+        }
+        $wanted = [];
+        foreach ($table->share_settings as $setting) {
+            $column = array_get($setting, 'share_column');
+            if (!$column instanceof CustomColumn || !in_array($column->column_type, [SystemTableName::USER, SystemTableName::ORGANIZATION], true)) {
+                continue;
+            }
+            $edit = array_get($setting, 'share_permission') == \Exceedone\Exment\Enums\SharePermission::EDIT;
+            foreach (static::ids(array_get((array) $row->value, $column->column_name)) as $id) {
+                $key = $column->column_type . ':' . $id;
+                // the stronger share of two settings naming the same one
+                $wanted[$key] = ($wanted[$key] ?? false) || $edit;
+            }
+        }
+
+        return $wanted;
     }
 
     /**

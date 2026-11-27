@@ -20,6 +20,10 @@ use Illuminate\Support\Facades\Log;
  *   param3  "dry" prints what would be asked and written, and neither calls
  *           the AI nor writes anything
  *
+ *   --param1=schedule_shares lists the creator's shares that runs of the recurring
+ *           schedules gave on their issues to people outside the project (a dry run);
+ *           --param2=apply removes them (PortalRunShares::repair)
+ *
  * Meant for the issues that were there before the switch was turned on,
  * and for a day on which the switch was off while a CSV was imported. One
  * call per issue with a pause between them, far below the rate limit; the
@@ -116,6 +120,22 @@ class PluginBatch extends PluginBatchBase
             }
             $made = PortalSchedule::run($dry);
             $this->say($dry ? 'schedule_dry' : 'schedule', ['count' => count($made)]);
+
+            return 0;
+        }
+
+        // --param1=schedule_shares: list the creator's shares that runs of the schedules gave on the
+        // issues they made to people outside the project (PortalRunShares::repair). A dry run unless
+        // --param2=apply, which removes them; a second run finds nothing more.
+        if ($target === 'schedule_shares') {
+            \Exceedone\Exment\Middleware\Morph::defineMorphMap();
+            $apply = strtolower(strval(array_get($options, 'param2') ?? '')) === 'apply';
+            $r = PortalRunShares::repair($apply);
+            foreach ($r['found'] as $s) {
+                echo static::pad(($s['key'] !== '' ? $s['key'] : '#' . $s['issue']), 12) . ' '
+                    . static::pad($s['type'] . ':' . $s['target'], 20) . ' ' . $s['permission'] . "\n";
+            }
+            $this->say($apply ? 'schedule_shares' : 'schedule_shares_dry', ['issues' => $r['issues'], 'count' => count($r['found']), 'removed' => $r['removed']]);
 
             return 0;
         }
