@@ -15,6 +15,13 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.7.22 / 1.7.22 で変わったこと**
+
+- Git link, step 1 (off at first; see 「Git とつなぐ」 below): a project can receive webhooks from GitHub, GitLab and Gitea; commits and pull requests naming an issue's key show on that issue's timeline, and the issue has 「ブランチ名をコピー」.
+  Git とのつなぎの 1 段目（最初は使いません。下の「Git とつなぐ」）：プロジェクトが GitHub・GitLab・Gitea の Webhook を受け、課題のキーを書いたコミットとプルリクエストを、その課題の履歴に出します。課題に「ブランチ名をコピー」を足しました。
+- The attachment preview's buttons and labels were shown as "undefined" outside Japanese; they are now in every language.
+  添付のプレビューのボタンと見出しが、日本語のほかの言葉で「undefined」と出ていたのを直しました（全部の言葉に入れました）。
+
 **Changed in 1.7.21 / 1.7.21 で変わったこと**
 
 - The editors say they take Markdown (MD-1): under the comment box, the issue body and a wiki page, a small 「Markdown が使えます」 mark opens a cheat sheet (見出し, 太字, リスト, 番号, 引用, コード, リンク, 表, チェックボックス, and how to paste an image); a line puts its Markdown at the caret. The boxes' placeholder and the toolbar's tooltips show the Markdown. The comment box has 書く｜プレビュー as a pair. 「並べて表示」 puts a live preview beside the text on a screen 900px or wider (each person's choice, kept in their Exment settings; off at first). The preview is drawn the way the comment or the body is shown.
