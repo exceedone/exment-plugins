@@ -2312,4 +2312,10 @@ return [
     'back_tip' => '%s に戻る',
     // ROW-1
     'row_unread' => '未読',
+    // Exment's messages after a form was sent (an expired page, a save), and a request refused
+    // because the page expired (419): shown in the portal, with a reload
+    'flash' => [
+        'close' => '閉じる',
+        'reload' => '再読み込み',
+    ],
 ];

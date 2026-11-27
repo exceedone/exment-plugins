@@ -301,6 +301,10 @@
     .pp-top.pp-top-sopen > .pp-top-search{display:flex;flex:1 1 100%;max-width:none;margin:0 0 8px;}
     .pp-top .pp-top-search .kbd{display:none;}
     .pp-top .pp-top-pjmenu{left:-40px;width:calc(100vw - 40px);max-width:none;}
+    /* phone polish 2: a smaller gap under the bar, so the content starts higher */
+    .pp-top{margin-bottom:6px;}
+    /* the search box at 16px: iOS zooms into a field under that */
+    .pp-top .pp-top-search input{font-size:16px;}
 }
 </style>
 
@@ -498,6 +502,9 @@
     </a>
     @endif
 </nav>
+
+{{-- Exment's messages for this page (an expired form, a save) and the bar for a request refused as expired (419) --}}
+@include(PortalDefinition::view('_flash'))
 
 <script>
 (function () {

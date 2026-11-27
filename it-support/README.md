@@ -65,18 +65,18 @@ ITreview の「ヘルプデスクツール」カテゴリー（2026 年 11 月�
 
 1.0.9 からは、セットアップの前でも左のメニューに **ITサポート** を出します（Exment 7.2.1 では分類「ITサポート」の下）。見えるのはシステム管理者だけで、開くとセットアップの画面です。ほかの人には、セットアップが終わるまで出ません。セットアップのあとも同じメニュー 1 つです（`it-support/tools/test-menu-before-setup.php` で試せます）。
 
-**Unreleased / 未リリース**: 上のメニューの右に「マニュアル」を足しました。ユーザーの言語（日本語・ベトナム語、ほかは英語）で、exment.net のこのプラグインのマニュアルを新しいタブで開きます。Exment 7.2.4 以降では、画面の右上の「？」も、このプラグインの画面ではこのマニュアルを開きます。
+**1.1.0 から / Since 1.1.0**: 上のメニューの右に「マニュアル」を足しました。ユーザーの言語（日本語・ベトナム語、ほかは英語）で、exment.net のこのプラグインのマニュアルを新しいタブで開きます。Exment 7.2.4 以降では、画面の右上の「？」も、このプラグインの画面ではこのマニュアルを開きます。
 5 分ごとのバッチは、することがないとき（セットアップの前・受付箱を使わないとき）も成功（終了コード 0）で終わります。前は 1 で、そのたびにエラーのログが出ていました。エラーのときは今までどおり失敗です。
 
-**Unreleased / 未リリース**: 「申請メニュー」を足しました（設定の「自動で進める」の「申請メニュー」、初めは使わない）。お客様の窓口の受付フォームに、アカウントの問題・パスワードの再設定・PC の貸し出し・ソフトのインストール・アクセスの申請などを並べ、それぞれの項目（「項目名|種類|必須|選択肢」を 1 行に 1 つ）で受け付けます。設定の「ひな形を入れる」で 5 つのひな形が入ります。「承認がいる」と「承認する人」を決めた申請は、保留のまま承認を待ち、承認する人にベルとメールで知らせます。承認の画面（`/support/approval/{番号}`、Exment へのログインが要ります）で承認すると対応を始め、却下すると完了にして依頼した人にメールで知らせます。承認する人は、ITサポートの担当者でなくてかまいません（Exment のユーザーであれば）。`it-support/tools/test-catalog.php` で試せます。
+**1.1.0 から / Since 1.1.0**: 「申請メニュー」を足しました（設定の「自動で進める」の「申請メニュー」、初めは使わない）。お客様の窓口の受付フォームに、アカウントの問題・パスワードの再設定・PC の貸し出し・ソフトのインストール・アクセスの申請などを並べ、それぞれの項目（「項目名|種類|必須|選択肢」を 1 行に 1 つ）で受け付けます。設定の「ひな形を入れる」で 5 つのひな形が入ります。「承認がいる」と「承認する人」を決めた申請は、保留のまま承認を待ち、承認する人にベルとメールで知らせます。承認の画面（`/support/approval/{番号}`、Exment へのログインが要ります）で承認すると対応を始め、却下すると完了にして依頼した人にメールで知らせます。承認する人は、ITサポートの担当者でなくてかまいません（Exment のユーザーであれば）。`it-support/tools/test-catalog.php` で試せます。
 
-**Unreleased / 未リリース**: メールの送る元のアドレスは、窓口のアドレス → `MAIL_FROM_ADDRESS` → Exment の「システム設定 → メール」の送信元 → 最初のシステム管理者のメールアドレス、の順に決めます（担当者への知らせのメールにも付けます）。どれもないときは、設定の画面に出します。担当者の列を「複数」にしたサイトでは、知らせは担当者みんなに届きます。
+**1.1.0 から / Since 1.1.0**: メールの送る元のアドレスは、窓口のアドレス → `MAIL_FROM_ADDRESS` → Exment の「システム設定 → メール」の送信元 → 最初のシステム管理者のメールアドレス、の順に決めます（担当者への知らせのメールにも付けます）。どれもないときは、設定の画面に出します。担当者の列を「複数」にしたサイトでは、知らせは担当者みんなに届きます。
 
-**Unreleased / 未リリース**: 「問題」を足しました（設定の「自動で進める」の「問題」、初めは使わない）。同じ原因のチケットを 1 つの問題（PRB-00001 のような番号）にまとめ、起きていること・原因・回避のしかた・解決のしかたを書きます。受付箱のチケットの右の「問題」から、番号でつなぐ・このチケットから作る・外すができます。問題の画面で、つないだ開いているチケットをまとめて「解決」にし（社内のメモに解決のしかたを書きます。お客様へのメールは送りません）、原因・回避・解決からナレッジの下書きを作れます。上のメニューに「問題」が出ます。`it-support/tools/test-problems.php` で試せます。
+**1.1.0 から / Since 1.1.0**: 「問題」を足しました（設定の「自動で進める」の「問題」、初めは使わない）。同じ原因のチケットを 1 つの問題（PRB-00001 のような番号）にまとめ、起きていること・原因・回避のしかた・解決のしかたを書きます。受付箱のチケットの右の「問題」から、番号でつなぐ・このチケットから作る・外すができます。問題の画面で、つないだ開いているチケットをまとめて「解決」にし（社内のメモに解決のしかたを書きます。お客様へのメールは送りません）、原因・回避・解決からナレッジの下書きを作れます。上のメニューに「問題」が出ます。`it-support/tools/test-problems.php` で試せます。
 
-**Unreleased / 未リリース**: SLA のエスカレーションを段階に分けられるようにしました（設定の「SLA のエスカレーション」、初めは使わない）。期限までの時間の 75%（変えられます）で担当者へ、期限を過ぎたらリーダーへ、さらに 60 分（変えられます）過ぎたら管理者へ、それぞれ 1 回だけ知らせます。知らせ方は、画面のベル・メール・Teams のワークフロー・LINE WORKS（Exment 7.3 以降）・Webhook（JSON）から選びます。優先度が変わるなどで期限が変わると、はじめからやり直します。使うあいだは、今までの「まもなく期限」「超過」の 1 回の知らせのかわりになります。
+**1.1.0 から / Since 1.1.0**: SLA のエスカレーションを段階に分けられるようにしました（設定の「SLA のエスカレーション」、初めは使わない）。期限までの時間の 75%（変えられます）で担当者へ、期限を過ぎたらリーダーへ、さらに 60 分（変えられます）過ぎたら管理者へ、それぞれ 1 回だけ知らせます。知らせ方は、画面のベル・メール・Teams のワークフロー・LINE WORKS（Exment 7.3 以降）・Webhook（JSON）から選びます。優先度が変わるなどで期限が変わると、はじめからやり直します。使うあいだは、今までの「まもなく期限」「超過」の 1 回の知らせのかわりになります。
 
-**Unreleased / 未リリース**: The two entries in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5); another language reads English.
+**1.1.0 から / Since 1.1.0**: The two entries in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5); another language reads English.
 機能の管理に出る 2 つの入口の名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
 
 自動処理（メールの受信・SLA・返事待ち・完了・資産の期限）は 5 分ごとに動きます。Exment のスケジューラー（`php artisan schedule:run` を cron で毎分）が動いている必要があります。
@@ -96,7 +96,7 @@ Exment の **管理者設定 → 機能の管理** に、ITサポートの入口
 
 ### 監視の道具とつなぐ（監視・エラーログから起票する）
 
-**Unreleased / 未リリース**（ISS02928）: Zabbix・Mackerel・Prometheus Alertmanager・Azure Monitor の知らせを、そのまま受けられるようにしました。送り元ごとのキー、復旧の知らせで閉じる、IT 資産につなぐ、ばたつきをまとめる、も足しました。
+**1.1.0 から / Since 1.1.0**（ISS02928）: Zabbix・Mackerel・Prometheus Alertmanager・Azure Monitor の知らせを、そのまま受けられるようにしました。送り元ごとのキー、復旧の知らせで閉じる、IT 資産につなぐ、ばたつきをまとめる、も足しました。
 
 送り先の URL は 1 つです：`https://あなたの Exment/support/intake/alert`。受付箱と「お客様の窓口」の機能がオンのときだけ動きます。
 
@@ -186,7 +186,7 @@ Postfix のパイプなど、元のメールをそのまま送れる仕組みか
 
 ### 監視の道具から IT 資産を取り込む（Exment 7.3 のデータ同期）
 
-**Unreleased / 未リリース**（ISS02928）: Exment 7.3 の「データ同期」があれば、**Mackerel** と **Zabbix** のホストを IT 資産に取り込めます（7.2 では出てきません）。データ同期の画面で、接続（Mackerel は API キー、Zabbix は URL と API トークン。どちらも読むだけの権限で足ります）と、同期の設定（IT 資産のテーブルへ）を作ります。
+**1.1.0 から / Since 1.1.0**（ISS02928）: Exment 7.3 の「データ同期」があれば、**Mackerel** と **Zabbix** のホストを IT 資産に取り込めます（7.2 では出てきません）。データ同期の画面で、接続（Mackerel は API キー、Zabbix は URL と API トークン。どちらも読むだけの権限で足ります）と、同期の設定（IT 資産のテーブルへ）を作ります。
 
 - ホストは、すでにある IT 資産に **つなぐだけ** が初めの設定です。探す順は、前につないだ資産 → シリアル番号 → 管理番号 → 名前（FQDN か、その最初の部分）→ IP アドレス。2 つ以上あてはまるときは、つながずに同期の結果に書きます（人が直します）。
 - 「新しい IT 資産を作る」にすると、あてはまる資産がないホストの資産を作ります。お客様は「グループ=お客様コード」の表で決められます（Zabbix はホストグループ、Mackerel はサービス）。
@@ -236,7 +236,7 @@ An IT support / help desk plugin for Exment. Requests from customers (mail, a pu
 
 **Feature management** (Exment versions that have it): IT Support adds two features, *desk* and *customer portal* (the portal needs the desk). New installs start with both off; sites that had the plugin before keep them on. Turning the desk off stops the desk, the portal and the batch, and its menu entry, but the tables (tickets and so on) stay as data and can still be opened as ordinary Exment tables (by URL such as `/admin/data/its_ticket`, from the custom table list, or from a menu an administrator adds); to hide them, remove the table permissions in the role groups.
 
-**Monitoring tools** (Unreleased, ISS02928): `/support/intake/alert` reads what Zabbix (the media type in `it-support/tools/zabbix/`), Mackerel, Prometheus Alertmanager and Azure Monitor (common alert schema) send, as well as the generic JSON. Each sender has its own key (shown once, kept as a hash, turned off or deleted alone), sent as `X-ITS-Key`, a bearer token, the password of basic auth or `?key=`, and may be limited to its addresses and, for the generic JSON and Zabbix, an HMAC-SHA256 signature (`X-ITS-Timestamp`, `X-ITS-Signature: sha256=hex(hmac(secret, timestamp + "." + body))`). A new sender is off until an administrator turns it on. A recovery writes "recovered" on the ticket of the same problem and, if the sender is set so, resolves or closes it; a problem back within the sender's minutes after its ticket ended opens the same ticket again (flapping); the IT asset is found by host name or IP address. The old shared key keeps working for `/support/intake/mail` and, on sites that had it, for alerts as before. `php it-support/tools/test-alert-intake.php` checks the tools' sample bodies.
+**Monitoring tools** (since 1.1.0, ISS02928): `/support/intake/alert` reads what Zabbix (the media type in `it-support/tools/zabbix/`), Mackerel, Prometheus Alertmanager and Azure Monitor (common alert schema) send, as well as the generic JSON. Each sender has its own key (shown once, kept as a hash, turned off or deleted alone), sent as `X-ITS-Key`, a bearer token, the password of basic auth or `?key=`, and may be limited to its addresses and, for the generic JSON and Zabbix, an HMAC-SHA256 signature (`X-ITS-Timestamp`, `X-ITS-Signature: sha256=hex(hmac(secret, timestamp + "." + body))`). A new sender is off until an administrator turns it on. A recovery writes "recovered" on the ticket of the same problem and, if the sender is set so, resolves or closes it; a problem back within the sender's minutes after its ticket ended opens the same ticket again (flapping); the IT asset is found by host name or IP address. The old shared key keeps working for `/support/intake/mail` and, on sites that had it, for alerts as before. `php it-support/tools/test-alert-intake.php` checks the tools' sample bodies.
 
 **No-login pages**: Exment does not let a plugin's `config.json` open a route without login, on purpose. A help desk needs a door for people without an account, so this plugin registers `/support/...` itself while Exment boots (`PublicRoutes.php`), the same idea as Exment's public form: the secret in the URL opens one thing and nothing else.
 

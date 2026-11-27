@@ -141,7 +141,10 @@ class Rrule
         if ($r['FREQ'] !== null) {
             $count = 0;
             $s = new \DateTimeImmutable($start);
-            for ($i = 0; $i < static::MAX_PERIODS; $i++) {
+            // without COUNT nothing before the window counts: begin a period before it, not at the
+            // start (a daily repeat of years ago is not walked day by day, and is still found)
+            $first = $r['COUNT'] === null ? static::periodsBefore($s, $r['FREQ'], $r['INTERVAL'], $from) : 0;
+            for ($i = $first; $i < $first + static::MAX_PERIODS; $i++) {
                 $period = static::period($s, $r['FREQ'], $i * $r['INTERVAL']);
                 if ($period === null || strcmp($period, $end) > 0) {
                     break;
@@ -174,6 +177,33 @@ class Rrule
         return $dates;
     }
 
+
+    /** The number of whole repeats (of INTERVAL periods) from the start's period to the one a period before $from; 0 at most. */
+    protected static function periodsBefore(\DateTimeImmutable $s, string $freq, int $interval, string $from): int
+    {
+        $f = new \DateTimeImmutable($from);
+        if ($f <= $s) {
+            return 0;
+        }
+        switch ($freq) {
+            case 'DAILY':
+                $n = intval($s->diff($f)->format('%a'));
+                break;
+            case 'WEEKLY':
+                $monday = $s->modify('-' . (intval($s->format('N')) - 1) . ' day');
+                $n = intdiv(intval($monday->diff($f)->format('%a')), 7);
+                break;
+            case 'MONTHLY':
+                $n = (intval($f->format('Y')) - intval($s->format('Y'))) * 12 + intval($f->format('n')) - intval($s->format('n'));
+                break;
+            case 'YEARLY':
+                $n = intval($f->format('Y')) - intval($s->format('Y'));
+                break;
+            default:
+                return 0;
+        }
+        return max(0, intdiv($n, max(1, $interval)) - 1);
+    }
 
     /** The first day of the n-th period after the start's (the start itself for n = 0). */
     protected static function period(\DateTimeImmutable $s, string $freq, int $n): ?string

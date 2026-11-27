@@ -300,6 +300,16 @@
 .pp-dash .pp-fd .ln2 .key{font-family:Menlo,Consolas,monospace;font-size:11.5px;font-weight:700;color:#3c8dbc;}
 .pp-dash .pp-fd:hover .ln2{text-decoration:underline;}
 .pp-dash .pp-fd .ex{font-size:11.5px;color:var(--d-mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Phone polish 2: the panel heads wrap instead of running off, the column captions grow
+   with their words (「自分の担当」 was cut at 30px), and a subject takes two lines, not one cut short. */
+@media (max-width:760px){
+    .pp-dash .pp-ph{flex-wrap:wrap;row-gap:4px;padding:8px 12px;}
+    .pp-dash .pp-ph .pp-ph-right{white-space:normal;}
+    .pp-dash .pp-pjh{height:auto;min-height:24px;padding-top:3px;padding-bottom:3px;align-items:flex-end;}
+    .pp-dash .pp-pjlist .mi{width:40px;}
+    .pp-dash .pp-row .sub{white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+}
 </style>
 
 <div class="pp-dash">
