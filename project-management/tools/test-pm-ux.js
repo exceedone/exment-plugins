@@ -650,6 +650,71 @@ test('BACK-3: back to the list: the issue lit up, the last conditions after a re
     assert.ok(/\.pmportal \.pp-dbar\{height:52px;/.test(style), 'room for the 44px circle');
 });
 
+
+test('PHONE-2: the taps left under 44px on a phone, less height above the content, nothing on a wide screen', () => {
+    // the block of a view that starts with the given comment, up to the end of its @media
+    const block = (src, mark) => {
+        const at = src.indexOf(mark);
+        assert.ok(at >= 0, 'no block: ' + mark);
+        const open = src.indexOf('{', src.indexOf('@media', at));
+        let depth = 0;
+        for (let i = open; i < src.length; i++) {
+            if (src[i] === '{') { depth++; }
+            if (src[i] === '}' && --depth === 0) { return src.slice(src.indexOf('@media', at), i + 1); }
+        }
+        throw new Error('the block does not end: ' + mark);
+    };
+    const s = block(style, '/* Phone polish 2:');
+    assert.ok(s.startsWith('@media (max-width:760px){'), 'a phone only');
+    const has = (re, why) => assert.ok(re.test(s), why);
+    // the project head
+    has(/\.bl-projhead\{padding-top:4px;padding-bottom:4px;margin-bottom:4px;\}/, 'a lower project head');
+    has(/\.bl-tabs\{margin-bottom:4px;\}/, 'a smaller gap under the tabs');
+    has(/\.pp-pjswitch\{min-height:44px;\}/, 'the project switcher');
+    has(/\.pp-projadd\{min-width:44px;min-height:44px;/, '課題を追加');
+    // the issue
+    has(/\.bl-dhead \.bl-btn-main,\.pmportal \.bl-dhead \.bl-btn-sub\{[^}]*min-height:44px;/, 'the next status, 編集 and ⋯');
+    has(/\.bl-dsum \.pp-st-btn\{min-height:44px;/, 'the status');
+    has(/\.bl-inav a\{[^}]*min-width:44px;min-height:44px;/, 'previous and next');
+    has(/\.bl-dhead \.pp-ikcopy\{[^}]*min-width:44px;min-height:44px;/, 'copy the key');
+    has(/\.bl-dhead \.pp-al-set\{[^}]*min-width:44px;min-height:44px;/, 'the alias');
+    has(/\.bl-dsum \.pp-tocmt\{[^}]*min-height:44px;\}/, 'コメント');
+    has(/\.bl-dsum \.pp-dmode\{min-height:44px;\}/, 'かんたん');
+    has(/\.bl-tlfilter button\{min-height:44px;/, 'すべて表示 / コメントのみ');
+    // the comment sheet
+    has(/\.bl-cmtdock \.bl-cmttools\{flex-wrap:nowrap;overflow-x:auto;/, 'the format buttons in one row');
+    has(/\.bl-cmtdock \.bl-cmttools > button\{flex:none;min-width:44px;min-height:44px;/, 'the format buttons');
+    has(/\.pp-md-tabs\{flex:none;position:sticky;right:0;/, '書く / プレビュー stay in view');
+    has(/\.pp-md-tabs > button\{min-height:44px;/, '書く / プレビュー');
+    has(/\.bl-cmtdock \.bl-qe-in\{height:44px;/, 'the status select');
+    has(/\.pp-notify-mail\{min-height:44px;\}/, 'the notify boxes');
+    has(/\.pp-notify-mail input\{width:20px;height:20px;\}/, 'the notify ticks');
+    has(/\.bl-dockfoot \.bl-btn-main,\.pmportal \.bl-dockfoot \.bl-btn-sub\{min-height:44px;\}/, 'cancel and send');
+    // the trail: one line, beside the ←
+    has(/\.pp-backrow \.pp-crumbs\{[^}]*flex-wrap:nowrap;[^}]*overflow-x:auto;/, 'the trail in one line');
+    has(/\.pp-backrow \.pp-crumbs a\{[^}]*min-height:44px;line-height:44px;\}/, 'its links');
+    // the project's list
+    has(/\.bl-pillrow\{flex-wrap:nowrap;overflow-x:auto;/, 'the status tabs and chips in one row');
+    has(/\.bl-pillrow \.bl-sttab,\.pmportal \.bl-pillrow \.bl-qchip\{[^}]*min-height:44px;/, 'the status tabs and chips');
+    has(/\.bl-filters > select,\.pmportal \.bl-filters > input,[^{]*\{min-height:44px;/, 'the keyword and the selects');
+    // what is already there stays: the 44px ← circle (BACK-2) and the 52px bar (BACK-3)
+    assert.ok(!/\.pp-back[,{]/.test(s) && !/\.pp-dbar/.test(s), 'the ← and the bar are left alone');
+    assert.ok(/\.bl-btn-sub\.pp-back\{width:44px;height:44px;min-height:44px;/.test(style));
+    // the top bar, the dashboard and all issues
+    const top = view('_topbar.blade.php');
+    const m2 = block(top, '/* M2: a phone keeps one line');
+    assert.ok(/\/\* phone polish 2: [^*]*\*\/\s*\.pp-top\{margin-bottom:6px;\}/.test(m2), 'a smaller gap under the top bar, on a phone');
+    const dash = block(view('list.blade.php'), '/* Phone polish 2:');
+    assert.ok(dash.startsWith('@media (max-width:760px){'));
+    assert.ok(/\.pp-dash \.pp-ph\{flex-wrap:wrap;/.test(dash), 'the panel heads wrap');
+    assert.ok(/\.pp-dash \.pp-pjh\{height:auto;min-height:24px;/.test(dash), 'the captions grow');
+    assert.ok(/\.pp-dash \.pp-pjlist \.mi\{width:40px;\}/.test(dash), '自分の担当 has room');
+    const all = block(view('all-issues.blade.php'), '/* Phone polish 2:');
+    assert.ok(all.startsWith('@media (max-width: 767px){'), 'the page\'s own break');
+    assert.ok(/#pp-a-clear,\.pp-all #pp-a-save\{min-height:44px;/.test(all), '条件を消す / 条件を保存');
+    assert.ok(/\.pp-a-dl a\{white-space:normal;/.test(all), 'a long download name wraps');
+    assert.ok(/td\.sub a::after\{content:"";position:absolute;inset:0;\}/.test(all) && /tbody tr\{position:relative;\}/.test(all), 'the whole row opens the issue');
+});
 if (failed) {
     console.log('\n' + failed + ' failed');
     process.exit(1);

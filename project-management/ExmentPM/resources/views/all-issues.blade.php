@@ -45,6 +45,15 @@
 .pp-all .chip{display:inline-block;border-radius:9px;padding:1px 8px;color:#fff;font-size:11px;white-space:nowrap;}
 .pp-all .late{color:var(--a-red);font-weight:700;}
 .pp-all .mute{color:var(--a-mute);}
+/* Phone polish 2: 条件を消す and 条件を保存 are 44px; the downloads never run past the right edge
+   (a long name wraps); the whole row opens its issue (the key and the subject were the only links). */
+@media (max-width: 767px){
+  .pp-all #pp-a-clear,.pp-all #pp-a-save{min-height:44px;padding:0 10px;}
+  .pp-all .pp-a-head .pp-a-dl{min-width:0;max-width:100%;}
+  .pp-all .pp-a-head .pp-a-dl a{white-space:normal;overflow-wrap:anywhere;}
+  .pp-all #pp-a-list tbody tr{position:relative;}
+  .pp-all #pp-a-list td.sub a::after{content:"";position:absolute;inset:0;}
+}
 @media (max-width: 767px){
   .pp-all .pp-a-wrap{padding:8px;}
   .pp-all table thead{display:none;}
