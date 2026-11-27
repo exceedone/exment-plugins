@@ -406,6 +406,25 @@ class PortalSchedule
     }
 
     /**
+     * Whether this run may write why a schedule cannot run ($blocked, null: it can). Only a run
+     * with nobody logged in (the batch) sets the flag: in a page load Exment reads some of the
+     * organizations through the visitor's view (with filter_multi_user, the parents and children
+     * of an organization are read as the request's user sees them), so a visitor of another
+     * company could hide the owner's role and flag a schedule that can run. A page load that
+     * finds the owner able clears the flag (a role the visitor cannot see is never found), and
+     * one that finds them unable skips the schedule quietly, for the batch to decide.
+     */
+    public static function mayFlag(?string $blocked, bool $nobodyLoggedIn): bool
+    {
+        return $blocked === null || $nobodyLoggedIn;
+    }
+
+    protected static function nobodyLoggedIn(): bool
+    {
+        return \Exment::user() === null;
+    }
+
+    /**
      * Whether the schedules table has the columns of why a schedule cannot run (a migration).
      * Kept for the life of the process: a queue worker started before the migration ran keeps
      * the cache-key fallback of setBlocked() until it restarts, which is harmless.
@@ -533,7 +552,7 @@ class PortalSchedule
             // made as the schedule's owner (PortalRunOwner), never as the visitor
             $owner = null;
             $blocked = PortalRunOwner::check($project, intval($s->created_user_id ?? 0) ?: null, $issueTable, $owner);
-            if (!$dry) {
+            if (!$dry && static::mayFlag($blocked, static::nobodyLoggedIn())) {
                 static::setBlocked($s, $blocked);
             }
             if ($blocked !== null || $owner === null) {

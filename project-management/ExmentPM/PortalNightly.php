@@ -18,6 +18,9 @@ class PortalNightly
     /** The plugin option: '' (off) or the hour, 0 to 23. */
     const OPTION = 'ai_nightly_hour';
 
+    /** How long a night's fill holds its lock at most (exclusive()). */
+    const LOCK_SECONDS = 3600;
+
     /**
      * The hour the setting says, or null when it is off.
      *
@@ -64,6 +67,55 @@ class PortalNightly
         } catch (\Throwable $e) {
             Log::warning('ExmentPM nightly AI fill: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Run $work unless another night's fill holds the lock: Exment starts the batch every 5
+     * minutes without waiting for the last one, a fill can take longer than that, and the day's
+     * stamp is written only when it ends. With Cache::lock when the cache has locks, else
+     * Cache::add; for one hour at most; let go when $work ends or throws. Several servers that
+     * run schedule:run need a shared cache (redis, database, memcached) for it to hold between
+     * them, or schedule:run on one server only.
+     *
+     * @return bool whether $work ran
+     */
+    public static function exclusive(callable $work): bool
+    {
+        $key = 'pmportal_ai_nightly_run:' . DB::connection()->getDatabaseName();
+        if (Cache::getStore() instanceof \Illuminate\Contracts\Cache\LockProvider) {
+            $lock = Cache::lock($key, self::LOCK_SECONDS);
+
+            return static::guarded(function () use ($lock) {
+                return boolval($lock->get());
+            }, function () use ($lock) {
+                $lock->release();
+            }, $work);
+        }
+
+        return static::guarded(function () use ($key) {
+            return Cache::add($key, 1, self::LOCK_SECONDS);
+        }, function () use ($key) {
+            Cache::forget($key);
+        }, $work);
+    }
+
+    /**
+     * $work when $acquire gets the lock, then $release, also when $work throws.
+     *
+     * @return bool whether $work ran
+     */
+    public static function guarded(callable $acquire, callable $release, callable $work): bool
+    {
+        if (!$acquire()) {
+            return false;
+        }
+        try {
+            $work();
+        } finally {
+            $release();
+        }
+
+        return true;
     }
 
     protected static function key(): string

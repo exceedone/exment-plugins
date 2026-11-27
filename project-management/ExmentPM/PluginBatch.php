@@ -110,11 +110,24 @@ class PluginBatch extends PluginBatchBase
             $code = $this->schedules($dry);
             // the portal setting "Run the AI fill nightly (hour)": once a day, in that hour
             $now = now();
-            if (PortalNightly::due(IssueAutofill::option(PortalNightly::OPTION, null), intval($now->format('G')), $now->format('Y-m-d'), PortalNightly::lastDay())) {
-                $filled = $this->fill('all', $limit, $dry);
-                if (!$dry && $filled === 0) {
-                    // only after a run that got through: a failed one is tried again in the hour
-                    PortalNightly::ran($now->format('Y-m-d'));
+            $setting = IssueAutofill::option(PortalNightly::OPTION, null);
+            $hour = intval($now->format('G'));
+            $today = $now->format('Y-m-d');
+            if (PortalNightly::due($setting, $hour, $today, PortalNightly::lastDay())) {
+                // one fill at a time: a 5-minute run that starts while the last one still fills skips it
+                $ran = PortalNightly::exclusive(function () use ($setting, $hour, $today, $limit, $dry) {
+                    // the run that held the lock before may have done today's
+                    if (!PortalNightly::due($setting, $hour, $today, PortalNightly::lastDay())) {
+                        return;
+                    }
+                    $filled = $this->fill('all', $limit, $dry);
+                    if (!$dry && $filled === 0) {
+                        // only after a run that got through: a failed one is tried again in the hour
+                        PortalNightly::ran($today);
+                    }
+                });
+                if (!$ran) {
+                    Log::info('ExmentPM nightly AI fill: another run is filling, skipped');
                 }
             }
 

@@ -42,7 +42,7 @@ class PortalRunOwner
      * canWrite() answers of this run, by table id: the users whose role edits it. A run reads
      * each table once; forget() starts a new run.
      *
-     * @var array<int, array<int, bool>>
+     * @var array<int, array<int, bool>|null> null: the read failed
      */
     protected static $editors = [];
 
@@ -181,13 +181,27 @@ class PortalRunOwner
     protected static function editorsOf(CustomTable $issueTable): ?array
     {
         $key = intval($issueTable->id);
-        if (!isset(static::$editors[$key])) {
-            try {
-                static::$editors[$key] = array_fill_keys(PortalRoleUsers::editors($issueTable), true);
-            } catch (\Throwable $e) {
-                Log::warning('ExmentPM: could not read who may add issues: ' . $e->getMessage());
 
-                return null;
+        return static::memo($key, function () use ($issueTable) {
+            return array_fill_keys(PortalRoleUsers::editors($issueTable), true);
+        });
+    }
+
+    /**
+     * The editors of a table for this run, read once: a read that failed is remembered as null
+     * (no one may), so it is neither read nor logged again for each schedule.
+     *
+     * @param callable $read fn(): array<int, bool>, may throw
+     * @return ?array<int, bool>
+     */
+    public static function memo(int $key, callable $read): ?array
+    {
+        if (!array_key_exists($key, static::$editors)) {
+            try {
+                static::$editors[$key] = $read();
+            } catch (\Throwable $e) {
+                static::$editors[$key] = null;
+                Log::warning('ExmentPM: could not read who may add issues: ' . $e->getMessage());
             }
         }
 

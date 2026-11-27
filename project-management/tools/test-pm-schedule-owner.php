@@ -169,7 +169,7 @@ foreach (['ja', 'en'] as $lang) {
 }
 $migration = glob(__DIR__ . '/../ExmentPM/database/migrations/*_add_run_error_to_pm_portal_schedules.php');
 ok(count($migration) === 1 && strpos(file_get_contents($migration[0]), "string('run_error', 32)->nullable()") !== false, 'the flag\'s column comes with a migration');
-ok(strpos($sched, 'if (!$dry) {' . "\n" . '                static::setBlocked($s, $blocked);') !== false, 'a dry run does not write the flag');
+ok(strpos($sched, 'if (!$dry && static::mayFlag($blocked, static::nobodyLoggedIn())) {' . "\n" . '                static::setBlocked($s, $blocked);') !== false, 'a dry run does not write the flag');
 $copy = file_get_contents(__DIR__ . '/../ExmentPM/PortalRecurrence.php');
 $copy = substr($copy, strpos($copy, 'protected static function copy('), 2500);
 ok(strpos($copy, 'PortalRunOwner::check($project, intval($issue->created_user_id) ?: null') !== false
@@ -253,18 +253,109 @@ $last = null;
 ok($day('3', '2026-12-05', $last, range(0, 20)) === ['03:00', '03:05', '03:10', '03:15', '03:20', '03:25', '03:30', '03:35', '03:40', '03:45', '03:50', '03:55'] && $last === null, 'failing all hour: not outside the hour');
 ok(!N::due('3', 2, '2026-12-01', null) && !N::due('3', 4, '2026-12-01', null) && N::due('3', 3, '2026-12-01', null), 'not at other hours');
 ok(!N::due('3', 3, '2026-12-01', '2026-12-01') && N::due('3', 3, '2026-12-01', '2026-11-30'), 'the day\'s stamp');
-$noParam = substr($batch, strpos($batch, "if (\$target === '') {"), 900);
-ok(strpos($noParam, 'PortalNightly::due(IssueAutofill::option(PortalNightly::OPTION, null)') !== false && strpos($noParam, "\$this->fill('all', \$limit, \$dry)") !== false, 'the batch with no param1: the fill of every project when the night\'s hour is due');
+$noParam = substr($batch, strpos($batch, "if (\$target === '') {"), 1600);
+ok(strpos($noParam, '$setting = IssueAutofill::option(PortalNightly::OPTION, null);') !== false && strpos($noParam, 'PortalNightly::due($setting, $hour, $today, PortalNightly::lastDay())') !== false &&strpos($noParam, "\$this->fill('all', \$limit, \$dry)") !== false, 'the batch with no param1: the fill of every project when the night\'s hour is due');
 ok(strpos($noParam, 'if (!$dry && $filled === 0) {') !== false && strpos($noParam, 'PortalNightly::ran(') > strpos($noParam, "\$this->fill('all'"), 'stamped only after a fill that got through, never in a dry run');
 ok(strpos($noParam, '$this->schedules($dry)') < strpos($noParam, 'PortalNightly::due('), 'the schedules first');
 ok(strpos($batch, 'return $this->fill($target, $limit, $dry);') !== false, '--param1=all or a project id: the fill as before');
 $readme = file_get_contents(__DIR__ . '/../README.md');
-$unreleased = substr($readme, strpos($readme, '**Unreleased / 未リリース**'), 2000);
+$unreleased = substr($readme, strpos($readme, '**Unreleased / 未リリース**'), 6000);
 ok(strpos($unreleased, '`--param1=all`') !== false && strpos($unreleased, 'without parameters for the AI fill') !== false && strpos($unreleased, 'パラメーターなしで AI のうめ合わせ') !== false
     && strpos($readme, '**Unreleased / 未リリース**') < strpos($readme, '**Changed in 1.7.26'), 'the release note, ja and en, under Unreleased');
 ok(strpos($unreleased, 'set your own `options.batch_cron`') !== false && strpos($unreleased, '`options.batch_cron` を自分で入れていた') !== false, 'the release note: an own batch_cron is replaced at the next upload (ja and en)');
 $schemaSrc = file_get_contents(__DIR__ . '/../ExmentPM/PortalSchema.php');
 ok(strpos($schemaSrc, 'Either survives a re-upload') === false && strpos($schemaSrc, 'sets options.batch_cron') === false, 'the old advice to set batch_cron for the back-fill is gone');
+
+// --- one night's fill at a time (PortalNightly::guarded, the lock) -------------------------------
+$held = false;
+$acquire = function () use (&$held) {
+    if ($held) {
+        return false;
+    }
+    $held = true;
+
+    return true;
+};
+$release = function () use (&$held) {
+    $held = false;
+};
+$fills = 0;
+$inner = null;
+$outer = N::guarded($acquire, $release, function () use (&$fills, &$inner, $acquire, $release) {
+    $fills++;
+    // the next 5-minute run starts while this fill is still going
+    $inner = N::guarded($acquire, $release, function () use (&$fills) {
+        $fills++;
+    });
+});
+ok($outer === true && $inner === false && $fills === 1 && $held === false, 'a run that starts during a fill skips it; the lock is let go after', json_encode([$outer, $inner, $fills, $held]));
+try {
+    N::guarded($acquire, $release, function () {
+        throw new \RuntimeException('the AI service is down');
+    });
+} catch (\RuntimeException $e) {
+}
+ok($held === false && N::guarded($acquire, $release, function () {
+}) === true, 'a fill that throws lets the lock go: the next run may fill');
+// two servers, one shared lock, the twelve runs of the hour each: one fill
+$last = null;
+$fills = 0;
+foreach (range(0, 11) as $i) {
+    foreach (['server-a', 'server-b'] as $server) {
+        if (N::due('3', 3, '2026-12-06', $last)) {
+            N::guarded($acquire, $release, function () use (&$fills, &$last) {
+                if (!N::due('3', 3, '2026-12-06', $last)) {
+                    return;
+                }
+                $fills++;
+                $last = '2026-12-06';
+            });
+        }
+    }
+}
+ok($fills === 1, 'two servers through the hour: one fill');
+$nightSrc = file_get_contents(__DIR__ . '/../ExmentPM/PortalNightly.php');
+ok(strpos($nightSrc, "\$key = 'pmportal_ai_nightly_run:' . DB::connection()->getDatabaseName();") !== false
+    && strpos($nightSrc, 'Cache::lock($key, self::LOCK_SECONDS)') !== false && strpos($nightSrc, 'const LOCK_SECONDS = 3600;') !== false, 'the lock: per database, one hour at most');
+ok(strpos($nightSrc, 'instanceof \Illuminate\Contracts\Cache\LockProvider') !== false && strpos($nightSrc, 'Cache::add($key, 1, self::LOCK_SECONDS)') !== false && strpos($nightSrc, 'Cache::forget($key);') !== false, 'a cache without locks: Cache::add and forget');
+$noParam2 = substr($batch, strpos($batch, "if (\$target === '') {"), 1600);
+ok(strpos($noParam2, 'PortalNightly::exclusive(function ()') !== false && strpos($noParam2, 'PortalNightly::exclusive(') < strpos($noParam2, "\$this->fill('all'")
+    && substr_count($noParam2, 'PortalNightly::due(') === 2, 'the batch fills inside the lock, and asks again inside it');
+ok(strpos($readme, 'shared cache') !== false && strpos($readme, '共有のキャッシュ') !== false, 'the release note: a shared cache for several servers');
+
+// --- only the batch flags a schedule that cannot run ---------------------------------------------
+ok(S::mayFlag(O::NO_RIGHT, true) && S::mayFlag(O::NO_OWNER, true) && S::mayFlag(null, true), 'the batch (nobody logged in): sets and clears the flag');
+ok(!S::mayFlag(O::NO_RIGHT, false) && !S::mayFlag(O::NO_OWNER, false), 'a page load: does not set it (a visitor may not see the owner\'s role)');
+ok(S::mayFlag(null, false), 'a page load that finds the owner able: clears it');
+ok(strpos($run, 'if (!$dry && static::mayFlag($blocked, static::nobodyLoggedIn())) {') !== false, 'run(): the flag only as mayFlag says');
+ok(strpos($copy, 'PortalSchedule::mayFlag($blocked, \Exment::user() === null) && Cache::add($logKey') !== false, 'a recurring copy: logged by the batch only');
+
+// --- a read of the roles that failed is remembered for the run -----------------------------------
+if (!class_exists('Illuminate\Support\Facades\Log')) {
+    eval('namespace Illuminate\Support\Facades; class Log { public static $lines = []; public static function __callStatic($m, $a) { static::$lines[] = $m . ": " . $a[0]; } }');
+}
+O::forget();
+$readsN = 0;
+$failing = function () use (&$readsN) {
+    $readsN++;
+    throw new \RuntimeException('the role groups could not be read');
+};
+$answers = [O::memo(7, $failing), O::memo(7, $failing), O::memo(7, $failing)];
+ok($answers === [null, null, null] && $readsN === 1, 'a failed read: null for the run, read once', json_encode([$answers, $readsN]));
+if (property_exists('Illuminate\Support\Facades\Log', 'lines')) {
+    // @phpstan-ignore-next-line
+    ok(count(\Illuminate\Support\Facades\Log::$lines) === 1, 'and logged once');
+}
+$readsN = 0;
+$ok = function () use (&$readsN) {
+    $readsN++;
+
+    return [5 => true];
+};
+ok(O::memo(8, $ok) === [5 => true] && O::memo(8, $ok) === [5 => true] && $readsN === 1, 'a good read: once per run');
+O::forget();
+O::memo(7, $ok);
+ok($readsN === 2, 'a new run reads again');
 
 // --- no date made twice when the batch and a page load run at once ------------------------------
 // the claim: (schedule, date) unique in pm_portal_schedule_items, taken before the copy

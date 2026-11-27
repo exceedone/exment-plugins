@@ -287,8 +287,9 @@ class PortalRecurrence
         $blocked = PortalRunOwner::check($project, intval($issue->created_user_id) ?: null, $issue_table, $owner);
         $logKey = 'pmportal_recur_block:' . DB::connection()->getDatabaseName() . ':' . $issue->id;
         if ($blocked !== null || $owner === null) {
-            // the setting stays on the issue; said once a day at most
-            if (Cache::add($logKey, 1, now()->addDay())) {
+            // the setting stays on the issue; said once a day at most, and only by the batch (a page
+            // load may not see the owner's role: PortalSchedule::mayFlag)
+            if (PortalSchedule::mayFlag($blocked, \Exment::user() === null) && Cache::add($logKey, 1, now()->addDay())) {
                 Log::warning('PmPortal recurrence: issue ' . $issue->id . ' makes no copy (' . $blocked . '): nobody on the project to make it as, or they may not add issues');
             }
 
