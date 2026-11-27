@@ -118,9 +118,10 @@ JS;
     public function start(Request $request)
     {
         $this->gate();
-        $this->own($request);
 
         return $this->json(function () use ($request) {
+            // inside json(): a write from elsewhere is a JSON 403, as the window shows it
+            $this->own($request);
             return GuestChat::start(strval($request->input('key')), strval($request->input('name')), strval($request->input('email')), strval($request->input('body')), strval($request->ip()), strval($request->input('robot', '')));
         });
     }
@@ -137,9 +138,10 @@ JS;
     public function post(Request $request)
     {
         $this->gate();
-        $this->own($request);
 
         return $this->json(function () use ($request) {
+            // inside json(): a write from elsewhere is a JSON 403, as the window shows it
+            $this->own($request);
             return GuestChat::post(strval($request->header('X-Chat-Token')), strval($request->input('body')));
         });
     }
