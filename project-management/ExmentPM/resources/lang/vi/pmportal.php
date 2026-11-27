@@ -404,6 +404,7 @@ return [
     'git_open' => 'đang mở',
     'git_merged' => 'đã merge',
     'git_closed' => 'đã đóng',
+    'git_done' => 'marked done by the merge',
     // ISS00440: the copy button by the issue key
     'ik_copied' => 'Đã sao chép khóa và tiêu đề của vấn đề',
     'ik_key_copied' => 'Đã sao chép khóa vấn đề',

@@ -64,14 +64,25 @@ $check('keys: another project not', G::keys('OTHER-1 and XEXMENT_AI-2', 'EXMENT_
 $check('keys: an alias', G::keys('see login-bug here', 'P', ['login-bug']) === ['@login-bug']);
 $check('keys: not inside a word', G::keys('mylogin-bugs', 'P', ['login-bug']) === []);
 $check('keys: at most 20', count(G::keys(implode(' ', array_map(function ($n) { return 'P-' . $n; }, range(1, 30))), 'P')) === 20);
-$check('closes: fixes / closes / resolved', G::closes($it['text'], 'EXMENT_AI') === ['EXMENT_AI-439', 'EXMENT_AI-440'], G::closes($it['text'], 'EXMENT_AI'));
-$check('closes: "see KEY" does not', G::closes('see EXMENT_AI-1, refs EXMENT_AI-2', 'EXMENT_AI') === []);
+$check('close words: fixes / closes', G::closeWords($it['text']) === ['EXMENT_AI-439', 'exment_ai-440'], G::closeWords($it['text']));
+$check('close words: "see KEY" / "refs KEY" do not', G::closeWords('see EXMENT_AI-1, refs EXMENT_AI-2') === []);
+$check('close words: resolved, a colon, a full stop', G::closeWords('Resolved: ISS00001. fixed PROJ-3') === ['ISS00001', 'PROJ-3'], G::closeWords('Resolved: ISS00001. fixed PROJ-3'));
+$check('close words: an alias with -', G::closeWords('closes login-bug, thanks') === ['login-bug'], G::closeWords('closes login-bug, thanks'));
+$check('close words: not "prefixes" / "disclosed"', G::closeWords('prefixes PROJ-1 disclosed PROJ-2') === []);
 
 // the issue's own key (the key column), as the branch name button copies it
 $check('key words: the copied branch name', in_array('ISS00001', G::keyWords('ISS00001-pm101-issue-1'), true));
 $check('key words: in a message', in_array('ISS00001', G::keyWords('touch ISS00001 now'), true) && in_array('PMD-1', G::keyWords('PMD-1-fix'), true));
 $check('key words: not inside a word', !in_array('ISS00001', G::keyWords('xISS00001 ISS00001x'), true));
 $check('key words: at most 50', count(G::keyWords(implode(' ', array_map(function ($n) { return 'A' . $n; }, range(1, 80))))) === 50);
+
+// in the order written: what is linked first is the first named
+$h = G::hits('see ISS00034 then fixes PMD-2 and login-bug, x', 'PMD', ['login-bug']);
+$check('hits: in the order written', array_map(function ($x) { return $x['type'] . ':' . $x['k']; }, $h) === ['word:ISS00034', 'key:PMD-2', 'word:PMD-2', 'alias:login-bug'], $h);
+$neg = "not fixes PMD-1, doesn't fix PMD-2, never closes PMD-3, fixes PMD-4";
+$check('close words: not / n\'t / never', G::closeWords($neg) === ['PMD-4'], G::closeWords($neg));
+$many = implode(' ', array_map(function ($n) { return 'fixes ISS000' . $n; }, range(34, 58)));
+$check('close words: the first 20 written', G::closeWords($many)[0] === 'ISS00034' && count(G::closeWords($many)) === 20);
 
 // branch names
 $check('branch: key and words', G::branchName('EXMENT_AI-439', 'Login fails on Safari') === 'EXMENT_AI-439-login-fails-on-safari');

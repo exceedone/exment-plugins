@@ -404,6 +404,7 @@ return [
     'git_open' => 'オープン',
     'git_merged' => 'マージ済み',
     'git_closed' => 'クローズ',
+    'git_done' => 'マージで処理済みにしました',
     // ISS00440: the copy button by the issue key
     'ik_copied' => '課題キーと件名をコピーしました',
     'ik_key_copied' => '課題キーをコピーしました',
@@ -1888,7 +1889,7 @@ return [
         'last' => '最後に届いた日時:',
         'never' => 'まだ届いていません。',
         'error' => 'エラー',
-        'close_on_merge' => 'マージで処理済みにする（fixes / closes キー）',
+        'close_on_merge' => 'マージで処理済みにする（「fixes キー」「closes キー」を書いたプルリクエストがマージされたとき）',
         'new_secret' => '秘密の文字を作り直す',
         'new_secret_ask' => '秘密の文字を作り直しますか？ いまの秘密の文字では届かなくなります。',
         'remove' => '外す',

@@ -404,6 +404,7 @@ return [
     'git_open' => 'offen',
     'git_merged' => 'gemergt',
     'git_closed' => 'geschlossen',
+    'git_done' => 'marked done by the merge',
     // ISS00440: the copy button by the issue key
     'ik_copied' => 'Ticketschlüssel und Betreff kopiert',
     'ik_key_copied' => 'Ticketschlüssel kopiert',

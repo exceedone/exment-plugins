@@ -1041,8 +1041,24 @@ class PmPortalController extends AdminControllerBase
                 if (empty($changes)) {
                     continue;
                 }
+                // ISS02939 item 5: a change of no user made by the Git webhook (a merged PR) shows
+                // as 「Git（owner/repo）」 with the PR's link
+                $gitBy = null;
+                if (intval($rev->create_user_id) === 0) {
+                    $gitOn = $gitOn ?? (PortalGitHooks::enabled() && $this->projectFlag($project, 'use_git', false));
+                    if ($gitOn) {
+                        $at = intval(strtotime(strval($rev->created_at)));
+                        foreach (PortalGitHooks::closers(intval($issue->id)) as $cl) {
+                            if (abs($cl['ts'] - $at) <= 120) {
+                                $gitBy = $cl;
+                                break;
+                            }
+                        }
+                    }
+                }
                 $timeline[] = [
                     'tp' => 'chg',
+                    'git' => $gitBy !== null ? ['who' => $gitBy['who'], 'url' => $gitBy['url'], 'ref' => $gitBy['ref']] : null,
                     'rid' => intval($rev->id),
                     'by' => intval($rev->create_user_id),
                     'at' => $this->fmtAt($rev->created_at),

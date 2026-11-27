@@ -5066,9 +5066,15 @@ window.PmPortalBoot = function () {
                     return '<div><b>' + esc(c[0]) + '</b>: ' + esc(c[1]) + '<span class="arr">→</span><b>' + esc(c[2]) + '</b></div>';
                 }).join('') + '</div>' +
                     // a change put in by mistake can be hidden (ISS02924)
+                    // made by the Git webhook: the PR it came from
+                    (e.git ? '<div style="color:var(--bl-faint);font-size:12px;">' + (e.git.url ? '<a href="' + esc(linkUrl(e.git.url)) + '" target="_blank" rel="noopener noreferrer" data-nopjax>#' + esc(e.git.ref) + '</a>' : '#' + esc(e.git.ref)) + ' · ' + esc(L.git_done) + '</div>' : '') +
                     (e.hide ? '<div class="act"><a href="javascript:void(0);" class="pp-chghide" data-rid="' + esc(e.rid) + '">' + esc(L.chg_hide) + '</a></div>' : '');
             } else if (e.tp === 'add') {
                 body = '<div class="chg"><i class="fa fa-plus" style="color:var(--bl-accent);margin-right:6px;"></i>' + esc(L.added) + '</div>';
+            } else if (e.tp === 'git' && e.kind === 'close') {
+                body = '<div class="chg"><i class="fa fa-check" style="margin-right:6px;"></i>' +
+                    (e.url ? '<a href="' + esc(linkUrl(e.url)) + '" target="_blank" rel="noopener noreferrer" data-nopjax>#' + esc(e.ref) + ' ' + esc(e.title) + '</a>' : '#' + esc(e.ref) + ' ' + esc(e.title)) +
+                    ' · ' + esc(L.git_done) + '</div>';
             } else if (e.tp === 'git') {
                 // a commit or a pull request that named this issue (ISS02939): all as text
                 var gs = e.state ? ' <span class="pp-gitst" style="display:inline-block;padding:0 6px;margin-left:4px;border-radius:9px;font-size:11px;color:#fff;background:' + ({ merged: '#8250df', closed: '#cf222e' }[e.state] || '#1a7f37') + ';">' + esc(L['git_' + e.state] || e.state) + '</span>' : '';
@@ -5097,9 +5103,9 @@ window.PmPortalBoot = function () {
                     '</span></span>' : '') + '</div>';
             }
             // a Git line: its author as the host said it, a Git mark for the face
-            var gitLine = e.tp === 'git';
+            var gitLine = e.tp === 'git' || !!e.git;
             return '<div class="ent"' + (e.tp === 'cmt' ? ' id="pp-c' + esc(e.cid) + '"' : '') + '>' + (gitLine ? '<span class="av" style="background:#6e7781;"><i class="fa fa-git"></i></span>' : av(e.by, 1)) +
-                '<div class="body"><div class="head"><span class="who">' + esc(gitLine ? (e.author || 'Git') : user(e.by).n) + '</span><span class="tm">' + esc(e.at) + '</span></div>' + body + '</div></div>';
+                '<div class="body"><div class="head"><span class="who">' + esc(gitLine ? ((e.git && e.git.who) || e.author || 'Git') : user(e.by).n) + '</span><span class="tm">' + esc(e.at) + '</span></div>' + body + '</div></div>';
         }).join('') || ('<div style="color:var(--bl-faint);font-size:12px;">' + esc(L.empty) + '</div>');
         clipLongComments();
         highlightLinkedComment(landingComment(res));

@@ -404,6 +404,7 @@ return [
     'git_open' => 'abierta',
     'git_merged' => 'fusionada',
     'git_closed' => 'cerrada',
+    'git_done' => 'marked done by the merge',
     // ISS00440: the copy button by the issue key
     'ik_copied' => 'Se copiaron la clave y el asunto de la incidencia',
     'ik_key_copied' => 'Se copió la clave de la incidencia',
