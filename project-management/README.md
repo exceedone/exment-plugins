@@ -15,7 +15,7 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
-**Unreleased / 未リリース**
+**Changed in 1.7.23 / 1.7.23 で変わったこと**
 
 - An issue has a quiet 「← 課題一覧」 button before its trail and in the bar that stays on scroll (an icon only on a phone). It goes back where the issue was opened from - the list, the board, the gantt or the home (「← ボード」 and so on) - and to the list from anywhere else; back in the list, the filters, sort and page are as they were and the issue just left lights up for a moment, in view.
   課題の画面のパンくずの前と、スクロールしても残る行に、目立たない「← 課題一覧」のボタンを付けました（スマホではアイコンだけ）。課題を開いた画面（一覧・ボード・ガント・ホーム）に戻り、ボタンの文字もそれに合わせます（「← ボード」など）。それ以外から開いたときは一覧に戻ります。一覧では、絞り込み・並び順・ページはそのままで、今まで見ていた課題が少しの間光り、見える所に出ます。
