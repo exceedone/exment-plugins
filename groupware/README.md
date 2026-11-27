@@ -6,6 +6,14 @@
 
 <a id="english"></a>
 
+**Changed in 0.5.1**
+
+- A site whose plugin files were replaced (copied onto the server) without uploading the zip no longer fails on every page. From 0.5.0 the plugin has two types (page, batch), but such a site still has `plugins.plugin_types` = `page` from before; Exment then looked for a class `Plugin`, found an empty one, and every page answered 500, the login included. `Plugin` is now the page itself (the same as `PluginPage`, with the settings form of `PluginSetting`), so the site keeps working. The reminders and the retention of the chat (the batch) still need the row updated: upload `ExmentGroupware-<version>.zip` in **Admin settings → Plugins** rather than replacing the files, or update `plugins.plugin_types` and the options and run the plugin's migrations as the [manual](https://exment.net/docs/plugin_groupware.html) says.
+
+- Calendar: Google Calendar and Microsoft 365 read into a person's calendar, read only (ISS02947, part 6). In the 「連携」 dialog, **Google と連携** / **Microsoft と連携** sign in to the account and read its main calendar every 15 minutes, like an ICS link; the site's app is entered in the plugin's settings by the system administrator. See [Google and Microsoft 365 calendars (read only)](#calendar-google-microsoft).
+- Calendar on phones: the toolbar buttons, the dialog buttons, the ExmentPM layer select and the form fields are 44px tall (the fields at 16px, so iOS does not zoom in), and the rooms dialog has its own day arrows (前の日 / 次の日) that can be tapped. Wide screens are unchanged.
+- Calendar: the dialogs start below Exment's header, so their top (the close button, the day arrows) is no longer hidden under it.
+
 **Changed in 0.5.0**
 
 - The README says that a picture cannot be pasted into Office (ibisOffice 0.8.9 in the browser takes only text), and what to do instead: [Pasting a picture into Office](#pasting-a-picture-into-office).
@@ -181,7 +189,7 @@ The tables `gw_cal_links` and `gw_cal_feeds` are made when the zip is uploaded (
 - **No session, no IP filter.** The export address has no session (a calendar program keeps no cookies). It follows Exment's maintenance mode as Exment's public pages do (and, on Exment SaaS, the tenant's expiry). It is not behind the web IP filter of the admin pages (Admin setting → IP filter), since Google's or Microsoft's servers read it from outside: whoever has the address can read it, so keep it to yourself and make a new one if it leaks.
 - **Many events in one window.** A view of the calendar (and the export) reads the repeats and the one-time events of a window separately, at most 5000 of each: with more one-time events than that in one window (many outside calendars), the earliest 5000 are shown. A window has at most 20000 occurrences: the person's own events first, then each outside calendar an equal share of the rest (the smaller ones first, what one leaves goes to the next), so one calendar of many repeats pushes out neither (a warning goes to the log).
 - **A slow calendar server.** A link read after the answer of a calendar page keeps that PHP worker (PHP-FPM) busy until it is read, 15 seconds at most (plus 10 for a large calendar), at most once a minute for the site. The page itself is already sent.
-- **Cached routes.** The ICS export address is a route the plugin adds while Exment boots (like ExmentITSupport's pages without login). When Laravel's routes are cached (`php artisan route:cache`), it is not there and answers 404. Do not cache the routes on a site that uses it (`php artisan route:clear` undoes it).
+- **Cached routes.** The ICS export address is a route the plugin adds while Exment boots (like ExmentSupportDesk's pages without login). When Laravel's routes are cached (`php artisan route:cache`), it is not there and answers 404. Do not cache the routes on a site that uses it (`php artisan route:clear` undoes it).
 
 <a id="calendar-google-microsoft"></a>
 ### Google and Microsoft 365 calendars (read only)
@@ -204,7 +212,15 @@ Coming: an export of one's own calendar with all its details, with a token of it
 
 <a id="japanese"></a>
 
-**未リリース**
+**0.5.1 で変わったこと**
+
+- プラグインのファイルを（サーバーにコピーして）入れかえ、zip をアップロードしなかったサイトで、すべての画面がエラーになることがなくなりました。0.5.0 からこのプラグインは 2 つの種類（ページ・バッチ）ですが、そのようなサイトでは `plugins.plugin_types` が前の `page` のままです。Exment は `Plugin` というクラスを探して空のクラスを見つけ、ログインも含めてすべての画面が 500 になっていました。今は `Plugin` がページそのもの（`PluginPage` と同じで、設定の画面は `PluginSetting` のもの）なので、サイトは動きます。カレンダーのリマインダーとチャットの保存期間（バッチ）には、行の更新が要ります。ファイルを入れかえるのではなく、**管理者設定 → プラグイン** で `ExmentGroupware-<version>.zip` をアップロードしてください。または、[マニュアル](https://exment.net/docs/ja/plugin_groupware.html) のとおりに `plugins.plugin_types` とオプションを更新し、プラグインのマイグレーションを動かしてください。
+
+- カレンダー：Google カレンダーと Microsoft 365 の予定表を、自分のカレンダーに読みこめます（読むだけ。ISS02947 の 6）。「連携」の画面の **Google と連携**・**Microsoft と連携** でアカウントにサインインすると、そのメインのカレンダーを ICS と同じように 15 分ごとに読みます。サイトのアプリは、システム管理者がプラグインの設定に入れます。[Google カレンダー・Microsoft 365 の予定表（読むだけ）](#calendar-google-microsoft-ja) を参照。
+- スマホのカレンダー：ツールバーのボタン・画面のボタン・ExmentPM の選択・入力欄を 44px の高さにしました（入力欄の文字は 16px で、iOS が拡大しません）。会議室・備品の画面には、押せる日の矢印（前の日・次の日）を付けました。広い画面は変わりません。
+- カレンダー：画面（ダイアログ）を Exment の上の見出しの下から出すようにしました。上の部分（閉じるボタン・日の矢印）が見出しにかくれなくなりました。
+
+**0.5.0 で変わったこと**
 
 - Office に画像を貼り付けられないこと（ブラウザー版の ibisOffice 0.8.9 は文字だけを受け取ります）と、その代わりの方法を README に書きました（[Office に画像を貼り付ける](#office-に画像を貼り付ける)）。
 - カレンダー：ExmentPM の課題をカレンダーに出せます（ISS02947 の 4）。ツールバーの新しい選択（初めは「課題を出さない」）で、**自分の課題**・**自分のプロジェクト**・1 つのプロジェクトを選びます。開始日と期限のある課題は帯で、期限だけの課題は期限の日に印で出します。マイルストーンと、ExmentPM の定期の予定のうち、まだ課題になっていない日も「予定（まだ課題になっていない）」として出します（動かした日・とばした日もそのとおり）。プロジェクトごとに色が分かれます。課題を押すと ExmentPM で開きます。定期の予定の日からは **この回だけ変える**（ExmentPM の定期の予定の画面。プロジェクトの管理者）へ進めます。読むだけで、プロジェクトと課題のテーブルの Exment の権限のとおりに、見てよいものだけを出します。ExmentPM のテーブルがあるサイトだけに出ます。定期の予定は、ExmentPM が課題を作る設定（機能の管理）のときだけです。
@@ -407,7 +423,7 @@ Exment はメールサーバーを持ちません。Outlook と同じように�
 - **セッションなし・IP フィルターなし**：書き出しの URL はセッションを使いません（カレンダーのソフトはクッキーを持たないため）。Exment のメンテナンスモードには、Exment の公開のページと同じように従います（Exment SaaS では、テナントの期限にも）。管理画面の Web の IP フィルター（管理者設定 → IP フィルター）はかかりません。Google や Microsoft のサーバーが外から読むためです。URL を知っている人はだれでも読めるので、人に教えず、もれたときは作りなおしてください。
 - **1 つの期間にたくさんの予定**：カレンダーの画面（と書き出し）は、期間のくりかえしの予定と 1 回だけの予定を別々に、それぞれ 5000 件まで読みます。1 つの期間に 1 回だけの予定がそれより多いとき（ほかのカレンダーがたくさんあるときなど）は、早いほうから 5000 件を出します。1 つの期間に出すのは 20000 回までです。その人自身の予定が先で、残りをほかのカレンダーで同じだけ分けます（小さいほうから。使わなかった分は次のカレンダーへ）。くりかえしの多いカレンダーが 1 つあっても、自分の予定やほかのカレンダーの予定はおし出されません（ログに警告を残します）。
 - **おそいカレンダーのサーバー**：カレンダーの画面の答えのあとに読むリンクは、読み終わるまでその PHP のワーカー（PHP-FPM）を使います。15 秒まで（大きなカレンダーではさらに 10 秒まで）、サイトで 1 分に 1 回までです。画面はもう送ってあります。
-- **ルートのキャッシュ**：ICS の書き出しの URL は、Exment が起動するときにプラグインが足すルートです（ExmentITSupport のログインなしのページと同じ）。Laravel のルートをキャッシュしている（`php artisan route:cache`）と、この URL はなく 404 になります。使うサイトではルートをキャッシュしないでください（`php artisan route:clear` で元に戻ります）。
+- **ルートのキャッシュ**：ICS の書き出しの URL は、Exment が起動するときにプラグインが足すルートです（ExmentSupportDesk のログインなしのページと同じ）。Laravel のルートをキャッシュしている（`php artisan route:cache`）と、この URL はなく 404 になります。使うサイトではルートをキャッシュしないでください（`php artisan route:clear` で元に戻ります）。
 
 <a id="calendar-google-microsoft-ja"></a>
 ### Google カレンダー・Microsoft 365 の予定表（読むだけ）

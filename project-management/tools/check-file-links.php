@@ -1,6 +1,6 @@
 <?php
 // Links to stored files must open outside the admin's page loading (pjax): each <a> written in
-// the scripts and views of ExmentPM, Groupware and IT Support that points at a file (a /files/
+// the scripts and views of ExmentPM, Groupware and Support Desk that points at a file (a /files/
 // address, a file's url, the bl-file links) carries data-nopjax or target="_blank".
 //   php project-management/tools/check-file-links.php
 $root = dirname(__DIR__, 2);
@@ -8,7 +8,7 @@ $dirs = [
     'project-management/ExmentPM/resources/js/src',
     'project-management/ExmentPM/resources/views',
     'groupware/ExmentGroupware/resources/views',
-    'it-support/ExmentITSupport/resources/views',
+    'support-desk/ExmentSupportDesk/resources/views',
 ];
 // what makes an <a> a link to a file
 $file = '#/files/|bl-file|\b(f|e|file|att|a|d|doc)\.url\b|u\(\'file\'|B\.url\.file#';

@@ -4,11 +4,12 @@
     "plugin_view_name": "Exment Plugin PM（プロジェクト管理）",
     "description": "プロジェクト管理（課題・ボード・ガントチャート・Wiki・ファイル・データ移行）。Exment の標準テーブル上に構築します。",
     "author": "Exceedone",
-    "version": "1.7.26",
+    "version": "1.8.0",
     "plugin_type": "page,validator,event,batch,script",
     "uri": "exment_pm",
     "event_triggers": ["saving", "saved"],
     "batch_hour": -1,
+    "batch_cron": "*/5 * * * *",
     "templates": false,
     "route": [
         { "method": "get", "uri": "", "function": "index" },
