@@ -316,6 +316,15 @@
         },
         {
             "method": "get",
+            "uri": "cal/api/pm",
+            "function": "calPm",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
             "uri": "cal/api/people",
             "function": "calPeople",
             "middleware_except": [
