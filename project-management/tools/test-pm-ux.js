@@ -552,11 +552,18 @@ test('BC-1: the parents in the trail above an issue', () => {
     assert.ok(ja('bc_hidden') && langJa.indexOf('// BC-1') > 0);
 });
 
-test('tree view: a child that was read does not look unread (the unread mark is a blue edge and tint)', () => {
+test('ROW-1: child rows are white, unread is ● + bold + edge, hover and ticked rows have their own colours', () => {
     assert.ok(!/tr\.pp-tkid td:first-child\{box-shadow:inset 3px/.test(style), 'no edge at the left of a child: that is the unread mark');
-    assert.ok(!/tr\.pp-tkid td\{background:color-mix\(in srgb, var\(--bl-accent\)/.test(style), 'no accent tint: a blue theme made it the unread tint');
-    assert.ok(/tr\.pp-tkid\.pp-unread td\{background:color-mix\(in srgb, #2f80ed 6%/.test(style), 'an unread child keeps the unread tint');
-    assert.ok(/tr\.pp-unread > td:first-child\{box-shadow:inset 3px 0 0 #2f80ed;\}/.test(style), 'the unread edge is still there');
+    assert.ok(!/tr\.pp-tkid(\.pp-td\d)? td\{background:/.test(style), 'a child row is not tinted (grey or accent)');
+    assert.ok(/tr\.pp-tkid \.pp-tind\{background:linear-gradient\(var\(--bl-line\)/.test(style), 'the thin tree guide');
+    assert.ok(!/tr\.pp-unread\{background:/.test(style) && !/tr\.pp-tkid\.pp-unread td\{background:/.test(style), 'unread has no tint');
+    assert.ok(/tr\.pp-unread td\.sub::before\{content:"\\25CF";color:var\(--bl-unread\)/.test(style), 'the blue ●');
+    assert.ok(/tr\.pp-unread td\.sub\{font-weight:700;\}/.test(style), 'bold');
+    assert.ok(/tr\.pp-unread > td:first-child\{box-shadow:inset 3px 0 0 var\(--bl-unread\);\}/.test(style), 'the unread edge');
+    assert.ok(/tbody tr:hover\{background:var\(--bl-row-hover\);\}/.test(style) && /--bl-row-hover:color-mix\(in srgb, var\(--bl-ink\) 5%, var\(--bl-box\)\)/.test(style), 'hover: a neutral grey from the PM colours');
+    assert.ok(/tbody tr\.sel\{background:var\(--bl-row-sel\);\}/.test(style), 'a ticked row: its own colour');
+    assert.ok(/i\.unread \? '<span class="pp-sr">' \+ esc\(L\.row_unread\)/.test(listSrc), 'said in words for a screen reader');
+    assert.ok(ja('row_unread') && index.indexOf("'row_unread'") > 0);
 });
 
 test('BACK-1: an issue goes back where it was opened from', () => {

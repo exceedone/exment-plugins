@@ -2304,4 +2304,6 @@ return [
     'back_home' => 'Home',
     'back_wiki' => 'Wiki pages',
     'back_tip' => 'Back to %s',
+    // ROW-1
+    'row_unread' => 'Unread',
 ];

@@ -908,7 +908,7 @@
                 // indent/toggle in a fixed slot on the left, subject and 件名サブ
                 // stacked to its right so both lines start at the same place
                 (TREE_ON ? '<td class="pp-tcol">' + ind + '</td>' : '') +
-                '<td class="sub">' + parent + rcMark(i) + esc(i.subject) +
+                '<td class="sub">' + (i.unread ? '<span class="pp-sr">' + esc(L.row_unread) + '</span>' : '') + parent + rcMark(i) + esc(i.subject) +
                     (i.sub ? '<div class="pp-subsub">' + esc(i.sub) + '</div>' : '') + '</td>' +
                 '<td>' + avlist(i.as) + '</td>' +
                 ocols.map(function (c) { return ocolCell(i, c); }).join('') +
