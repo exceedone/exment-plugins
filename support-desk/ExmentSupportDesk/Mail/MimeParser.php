@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Mail;
+namespace App\Plugins\ExmentSupportDesk\Mail;
 
 /**
  * Just enough MIME to turn a customer's mail into a ticket.

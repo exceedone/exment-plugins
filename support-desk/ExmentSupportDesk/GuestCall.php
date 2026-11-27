@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Model\CustomValue;
 use Illuminate\Support\Facades\DB;
@@ -67,8 +67,8 @@ class GuestCall
     public static function create(CustomValue $ticket, int $agentId): array
     {
         $token = bin2hex(random_bytes(32));
-        DB::table('its_call_signals')->where('created_at', '<', now()->subHours(2))->delete();
-        $id = intval(DB::table('its_calls')->insertGetId([
+        DB::table('sd_call_signals')->where('created_at', '<', now()->subHours(2))->delete();
+        $id = intval(DB::table('sd_calls')->insertGetId([
             'ticket_id' => $ticket->id, 'agent_id' => $agentId, 'token_hash' => Tokens::hash($token),
             'expires_at' => now()->addMinutes(static::MINUTES), 'created_at' => now(), 'updated_at' => now(),
         ]));
@@ -85,7 +85,7 @@ class GuestCall
         if (!preg_match('/^[0-9a-f]{64}$/', $token)) {
             return null;
         }
-        $c = DB::table('its_calls')->where('token_hash', Tokens::hash($token))->first();
+        $c = DB::table('sd_calls')->where('token_hash', Tokens::hash($token))->first();
         if (!isset($c)) {
             return null;
         }
@@ -117,7 +117,7 @@ class GuestCall
             abort(409);
         }
         $secret = bin2hex(random_bytes(32));
-        $n = DB::table('its_calls')->where('id', $c->id)->whereNull('bound_hash')->update(['bound_hash' => Tokens::hash($secret), 'joined_at' => now(), 'updated_at' => now()]);
+        $n = DB::table('sd_calls')->where('id', $c->id)->whereNull('bound_hash')->update(['bound_hash' => Tokens::hash($secret), 'joined_at' => now(), 'updated_at' => now()]);
         if ($n !== 1) {
             abort(409);
         }
@@ -139,7 +139,7 @@ class GuestCall
     /** The call of an agent: a call of a ticket the agent may see (the desk's own check). */
     public static function agentCall(int $callId): object
     {
-        $c = DB::table('its_calls')->where('id', $callId)->first();
+        $c = DB::table('sd_calls')->where('id', $callId)->first();
         if (!isset($c) || Tickets::find($c->ticket_id) === null) {
             abort(404);
         }
@@ -159,21 +159,21 @@ class GuestCall
         if ($json !== null && strlen($json) > static::MAX_PAYLOAD) {
             throw new \InvalidArgumentException('合図が大きすぎます。');
         }
-        if (DB::table('its_call_signals')->where('call_id', $call->id)->count() >= static::SIGNALS_PER_CALL) {
+        if (DB::table('sd_call_signals')->where('call_id', $call->id)->count() >= static::SIGNALS_PER_CALL) {
             throw new \InvalidArgumentException('合図が多すぎます。');
         }
         if ($type === 'answer' && $call->answered_at === null) {
-            DB::table('its_calls')->where('id', $call->id)->update(['answered_at' => now()]);
+            DB::table('sd_calls')->where('id', $call->id)->update(['answered_at' => now()]);
         }
-        DB::table('its_call_signals')->insert(['call_id' => $call->id, 'side' => $side, 'type' => $type, 'payload' => $json, 'created_at' => now()]);
+        DB::table('sd_call_signals')->insert(['call_id' => $call->id, 'side' => $side, 'type' => $type, 'payload' => $json, 'created_at' => now()]);
     }
 
     /** The signals for one side: those the other side sent, after an id. */
     public static function signals(object $call, string $side, int $after): array
     {
         $other = $side === 'agent' ? 'guest' : 'agent';
-        $rows = DB::table('its_call_signals')->where('call_id', $call->id)->where('side', $other)->where('id', '>', $after)->orderBy('id')->limit(200)->get();
-        $fresh = DB::table('its_calls')->where('id', $call->id)->first();
+        $rows = DB::table('sd_call_signals')->where('call_id', $call->id)->where('side', $other)->where('id', '>', $after)->orderBy('id')->limit(200)->get();
+        $fresh = DB::table('sd_calls')->where('id', $call->id)->first();
 
         return [
             'ended' => isset($fresh) && $fresh->ended_at !== null,
@@ -189,13 +189,13 @@ class GuestCall
      */
     public static function end(object $call, string $side, string $notes = ''): array
     {
-        $fresh = DB::table('its_calls')->where('id', $call->id)->first();
+        $fresh = DB::table('sd_calls')->where('id', $call->id)->first();
         // the ticket whoever ended first: the agent's notes come with the agent's end, maybe the second
         $ticket = isset($fresh) ? Tickets::find($fresh->ticket_id) : null;
         if (isset($fresh) && $fresh->ended_at === null) {
             $now = now();
-            DB::table('its_calls')->where('id', $call->id)->update(['ended_at' => $now, 'updated_at' => $now]);
-            DB::table('its_call_signals')->insert(['call_id' => $call->id, 'side' => $side, 'type' => 'hangup', 'payload' => null, 'created_at' => $now]);
+            DB::table('sd_calls')->where('id', $call->id)->update(['ended_at' => $now, 'updated_at' => $now]);
+            DB::table('sd_call_signals')->insert(['call_id' => $call->id, 'side' => $side, 'type' => 'hangup', 'payload' => null, 'created_at' => $now]);
             if (isset($ticket)) {
                 if ($fresh->answered_at !== null) {
                     $from = strtotime(strval($fresh->answered_at));

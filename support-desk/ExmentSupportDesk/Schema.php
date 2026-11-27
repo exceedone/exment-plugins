@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Enums\Permission;
 use Exceedone\Exment\Enums\RoleType;
@@ -35,13 +35,13 @@ class Schema
      * the menu gets the desk itself (受付箱) as its first entry.
      * 3: the menu is one entry, ITサポート, that opens the desk; the tables are
      * reached from the desk (see arrangeMenu()).
-     * 4: the senders of alerts (its_intake_sources, ISS02928).
+     * 4: the senders of alerts (sd_intake_sources, ISS02928).
      * 5: the step of the SLA escalation told (sla_escalation).
-     * 6: problems (its_problem, the ticket's column problem).
-     * 7: the request catalog (its_catalog; the ticket's catalog, approval_state, approver).
+     * 6: problems (sd_problem, the ticket's column problem).
+     * 7: the request catalog (sd_catalog; the ticket's catalog, approval_state, approver).
      * 8: the assets synced from monitoring tools (source, external_id, external_url, hostname,
      *    ip_addresses, sync_state).
-     * 9: the 受付箱 of the help desk (ISS02941): its_category gets kind, flow, fields, sla;
+     * 9: the 受付箱 of the help desk (ISS02941): sd_category gets kind, flow, fields, sla;
      *    the ticket gets stage and progress; the inquiry boxes are added.
      * 10: the names of 9 on a site that had the tables: 「チケットの種類」 → 「受付箱」 (the
      *    table and its first column), and the menu's group 「ITサポート」 → 「サポート窓口」.
@@ -54,8 +54,11 @@ class Schema
      */
     const VERSION = 14;
 
-    /** The menu's name (ISS02941: the IT support became the help desk). */
-    const MENU_TITLE = 'サポート窓口';
+    /**
+     * The menu's name (ISS02941: the IT support became the help desk; then the support desk,
+     * which takes both IT support and inquiries).
+     */
+    const MENU_TITLE = 'サポートデスク';
 
     /**
      * Tables in creation order: a select_table column needs its target first.
@@ -178,7 +181,7 @@ class Schema
                     ['priority', '優先度', 'select_valtext', ['valtext' => Its::PRIORITIES, 'default' => 'normal']],
                     ['fields', '項目', 'textarea', ['help' => '1 行に 1 つ、「項目名|種類|必須|選択肢」。種類は text・textarea・date・select・yesno・email・number。例：権限|select|必須|見るだけ,変える']],
                     ['needs_approval', '承認がいる', 'yesno', ['default' => '0']],
-                    ['approver', '承認する人', 'user', ['help' => '承認がいるとき。サポート窓口の担当者でなくてかまいません（メールのリンクから、Exment にログインして承認します）。']],
+                    ['approver', '承認する人', 'user', ['help' => '承認がいるとき。サポートデスクの担当者でなくてかまいません（メールのリンクから、Exment にログインして承認します）。']],
                     ['public', '窓口に出す', 'yesno', ['default' => '1']],
                     ['display_order', '並び順', 'integer', ['default' => '0']],
                 ],
@@ -435,7 +438,7 @@ class Schema
 
         return [
             Its::ROLE_AGENT => [
-                'label' => 'サポート窓口 担当者',
+                'label' => 'サポートデスク 担当者',
                 'description' => 'チケットに返事をし、お客様・資産・ナレッジを編集できる人。',
                 'tables' => [
                     Its::T_TICKET => $edit, Its::T_MESSAGE => $edit, Its::T_CUSTOMER => $edit,
@@ -444,7 +447,7 @@ class Schema
                 ],
             ],
             Its::ROLE_CUSTOMER => [
-                'label' => 'サポート窓口 お客様',
+                'label' => 'サポートデスク お客様',
                 'description' => '顧客ポータルにログインするお客様。チケットは、ポータルから自分（お客様の管理者は会社）のものだけが見えます。テーブルの権限は付けません。',
                 'tables' => [],
             ],
@@ -464,7 +467,7 @@ class Schema
 
             // The plugin's own tables. Exment runs database/migrations when
             // the zip is uploaded; this covers a copy put in place by hand.
-            if ((!hasTable('its_tokens') || !hasTable('its_intake_sources') || !hasTable('its_calls')) && ($plugin = Its::plugin()) !== null) {
+            if ((!hasTable('sd_tokens') || !hasTable('sd_intake_sources') || !hasTable('sd_calls')) && ($plugin = Its::plugin()) !== null) {
                 \Exceedone\Exment\Services\Plugin\PluginInstaller::migrationInstall($plugin);
                 $steps[] = 'プラグインのテーブルを作りました。';
             }
@@ -476,7 +479,7 @@ class Schema
 
             static::registerPluginRow();
             if (static::arrangeMenu()) {
-                $steps[] = 'メニューを「サポート窓口」1 つにしました（テーブルは担当者の画面から開きます）。';
+                $steps[] = 'メニューを「サポートデスク」1 つにしました（テーブルは担当者の画面から開きます）。';
             }
 
             $before = intval(array_get(Its::state(), 'schema_version', 0));
@@ -528,7 +531,7 @@ class Schema
             return ['ok' => true, 'message' => 'セットアップが終わりました。', 'steps' => $steps];
         } catch (\Throwable $e) {
             $ref = substr(sha1(uniqid('', true)), 0, 8);
-            Log::error('ExmentITSupport setup failed [' . $ref . ']: ' . $e->getMessage(), ['exception' => $e]);
+            Log::error('ExmentSupportDesk setup failed [' . $ref . ']: ' . $e->getMessage(), ['exception' => $e]);
 
             return ['ok' => false, 'message' => 'セットアップできませんでした（ログの番号: ' . $ref . '）。', 'steps' => $steps];
         }
@@ -547,10 +550,10 @@ class Schema
         }
         // After a failed attempt, wait a while instead of retrying the whole
         // install on every request.
-        if (\Illuminate\Support\Facades\Cache::has('its_schema_upgrade_failed')) {
+        if (\Illuminate\Support\Facades\Cache::has('sd_schema_upgrade_failed')) {
             return;
         }
-        $lock = \Illuminate\Support\Facades\Cache::lock('its_schema_upgrade', 300);
+        $lock = \Illuminate\Support\Facades\Cache::lock('sd_schema_upgrade', 300);
         if (!$lock->get()) {
             return;
         }
@@ -559,11 +562,11 @@ class Schema
             if (static::needsUpgrade()) {
                 $result = static::install(false);
                 if (!$result['ok']) {
-                    \Illuminate\Support\Facades\Cache::put('its_schema_upgrade_failed', true, 900);
+                    \Illuminate\Support\Facades\Cache::put('sd_schema_upgrade_failed', true, 900);
                 }
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Cache::put('its_schema_upgrade_failed', true, 900);
+            \Illuminate\Support\Facades\Cache::put('sd_schema_upgrade_failed', true, 900);
             throw $e;
         } finally {
             $lock->release();
@@ -733,10 +736,10 @@ class Schema
     }
 
     /**
-     * The menu is one entry, ITサポート, that opens the desk (schema 3, the same
+     * The menu is one entry, サポートデスク, that opens the desk (schema 3, the same
      * as ExmentPM in ISS00256). The tables are reached from the desk.
      *
-     * Up to 1.0.6 the menu was the folder its_root with the desk and the
+     * Up to 1.0.6 the menu was the folder sd_root with the desk and the
      * tables in it. The entry takes the place of the folder, the rows the
      * plugin made in the folder go, and the folder stays only when an
      * administrator put something of their own in it. Once there is no
@@ -748,7 +751,7 @@ class Schema
     /**
      * The menu entry before the setup (7.2.1): on a fresh site the plugin made it only
      * in the setup, so nobody knew where to start. The same entry the setup keeps
-     * (its_desk, in the group "ITサポート" when the core has it), made once; the desk
+     * (sd_desk, in the group it_support when the core has it), made once; the desk
      * shows the setup until it is done. Only those who may use the plugin see an
      * entry of a plugin - on a fresh site, the system administrators. A site that is
      * set up is left alone.
@@ -758,7 +761,7 @@ class Schema
         if (Its::isInstalled() || !hasTable('admin_menu')) {
             return;
         }
-        if (\DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'its_desk')->exists()) {
+        if (\DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'sd_desk')->exists()) {
             return;
         }
         static::arrangeMenu();
@@ -771,16 +774,18 @@ class Schema
         if (!isset($plugin)) {
             return false;
         }
-        $root = \DB::table('admin_menu')->where('menu_type', 'parent_node')->where('menu_name', 'its_root')->first();
-        $desk = \DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'its_desk')->first();
+        $root = \DB::table('admin_menu')->where('menu_type', 'parent_node')->where('menu_name', 'sd_root')->first();
+        $desk = \DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'sd_desk')->first();
         $now = now();
 
-        // the group "ITサポート" of the feature map, when the core has the groups (7.2.1)
+        // the group it_support of the feature map, when the core has the groups (7.2.1)
         $group = method_exists(\Exceedone\Exment\Model\Menu::class, 'groupParentId')
             ? \Exceedone\Exment\Model\Menu::groupParentId('it_support') : null;
-        // the group made with the core's old name: the new one (an administrator's name stays)
+        // the group made with one of the core's names (7.2: IT support, 7.3.0: help desk): the
+        // plugin's name (an administrator's name stays)
         if (isset($group)) {
-            \DB::table('admin_menu')->where('id', $group)->whereIn('title', ['ITサポート', 'IT support', 'IT-Support', 'Soporte de TI', 'IT 지원', 'Hỗ trợ IT', 'IT 支持'])
+            \DB::table('admin_menu')->where('id', $group)->whereIn('title', ['ITサポート', 'IT support', 'IT-Support', 'Soporte de TI', 'IT 지원', 'Hỗ trợ IT', 'IT 支持',
+                'サポート窓口', 'Help desk', 'Helpdesk', 'Mesa de ayuda', '헬프데스크', 'Bộ phận hỗ trợ', '服务台'])
                 ->update(['title' => static::MENU_TITLE, 'updated_at' => now()]);
         }
 
@@ -813,7 +818,7 @@ class Schema
                 'icon' => 'fa-life-ring',
                 'uri' => '',
                 'menu_type' => 'plugin',
-                'menu_name' => 'its_desk',
+                'menu_name' => 'sd_desk',
                 'options' => null,
                 'created_at' => $now,
                 'updated_at' => $now,

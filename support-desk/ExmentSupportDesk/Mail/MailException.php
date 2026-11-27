@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Mail;
+namespace App\Plugins\ExmentSupportDesk\Mail;
 
 /**
  * A mail problem whose message is safe to show an administrator: it never

@@ -13,8 +13,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('its_calls')) {
-            Schema::create('its_calls', function (Blueprint $table) {
+        if (!Schema::hasTable('sd_calls')) {
+            Schema::create('sd_calls', function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->unsignedBigInteger('ticket_id')->index();
                 $table->unsignedBigInteger('agent_id');
@@ -28,8 +28,8 @@ return new class extends Migration
                 $table->timestamps();
             });
         }
-        if (!Schema::hasTable('its_call_signals')) {
-            Schema::create('its_call_signals', function (Blueprint $table) {
+        if (!Schema::hasTable('sd_call_signals')) {
+            Schema::create('sd_call_signals', function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->unsignedBigInteger('call_id');
                 // agent | guest: who sent it (the other one reads it)
@@ -44,7 +44,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('its_call_signals');
-        Schema::dropIfExists('its_calls');
+        Schema::dropIfExists('sd_call_signals');
+        Schema::dropIfExists('sd_calls');
     }
 };

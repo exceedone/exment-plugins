@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Model\CustomValue;
 use Illuminate\Support\Facades\DB;
@@ -106,8 +106,8 @@ class Mailer
         }
 
         $from = static::fromAddress();
-        $domain = substr(strrchr($from ?: 'its@localhost', '@') ?: '@localhost', 1);
-        $messageId = 'its.' . $ticket->id . '.' . bin2hex(random_bytes(8)) . '@' . $domain;
+        $domain = substr(strrchr($from ?: 'sd@localhost', '@') ?: '@localhost', 1);
+        $messageId = 'sd.' . $ticket->id . '.' . bin2hex(random_bytes(8)) . '@' . $domain;
         $refs = static::threadIds(intval($ticket->id));
 
         try {
@@ -133,7 +133,7 @@ class Mailer
                 $headers->addTextHeader('X-Auto-Response-Suppress', 'OOF, AutoReply');
             });
         } catch (\Throwable $e) {
-            Log::warning('ExmentITSupport mail failed for ticket ' . $ticket->id . ': ' . $e->getMessage());
+            Log::warning('ExmentSupportDesk mail failed for ticket ' . $ticket->id . ': ' . $e->getMessage());
 
             return null;
         }
@@ -146,7 +146,7 @@ class Mailer
     /** Message-IDs of the thread, oldest first, at most 20. */
     public static function threadIds(int $ticketId): array
     {
-        return DB::table('its_mail_index')->where('ticket_id', $ticketId)->orderBy('id')->limit(20)->pluck('message_id')->all();
+        return DB::table('sd_mail_index')->where('ticket_id', $ticketId)->orderBy('id')->limit(20)->pluck('message_id')->all();
     }
 
     public static function remember(string $messageId, int $ticketId, string $direction): void
@@ -155,7 +155,7 @@ class Mailer
         if ($messageId === '') {
             return;
         }
-        DB::table('its_mail_index')->insertOrIgnore([
+        DB::table('sd_mail_index')->insertOrIgnore([
             'message_id' => $messageId,
             'ticket_id' => $ticketId,
             'direction' => $direction,
@@ -171,7 +171,7 @@ class Mailer
         if (empty($ids)) {
             return null;
         }
-        $row = DB::table('its_mail_index')->whereIn('message_id', $ids)->orderByDesc('id')->first();
+        $row = DB::table('sd_mail_index')->whereIn('message_id', $ids)->orderByDesc('id')->first();
 
         return isset($row) ? intval($row->ticket_id) : null;
     }
@@ -180,7 +180,7 @@ class Mailer
     {
         $messageId = mb_substr(trim($messageId, '<> '), 0, 191);
 
-        return $messageId !== '' && DB::table('its_mail_index')->where('message_id', $messageId)->exists();
+        return $messageId !== '' && DB::table('sd_mail_index')->where('message_id', $messageId)->exists();
     }
 
     /**

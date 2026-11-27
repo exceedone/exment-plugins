@@ -53,7 +53,7 @@ button:disabled{opacity:.6}
 var B = @json($boot);
 var $ = function (id) { return document.getElementById(id); };
 var S = { token: null, after: 0, timer: null, idleAt: Date.now() };
-try { S.token = sessionStorage.getItem('its_chat_' + B.key); } catch (e) { /* no storage: the window starts again */ }
+try { S.token = sessionStorage.getItem('sd_chat_' + B.key); } catch (e) { /* no storage: the window starts again */ }
 $('hd').textContent = @json($boxName);
 var sub = document.createElement('small');
 sub.textContent = B.online ? '担当者がお返事します' : 'ただいま担当者がいません（メールでお返事します）';
@@ -87,7 +87,7 @@ function poll() {
             (d.lines || []).forEach(function (l) { S.after = Math.max(S.after, l.id); add(l); });
         } else if (d && d.message && !d.ok) {
             // the token is over: start again
-            try { sessionStorage.removeItem('its_chat_' + B.key); } catch (e) { /* none */ }
+            try { sessionStorage.removeItem('sd_chat_' + B.key); } catch (e) { /* none */ }
             S.token = null; $('form').hidden = false; $('comp').hidden = true; $('err1').textContent = d.message; return;
         }
         schedule();
@@ -99,11 +99,11 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 // the site's reCAPTCHA on the first message (v2: the box; v3: no box)
 var ROBOT = { widget: null };
 if (B.robot) {
-    window.itsRobotReady = function () {
+    window.sdRobotReady = function () {
         if (B.robot.version === 'v2') { ROBOT.widget = window.grecaptcha.render($('robot'), { sitekey: B.robot.sitekey }); }
     };
     var rs = document.createElement('script');
-    rs.src = 'https://www.google.com/recaptcha/api.js?onload=itsRobotReady' + (B.robot.version === 'v3' ? '&render=' + encodeURIComponent(B.robot.sitekey) : '&render=explicit');
+    rs.src = 'https://www.google.com/recaptcha/api.js?onload=sdRobotReady' + (B.robot.version === 'v3' ? '&render=' + encodeURIComponent(B.robot.sitekey) : '&render=explicit');
     rs.async = true;
     document.head.appendChild(rs);
 }
@@ -123,7 +123,7 @@ $('form').addEventListener('submit', function (ev) {
         $('go').disabled = false;
         if (!d || !d.ok) { $('err1').textContent = (d && d.message) || 'はじめられませんでした'; return; }
         S.token = d.token;
-        try { sessionStorage.setItem('its_chat_' + B.key, d.token); } catch (e) { /* the window only */ }
+        try { sessionStorage.setItem('sd_chat_' + B.key, d.token); } catch (e) { /* the window only */ }
         chatting();
     }).catch(function (e) { $('go').disabled = false; $('err1').textContent = (e && e.message) || 'はじめられませんでした'; });
 });

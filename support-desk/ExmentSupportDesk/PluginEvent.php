@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Enums\PluginEventTrigger;
 use Exceedone\Exment\Services\Plugin\PluginEventBase;
@@ -52,7 +52,7 @@ class PluginEvent extends PluginEventBase
             }
         } catch (\Throwable $e) {
             // A rule must never stop a person from saving a ticket.
-            Log::error('ExmentITSupport rules failed on ticket ' . $model->id . ': ' . $e->getMessage(), ['exception' => $e]);
+            Log::error('ExmentSupportDesk rules failed on ticket ' . $model->id . ': ' . $e->getMessage(), ['exception' => $e]);
         }
 
         return true;

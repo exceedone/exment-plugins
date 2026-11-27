@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
-use App\Plugins\ExmentITSupport\Alerts\Adapters;
-use App\Plugins\ExmentITSupport\Alerts\Rules;
+use App\Plugins\ExmentSupportDesk\Alerts\Adapters;
+use App\Plugins\ExmentSupportDesk\Alerts\Rules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  */
 class IntakeSources
 {
-    const TABLE = 'its_intake_sources';
+    const TABLE = 'sd_intake_sources';
 
     public static function ready(): bool
     {
@@ -43,7 +43,7 @@ class IntakeSources
      */
     public static function create(string $name, string $kind, array $values = []): array
     {
-        $key = 'its_' . bin2hex(random_bytes(24));
+        $key = 'sd_' . bin2hex(random_bytes(24));
         $secret = bin2hex(random_bytes(32));
         $id = intval(DB::table(static::TABLE)->insertGetId(array_merge(static::clean($values), [
             'name' => mb_substr(trim($name) ?: Adapters::KINDS[$kind] ?? $kind, 0, 100),
@@ -75,7 +75,7 @@ class IntakeSources
      */
     public static function renew(int $id): array
     {
-        $key = 'its_' . bin2hex(random_bytes(24));
+        $key = 'sd_' . bin2hex(random_bytes(24));
         $secret = bin2hex(random_bytes(32));
         DB::table(static::TABLE)->where('id', $id)->update([
             'key_hash' => Tokens::hash($key),
@@ -141,13 +141,13 @@ class IntakeSources
     }
 
     /**
-     * The key a request carries: the X-ITS-Key header, a bearer token, the
+     * The key a request carries: the X-SD-Key header, a bearer token, the
      * password of basic auth (for tools that only take a URL:
-     * https://its:KEY@host/...), or ?key= in the URL.
+     * https://sd:KEY@host/...), or ?key= in the URL.
      */
     public static function keyOf(Request $request): string
     {
-        $key = strval($request->header('X-ITS-Key', ''));
+        $key = strval($request->header('X-SD-Key', ''));
         if ($key === '') {
             $key = strval($request->bearerToken() ?? '');
         }
@@ -163,7 +163,7 @@ class IntakeSources
 
     public static function byKey(string $key): ?object
     {
-        if ($key === '' || strpos($key, 'its_') !== 0 || !static::ready()) {
+        if ($key === '' || strpos($key, 'sd_') !== 0 || !static::ready()) {
             return null;
         }
 

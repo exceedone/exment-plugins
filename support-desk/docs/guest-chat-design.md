@@ -1,4 +1,4 @@
-# Help desk: chat and calls with customers (ISS02941)
+# Support Desk: chat and calls with customers (ISS02941)
 
 Customers without an Exment login talk to the help desk in two ways:
 
@@ -6,8 +6,8 @@ Customers without an Exment login talk to the help desk in two ways:
 2. **A call link** sent from a ticket (and asked for from the customer portal): voice and a
    shared screen, in the browser.
 
-Both are off at first (Feature management: `exment_it_support.web_chat`,
-`exment_it_support.guest_call`). Neither needs a new server: polling, as the Groupware chat.
+Both are off at first (Feature management: `exment_support_desk.web_chat`,
+`exment_support_desk.guest_call`). Neither needs a new server: polling, as the Groupware chat.
 The code lives in the help desk plugin (the plugins share no code; the call part follows the
 Groupware's `ChatCall` in its own copy).
 
@@ -16,11 +16,11 @@ Groupware's `ChatCall` in its own copy).
 - **Embedding.** The 受付箱 page gives a script tag per box:
   `<script src="https://<site>/support/chat/<box key>.js" async></script>`. It puts a small
   button on the page that opens an iframe of `/support/chat/<box key>` (the window). The box
-  key is random (not the id), kept on the box (`its_category.chat_key`, schema 13).
+  key is random (not the id), kept on the box (`sd_category.chat_key`, schema 13).
 - **Who.** The window asks for a name and an email (and the first message). That makes a
   **ticket** of the box, channel `chat` (new in `Its::CHANNELS`), with the email as the
   requester, and a **guest token** for the window (32 random bytes; only its sha256 is kept,
-  in `its_tokens`, kind `chat`, expiring after 24 hours without use). The token stays in the
+  in `sd_tokens`, kind `chat`, expiring after 24 hours without use). The token stays in the
   window's memory and `sessionStorage` of the iframe, never in a cookie: the iframe is on
   another site's page, where cookies may be blocked.
 - **Messages.** The customer's lines go through `Tickets::customerWrote` (as a mail reply
@@ -44,7 +44,7 @@ Groupware's `ChatCall` in its own copy).
 
 ## The call link
 
-- **From a ticket.** 「通話のリンクを送る」 on the ticket makes a **call** (`its_calls`: ticket,
+- **From a ticket.** 「通話のリンクを送る」 on the ticket makes a **call** (`sd_calls`: ticket,
   agent, token hash, expires_at = 30 minutes, joined_at, ended_at, notes) and sends the link
   `/support/call/<token>` to the requester by mail (and in the chat window when one is open).
 - **One time.** The first browser that opens the link binds it (a second token kept only in
@@ -63,7 +63,7 @@ Groupware's `ChatCall` in its own copy).
 
 1. Schema 13 (chat key, channel `chat`), the chat window (embed, start, lines, offline),
    the desk's side, limits.
-2. The call link: `its_calls`, the guest page, the agent's window, notes and time.
+2. The call link: `sd_calls`, the guest page, the agent's window, notes and time.
 3. 「通話をお願いする」 from the portal.
 
 Tests: plain PHP for the parts with no database (token, limits, the offline rule, the box

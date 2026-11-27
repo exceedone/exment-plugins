@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Mail;
+namespace App\Plugins\ExmentSupportDesk\Mail;
 
 /**
  * A small IMAP4rev1 client over a plain socket.

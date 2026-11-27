@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Assets;
+namespace App\Plugins\ExmentSupportDesk\Assets;
 
 /**
  * Which IT asset a host of a monitoring tool is (ISS02928, phase 3), without the database: the

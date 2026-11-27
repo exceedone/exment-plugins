@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>サポート窓口との通話</title>
+<title>サポートデスクとの通話</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;font:15px/1.6 -apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;color:#1f2328;background:#f4f6f9}
@@ -25,7 +25,7 @@ button:disabled{opacity:.5}
 </head>
 <body>
 <div class="box">
-  <h1>サポート窓口との通話</h1>
+  <h1>サポートデスクとの通話</h1>
   @if($gone)
   <p class="st">このリンクは使えません。期限（30 分）が切れたか、通話が終わっています。担当者に、もう一度リンクを送ってもらってください。</p>
   @else
@@ -48,7 +48,7 @@ var B = @json($boot);
 var $ = function (id) { return document.getElementById(id); };
 var TOKEN = location.pathname.split('/').pop();
 var BIND = null;
-try { BIND = sessionStorage.getItem('its_call_' + TOKEN); } catch (e) { /* none */ }
+try { BIND = sessionStorage.getItem('sd_call_' + TOKEN); } catch (e) { /* none */ }
 var C = { pc: null, mic: null, screen: null, after: 0, timer: null, making: false, ignore: false, ready: false, done: false };
 function st(t) { $('st').textContent = t; }
 function api(url, body) {
@@ -121,7 +121,7 @@ $('go').onclick = function () {
     api(B.join, {}).then(function (d) {
         if (!d || !d.ok) { st((d && d.message) || '参加できませんでした。'); return; }
         BIND = d.bind;
-        try { sessionStorage.setItem('its_call_' + TOKEN, BIND); } catch (e) { /* the page only */ }
+        try { sessionStorage.setItem('sd_call_' + TOKEN, BIND); } catch (e) { /* the page only */ }
         return navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
             C.mic = stream;
             setup();

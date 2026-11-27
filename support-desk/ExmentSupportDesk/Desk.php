@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Carbon\Carbon;
 use Exceedone\Exment\Enums\Permission;
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Who is an agent: someone who may edit every ticket ("edit all" on the
  * ticket table) - by default the
- * members of the "ITサポート 担当者" role group the setup made, and system
+ * members of the "サポートデスク 担当者" role group the setup made, and system
  * administrators. Anybody else who opens the plugin (a customer in the
  * customer role group) is sent to their own list.
  */
@@ -61,8 +61,8 @@ class Desk
     {
         return view(Its::view($name), array_merge([
             'isAdmin' => static::isAdmin(),
-            'flash' => session()->get('its_flash'),
-            'flashError' => session()->get('its_flash_error'),
+            'flash' => session()->get('sd_flash'),
+            'flashError' => session()->get('sd_flash_error'),
             'needsUpgrade' => Schema::needsUpgrade(),
             // mail comes in, but no sender can be proven (see MimeParser::authPassed)
             'mailAuthUnset' => Its::setting('mail_auth', 'require') === 'require' && trim(strval(Its::setting('mail_authserv_id', ''))) === ''
@@ -81,7 +81,7 @@ class Desk
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['ok' => !$error, 'message' => $message, 'redirect' => $url], $error ? 422 : 200);
         }
-        session()->flash($error ? 'its_flash_error' : 'its_flash', $message);
+        session()->flash($error ? 'sd_flash_error' : 'sd_flash', $message);
 
         return redirect($url);
     }
@@ -414,7 +414,7 @@ class Desk
             'has_password' => Its::looksLikePassword($v['description'] ?? '') || $messages->contains(function ($m) {
                 return Its::looksLikePassword(array_get($m->value, 'body'));
             }),
-            'new_link' => session()->pull('its_new_link'),
+            'new_link' => session()->pull('sd_new_link'),
         ];
 
         return response()->json($out);
@@ -708,7 +708,7 @@ class Desk
             return $this->back(Its::url(), 'お客様のメールアドレスがないので、リンクを送れません。', true);
         }
         $made = GuestCall::create($ticket, intval(\Exment::getUserId()));
-        $body = "お客様\n\nサポート窓口から通話のご案内です。次のリンクをブラウザーで開いて「通話をはじめる」を押してください（" . GuestCall::MINUTES . " 分のあいだ、はじめに開いたブラウザーで使えます）。\n\n" . $made['link'];
+        $body = "お客様\n\nサポートデスクから通話のご案内です。次のリンクをブラウザーで開いて「通話をはじめる」を押してください（" . GuestCall::MINUTES . " 分のあいだ、はじめに開いたブラウザーで使えます）。\n\n" . $made['link'];
         $sent = Mailer::send($ticket, [$to], Mailer::subjectFor($ticket), Mailer::customerBody($ticket, $body, null), []);
         Tickets::addMessage($ticket, ['kind' => 'system', 'body' => '通話のリンクを送りました（' . ($sent !== null ? 'メール送信済み' : 'メールを送れませんでした') . '）。', 'via' => 'staff']);
 
@@ -870,7 +870,7 @@ class Desk
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['ok' => true, 'link' => $link, 'message' => 'お客様のリンクです。コピーして送れます。']);
         }
-        session()->flash('its_new_link', $link);
+        session()->flash('sd_new_link', $link);
 
         return $this->back($url, 'お客様のリンクです。コピーして送れます。');
     }
@@ -1331,7 +1331,7 @@ class Desk
 
         return response($csv, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="it-support-' . $month . '.csv"',
+            'Content-Disposition' => 'attachment; filename="support-desk-' . $month . '.csv"',
         ]);
     }
 
@@ -1351,9 +1351,9 @@ class Desk
             'intakeMail' => Its::publicUrl('intake', 'mail'),
             'sources' => IntakeSources::all(),
             'sourcesReady' => IntakeSources::ready(),
-            'sourceKinds' => \App\Plugins\ExmentITSupport\Alerts\Adapters::KINDS,
-            'onResolvedOptions' => \App\Plugins\ExmentITSupport\Alerts\Rules::ON_RESOLVED,
-            'newSource' => session('its_new_source'),
+            'sourceKinds' => \App\Plugins\ExmentSupportDesk\Alerts\Adapters::KINDS,
+            'onResolvedOptions' => \App\Plugins\ExmentSupportDesk\Alerts\Rules::ON_RESOLVED,
+            'newSource' => session('sd_new_source'),
             'mailFrom' => Mailer::fromAddress(),
             'portalDoorShut' => !Feature::on(Feature::PORTAL),
             'featureUrl' => Feature::manageUrl(),
@@ -1462,7 +1462,7 @@ class Desk
         } catch (Mail\MailException $e) {
             return $this->back(Its::url('settings'), $e->getMessage(), true);
         } catch (\Throwable $e) {
-            \Log::warning('ExmentITSupport mail test failed: ' . $e->getMessage());
+            \Log::warning('ExmentSupportDesk mail test failed: ' . $e->getMessage());
 
             return $this->back(Its::url('settings'), 'つながりませんでした。', true);
         }
@@ -1499,14 +1499,14 @@ class Desk
             return $this->back(Its::url('settings'), 'セットアップの「テーブルを更新」を押してから作ってください。', true);
         }
         $kind = strval($request->get('kind', 'generic'));
-        if (!array_key_exists($kind, \App\Plugins\ExmentITSupport\Alerts\Adapters::KINDS)) {
+        if (!array_key_exists($kind, \App\Plugins\ExmentSupportDesk\Alerts\Adapters::KINDS)) {
             return $this->back(Its::url('settings'), '監視の道具を選んでください。', true);
         }
         $made = IntakeSources::create(strval($request->get('name', '')), $kind);
         // Shown once, on the next page only: the database keeps the hash.
-        session()->flash('its_new_source', ['id' => $made['id'], 'key' => $made['key'], 'secret' => $made['secret']]);
+        session()->flash('sd_new_source', ['id' => $made['id'], 'key' => $made['key'], 'secret' => $made['secret']]);
 
-        return $this->back(Its::url('settings') . '#its-sources', '送り元を作りました。キーは今だけ表示します。設定を確かめて「使う」にしてください。');
+        return $this->back(Its::url('settings') . '#sd-sources', '送り元を作りました。キーは今だけ表示します。設定を確かめて「使う」にしてください。');
     }
 
     public function postIntakeSourceUpdate(Request $request, $id)
@@ -1522,17 +1522,17 @@ class Desk
         if ($action === 'delete') {
             IntakeSources::delete(intval($source->id));
 
-            return $this->back(Its::url('settings') . '#its-sources', '送り元「' . $source->name . '」を消しました。そのキーは、もう使えません。');
+            return $this->back(Its::url('settings') . '#sd-sources', '送り元「' . $source->name . '」を消しました。そのキーは、もう使えません。');
         }
         if ($action === 'renew') {
             $made = IntakeSources::renew(intval($source->id));
-            session()->flash('its_new_source', ['id' => intval($source->id), 'key' => $made['key'], 'secret' => $made['secret']]);
+            session()->flash('sd_new_source', ['id' => intval($source->id), 'key' => $made['key'], 'secret' => $made['secret']]);
 
-            return $this->back(Its::url('settings') . '#its-sources', '新しいキーを作りました。前のキーは、もう使えません。監視の道具の設定も変えてください。');
+            return $this->back(Its::url('settings') . '#sd-sources', '新しいキーを作りました。前のキーは、もう使えません。監視の道具の設定も変えてください。');
         }
         $ips = strval($request->get('allowed_ips', ''));
         if (!IntakeSources::validIpList($ips)) {
-            return $this->back(Its::url('settings') . '#its-sources', '送り元の IP アドレスは、1 行に 1 つ（192.0.2.10 や 192.0.2.0/24 の形）で書いてください。', true);
+            return $this->back(Its::url('settings') . '#sd-sources', '送り元の IP アドレスは、1 行に 1 つ（192.0.2.10 や 192.0.2.0/24 の形）で書いてください。', true);
         }
         IntakeSources::update(intval($source->id), [
             'name' => $request->get('name', $source->name),
@@ -1544,7 +1544,7 @@ class Desk
             'allowed_ips' => $ips,
         ]);
 
-        return $this->back(Its::url('settings') . '#its-sources', '送り元「' . $source->name . '」を保存しました。');
+        return $this->back(Its::url('settings') . '#sd-sources', '送り元「' . $source->name . '」を保存しました。');
     }
 
     public function postAlertSharedKey(Request $request)
@@ -1555,7 +1555,7 @@ class Desk
         $on = $request->get('alert_shared_key') === '1';
         Its::saveSettings(['alert_shared_key' => $on ? '1' : '0']);
 
-        return $this->back(Its::url('settings') . '#its-sources', $on ? '共有のキーでも、アラートを受けます。' : '共有のキーでは、アラートを受けません（メールの受け口は今までどおり）。');
+        return $this->back(Its::url('settings') . '#sd-sources', $on ? '共有のキーでも、アラートを受けます。' : '共有のキーでは、アラートを受けません（メールの受け口は今までどおり）。');
     }
 
     public function setup()
@@ -1573,7 +1573,7 @@ class Desk
             return $this->view('denied');
         }
         $result = Schema::install($request->get('seed', '1') === '1');
-        session()->flash('its_setup_steps', $result['steps'] ?? []);
+        session()->flash('sd_setup_steps', $result['steps'] ?? []);
 
         return $this->back($result['ok'] ? Its::url() : Its::url('setup'), $result['message'], !$result['ok']);
     }

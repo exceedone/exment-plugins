@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Model\CustomValue;
 use Illuminate\Support\Facades\Cache;
@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
  * help desk; the talk is a ticket of the box (channel chat). See docs/guest-chat-design.md.
  *
  * - The box key (in the script's address) is not a secret: it only lets a chat start.
- * - A started chat has a guest token (only its sha256 kept, its_tokens kind chat), sent back in
+ * - A started chat has a guest token (only its sha256 kept, sd_tokens kind chat), sent back in
  *   the X-Chat-Token header: it reads and writes that one ticket's talk, nothing else.
  * - Everything a guest writes is text (the window and the desk draw it as text).
  */
@@ -111,10 +111,10 @@ class GuestChat
     public static function markAgentSeen(): void
     {
         try {
-            Cache::put('its_agent_seen', time(), 3600);
+            Cache::put('sd_agent_seen', time(), 3600);
             $uid = intval(\Exment::getUserId());
             if ($uid > 0) {
-                Cache::put('its_agent_seen:' . $uid, time(), 3600);
+                Cache::put('sd_agent_seen:' . $uid, time(), 3600);
             }
         } catch (\Throwable $e) {
             // the window then says nobody is there
@@ -129,7 +129,7 @@ class GuestChat
     {
         $assignee = intval(array_get(isset($box) ? (array) $box->value : [], 'default_assignee'));
         try {
-            $seen = $assignee > 0 ? Cache::get('its_agent_seen:' . $assignee) : Cache::get('its_agent_seen');
+            $seen = $assignee > 0 ? Cache::get('sd_agent_seen:' . $assignee) : Cache::get('sd_agent_seen');
         } catch (\Throwable $e) {
             $seen = null;
         }
@@ -140,7 +140,7 @@ class GuestChat
     public static function agentSeen(): ?int
     {
         try {
-            $v = Cache::get('its_agent_seen');
+            $v = Cache::get('sd_agent_seen');
 
             return $v !== null ? intval($v) : null;
         } catch (\Throwable $e) {
@@ -231,7 +231,7 @@ class GuestChat
             if (!isset($ticket)) {
                 continue;
             }
-            $seen = DB::table('its_tokens')->where('kind', static::KIND)->where('ticket_id', $ticket->id)
+            $seen = DB::table('sd_tokens')->where('kind', static::KIND)->where('ticket_id', $ticket->id)
                 ->where('last_used_at', '>=', $message->created_at)->exists();
             if ($seen) {
                 $message->setValue(['mail_status' => 'shown']);
@@ -296,10 +296,10 @@ class GuestChat
         [$perIp, $perBox] = static::limitsOf($box->value);
         // the IP first, every try counted (one person's tries are theirs); the box only counts the
         // chats that start, so someone refused cannot use up the box for everyone
-        if (static::limited('its_chat_start:' . sha1($ip), $perIp, 3600)) {
+        if (static::limited('sd_chat_start:' . sha1($ip), $perIp, 3600)) {
             abort(429);
         }
-        if (RateLimiter::tooManyAttempts('its_chat_box:' . $box->id, $perBox)) {
+        if (RateLimiter::tooManyAttempts('sd_chat_box:' . $box->id, $perBox)) {
             abort(429);
         }
         // the site's reCAPTCHA, when it has one
@@ -327,9 +327,9 @@ class GuestChat
             'requester_name' => $name,
             'requester_email' => $email,
         ], ['body' => $body]);
-        RateLimiter::hit('its_chat_box:' . $box->id, 3600);
+        RateLimiter::hit('sd_chat_box:' . $box->id, 3600);
         $token = bin2hex(random_bytes(32));
-        DB::table('its_tokens')->insert([
+        DB::table('sd_tokens')->insert([
             'kind' => static::KIND,
             'token_hash' => Tokens::hash($token),
             'ticket_id' => $ticket->id,
@@ -348,13 +348,13 @@ class GuestChat
         if (!preg_match('/^[0-9a-f]{64}$/', $token)) {
             abort(404);
         }
-        $row = DB::table('its_tokens')->where('kind', static::KIND)->where('token_hash', Tokens::hash($token))
+        $row = DB::table('sd_tokens')->where('kind', static::KIND)->where('token_hash', Tokens::hash($token))
             ->whereNull('revoked_at')->where('expires_at', '>', now())->first();
         $ticket = isset($row) ? Tickets::find($row->ticket_id) : null;
         if (!isset($ticket)) {
             abort(404);
         }
-        DB::table('its_tokens')->where('id', $row->id)->update([
+        DB::table('sd_tokens')->where('id', $row->id)->update([
             'last_used_at' => now(), 'use_count' => DB::raw('use_count + 1'), 'expires_at' => now()->addHours(static::TOKEN_HOURS),
         ]);
 
@@ -388,7 +388,7 @@ class GuestChat
     public static function post(string $token, string $body): array
     {
         $ticket = static::ticketOf($token);
-        if (static::limited('its_chat_line:' . Tokens::hash($token), static::LINES_PER_10MIN, 600)) {
+        if (static::limited('sd_chat_line:' . Tokens::hash($token), static::LINES_PER_10MIN, 600)) {
             abort(429);
         }
         if (mb_strlen(trim(strval($body))) > static::MAX_BODY) {
@@ -406,7 +406,7 @@ class GuestChat
     /** Whether the guest's window is open now (used in the last 2 minutes): an agent's reply then needs no mail. */
     public static function windowOpen(int $ticketId): bool
     {
-        return DB::table('its_tokens')->where('kind', static::KIND)->where('ticket_id', $ticketId)
+        return DB::table('sd_tokens')->where('kind', static::KIND)->where('ticket_id', $ticketId)
             ->where('last_used_at', '>', now()->subMinutes(2))->exists();
     }
 }

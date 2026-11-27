@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
-use App\Plugins\ExmentITSupport\Alerts\Adapters;
-use App\Plugins\ExmentITSupport\Alerts\Rules;
-use App\Plugins\ExmentITSupport\Mail\ImapClient;
-use App\Plugins\ExmentITSupport\Mail\MailException;
-use App\Plugins\ExmentITSupport\Mail\MimeParser;
+use App\Plugins\ExmentSupportDesk\Alerts\Adapters;
+use App\Plugins\ExmentSupportDesk\Alerts\Rules;
+use App\Plugins\ExmentSupportDesk\Mail\ImapClient;
+use App\Plugins\ExmentSupportDesk\Mail\MailException;
+use App\Plugins\ExmentSupportDesk\Mail\MimeParser;
 use Carbon\Carbon;
 use Exceedone\Exment\Model\CustomValue;
 use Illuminate\Support\Facades\Cache;
@@ -51,7 +51,7 @@ class Inbox
 
         // One run at a time: the batch runs every five minutes and a slow
         // server must not make two runs import the same mail.
-        $lock = Cache::lock('its_imap_fetch', 600);
+        $lock = Cache::lock('sd_imap_fetch', 600);
         if (!$lock->get()) {
             $result['message'] = '別の受信が動いています。';
 
@@ -82,7 +82,7 @@ class Inbox
             Its::patchState(['imap_checked_at' => now()->toDateTimeString(), 'imap_error' => $e->getMessage()]);
             $result = array_merge($result, ['ok' => false, 'message' => $e->getMessage()]);
         } catch (\Throwable $e) {
-            Log::error('ExmentITSupport IMAP fetch failed: ' . $e->getMessage(), ['exception' => $e]);
+            Log::error('ExmentSupportDesk IMAP fetch failed: ' . $e->getMessage(), ['exception' => $e]);
             Its::patchState(['imap_checked_at' => now()->toDateTimeString(), 'imap_error' => 'メールを取り込めませんでした（くわしくはログ）。']);
             $result = array_merge($result, ['ok' => false, 'message' => 'メールを取り込めませんでした（くわしくはログ）。']);
         } finally {
@@ -415,7 +415,7 @@ class Inbox
             case 'close':
                 // One "recovered" a while per ticket: a flapping alert would write it every minute.
                 $wait = max(60, $options['flap_minutes'] * 60);
-                if (Cache::add('its_alert_recovered:' . $open->id, 1, $wait) || $action !== 'note') {
+                if (Cache::add('sd_alert_recovered:' . $open->id, 1, $wait) || $action !== 'note') {
                     Tickets::addMessage($open, ['kind' => 'system', 'body' => static::recoveredText($event, $action), 'via' => 'monitor']);
                 }
                 if ($action !== 'note') {

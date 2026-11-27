@@ -1,5 +1,5 @@
-@extends(\App\Plugins\ExmentITSupport\Its::view('public._layout'))
-@php($Its = \App\Plugins\ExmentITSupport\Its::class)
+@extends(\App\Plugins\ExmentSupportDesk\Its::view('public._layout'))
+@php($Its = \App\Plugins\ExmentSupportDesk\Its::class)
 @php($v = (array) $ticket->value)
 @php($waiting = ($v['approval_state'] ?? '') === 'waiting')
 @section('mainclass', 'narrow')

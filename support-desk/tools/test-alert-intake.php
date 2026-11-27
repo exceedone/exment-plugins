@@ -1,14 +1,14 @@
 <?php
-// ExmentITSupport: how the alerts of each monitoring tool are read, and what
+// ExmentSupportDesk: how the alerts of each monitoring tool are read, and what
 // they do to the tickets (ISS02928). Plain PHP, no Exment needed:
-//   php it-support/tools/test-alert-intake.php
+//   php support-desk/tools/test-alert-intake.php
 // The bodies in fixtures/alerts/ follow the samples and field lists in each
 // tool's documentation (Zabbix: the media type in tools/zabbix/).
-require __DIR__ . '/../ExmentITSupport/Alerts/Adapters.php';
-require __DIR__ . '/../ExmentITSupport/Alerts/Rules.php';
+require __DIR__ . '/../ExmentSupportDesk/Alerts/Adapters.php';
+require __DIR__ . '/../ExmentSupportDesk/Alerts/Rules.php';
 
-use App\Plugins\ExmentITSupport\Alerts\Adapters;
-use App\Plugins\ExmentITSupport\Alerts\Rules;
+use App\Plugins\ExmentSupportDesk\Alerts\Adapters;
+use App\Plugins\ExmentSupportDesk\Alerts\Rules;
 
 $ok = 0;
 $bad = 0;

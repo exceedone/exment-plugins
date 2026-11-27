@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 /**
- * IT Support in Exment's feature management (Admin setting → Feature
+ * The Support Desk in Exment's feature management (Admin setting → Feature
  * management, in the Exment versions that have it). Two doors:
  *
  * - desk:   the agents' screens (inbox, dashboard, settings, setup), the
@@ -24,18 +24,18 @@ namespace App\Plugins\ExmentITSupport;
  */
 class Feature
 {
-    const DESK = 'exment_it_support.desk';
-    const PORTAL = 'exment_it_support.portal';
+    const DESK = 'exment_support_desk.desk';
+    const PORTAL = 'exment_support_desk.portal';
     /** 「ExmentPM の課題にする」 (ISS02941): new, off at first. */
-    const PM_LINK = 'exment_it_support.pm_link';
+    const PM_LINK = 'exment_support_desk.pm_link';
     /** The website forms of the 受付箱 (ISS02941): new, off at first. */
-    const WEB_FORM = 'exment_it_support.web_form';
+    const WEB_FORM = 'exment_support_desk.web_form';
     /** The chat window of a box on a website (ISS02941): new, off at first. */
-    const WEB_CHAT = 'exment_it_support.web_chat';
+    const WEB_CHAT = 'exment_support_desk.web_chat';
     /** Calls with a customer by a link from a ticket (ISS02941): new, off at first. */
-    const GUEST_CALL = 'exment_it_support.guest_call';
+    const GUEST_CALL = 'exment_support_desk.guest_call';
     /** The quote of the sales pack and the trial key of a ticket (ISS02941): new, off at first. */
-    const SALES_LINK = 'exment_it_support.sales_link';
+    const SALES_LINK = 'exment_support_desk.sales_link';
 
     const CORE = '\\Exceedone\\Exment\\Services\\Features';
 
@@ -57,7 +57,7 @@ class Feature
         }
         $core = static::CORE;
         $base = $plugin->getRouteUri();
-        $lang = 'exment_' . snake_case($plugin->plugin_name) . '::its.feature.';
+        $lang = 'exment_' . snake_case($plugin->plugin_name) . '::sd.feature.';
         // existing: a site that had the plugin before feature management keeps it on.
         $core::register(static::PORTAL, [
             'label' => $lang . 'portal',

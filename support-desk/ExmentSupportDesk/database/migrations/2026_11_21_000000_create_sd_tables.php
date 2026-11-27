@@ -18,8 +18,8 @@ return new class extends Migration
     {
         // A secret link. Only the SHA-256 of the token is stored, so a copy of
         // the database does not hand out working links (EXMENT_CORE ISS00172).
-        if (!Schema::hasTable('its_tokens')) {
-            Schema::create('its_tokens', function (Blueprint $table) {
+        if (!Schema::hasTable('sd_tokens')) {
+            Schema::create('sd_tokens', function (Blueprint $table) {
                 $table->bigIncrements('id');
                 // ticket: one ticket / mine: the list for one address / csat: the survey
                 $table->string('kind', 16);
@@ -40,8 +40,8 @@ return new class extends Migration
         }
 
         // One-time codes for links that ask for one (require_otp).
-        if (!Schema::hasTable('its_otps')) {
-            Schema::create('its_otps', function (Blueprint $table) {
+        if (!Schema::hasTable('sd_otps')) {
+            Schema::create('sd_otps', function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->unsignedBigInteger('token_id')->index();
                 $table->char('code_hash', 64);
@@ -54,8 +54,8 @@ return new class extends Migration
 
         // Who opened what, when. The customer's view of a ticket is evidence
         // in a dispute, and an unusual pattern is how a leaked link shows.
-        if (!Schema::hasTable('its_access_logs')) {
-            Schema::create('its_access_logs', function (Blueprint $table) {
+        if (!Schema::hasTable('sd_access_logs')) {
+            Schema::create('sd_access_logs', function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->unsignedBigInteger('token_id')->nullable()->index();
                 $table->unsignedBigInteger('ticket_id')->nullable()->index();
@@ -68,8 +68,8 @@ return new class extends Migration
 
         // Message-ID to ticket, both ways: what came in and what went out,
         // so a reply finds its ticket even when the subject lost the number.
-        if (!Schema::hasTable('its_mail_index')) {
-            Schema::create('its_mail_index', function (Blueprint $table) {
+        if (!Schema::hasTable('sd_mail_index')) {
+            Schema::create('sd_mail_index', function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->string('message_id', 191)->unique();
                 $table->unsignedBigInteger('ticket_id')->index();
@@ -80,8 +80,8 @@ return new class extends Migration
 
         // "Someone is already answering": an agent holds a ticket while the
         // reply box is open, so two people do not answer the same customer.
-        if (!Schema::hasTable('its_locks')) {
-            Schema::create('its_locks', function (Blueprint $table) {
+        if (!Schema::hasTable('sd_locks')) {
+            Schema::create('sd_locks', function (Blueprint $table) {
                 $table->unsignedBigInteger('ticket_id')->primary();
                 $table->unsignedBigInteger('user_id');
                 $table->string('user_name', 255)->nullable();
@@ -92,7 +92,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        foreach (['its_locks', 'its_mail_index', 'its_access_logs', 'its_otps', 'its_tokens'] as $name) {
+        foreach (['sd_locks', 'sd_mail_index', 'sd_access_logs', 'sd_otps', 'sd_tokens'] as $name) {
             Schema::dropIfExists($name);
         }
     }

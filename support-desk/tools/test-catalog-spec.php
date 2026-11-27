@@ -1,9 +1,9 @@
 <?php
-// ExmentITSupport: the fields of the request catalog (Alerts\CatalogSpec). Plain PHP:
-//   php it-support/tools/test-catalog-spec.php
-require __DIR__ . '/../ExmentITSupport/Alerts/CatalogSpec.php';
+// ExmentSupportDesk: the fields of the request catalog (Alerts\CatalogSpec). Plain PHP:
+//   php support-desk/tools/test-catalog-spec.php
+require __DIR__ . '/../ExmentSupportDesk/Alerts/CatalogSpec.php';
 
-use App\Plugins\ExmentITSupport\Alerts\CatalogSpec as S;
+use App\Plugins\ExmentSupportDesk\Alerts\CatalogSpec as S;
 
 $ok = 0;
 $bad = 0;

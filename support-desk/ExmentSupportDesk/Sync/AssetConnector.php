@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Sync;
+namespace App\Plugins\ExmentSupportDesk\Sync;
 
-use App\Plugins\ExmentITSupport\Assets\AssetMatcher;
-use App\Plugins\ExmentITSupport\Assets\HostMapper;
-use App\Plugins\ExmentITSupport\Its;
+use App\Plugins\ExmentSupportDesk\Assets\AssetMatcher;
+use App\Plugins\ExmentSupportDesk\Assets\HostMapper;
+use App\Plugins\ExmentSupportDesk\Its;
 use Exceedone\Exment\Model\CustomValue;
 use Exceedone\Exment\Model\SyncConnection;
 use Exceedone\Exment\Model\SyncMapping;
@@ -98,7 +98,7 @@ abstract class AssetConnector implements SyncConnector, SyncWriter, SyncMappingF
             return 'IT 資産がないホストの扱いを選んでください。';
         }
         if (Its::table(Its::T_ASSET) === null) {
-            return 'IT サポートのセットアップ（IT 資産のテーブル）が済んでいません。';
+            return 'サポートデスクのセットアップ（IT 資産のテーブル）が済んでいません。';
         }
 
         return null;
@@ -127,7 +127,7 @@ abstract class AssetConnector implements SyncConnector, SyncWriter, SyncMappingF
         $connection = $mapping->connection;
         $table = Its::table(Its::T_ASSET);
         if (!isset($connection, $table)) {
-            throw new SyncException('IT サポートのセットアップ（IT 資産のテーブル）が済んでいません。');
+            throw new SyncException('サポートデスクのセットアップ（IT 資産のテーブル）が済んでいません。');
         }
         $host = $item->values;
         $source = $this->source($connection);

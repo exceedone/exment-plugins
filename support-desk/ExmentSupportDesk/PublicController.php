@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
-use App\Plugins\ExmentITSupport\Alerts\Adapters;
-use App\Plugins\ExmentITSupport\Alerts\Rules;
+use App\Plugins\ExmentSupportDesk\Alerts\Adapters;
+use App\Plugins\ExmentSupportDesk\Alerts\Rules;
 use Exceedone\Exment\Model\CustomValue;
 use Exceedone\Exment\Model\File as ExmentFile;
 use Illuminate\Http\Request;
@@ -34,7 +34,7 @@ class PublicController extends Controller
     protected function page(string $view, array $data = [], int $status = 200)
     {
         return response()->view(Its::view('public.' . $view), array_merge([
-            'title' => Its::setting('portal_title', 'サポート窓口'),
+            'title' => Its::setting('portal_title', 'サポートデスク'),
         ], $data), $status)->header('X-Robots-Tag', 'noindex, nofollow')
             ->header('Referrer-Policy', 'no-referrer')
             ->header('X-Frame-Options', 'DENY')
@@ -132,7 +132,7 @@ class PublicController extends Controller
         $catalogValues = [];
         if (isset($item)) {
             $answers = (array) $request->input('cf', []);
-            $errors = \App\Plugins\ExmentITSupport\Alerts\CatalogSpec::validate(Catalog::fields($item), $answers);
+            $errors = \App\Plugins\ExmentSupportDesk\Alerts\CatalogSpec::validate(Catalog::fields($item), $answers);
             if (!empty($errors)) {
                 throw \Illuminate\Validation\ValidationException::withMessages($errors);
             }
@@ -186,7 +186,7 @@ class PublicController extends Controller
 
     /**
      * The page the approver opens from the mail. Here, not among the plugin's pages: an
-     * approver is often no agent of IT Support (a manager), and the plugin's pages ask for its
+     * approver is often no agent of the Support Desk (a manager), and the plugin's pages ask for its
      * role group. The Exment login is asked for still, and only the approver (or a system
      * administrator) may decide.
      *
@@ -283,13 +283,13 @@ class PublicController extends Controller
         if (!isset($row)) {
             return $this->notFound();
         }
-        $key = 'its_faq_seen_' . $row->id;
+        $key = 'sd_faq_seen_' . $row->id;
         if (!session()->has($key)) {
             session()->put($key, 1);
             Knowledge::bump($row, 'views');
         }
 
-        return $this->page('faq_show', ['row' => $row, 'voted' => session()->get('its_faq_vote_' . $row->id)]);
+        return $this->page('faq_show', ['row' => $row, 'voted' => session()->get('sd_faq_vote_' . $row->id)]);
     }
 
     public function faqVote(Request $request, $id)
@@ -299,7 +299,7 @@ class PublicController extends Controller
         if (!isset($row) || !Tokens::allow('vote', 20)) {
             return $this->notFound();
         }
-        $key = 'its_faq_vote_' . $row->id;
+        $key = 'sd_faq_vote_' . $row->id;
         if (!session()->has($key)) {
             $helpful = $request->get('helpful') === '1';
             session()->put($key, $helpful ? 'yes' : 'no');
@@ -341,10 +341,10 @@ class PublicController extends Controller
                         if (Its::isEmail($from)) {
                             $m->from($from, strval(Its::setting('support_name', '')) ?: null);
                         }
-                        $m->to($email)->subject('【' . Its::setting('portal_title', 'サポート窓口') . '】ご依頼の一覧のリンク');
+                        $m->to($email)->subject('【' . Its::setting('portal_title', 'サポートデスク') . '】ご依頼の一覧のリンク');
                     });
                 } catch (\Throwable $e) {
-                    \Log::warning('ExmentITSupport mine mail failed: ' . $e->getMessage());
+                    \Log::warning('ExmentSupportDesk mine mail failed: ' . $e->getMessage());
                 }
             }
             Tokens::log(null, null, 'mine_request');
@@ -433,7 +433,7 @@ class PublicController extends Controller
         if (!$this->followedMerge && !boolval(array_get($ticket->value, 'require_otp', '0'))) {
             return true;
         }
-        $until = intval(session()->get('its_otp_ok_' . $row->id, 0));
+        $until = intval(session()->get('sd_otp_ok_' . $row->id, 0));
 
         return $until > time();
     }
@@ -451,7 +451,7 @@ class PublicController extends Controller
             return $this->notFound();
         }
         if (!$this->otpPassed($row, $ticket)) {
-            return $this->page('otp', ['token' => $token, 'email' => $this->maskEmail(strval($row->email ?: array_get($ticket->value, 'requester_email'))), 'sent' => session()->get('its_otp_sent_' . $row->id)]);
+            return $this->page('otp', ['token' => $token, 'email' => $this->maskEmail(strval($row->email ?: array_get($ticket->value, 'requester_email'))), 'sent' => session()->get('sd_otp_sent_' . $row->id)]);
         }
 
         // The rating links in the mail only pre-select the stars; saving is a
@@ -468,7 +468,7 @@ class PublicController extends Controller
             'files' => Tickets::files($ticket, true),
             'labels' => Tickets::labels([$ticket]),
             'rated' => $rated,
-            'flash' => session()->get('its_flash'),
+            'flash' => session()->get('sd_flash'),
         ]);
     }
 
@@ -494,7 +494,7 @@ class PublicController extends Controller
         $email = strval($row->email ?: array_get($ticket->value, 'requester_email'));
         Tickets::customerWrote($ticket, '📞 通話をお願いしたいです。' . ($when !== '' ? "\n都合のよい時間：" . $when : ''), 'portal', $email, strval(array_get($ticket->value, 'requester_name')));
         Tokens::touch($row, 'call_request');
-        session()->flash('its_flash', '通話のお願いを送りました。担当者から通話のリンクをメールでお送りします。');
+        session()->flash('sd_flash', '通話のお願いを送りました。担当者から通話のリンクをメールでお送りします。');
 
         return redirect(Its::publicUrl('t', strval($token)));
     }
@@ -525,7 +525,7 @@ class PublicController extends Controller
             // The old ticket was long closed: send them to the new one.
             return redirect(Tokens::linkFor(intval($after->id), $email));
         }
-        session()->flash('its_flash', 'お送りしました。担当者から返事をお送りします。' . (Its::looksLikePassword($data['body']) ? '（パスワードらしき文字がありました。パスワードは書かないでください。必要なときは担当者から別の方法をご案内します。）' : ''));
+        session()->flash('sd_flash', 'お送りしました。担当者から返事をお送りします。' . (Its::looksLikePassword($data['body']) ? '（パスワードらしき文字がありました。パスワードは書かないでください。必要なときは担当者から別の方法をご案内します。）' : ''));
 
         return redirect(Its::publicUrl('t', strval($token)));
     }
@@ -544,7 +544,7 @@ class PublicController extends Controller
             Tokens::touch($row, 'solved');
             $this->addressShown($row, $ticket);
         }
-        session()->flash('its_flash', 'ありがとうございました。解決にしました。');
+        session()->flash('sd_flash', 'ありがとうございました。解決にしました。');
 
         return redirect(Its::publicUrl('t', strval($token)));
     }
@@ -571,7 +571,7 @@ class PublicController extends Controller
             Tokens::touch($row, 'rate');
             $this->addressShown($row, $ticket);
         }
-        session()->flash('its_flash', 'ご意見ありがとうございました。');
+        session()->flash('sd_flash', 'ご意見ありがとうございました。');
 
         return redirect(Its::publicUrl('t', strval($token)));
     }
@@ -608,11 +608,11 @@ class PublicController extends Controller
                     $m->to($email)->subject('[' . array_get($ticket->value, 'ticket_no') . '] 確認のコード');
                 });
             } catch (\Throwable $e) {
-                \Log::warning('ExmentITSupport otp mail failed: ' . $e->getMessage());
+                \Log::warning('ExmentSupportDesk otp mail failed: ' . $e->getMessage());
             }
             Tokens::log($row->id, $row->ticket_id, 'otp_send');
         }
-        session()->put('its_otp_sent_' . $row->id, true);
+        session()->put('sd_otp_sent_' . $row->id, true);
 
         return redirect(Its::publicUrl('t', strval($token)));
     }
@@ -629,12 +629,12 @@ class PublicController extends Controller
         }
         if (Tokens::checkOtp($row, strval($request->get('code', '')))) {
             // Good for this browser for 12 hours.
-            session()->put('its_otp_ok_' . $row->id, time() + 12 * 3600);
+            session()->put('sd_otp_ok_' . $row->id, time() + 12 * 3600);
             Tokens::log($row->id, $row->ticket_id, 'otp_ok');
             $this->addressShown($row, $ticket);
         } else {
             Tokens::log($row->id, $row->ticket_id, 'otp_ng');
-            session()->flash('its_otp_error', Tokens::otpLocked($row)
+            session()->flash('sd_otp_error', Tokens::otpLocked($row)
                 ? 'まちがいが続いたので、このリンクのコードは明日まで使えません。担当者にご連絡ください。'
                 : 'コードがちがうか、期限が切れています。');
         }
@@ -690,7 +690,7 @@ class PublicController extends Controller
     protected function keyOk(Request $request): bool
     {
         $key = strval(Its::setting('intake_key', ''));
-        $given = strval($request->header('X-ITS-Key', $request->get('key', '')));
+        $given = strval($request->header('X-SD-Key', $request->get('key', '')));
 
         return $key !== '' && $given !== '' && hash_equals($key, $given);
     }
@@ -730,9 +730,9 @@ class PublicController extends Controller
             }
             if (boolval($source->require_signature) && !Rules::verify(
                 IntakeSources::secretOf($source),
-                strval($request->header('X-ITS-Timestamp', '')),
+                strval($request->header('X-SD-Timestamp', '')),
                 $request->getContent(),
-                strval($request->header('X-ITS-Signature', '')),
+                strval($request->header('X-SD-Signature', '')),
                 time()
             )) {
                 Tokens::allow('intake_ng', 30);

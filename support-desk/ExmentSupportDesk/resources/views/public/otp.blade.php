@@ -1,12 +1,12 @@
-@extends(\App\Plugins\ExmentITSupport\Its::view('public._layout'))
-@php($Its = \App\Plugins\ExmentITSupport\Its::class)
+@extends(\App\Plugins\ExmentSupportDesk\Its::view('public._layout'))
+@php($Its = \App\Plugins\ExmentSupportDesk\Its::class)
 @section('mainclass', 'narrow')
 @section('content')
 <div class="card center">
     <div class="bigicon" aria-hidden="true"><svg class="ic"><use href="#i-shield"/></svg></div>
     <h1>確認のコード</h1>
     <p class="lead">このチケットは、開くときに確認が要ります。{{ $email }} に 6 桁のコードをお送りします。</p>
-    @if(session()->has('its_otp_error'))<div class="err" role="alert" style="margin-top:14px;text-align:left"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><div>{{ session()->get('its_otp_error') }}</div></div>@endif
+    @if(session()->has('sd_otp_error'))<div class="err" role="alert" style="margin-top:14px;text-align:left"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><div>{{ session()->get('sd_otp_error') }}</div></div>@endif
     @if($sent)
     <form method="post" action="{{ $Its::publicUrl('t', $token, 'otp') }}" style="margin-top:18px">
         @csrf

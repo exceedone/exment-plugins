@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
-use App\Plugins\ExmentITSupport\Alerts\EscalationRule;
+use App\Plugins\ExmentSupportDesk\Alerts\EscalationRule;
 use Carbon\Carbon;
 use Exceedone\Exment\Enums\SystemTableName;
 use Exceedone\Exment\Model\CustomTable;
@@ -160,7 +160,7 @@ class Escalation
                 }
             }
         } catch (\Throwable $e) {
-            Log::warning('ExmentITSupport LINE WORKS escalation failed: ' . class_basename($e));
+            Log::warning('ExmentSupportDesk LINE WORKS escalation failed: ' . class_basename($e));
         }
     }
 
@@ -177,7 +177,7 @@ class Escalation
         }
         $guard = '\\Exceedone\\Exment\\Services\\WebhookUrlGuard';
         if (class_exists($guard) && !$guard::isAllowed($url)) {
-            Log::warning('ExmentITSupport escalation webhook refused: the address is not allowed.');
+            Log::warning('ExmentSupportDesk escalation webhook refused: the address is not allowed.');
 
             return false;
         }
@@ -192,7 +192,7 @@ class Escalation
 
             return $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
         } catch (\Throwable $e) {
-            Log::warning('ExmentITSupport escalation webhook failed: ' . class_basename($e));
+            Log::warning('ExmentSupportDesk escalation webhook failed: ' . class_basename($e));
 
             return false;
         }

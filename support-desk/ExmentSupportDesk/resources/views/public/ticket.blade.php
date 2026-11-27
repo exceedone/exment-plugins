@@ -1,5 +1,5 @@
-@extends(\App\Plugins\ExmentITSupport\Its::view('public._layout'))
-@php($Its = \App\Plugins\ExmentITSupport\Its::class)
+@extends(\App\Plugins\ExmentSupportDesk\Its::view('public._layout'))
+@php($Its = \App\Plugins\ExmentSupportDesk\Its::class)
 @php($v = $ticket->value)
 @php($st = $v['status'] ?? 'new')
 @php($order = ['new' => 0, 'open' => 1, 'pending' => 1, 'on_hold' => 1, 'resolved' => 2, 'closed' => 3])
@@ -89,7 +89,7 @@
             <button class="btn primary" type="submit"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>送る</button>
         </div>
     </form>
-    @if(\App\Plugins\ExmentITSupport\GuestCall::enabled() && in_array($st, $Its::ACTIVE_STATUSES, true))
+    @if(\App\Plugins\ExmentSupportDesk\GuestCall::enabled() && in_array($st, $Its::ACTIVE_STATUSES, true))
     <div class="sep">または</div>
     <form method="post" action="{{ $Its::publicUrl('t', $token, 'call-request') }}">
         @csrf

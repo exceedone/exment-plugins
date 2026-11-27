@@ -1,5 +1,5 @@
-@extends(\App\Plugins\ExmentITSupport\Its::view('public._layout'))
-@php($Its = \App\Plugins\ExmentITSupport\Its::class)
+@extends(\App\Plugins\ExmentSupportDesk\Its::view('public._layout'))
+@php($Its = \App\Plugins\ExmentSupportDesk\Its::class)
 @php($done = !empty($link) || $heading === '受け付けました')
 @section('mainclass', 'narrow')
 @section('content')

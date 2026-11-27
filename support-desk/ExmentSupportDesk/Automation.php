@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Carbon\Carbon;
 use Exceedone\Exment\Enums\SystemTableName;
@@ -28,7 +28,7 @@ class Automation
             try {
                 $out[$name] = call_user_func($step);
             } catch (\Throwable $e) {
-                Log::error('ExmentITSupport batch step ' . $name . ' failed: ' . $e->getMessage(), ['exception' => $e]);
+                Log::error('ExmentSupportDesk batch step ' . $name . ' failed: ' . $e->getMessage(), ['exception' => $e]);
                 $out[$name] = 'error';
             }
         }
@@ -236,7 +236,7 @@ class Automation
                         $m->to($email)->subject($subject);
                     });
                 } catch (\Throwable $e) {
-                    Log::warning('ExmentITSupport agent mail failed: ' . $e->getMessage());
+                    Log::warning('ExmentSupportDesk agent mail failed: ' . $e->getMessage());
                 }
             }
         }
@@ -255,7 +255,7 @@ class Automation
             $navbar->notify_body = $body;
             $navbar->save();
         } catch (\Throwable $e) {
-            Log::warning('ExmentITSupport navbar notify failed: ' . $e->getMessage());
+            Log::warning('ExmentSupportDesk navbar notify failed: ' . $e->getMessage());
         }
     }
 }

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
-use App\Plugins\ExmentITSupport\Alerts\CatalogSpec;
+use App\Plugins\ExmentSupportDesk\Alerts\CatalogSpec;
 use Exceedone\Exment\Model\CustomValue;
 
 /**

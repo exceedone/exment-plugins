@@ -1,5 +1,5 @@
-@php($Its = \App\Plugins\ExmentITSupport\Its::class)
-@php($here = function ($path) { return request()->is(\App\Plugins\ExmentITSupport\PublicRoutes::PREFIX . '/' . $path) ? 'on' : ''; })
+@php($Its = \App\Plugins\ExmentSupportDesk\Its::class)
+@php($here = function ($path) { return request()->is(\App\Plugins\ExmentSupportDesk\PublicRoutes::PREFIX . '/' . $path) ? 'on' : ''; })
 <!doctype html>
 <html lang="ja">
 <head>

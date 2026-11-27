@@ -1,14 +1,14 @@
 <?php
-// ExmentITSupport: the hosts of monitoring tools read into IT assets, and which asset a host is
+// ExmentSupportDesk: the hosts of monitoring tools read into IT assets, and which asset a host is
 // (ISS02928, phase 3). Plain PHP:
-//   php it-support/tools/test-asset-sync.php
+//   php support-desk/tools/test-asset-sync.php
 // The answers in fixtures/hosts/ follow the documented answers of Mackerel's GET /api/v0/hosts
 // and Zabbix's host.get (addresses of example.invalid and the documentation ranges).
-require __DIR__ . '/../ExmentITSupport/Assets/HostMapper.php';
-require __DIR__ . '/../ExmentITSupport/Assets/AssetMatcher.php';
+require __DIR__ . '/../ExmentSupportDesk/Assets/HostMapper.php';
+require __DIR__ . '/../ExmentSupportDesk/Assets/AssetMatcher.php';
 
-use App\Plugins\ExmentITSupport\Assets\AssetMatcher as M;
-use App\Plugins\ExmentITSupport\Assets\HostMapper as H;
+use App\Plugins\ExmentSupportDesk\Assets\AssetMatcher as M;
+use App\Plugins\ExmentSupportDesk\Assets\HostMapper as H;
 
 $ok = 0;
 $bad = 0;

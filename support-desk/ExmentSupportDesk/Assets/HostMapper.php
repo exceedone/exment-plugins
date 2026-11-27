@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Assets;
+namespace App\Plugins\ExmentSupportDesk\Assets;
 
 /**
  * A host of a monitoring tool read into the one shape of an IT asset (ISS02928, phase 3), without

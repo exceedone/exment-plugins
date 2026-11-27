@@ -1,9 +1,9 @@
 <?php
-// ExmentITSupport: the chat window on a website (GuestChat, ISS02941), the parts with no database.
-//   php it-support/tools/test-guest-chat.php
-require __DIR__ . '/../ExmentITSupport/GuestChat.php';
+// ExmentSupportDesk: the chat window on a website (GuestChat, ISS02941), the parts with no database.
+//   php support-desk/tools/test-guest-chat.php
+require __DIR__ . '/../ExmentSupportDesk/GuestChat.php';
 
-use App\Plugins\ExmentITSupport\GuestChat as G;
+use App\Plugins\ExmentSupportDesk\GuestChat as G;
 
 $ok = 0;
 $bad = 0;

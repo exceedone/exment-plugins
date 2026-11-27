@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Alerts;
+namespace App\Plugins\ExmentSupportDesk\Alerts;
 
 /**
  * The steps of the SLA escalation (ManageEngine research of ISS02928, idea 5), without the

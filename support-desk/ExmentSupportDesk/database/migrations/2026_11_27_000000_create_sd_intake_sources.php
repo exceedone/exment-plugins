@@ -14,8 +14,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('its_intake_sources')) {
-            Schema::create('its_intake_sources', function (Blueprint $table) {
+        if (!Schema::hasTable('sd_intake_sources')) {
+            Schema::create('sd_intake_sources', function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->string('name', 100);
                 // generic | zabbix | mackerel | alertmanager | azure
@@ -44,6 +44,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('its_intake_sources');
+        Schema::dropIfExists('sd_intake_sources');
     }
 };

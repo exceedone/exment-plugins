@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Sync;
+namespace App\Plugins\ExmentSupportDesk\Sync;
 
-use App\Plugins\ExmentITSupport\Assets\HostMapper;
+use App\Plugins\ExmentSupportDesk\Assets\HostMapper;
 use Exceedone\Exment\Model\SyncConnection;
 use Exceedone\Exment\Services\Sync\SyncException;
 
@@ -15,7 +15,7 @@ use Exceedone\Exment\Services\Sync\SyncException;
  */
 class ZabbixAssetConnector extends AssetConnector
 {
-    const KEY = 'its_zabbix_assets';
+    const KEY = 'sd_zabbix_assets';
 
 
     public function key(): string
@@ -25,7 +25,7 @@ class ZabbixAssetConnector extends AssetConnector
 
     public function label(): string
     {
-        return 'Zabbix → IT 資産（サポート窓口）';
+        return 'Zabbix → IT 資産（サポートデスク）';
     }
 
     protected function tool(): string

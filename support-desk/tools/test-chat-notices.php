@@ -1,9 +1,9 @@
 <?php
-// ExmentITSupport: what is told to a chat, and to which (ChatNotices, ISS02941). Plain PHP:
-//   php it-support/tools/test-chat-notices.php
-require __DIR__ . '/../ExmentITSupport/ChatNotices.php';
+// ExmentSupportDesk: what is told to a chat, and to which (ChatNotices, ISS02941). Plain PHP:
+//   php support-desk/tools/test-chat-notices.php
+require __DIR__ . '/../ExmentSupportDesk/ChatNotices.php';
 
-use App\Plugins\ExmentITSupport\ChatNotices as C;
+use App\Plugins\ExmentSupportDesk\ChatNotices as C;
 
 $ok = 0;
 $bad = 0;
@@ -20,7 +20,7 @@ $check('a box not on the list', !C::wants('new', '3,5', 'new', '4'));
 $check('no box: "0" on the list', C::wants('new', '0', 'new', '') && !C::wants('new', '3', 'new', ''));
 $check('nothing chosen: nothing told', !C::wants('', '', 'new', '1'));
 
-$t = ['no' => 'SUP-00012', 'subject' => 'お見積のお願い', 'box' => '見積のご依頼', 'url' => 'https://exment.invalid/admin/plugins/exment_it_support/ticket/12'];
+$t = ['no' => 'SUP-00012', 'subject' => 'お見積のお願い', 'box' => '見積のご依頼', 'url' => 'https://exment.invalid/admin/plugins/exment_support_desk/ticket/12'];
 $m = C::compose('new', $t, ['from' => '山田']);
 $check('new: title with the box and the ticket', $m['title'] === '新しいチケット｜【見積のご依頼】SUP-00012 お見積のお願い', $m['title']);
 $check('new: who, then the link', $m['lines'] === ['依頼した人: 山田', $t['url']], $m['lines']);

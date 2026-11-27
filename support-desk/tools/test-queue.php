@@ -1,9 +1,9 @@
 <?php
-// ExmentITSupport: the 受付箱 of the help desk, their flows and progress (Queue, ISS02941). Plain PHP:
-//   php it-support/tools/test-queue.php
-require __DIR__ . '/../ExmentITSupport/Queue.php';
+// ExmentSupportDesk: the 受付箱 of the help desk, their flows and progress (Queue, ISS02941). Plain PHP:
+//   php support-desk/tools/test-queue.php
+require __DIR__ . '/../ExmentSupportDesk/Queue.php';
 
-use App\Plugins\ExmentITSupport\Queue as Q;
+use App\Plugins\ExmentSupportDesk\Queue as Q;
 
 $ok = 0;
 $bad = 0;
@@ -13,7 +13,7 @@ $check = function (string $label, bool $cond, $extra = '') use (&$ok, &$bad) {
 };
 
 // the statuses agree with Its::STATUSES (read from the file: Its needs Exment)
-preg_match('/const STATUSES = \[(.*?)\];/s', file_get_contents(__DIR__ . '/../ExmentITSupport/Its.php'), $m);
+preg_match('/const STATUSES = \[(.*?)\];/s', file_get_contents(__DIR__ . '/../ExmentSupportDesk/Its.php'), $m);
 preg_match_all("/'([a-z_]+)' =>/", $m[1] ?? '', $keys);
 $check('STATUS_KEYS are the keys of Its::STATUSES', $keys[1] === Q::STATUS_KEYS, $keys[1]);
 

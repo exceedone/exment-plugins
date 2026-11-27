@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 /**
  * What happens to the tickets, told to a chat (ISS02941 step 3): a new ticket, the customer
@@ -165,7 +165,7 @@ class ChatNotices
                     }
                 }
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('ExmentITSupport chat notice failed: ' . class_basename($e));
+                \Illuminate\Support\Facades\Log::warning('ExmentSupportDesk chat notice failed: ' . class_basename($e));
             }
         }
     }
@@ -173,7 +173,7 @@ class ChatNotices
     /** A test message from the settings: whether each address answered. */
     public static function test(): array
     {
-        $m = ['title' => 'サポート窓口からの試しの知らせ', 'lines' => ['この知らせが見えたら、チャットへの知らせの設定はできています。', Its::url()]];
+        $m = ['title' => 'サポートデスクからの試しの知らせ', 'lines' => ['この知らせが見えたら、チャットへの知らせの設定はできています。', Its::url()]];
         $t = ['no' => 'SUP-00000', 'subject' => '試し', 'box' => '', 'url' => Its::url()];
         $out = [];
         foreach (static::TARGETS as $key => $target) {

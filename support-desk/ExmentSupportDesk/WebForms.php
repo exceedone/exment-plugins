@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 /**
  * The website form of a 受付箱 (ISS02941 step 2): a public form of Exment (PublicForm) made for
@@ -40,7 +40,7 @@ class WebForms
 
     public static function ownerKey(int $boxId): string
     {
-        return 'exment_it_support:box:' . $boxId;
+        return 'exment_support_desk:box:' . $boxId;
     }
 
     /**
@@ -122,7 +122,7 @@ class WebForms
         $cols = static::columnsFor($box['fields']);
         $service = static::SERVICE;
         $opts = [
-            'view_name' => mb_substr('サポート窓口：' . $box['name'], 0, 40),
+            'view_name' => mb_substr('サポートデスク：' . $box['name'], 0, 40),
             'active' => true,
             'fixed_values' => static::fixedValues(intval($box['id']), strval($box['name']), $cols['columns']),
             'complete_title' => 'お問い合わせを受け付けました',

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Carbon\Carbon;
 use Exceedone\Exment\Enums\FileType;
@@ -29,7 +29,7 @@ class Tickets
     {
         $table = Its::table(Its::T_TICKET);
         if (!isset($table)) {
-            throw new \RuntimeException('サポート窓口のセットアップがまだです。');
+            throw new \RuntimeException('サポートデスクのセットアップがまだです。');
         }
 
         return $table;
@@ -486,7 +486,7 @@ class Tickets
         }
         static::addMessage($into, ['kind' => 'note', 'body' => implode("\n", $lines), 'via' => 'staff']);
 
-        DB::table('its_mail_index')->where('ticket_id', $from->id)->update(['ticket_id' => $into->id]);
+        DB::table('sd_mail_index')->where('ticket_id', $from->id)->update(['ticket_id' => $into->id]);
 
         $from->setValue(['status' => 'closed', 'merged_into' => $into->id]);
         $from->save();

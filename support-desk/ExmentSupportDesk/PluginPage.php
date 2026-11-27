@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Services\Plugin\PluginPageBase;
 
@@ -29,24 +29,24 @@ class PluginPage extends PluginPageBase
         try {
             Feature::register($plugin);
         } catch (\Throwable $e) {
-            \Log::error('ExmentITSupport could not register its features: ' . $e->getMessage());
+            \Log::error('ExmentSupportDesk could not register its features: ' . $e->getMessage());
         }
         // the data sync of Exment 7.3: the hosts of monitoring tools into the IT assets
         try {
             AssetSync::register();
         } catch (\Throwable $e) {
-            \Log::error('ExmentITSupport could not register its sync connectors: ' . $e->getMessage());
+            \Log::error('ExmentSupportDesk could not register its sync connectors: ' . $e->getMessage());
         }
         try {
             PublicRoutes::register();
         } catch (\Throwable $e) {
-            \Log::error('ExmentITSupport could not add its public routes: ' . $e->getMessage());
+            \Log::error('ExmentSupportDesk could not add its public routes: ' . $e->getMessage());
         }
         // before the setup: the entry in the left menu that leads to it (7.2.1)
         try {
             Schema::ensurePreSetupMenu();
         } catch (\Throwable $e) {
-            \Log::error('ExmentITSupport could not add its menu before the setup: ' . $e->getMessage());
+            \Log::error('ExmentSupportDesk could not add its menu before the setup: ' . $e->getMessage());
         }
     }
 

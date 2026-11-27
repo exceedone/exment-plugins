@@ -9,12 +9,12 @@
 
 $base = __DIR__ . '/../..';
 require $base . '/project-management/ExmentPM/ManualLink.php';
-require $base . '/it-support/ExmentITSupport/ManualLink.php';
+require $base . '/support-desk/ExmentSupportDesk/ManualLink.php';
 require $base . '/groupware/ExmentGroupware/ManualLink.php';
 
 $want = [
     'App\\Plugins\\ExmentPM\\ManualLink' => 'plugin_pm',
-    'App\\Plugins\\ExmentITSupport\\ManualLink' => 'plugin_it_support',
+    'App\\Plugins\\ExmentSupportDesk\\ManualLink' => 'plugin_it_support',
     'App\\Plugins\\ExmentGroupware\\ManualLink' => 'plugin_groupware',
 ];
 $failed = 0;

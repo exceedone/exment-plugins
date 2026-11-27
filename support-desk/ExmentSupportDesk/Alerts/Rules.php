@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Alerts;
+namespace App\Plugins\ExmentSupportDesk\Alerts;
 
 /**
  * The decisions of the alert intake, without the database (ISS02928), so the

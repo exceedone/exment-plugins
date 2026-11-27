@@ -1,10 +1,10 @@
-@php($Its = \App\Plugins\ExmentITSupport\Its::class)
+@php($Its = \App\Plugins\ExmentSupportDesk\Its::class)
 @php($st = $Its::state())
 @php($imapOn = $Its::setting('imap_enabled') === '1')
 @include($Its::view('_style'))
-<header class="its-top">
-    <a class="its-brand" href="{{ $Its::url() }}"><span class="its-logo" aria-hidden="true"><i class="fa fa-life-ring"></i></span>サポート窓口</a>
-    <nav class="its-tabs" aria-label="サポート窓口のメニュー">
+<header class="sd-top">
+    <a class="sd-brand" href="{{ $Its::url() }}"><span class="sd-logo" aria-hidden="true"><i class="fa fa-life-ring"></i></span>サポートデスク</a>
+    <nav class="sd-tabs" aria-label="サポートデスクのメニュー">
         <a href="{{ $Its::url() }}" class="{{ ($tab ?? '') === 'inbox' ? 'on' : '' }}" @if(($tab ?? '') === 'inbox') aria-current="page" @endif><i class="fa fa-inbox" aria-hidden="true"></i>受付箱</a>
         <a href="{{ $Its::url('dashboard') }}" class="{{ ($tab ?? '') === 'dashboard' ? 'on' : '' }}" @if(($tab ?? '') === 'dashboard') aria-current="page" @endif><i class="fa fa-bar-chart" aria-hidden="true"></i>レポート</a>
         <span class="sep" aria-hidden="true"></span>
@@ -12,7 +12,7 @@
         @if(!empty($isAdmin))
         <a href="{{ $Its::url('boxes') }}" class="{{ ($tab ?? '') === 'boxes' ? 'on' : '' }}" @if(($tab ?? '') === 'boxes') aria-current="page" @endif><i class="fa fa-inbox" aria-hidden="true"></i>受付箱</a>
         @endif
-        @if(\App\Plugins\ExmentITSupport\Problems::enabled())
+        @if(\App\Plugins\ExmentSupportDesk\Problems::enabled())
         <a href="{{ $Its::url('problems') }}" class="{{ ($tab ?? '') === 'problems' ? 'on' : '' }}" @if(($tab ?? '') === 'problems') aria-current="page" @endif><i class="fa fa-bug" aria-hidden="true"></i>問題</a>
         @endif
         <a href="{{ $Its::dataUrl($Its::T_KNOWLEDGE) }}"><i class="fa fa-book" aria-hidden="true"></i>ナレッジ</a>
@@ -25,21 +25,21 @@
         <a href="{{ $Its::url('settings') }}" class="{{ ($tab ?? '') === 'settings' ? 'on' : '' }}" @if(($tab ?? '') === 'settings') aria-current="page" @endif><i class="fa fa-cog" aria-hidden="true"></i>設定</a>
         @endif
     </nav>
-    <div class="its-right">
+    <div class="sd-right">
         {{-- the manual of the plugin, in the language of the user (ISS02882) --}}
-        <a class="its-btn" href="{{ \App\Plugins\ExmentITSupport\ManualLink::url() }}" target="_blank" rel="noopener" title="{{ \App\Plugins\ExmentITSupport\ManualLink::label() }}" aria-label="{{ \App\Plugins\ExmentITSupport\ManualLink::label() }}"><i class="fa fa-question-circle" aria-hidden="true"></i><span class="tx">{{ \App\Plugins\ExmentITSupport\ManualLink::label() }}</span></a>
-        <span class="its-status" title="最後の確認: {{ $st['imap_checked_at'] ?? '—' }}">
-            <span class="its-dot {{ !empty($st['imap_error']) ? 'err' : ($imapOn ? 'on' : '') }}" aria-hidden="true"></span>メール受信 {{ !empty($st['imap_error']) ? 'エラー' : ($imapOn ? 'オン' : 'オフ') }}
+        <a class="sd-btn" href="{{ \App\Plugins\ExmentSupportDesk\ManualLink::url() }}" target="_blank" rel="noopener" title="{{ \App\Plugins\ExmentSupportDesk\ManualLink::label() }}" aria-label="{{ \App\Plugins\ExmentSupportDesk\ManualLink::label() }}"><i class="fa fa-question-circle" aria-hidden="true"></i><span class="tx">{{ \App\Plugins\ExmentSupportDesk\ManualLink::label() }}</span></a>
+        <span class="sd-status" title="最後の確認: {{ $st['imap_checked_at'] ?? '—' }}">
+            <span class="sd-dot {{ !empty($st['imap_error']) ? 'err' : ($imapOn ? 'on' : '') }}" aria-hidden="true"></span>メール受信 {{ !empty($st['imap_error']) ? 'エラー' : ($imapOn ? 'オン' : 'オフ') }}
         </span>
-        <a class="its-btn" href="{{ $Its::publicUrl() }}" target="_blank" rel="noopener" title="お客様の窓口（新しいタブ）" aria-label="お客様の窓口"><i class="fa fa-external-link" aria-hidden="true"></i><span class="tx">お客様の窓口</span></a>
-        <a class="its-btn primary" href="{{ $Its::url('new') }}"><i class="fa fa-plus" aria-hidden="true"></i><span class="tx">チケット</span></a>
+        <a class="sd-btn" href="{{ $Its::publicUrl() }}" target="_blank" rel="noopener" title="お客様の窓口（新しいタブ）" aria-label="お客様の窓口"><i class="fa fa-external-link" aria-hidden="true"></i><span class="tx">お客様の窓口</span></a>
+        <a class="sd-btn primary" href="{{ $Its::url('new') }}"><i class="fa fa-plus" aria-hidden="true"></i><span class="tx">チケット</span></a>
     </div>
 </header>
 @if(!empty($needsUpgrade))
-<div class="its-warn" role="status"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i><div>プラグインが新しくなりました。<a href="{{ $Its::url('setup') }}">セットアップ</a>から「テーブルを更新」を押してください（データはそのままです）。</div></div>
+<div class="sd-warn" role="status"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i><div>プラグインが新しくなりました。<a href="{{ $Its::url('setup') }}">セットアップ</a>から「テーブルを更新」を押してください（データはそのままです）。</div></div>
 @endif
 @if(!empty($mailAuthUnset))
-<div class="its-warn" role="status"><i class="fa fa-shield" aria-hidden="true"></i><div>受け取ったメールの差出人を確かめる設定が済んでいません。いまはメールで来たチケットが、すべて「なりすましの疑い」（社内だけ）になります。管理者が<a href="{{ $Its::url('settings') }}">設定</a>の「受信サーバーの名前」を入れてください。</div></div>
+<div class="sd-warn" role="status"><i class="fa fa-shield" aria-hidden="true"></i><div>受け取ったメールの差出人を確かめる設定が済んでいません。いまはメールで来たチケットが、すべて「なりすましの疑い」（社内だけ）になります。管理者が<a href="{{ $Its::url('settings') }}">設定</a>の「受信サーバーの名前」を入れてください。</div></div>
 @endif
-@if(!empty($flash))<div class="its-flash" role="status"><i class="fa fa-check-circle" aria-hidden="true"></i><div>{{ $flash }}</div></div>@endif
-@if(!empty($flashError))<div class="its-flash error" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"></i><div>{{ $flashError }}</div></div>@endif
+@if(!empty($flash))<div class="sd-flash" role="status"><i class="fa fa-check-circle" aria-hidden="true"></i><div>{{ $flash }}</div></div>@endif
+@if(!empty($flashError))<div class="sd-flash error" role="alert"><i class="fa fa-exclamation-circle" aria-hidden="true"></i><div>{{ $flashError }}</div></div>@endif

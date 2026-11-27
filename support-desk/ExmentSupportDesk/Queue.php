@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 /**
- * The 受付箱 of the help desk (ISS02941): each row of its_category is one, with a kind (IT
+ * The 受付箱 of the help desk (ISS02941): each row of sd_category is one, with a kind (IT
  * support inside or outside, a product question, a general question, a quote, a trial key),
  * its own flow of stages, its own SLA and reply templates.
  *

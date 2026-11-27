@@ -1,7 +1,7 @@
 <?php
-// ExmentITSupport: the request catalog with its approval. In the folder of an Exment with
-// ExmentITSupport set up:
-//   php /path/to/it-support/tools/test-catalog.php
+// ExmentSupportDesk: the request catalog with its approval. In the folder of an Exment with
+// ExmentSupportDesk set up:
+//   php /path/to/support-desk/tools/test-catalog.php
 // The tables are brought up to date first; what the test makes is in a transaction rolled back
 // at the end (no mail leaves: the mail driver is "array" here).
 require getcwd() . '/vendor/autoload.php';
@@ -16,18 +16,18 @@ use Exceedone\Exment\Model\System;
 $ok = 0; $bad = 0;
 $check = function ($label, $cond, $extra = '') use (&$ok, &$bad) { echo ($cond ? 'OK  ' : 'NG  '), $label, $cond ? '' : "  $extra", "\n"; $cond ? $ok++ : $bad++; };
 
-$plugin = Plugin::where('plugin_name', 'ExmentITSupport')->first();
-if (!$plugin) { echo "ExmentITSupport is not installed here\n"; exit(1); }
+$plugin = Plugin::where('plugin_name', 'ExmentSupportDesk')->first();
+if (!$plugin) { echo "ExmentSupportDesk is not installed here\n"; exit(1); }
 $plugin->requirePlugin();
-$I = 'App\Plugins\ExmentITSupport\Its';
-$Schema = 'App\Plugins\ExmentITSupport\Schema';
-$C = 'App\Plugins\ExmentITSupport\Catalog';
-$T = 'App\Plugins\ExmentITSupport\Tickets';
+$I = 'App\Plugins\ExmentSupportDesk\Its';
+$Schema = 'App\Plugins\ExmentSupportDesk\Schema';
+$C = 'App\Plugins\ExmentSupportDesk\Catalog';
+$T = 'App\Plugins\ExmentSupportDesk\Tickets';
 $admin = LoginUser::query()->whereIn('base_user_id', (array) System::system_admin_users())->first();
 $other = LoginUser::query()->whereNotIn('base_user_id', (array) System::system_admin_users())->first();
 Auth::guard('admin')->setUser($admin);
 
-if (!$I::isInstalled()) { echo "set up ExmentITSupport first\n"; exit(1); }
+if (!$I::isInstalled()) { echo "set up ExmentSupportDesk first\n"; exit(1); }
 $r = $Schema::install(false);
 $check('the tables are up to date', $r['ok'] && $I::table($I::T_CATALOG) !== null, strval($r['message'] ?? ''));
 

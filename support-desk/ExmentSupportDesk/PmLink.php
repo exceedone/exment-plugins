@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Enums\RelationType;
 use Exceedone\Exment\Model\CustomColumn;
@@ -129,7 +129,7 @@ class PmLink
         $no = strval(array_get($ticket->value, 'ticket_no'));
         $values = [
             'subject' => mb_substr('[' . $no . '] ' . strval(array_get($ticket->value, 'subject')), 0, 250),
-            'description' => trim(strval(array_get($ticket->value, 'description'))) . "\n\n---\nサポート窓口のチケット " . $no . '：' . Its::url('ticket', strval($ticket->id)),
+            'description' => trim(strval(array_get($ticket->value, 'description'))) . "\n\n---\nサポートデスクのチケット " . $no . '：' . Its::url('ticket', strval($ticket->id)),
         ];
         foreach (static::SCOPED as $col) {
             $first = static::firstOfProject($issues, $col, $projectId);

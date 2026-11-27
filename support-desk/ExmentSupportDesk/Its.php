@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Model\CustomTable;
 use Exceedone\Exment\Model\Plugin;
@@ -11,32 +11,32 @@ use Illuminate\Support\Facades\Crypt;
  * Everything the rest of the plugin needs to agree on: table names, the word
  * lists, the plugin row and the settings stored on it.
  *
- * Settings live on the plugin row (plugins.options.its_settings) rather than
+ * Settings live on the plugin row (plugins.options.sd_settings) rather than
  * in a table of their own, so a backup of Exment carries them and an
  * uninstall takes them away. Secrets (the mail password, the intake key) are
  * encrypted with the application key before they are written.
  */
 class Its
 {
-    const PLUGIN_NAME = 'ExmentITSupport';
-    const PLUGIN_URI = 'exment_it_support';
+    const PLUGIN_NAME = 'ExmentSupportDesk';
+    const PLUGIN_URI = 'exment_support_desk';
 
-    const SETTINGS_KEY = 'its_settings';
-    const STATE_KEY = 'its_state';
+    const SETTINGS_KEY = 'sd_settings';
+    const STATE_KEY = 'sd_state';
 
     // ---- tables ----------------------------------------------------------
 
-    const T_TICKET = 'its_ticket';
-    const T_MESSAGE = 'its_message';
-    const T_CUSTOMER = 'its_customer';
-    const T_CONTACT = 'its_contact';
-    const T_CATEGORY = 'its_category';
-    const T_SLA = 'its_sla';
-    const T_KNOWLEDGE = 'its_knowledge';
-    const T_TEMPLATE = 'its_template';
-    const T_ASSET = 'its_asset';
-    const T_PROBLEM = 'its_problem';
-    const T_CATALOG = 'its_catalog';
+    const T_TICKET = 'sd_ticket';
+    const T_MESSAGE = 'sd_message';
+    const T_CUSTOMER = 'sd_customer';
+    const T_CONTACT = 'sd_contact';
+    const T_CATEGORY = 'sd_category';
+    const T_SLA = 'sd_sla';
+    const T_KNOWLEDGE = 'sd_knowledge';
+    const T_TEMPLATE = 'sd_template';
+    const T_ASSET = 'sd_asset';
+    const T_PROBLEM = 'sd_problem';
+    const T_CATALOG = 'sd_catalog';
 
     /** The states of a problem (Problems). */
     const PROBLEM_STATUSES = [
@@ -47,8 +47,8 @@ class Its
     ];
 
     /** Role groups made by the setup. */
-    const ROLE_AGENT = 'its_agent_group';
-    const ROLE_CUSTOMER = 'its_customer_group';
+    const ROLE_AGENT = 'sd_agent_group';
+    const ROLE_CUSTOMER = 'sd_customer_group';
 
     // ---- word lists ------------------------------------------------------
 
@@ -156,9 +156,9 @@ class Its
         'imap_folder' => 'INBOX',
         // Mail out: the address customers see and reply to.
         'support_address' => '',
-        'support_name' => 'サポート窓口',
+        'support_name' => 'サポートデスク',
         'subject_prefix' => '',
-        'signature' => "--\nサポート窓口",
+        'signature' => "--\nサポートデスク",
         // Business hours for the SLA clock.
         'business_days' => '1,2,3,4,5',
         'business_start' => '09:00',
@@ -207,7 +207,7 @@ class Its
         // senders of ISS02928 keep it; a new setup turns it off (Schema::install).
         'alert_shared_key' => '1',
         // Text shown on the public pages.
-        'portal_title' => 'サポート窓口',
+        'portal_title' => 'サポートデスク',
         'portal_message' => 'パソコン・Webサイト・システムのご依頼やお困りごとをお送りください。担当者から返事をお送りします。',
     ];
 
@@ -358,7 +358,7 @@ class Its
     {
         $plugin = static::plugin();
         if (!isset($plugin)) {
-            return admin_url('plugins/exment_it_support/' . implode('/', $parts));
+            return admin_url('plugins/exment_support_desk/' . implode('/', $parts));
         }
 
         return $plugin->getFullUrl(...$parts);

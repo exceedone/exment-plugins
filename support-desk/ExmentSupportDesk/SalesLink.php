@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Exceedone\Exment\Model\CustomTable;
 use Exceedone\Exment\Model\CustomValue;
@@ -105,7 +105,7 @@ class SalesLink
             'quote_title' => mb_substr(strval(array_get($ticket->value, 'subject')), 0, 250),
             'quote_date' => now()->format('Y-m-d'),
             'valid_until' => now()->addDays(30)->format('Y-m-d'),
-            'note' => 'サポート窓口のチケット ' . $no . '：' . Its::url('ticket', strval($ticket->id)),
+            'note' => 'サポートデスクのチケット ' . $no . '：' . Its::url('ticket', strval($ticket->id)),
         ];
         $customer = static::customerByEmail(strval(array_get($ticket->value, 'requester_email')));
         if ($customer !== null) {

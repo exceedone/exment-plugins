@@ -1,9 +1,9 @@
 <?php
-// ExmentITSupport: calls with a customer by a link (GuestCall, ISS02941), the parts with no database.
-//   php it-support/tools/test-guest-call.php
-require __DIR__ . '/../ExmentITSupport/GuestCall.php';
+// ExmentSupportDesk: calls with a customer by a link (GuestCall, ISS02941), the parts with no database.
+//   php support-desk/tools/test-guest-call.php
+require __DIR__ . '/../ExmentSupportDesk/GuestCall.php';
 
-use App\Plugins\ExmentITSupport\GuestCall as C;
+use App\Plugins\ExmentSupportDesk\GuestCall as C;
 
 $ok = 0;
 $bad = 0;

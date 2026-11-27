@@ -1,9 +1,9 @@
 <?php
-// ExmentITSupport: the website form of a 受付箱 (WebForms, ISS02941), and every route with its
-// method. Plain PHP: php it-support/tools/test-web-forms.php
-require __DIR__ . '/../ExmentITSupport/WebForms.php';
+// ExmentSupportDesk: the website form of a 受付箱 (WebForms, ISS02941), and every route with its
+// method. Plain PHP: php support-desk/tools/test-web-forms.php
+require __DIR__ . '/../ExmentSupportDesk/WebForms.php';
 
-use App\Plugins\ExmentITSupport\WebForms as W;
+use App\Plugins\ExmentSupportDesk\WebForms as W;
 
 $ok = 0;
 $bad = 0;
@@ -38,11 +38,11 @@ $check('fixed: the box, the channel, seen by the customer', $f['category'] === '
 $check('fixed: a subject when the form has none', $f['subject'] === '見積のご依頼（Web サイトのフォーム）');
 $check('fixed: no subject when the form has one', !isset(W::fixedValues(7, 'x', ['subject'])['subject']));
 $check('fixed columns are never also on the form', array_intersect(array_keys(W::fixedValues(1, 'x', W::DEFAULT_COLUMNS)), W::DEFAULT_COLUMNS) === []);
-$check('owner key', W::ownerKey(3) === 'exment_it_support:box:3');
+$check('owner key', W::ownerKey(3) === 'exment_support_desk:box:3');
 
 // every route of config.json has its method in PluginPage.php
-$config = json_decode(file_get_contents(__DIR__ . '/../ExmentITSupport/config.json'), true);
-$page = file_get_contents(__DIR__ . '/../ExmentITSupport/PluginPage.php');
+$config = json_decode(file_get_contents(__DIR__ . '/../ExmentSupportDesk/config.json'), true);
+$page = file_get_contents(__DIR__ . '/../ExmentSupportDesk/PluginPage.php');
 $missing = [];
 foreach ($config['route'] as $r) {
     if (!preg_match('/public function ' . preg_quote($r['function'], '/') . '\s*\(/', $page)) {

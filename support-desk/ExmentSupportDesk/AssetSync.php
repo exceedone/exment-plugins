@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 /**
  * The connectors of the data sync (Exment 7.3, ISS00113) that bring the hosts of monitoring

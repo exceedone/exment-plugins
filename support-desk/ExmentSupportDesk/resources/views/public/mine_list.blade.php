@@ -1,5 +1,5 @@
-@extends(\App\Plugins\ExmentITSupport\Its::view('public._layout'))
-@php($Its = \App\Plugins\ExmentITSupport\Its::class)
+@extends(\App\Plugins\ExmentSupportDesk\Its::view('public._layout'))
+@php($Its = \App\Plugins\ExmentSupportDesk\Its::class)
 @section('content')
 <div class="card list">
     <h1>ご依頼の一覧</h1>

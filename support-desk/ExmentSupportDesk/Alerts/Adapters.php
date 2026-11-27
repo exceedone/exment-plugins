@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Alerts;
+namespace App\Plugins\ExmentSupportDesk\Alerts;
 
 /**
  * What each monitoring tool sends, read into one shape (ISS02928).
  *
  * Plain PHP on purpose (no Laravel, no Exment): the tools' sample payloads
- * are checked by it-support/tools/test-alert-intake.php in the CI.
+ * are checked by support-desk/tools/test-alert-intake.php in the CI.
  *
  * One event:
  *   status       firing | resolved
@@ -100,7 +100,7 @@ class Adapters
     }
 
     /**
-     * The body the media type of it-support/tools/zabbix/ sends (Zabbix 6.0
+     * The body the media type of support-desk/tools/zabbix/ sends (Zabbix 6.0
      * and later). {EVENT.VALUE} is 1 for a problem and 0 for its recovery;
      * the trigger id names the problem, so its recovery and a later return
      * find the same ticket.

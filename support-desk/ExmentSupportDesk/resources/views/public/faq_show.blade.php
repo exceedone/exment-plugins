@@ -1,5 +1,5 @@
-@extends(\App\Plugins\ExmentITSupport\Its::view('public._layout'))
-@php($Its = \App\Plugins\ExmentITSupport\Its::class)
+@extends(\App\Plugins\ExmentSupportDesk\Its::view('public._layout'))
+@php($Its = \App\Plugins\ExmentSupportDesk\Its::class)
 @section('content')
 <div class="card">
     <a class="back" href="{{ $Its::publicUrl('faq') }}"><svg class="ic s" aria-hidden="true"><use href="#i-left"/></svg>よくある質問</a>

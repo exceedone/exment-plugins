@@ -1,7 +1,7 @@
 <?php
-// ExmentITSupport: 「ExmentPM の課題にする」 (PmLink, ISS02941), the parts with no database, and every
-// route of config.json with its method. Plain PHP: php it-support/tools/test-pm-link.php
-$src = file_get_contents(__DIR__ . '/../ExmentITSupport/PmLink.php');
+// ExmentSupportDesk: 「ExmentPM の課題にする」 (PmLink, ISS02941), the parts with no database, and every
+// route of config.json with its method. Plain PHP: php support-desk/tools/test-pm-link.php
+$src = file_get_contents(__DIR__ . '/../ExmentSupportDesk/PmLink.php');
 
 $ok = 0;
 $bad = 0;
@@ -23,8 +23,8 @@ $check('only the project\'s own lists are filled (as ExmentPM does)', strpos($sr
 $check('once only', strpos($src, 'もう課題になっています') !== false);
 
 // every route of config.json has its method in PluginPage.php
-$config = json_decode(file_get_contents(__DIR__ . '/../ExmentITSupport/config.json'), true);
-$page = file_get_contents(__DIR__ . '/../ExmentITSupport/PluginPage.php');
+$config = json_decode(file_get_contents(__DIR__ . '/../ExmentSupportDesk/config.json'), true);
+$page = file_get_contents(__DIR__ . '/../ExmentSupportDesk/PluginPage.php');
 $missing = [];
 foreach ($config['route'] as $r) {
     if (!preg_match('/public function ' . preg_quote($r['function'], '/') . '\s*\(/', $page)) {

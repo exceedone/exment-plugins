@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Crypt;
@@ -44,7 +44,7 @@ class Tokens
     public static function forTicket(int $ticketId, ?string $email = null): string
     {
         $token = static::random();
-        DB::table('its_tokens')->insert([
+        DB::table('sd_tokens')->insert([
             'kind' => static::KIND_TICKET,
             'token_hash' => static::hash($token),
             'token_enc' => Crypt::encryptString($token),
@@ -66,7 +66,7 @@ class Tokens
     public static function linkFor(int $ticketId, ?string $email): string
     {
         $email = $email ? Its::normalizeEmail($email) : null;
-        $rows = DB::table('its_tokens')->where('ticket_id', $ticketId)->where('kind', static::KIND_TICKET)
+        $rows = DB::table('sd_tokens')->where('ticket_id', $ticketId)->where('kind', static::KIND_TICKET)
             ->whereNull('revoked_at')->whereNotNull('token_enc')
             ->where(function ($q) use ($email) {
                 $email === null ? $q->whereNull('email') : $q->where('email', $email);
@@ -91,7 +91,7 @@ class Tokens
     public static function forMine(string $email): string
     {
         $token = static::random();
-        DB::table('its_tokens')->insert([
+        DB::table('sd_tokens')->insert([
             'kind' => static::KIND_MINE,
             'token_hash' => static::hash($token),
             'email' => Its::normalizeEmail($email),
@@ -112,7 +112,7 @@ class Tokens
         if (!preg_match('/^[A-Za-z0-9_-]{32,128}$/', $token)) {
             return null;
         }
-        $row = DB::table('its_tokens')->where('token_hash', static::hash($token))->where('kind', $kind)->first();
+        $row = DB::table('sd_tokens')->where('token_hash', static::hash($token))->where('kind', $kind)->first();
         if (!isset($row) || !empty($row->revoked_at)) {
             return null;
         }
@@ -125,7 +125,7 @@ class Tokens
 
     public static function touch(object $row, string $action): void
     {
-        DB::table('its_tokens')->where('id', $row->id)->update([
+        DB::table('sd_tokens')->where('id', $row->id)->update([
             'last_used_at' => now(),
             'use_count' => DB::raw('use_count + 1'),
         ]);
@@ -135,7 +135,7 @@ class Tokens
     public static function log(?int $tokenId, ?int $ticketId, string $action): void
     {
         $request = request();
-        DB::table('its_access_logs')->insert([
+        DB::table('sd_access_logs')->insert([
             'token_id' => $tokenId,
             'ticket_id' => $ticketId,
             'action' => mb_substr($action, 0, 32),
@@ -147,7 +147,7 @@ class Tokens
 
     public static function revokeTicket(int $ticketId): int
     {
-        return DB::table('its_tokens')->where('ticket_id', $ticketId)->where('kind', static::KIND_TICKET)
+        return DB::table('sd_tokens')->where('ticket_id', $ticketId)->where('kind', static::KIND_TICKET)
             ->whereNull('revoked_at')->update(['revoked_at' => now(), 'updated_at' => now()]);
     }
 
@@ -158,7 +158,7 @@ class Tokens
     public static function expireClosed(int $ticketId, bool $closed): void
     {
         $days = max(1, intval(Its::setting('link_days_after_close', 30)));
-        DB::table('its_tokens')->where('ticket_id', $ticketId)->where('kind', static::KIND_TICKET)->whereNull('revoked_at')
+        DB::table('sd_tokens')->where('ticket_id', $ticketId)->where('kind', static::KIND_TICKET)->whereNull('revoked_at')
             ->update(['expires_at' => $closed ? Carbon::now()->addDays($days) : null, 'updated_at' => now()]);
     }
 
@@ -167,7 +167,7 @@ class Tokens
      */
     public static function listForTicket(int $ticketId): array
     {
-        return DB::table('its_tokens')->where('ticket_id', $ticketId)->orderByDesc('id')->limit(20)->get()->all();
+        return DB::table('sd_tokens')->where('ticket_id', $ticketId)->orderByDesc('id')->limit(20)->get()->all();
     }
 
     /**
@@ -175,7 +175,7 @@ class Tokens
      */
     public static function accessLog(int $ticketId, int $limit = 20): array
     {
-        return DB::table('its_access_logs')->where('ticket_id', $ticketId)->orderByDesc('id')->limit($limit)->get()->all();
+        return DB::table('sd_access_logs')->where('ticket_id', $ticketId)->orderByDesc('id')->limit($limit)->get()->all();
     }
 
     // ---- one-time codes --------------------------------------------------
@@ -184,8 +184,8 @@ class Tokens
     public static function newOtp(object $token): string
     {
         $code = str_pad(strval(random_int(0, 999999)), 6, '0', STR_PAD_LEFT);
-        DB::table('its_otps')->where('token_id', $token->id)->whereNull('used_at')->update(['used_at' => now()]);
-        DB::table('its_otps')->insert([
+        DB::table('sd_otps')->where('token_id', $token->id)->whereNull('used_at')->update(['used_at' => now()]);
+        DB::table('sd_otps')->insert([
             'token_id' => $token->id,
             'code_hash' => static::hash($token->id . ':' . $code),
             'expires_at' => Carbon::now()->addMinutes(static::OTP_MINUTES),
@@ -203,7 +203,7 @@ class Tokens
             return false;
         }
 
-        return DB::table('its_otps')->where('token_id', $token->id)
+        return DB::table('sd_otps')->where('token_id', $token->id)
             ->where('created_at', '>', Carbon::now()->subHour())->count() < static::OTP_SENDS_PER_HOUR;
     }
 
@@ -215,7 +215,7 @@ class Tokens
     public static function otpLocked(object $token): bool
     {
         // "attempts" holds the wrong tries only (a right try is taken back when the code is used)
-        $fails = intval(DB::table('its_otps')->where('token_id', $token->id)
+        $fails = intval(DB::table('sd_otps')->where('token_id', $token->id)
             ->where('created_at', '>', Carbon::now()->subDay())->sum('attempts'));
 
         return $fails >= static::OTP_FAILS_PER_DAY;
@@ -232,7 +232,7 @@ class Tokens
     public static function withLinkLock(object $token, callable $fn)
     {
         return DB::transaction(function () use ($token, $fn) {
-            DB::table('its_tokens')->where('id', $token->id)->lockForUpdate()->first();
+            DB::table('sd_tokens')->where('id', $token->id)->lockForUpdate()->first();
 
             return $fn();
         });
@@ -251,13 +251,13 @@ class Tokens
         if (static::otpLocked($token)) {
             return false;
         }
-        $row = DB::table('its_otps')->where('token_id', $token->id)->whereNull('used_at')->orderByDesc('id')->first();
+        $row = DB::table('sd_otps')->where('token_id', $token->id)->whereNull('used_at')->orderByDesc('id')->first();
         if (!isset($row) || Carbon::parse($row->expires_at)->isPast()) {
             return false;
         }
         // Count the try before comparing, in one statement: requests sent at
         // the same moment cannot all get the same "attempts so far".
-        $counted = DB::table('its_otps')->where('id', $row->id)->whereNull('used_at')
+        $counted = DB::table('sd_otps')->where('id', $row->id)->whereNull('used_at')
             ->where('attempts', '<', static::OTP_ATTEMPTS)->increment('attempts');
         if ($counted !== 1) {
             return false;
@@ -267,7 +267,7 @@ class Tokens
         }
 
         // only one request can use the code; the right try is not a wrong one
-        return DB::table('its_otps')->where('id', $row->id)->whereNull('used_at')
+        return DB::table('sd_otps')->where('id', $row->id)->whereNull('used_at')
             ->update(['used_at' => now(), 'attempts' => DB::raw('attempts - 1')]) === 1;
     }
 
@@ -279,7 +279,7 @@ class Tokens
      */
     public static function allow(string $action, int $perMinute): bool
     {
-        $key = 'its:' . $action . ':' . sha1(strval(optional(request())->ip()));
+        $key = 'sd:' . $action . ':' . sha1(strval(optional(request())->ip()));
         if (RateLimiter::tooManyAttempts($key, $perMinute)) {
             return false;
         }
@@ -294,7 +294,7 @@ class Tokens
      */
     public static function blocked(string $action, int $perMinute): bool
     {
-        return RateLimiter::tooManyAttempts('its:' . $action . ':' . sha1(strval(optional(request())->ip())), $perMinute);
+        return RateLimiter::tooManyAttempts('sd:' . $action . ':' . sha1(strval(optional(request())->ip())), $perMinute);
     }
 
     protected static function random(): string

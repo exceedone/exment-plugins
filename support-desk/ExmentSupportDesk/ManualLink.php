@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 /**
  * The manual of this plugin on exment.net (ISS02882), in the language of the user: ja and vi
@@ -37,7 +37,7 @@ class ManualLink
         try {
             call_user_func([$extensions, 'addHelpUrls'], [['uri' => $plugin->getRouteUri(), 'help_uri' => static::url()]]);
         } catch (\Throwable $e) {
-            \Log::warning('ExmentITSupport: the manual of the header: ' . $e->getMessage());
+            \Log::warning('ExmentSupportDesk: the manual of the header: ' . $e->getMessage());
         }
     }
 

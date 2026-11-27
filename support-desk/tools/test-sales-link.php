@@ -1,9 +1,9 @@
 <?php
-// ExmentITSupport: the quote and the trial key of a ticket (SalesLink, ISS02941), the parts
-// with no database. Plain PHP: php it-support/tools/test-sales-link.php
-require __DIR__ . '/../ExmentITSupport/SalesLink.php';
+// ExmentSupportDesk: the quote and the trial key of a ticket (SalesLink, ISS02941), the parts
+// with no database. Plain PHP: php support-desk/tools/test-sales-link.php
+require __DIR__ . '/../ExmentSupportDesk/SalesLink.php';
 
-use App\Plugins\ExmentITSupport\SalesLink as S;
+use App\Plugins\ExmentSupportDesk\SalesLink as S;
 
 $ok = 0;
 $bad = 0;
@@ -23,8 +23,8 @@ $check('reply: both placeholders', S::fill('キー {trial_key}（{trial_until} �
 $check('reply: no end yet', S::fill('{trial_until}', 'K', null) === '');
 
 // every route of config.json has its method in PluginPage.php
-$config = json_decode(file_get_contents(__DIR__ . '/../ExmentITSupport/config.json'), true);
-$page = file_get_contents(__DIR__ . '/../ExmentITSupport/PluginPage.php');
+$config = json_decode(file_get_contents(__DIR__ . '/../ExmentSupportDesk/config.json'), true);
+$page = file_get_contents(__DIR__ . '/../ExmentSupportDesk/PluginPage.php');
 $missing = [];
 foreach ($config['route'] as $r) {
     if (!preg_match('/public function ' . preg_quote($r['function'], '/') . '\s*\(/', $page)) {

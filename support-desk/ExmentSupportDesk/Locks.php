@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport;
+namespace App\Plugins\ExmentSupportDesk;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,12 +32,12 @@ class Locks
         $userId = intval($user->getUserId());
         $now = Carbon::now();
 
-        $current = DB::table('its_locks')->where('ticket_id', $ticketId)->first();
+        $current = DB::table('sd_locks')->where('ticket_id', $ticketId)->first();
         if (isset($current) && intval($current->user_id) !== $userId && Carbon::parse($current->expires_at)->isFuture()) {
             return ['mine' => false, 'user_name' => $current->user_name];
         }
 
-        DB::table('its_locks')->updateOrInsert(['ticket_id' => $ticketId], [
+        DB::table('sd_locks')->updateOrInsert(['ticket_id' => $ticketId], [
             'user_id' => $userId,
             'user_name' => mb_substr(strval($user->user_name), 0, 255),
             'expires_at' => $now->copy()->addMinutes(static::MINUTES),
@@ -50,7 +50,7 @@ class Locks
     public static function other(int $ticketId): ?string
     {
         $user = \Exment::user();
-        $current = DB::table('its_locks')->where('ticket_id', $ticketId)->first();
+        $current = DB::table('sd_locks')->where('ticket_id', $ticketId)->first();
         if (!isset($current) || Carbon::parse($current->expires_at)->isPast()) {
             return null;
         }
@@ -64,7 +64,7 @@ class Locks
     public static function release(int $ticketId): void
     {
         $user = \Exment::user();
-        $q = DB::table('its_locks')->where('ticket_id', $ticketId);
+        $q = DB::table('sd_locks')->where('ticket_id', $ticketId);
         if (isset($user)) {
             $q->where('user_id', $user->getUserId());
         }

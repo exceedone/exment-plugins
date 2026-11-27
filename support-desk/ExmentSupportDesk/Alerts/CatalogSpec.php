@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Alerts;
+namespace App\Plugins\ExmentSupportDesk\Alerts;
 
 /**
  * The fields of an item of the request catalog (the ManageEngine research of ISS02928, idea 1),

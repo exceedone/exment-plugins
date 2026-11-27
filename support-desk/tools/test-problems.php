@@ -1,7 +1,7 @@
 <?php
-// ExmentITSupport: problems (the tickets of one cause together). In the folder of an Exment with
-// ExmentITSupport set up:
-//   php /path/to/it-support/tools/test-problems.php
+// ExmentSupportDesk: problems (the tickets of one cause together). In the folder of an Exment with
+// ExmentSupportDesk set up:
+//   php /path/to/support-desk/tools/test-problems.php
 // The tables are brought up to date first (the setup's "テーブルを更新"); what the test makes is
 // in a transaction rolled back at the end (the site is not changed).
 require getcwd() . '/vendor/autoload.php';
@@ -15,17 +15,17 @@ use Exceedone\Exment\Model\System;
 $ok = 0; $bad = 0;
 $check = function ($label, $cond, $extra = '') use (&$ok, &$bad) { echo ($cond ? 'OK  ' : 'NG  '), $label, $cond ? '' : "  $extra", "\n"; $cond ? $ok++ : $bad++; };
 
-$plugin = Plugin::where('plugin_name', 'ExmentITSupport')->first();
-if (!$plugin) { echo "ExmentITSupport is not installed here\n"; exit(1); }
+$plugin = Plugin::where('plugin_name', 'ExmentSupportDesk')->first();
+if (!$plugin) { echo "ExmentSupportDesk is not installed here\n"; exit(1); }
 $plugin->requirePlugin();
-$I = 'App\Plugins\ExmentITSupport\Its';
-$Schema = 'App\Plugins\ExmentITSupport\Schema';
-$P = 'App\Plugins\ExmentITSupport\Problems';
-$T = 'App\Plugins\ExmentITSupport\Tickets';
+$I = 'App\Plugins\ExmentSupportDesk\Its';
+$Schema = 'App\Plugins\ExmentSupportDesk\Schema';
+$P = 'App\Plugins\ExmentSupportDesk\Problems';
+$T = 'App\Plugins\ExmentSupportDesk\Tickets';
 $admin = LoginUser::query()->whereIn('base_user_id', (array) System::system_admin_users())->first();
 Auth::guard('admin')->setUser($admin);
 
-if (!$I::isInstalled()) { echo "set up ExmentITSupport first\n"; exit(1); }
+if (!$I::isInstalled()) { echo "set up ExmentSupportDesk first\n"; exit(1); }
 $r = $Schema::install(false);
 $check('the tables are up to date', $r['ok'] && $I::table($I::T_PROBLEM) !== null, strval($r['message'] ?? ''));
 
@@ -71,7 +71,7 @@ try {
     app()->forgetInstance('mailer');
     $mails = function () { return count(app('mail.manager')->mailer('array')->getSymfonyTransport()->messages()); };
     $before = $mails();
-    $A = 'App\Plugins\ExmentITSupport\Automation';
+    $A = 'App\Plugins\ExmentSupportDesk\Automation';
     $n = $P::resolveAll($P::find($problem->id));
     $check('no mail to the customers (no survey either)', $mails() === $before, (string) ($mails() - $before));
     $check('the survey is asked again after it', $A::$quiet === false);

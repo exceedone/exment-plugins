@@ -1,9 +1,9 @@
 <?php
-// ExmentITSupport: the steps of the SLA escalation (Alerts\EscalationRule). Plain PHP:
-//   php it-support/tools/test-sla-escalation.php
-require __DIR__ . '/../ExmentITSupport/Alerts/EscalationRule.php';
+// ExmentSupportDesk: the steps of the SLA escalation (Alerts\EscalationRule). Plain PHP:
+//   php support-desk/tools/test-sla-escalation.php
+require __DIR__ . '/../ExmentSupportDesk/Alerts/EscalationRule.php';
 
-use App\Plugins\ExmentITSupport\Alerts\EscalationRule as R;
+use App\Plugins\ExmentSupportDesk\Alerts\EscalationRule as R;
 
 $ok = 0;
 $bad = 0;

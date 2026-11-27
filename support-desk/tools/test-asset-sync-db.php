@@ -1,7 +1,7 @@
 <?php
-// ExmentITSupport: the data sync of monitoring tools into the IT assets, in an Exment 7.3 with
-// ExmentITSupport set up (ISS02928, phase 3):
-//   php /path/to/it-support/tools/test-asset-sync-db.php
+// ExmentSupportDesk: the data sync of monitoring tools into the IT assets, in an Exment 7.3 with
+// ExmentSupportDesk set up (ISS02928, phase 3):
+//   php /path/to/support-desk/tools/test-asset-sync-db.php
 // The answers of Mackerel and Zabbix are given by a fake HTTP client (the fixtures, hosts of
 // example.invalid): nothing leaves the machine. What the test makes is in a transaction rolled
 // back at the end.
@@ -21,22 +21,22 @@ use GuzzleHttp\Psr7\Response;
 $ok = 0; $bad = 0;
 $check = function ($label, $cond, $extra = '') use (&$ok, &$bad) { echo ($cond ? 'OK  ' : 'NG  '), $label, $cond ? '' : "  $extra", "\n"; $cond ? $ok++ : $bad++; };
 
-$plugin = Plugin::where('plugin_name', 'ExmentITSupport')->first();
-if (!$plugin) { echo "ExmentITSupport is not installed here\n"; exit(1); }
+$plugin = Plugin::where('plugin_name', 'ExmentSupportDesk')->first();
+if (!$plugin) { echo "ExmentSupportDesk is not installed here\n"; exit(1); }
 $plugin->requirePlugin();
-$I = 'App\Plugins\ExmentITSupport\Its';
-$Schema = 'App\Plugins\ExmentITSupport\Schema';
-$AS = 'App\Plugins\ExmentITSupport\AssetSync';
-$Base = 'App\Plugins\ExmentITSupport\Sync\AssetConnector';
+$I = 'App\Plugins\ExmentSupportDesk\Its';
+$Schema = 'App\Plugins\ExmentSupportDesk\Schema';
+$AS = 'App\Plugins\ExmentSupportDesk\AssetSync';
+$Base = 'App\Plugins\ExmentSupportDesk\Sync\AssetConnector';
 if (!$AS::available()) { echo "this Exment has no data sync (7.3 and later)\n"; exit(1); }
 Auth::guard('admin')->setUser(LoginUser::query()->whereIn('base_user_id', (array) System::system_admin_users())->first());
-if (!$I::isInstalled()) { echo "set up ExmentITSupport first\n"; exit(1); }
+if (!$I::isInstalled()) { echo "set up ExmentSupportDesk first\n"; exit(1); }
 $r = $Schema::install(false);
 $check('the tables are up to date', $r['ok'], strval($r['message'] ?? ''));
 $AS::register();
 $Connectors = 'Exceedone\Exment\Services\Sync\SyncConnectors';
-$mk = $Connectors::get('its_mackerel_assets');
-$zb = $Connectors::get('its_zabbix_assets');
+$mk = $Connectors::get('sd_mackerel_assets');
+$zb = $Connectors::get('sd_zabbix_assets');
 $check('both connectors are registered', $mk !== null && $zb !== null);
 
 $fixture = function ($name) { return (string) file_get_contents(__DIR__ . '/fixtures/hosts/' . $name . '.json'); };
@@ -56,7 +56,7 @@ config(['exment.notify_webhook_allow_hosts' => 'api.example.invalid,zabbix.examp
 DB::beginTransaction();
 try {
     // ---- Mackerel, link only (the default) ---------------------------------
-    $conn = new Exceedone\Exment\Model\SyncConnection(['name' => 'test mackerel', 'connector' => 'its_mackerel_assets', 'settings' => ['org' => 'example', 'api_url' => 'https://api.example.invalid'], 'enabled' => true]);
+    $conn = new Exceedone\Exment\Model\SyncConnection(['name' => 'test mackerel', 'connector' => 'sd_mackerel_assets', 'settings' => ['org' => 'example', 'api_url' => 'https://api.example.invalid'], 'enabled' => true]);
     $conn->setSecret('api_key', 'SECRET-KEY-1');
     $conn->save();
     $mapping = Exceedone\Exment\Model\SyncMapping::create([
@@ -118,7 +118,7 @@ try {
     $check('two assets match: neither linked, a note names both', $twin->kind === 'skipped' && strpos(implode('', $twin->notes), '#' . $a->id) !== false && strpos(implode('', $twin->notes), '#' . $b->id) !== false);
 
     // ---- Zabbix --------------------------------------------------------------
-    $zconn = new Exceedone\Exment\Model\SyncConnection(['name' => 'test zabbix', 'connector' => 'its_zabbix_assets', 'settings' => ['url' => 'https://zabbix.example.invalid/', 'legacy' => ''], 'enabled' => true]);
+    $zconn = new Exceedone\Exment\Model\SyncConnection(['name' => 'test zabbix', 'connector' => 'sd_zabbix_assets', 'settings' => ['url' => 'https://zabbix.example.invalid/', 'legacy' => ''], 'enabled' => true]);
     $zconn->setSecret('api_token', 'ZBX-TOKEN-1');
     $zconn->save();
     $zmap = Exceedone\Exment\Model\SyncMapping::create([

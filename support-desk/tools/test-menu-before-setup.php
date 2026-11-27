@@ -1,6 +1,6 @@
 <?php
-// ExmentITSupport 1.0.9: セットアップの前の左メニュー。ExmentITSupport を入れた Exment のフォルダで試す:
-//   php /path/to/it-support/tools/test-menu-before-setup.php
+// ExmentSupportDesk 1.0.9: セットアップの前の左メニュー。ExmentSupportDesk を入れた Exment のフォルダで試す:
+//   php /path/to/support-desk/tools/test-menu-before-setup.php
 // セットアップ前のサイトは、トランザクションの中で作って最後に戻します（サイトは変わりません）。
 require getcwd() . '/vendor/autoload.php';
 $app = require getcwd() . '/bootstrap/app.php';
@@ -17,20 +17,20 @@ $ok = 0; $bad = 0;
 $Features = 'Exceedone\Exment\Services\Features';
 $check = function ($label, $cond, $extra = '') use (&$ok, &$bad) { echo ($cond ? 'OK  ' : 'NG  '), $label, $cond ? '' : "  $extra", "\n"; $cond ? $ok++ : $bad++; };
 
-$plugin = Plugin::where('plugin_name', 'ExmentITSupport')->first();
-if (!$plugin) { echo "ExmentITSupport is not installed here\n"; exit(1); }
+$plugin = Plugin::where('plugin_name', 'ExmentSupportDesk')->first();
+if (!$plugin) { echo "ExmentSupportDesk is not installed here\n"; exit(1); }
 $plugin->requirePlugin();
-$I = 'App\Plugins\ExmentITSupport\Its';
-$Schema = 'App\Plugins\ExmentITSupport\Schema';
-$page = 'App\Plugins\ExmentITSupport\PluginPage';
-$desk = function () { return DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'its_desk')->get(); };
+$I = 'App\Plugins\ExmentSupportDesk\Its';
+$Schema = 'App\Plugins\ExmentSupportDesk\Schema';
+$page = 'App\Plugins\ExmentSupportDesk\PluginPage';
+$desk = function () { return DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_name', 'sd_desk')->get(); };
 $admin = LoginUser::query()->whereIn('base_user_id', (array) System::system_admin_users())->first();
 $user = LoginUser::query()->whereNotIn('base_user_id', (array) System::system_admin_users())->first();
 $sees = function ($login) {
     System::clearCache();
     $login = LoginUser::find($login->id);              // its permissions read again
     Auth::guard('admin')->setUser($login);
-    $row = collect((new Menu())->allNodes())->firstWhere('menu_name', 'its_desk');
+    $row = collect((new Menu())->allNodes())->firstWhere('menu_name', 'sd_desk');
     return isset($row) && $login->visible($row);
 };
 
@@ -55,7 +55,7 @@ try {
     if (class_exists($Features) && method_exists($Features, 'save')) {
         $on = [];
         foreach (array_keys($Features::definitions()) as $key) {
-            if (strpos($key, 'exment_it_support') === 0) { $on[$key] = ['enabled' => 1]; }
+            if (strpos($key, 'exment_support_desk') === 0) { $on[$key] = ['enabled' => 1]; }
         }
         $Features::save($on);
         $Features::reset();
@@ -67,7 +67,7 @@ try {
     $rows = $desk();
     $check('one entry before the setup', $rows->count() === 1);
     $group = method_exists(Menu::class, 'groupParentId') ? Menu::groupParentId('it_support') : null;
-    $check('in the group "ITサポート" (top level on an older core)', intval($rows->first()->parent_id ?? -1) === intval($group ?? 0));
+    $check('in the group it_support (top level on an older core)', intval($rows->first()->parent_id ?? -1) === intval($group ?? 0));
     $check('the system administrator sees it', $sees($admin));
     if ($user) {
         $check('a user who is not an administrator does not', !$sees($user));

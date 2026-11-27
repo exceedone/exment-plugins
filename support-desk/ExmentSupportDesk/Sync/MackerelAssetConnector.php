@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Plugins\ExmentITSupport\Sync;
+namespace App\Plugins\ExmentSupportDesk\Sync;
 
-use App\Plugins\ExmentITSupport\Assets\HostMapper;
+use App\Plugins\ExmentSupportDesk\Assets\HostMapper;
 use Exceedone\Exment\Model\SyncConnection;
 use Exceedone\Exment\Services\Sync\SyncException;
 
@@ -11,7 +11,7 @@ use Exceedone\Exment\Services\Sync\SyncException;
  */
 class MackerelAssetConnector extends AssetConnector
 {
-    const KEY = 'its_mackerel_assets';
+    const KEY = 'sd_mackerel_assets';
 
     const DEFAULT_API = 'https://api.mackerelio.com';
 
@@ -22,7 +22,7 @@ class MackerelAssetConnector extends AssetConnector
 
     public function label(): string
     {
-        return 'Mackerel → IT 資産（サポート窓口）';
+        return 'Mackerel → IT 資産（サポートデスク）';
     }
 
     protected function tool(): string
