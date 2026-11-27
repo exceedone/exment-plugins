@@ -166,6 +166,15 @@
     .pp-dash .pp-pj-name{white-space:normal;overflow-wrap:anywhere;line-height:1.3;padding:4px 0;}
 }
 
+/* ISS02939 item 6, step 1b: a phone. Taps of 44px for the star, the menu, the panel links and
+   the tabs; the column captions wrap instead of being cut (「自分の担当」). */
+@media (max-width:760px){
+    .pp-dash .pp-star{min-width:36px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
+    .pp-dash .pp-pj-more{width:44px;height:44px;}
+    .pp-dash .pp-ph-right a,.pp-dash .pp-dfold a{display:inline-flex;align-items:center;min-height:44px;}
+    .pp-dash .pp-tabs button{min-height:44px;}
+    .pp-dash .pp-pjh span{white-space:normal;line-height:1.15;overflow-wrap:anywhere;}
+}
 /* project tree on the dashboard (fold, drag) */
 .pp-dash .pp-pj[hidden]{display:none !important;}
 .pp-dash .pp-dtgl-slot{flex:none;width:16px;display:inline-flex;justify-content:center;}
