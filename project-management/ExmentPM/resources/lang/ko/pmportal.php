@@ -2306,4 +2306,15 @@ return [
     'back_tip' => '%s(으)로 돌아가기',
     // ROW-1
     'row_unread' => '읽지 않음',
+    // the card of "My insights" of Exment (ISS02964)
+    'my_insights' => [
+        'title' => '나의 과제(ExmentPM)',
+        'open' => '담당 과제(미완료)',
+        'overdue' => '기한이 지난 과제',
+        'due_soon' => '%s일 이내 기한',
+        'finished' => '이 기간에 끝낸 과제',
+        'hours' => '실적 시간(담당 과제 합계)',
+        'open_list' => '과제 목록 열기',
+        'help' => 'ExmentPM 과제 중 담당자에 내가 포함된 것입니다.',
+    ],
 ];

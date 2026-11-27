@@ -2306,4 +2306,15 @@ return [
     'back_tip' => 'Zurück zu %s',
     // ROW-1
     'row_unread' => 'Ungelesen',
+    // the card of "My insights" of Exment (ISS02964)
+    'my_insights' => [
+        'title' => 'Meine Aufgaben (ExmentPM)',
+        'open' => 'Mir zugewiesen (nicht erledigt)',
+        'overdue' => 'Überfällig',
+        'due_soon' => 'Fällig innerhalb von %s Tagen',
+        'finished' => 'In diesem Zeitraum erledigt',
+        'hours' => 'Ist-Stunden (mir zugewiesene Aufgaben)',
+        'open_list' => 'Aufgaben öffnen',
+        'help' => 'Die ExmentPM-Aufgaben, denen Sie zugewiesen sind.',
+    ],
 ];

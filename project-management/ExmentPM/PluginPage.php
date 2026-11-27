@@ -158,6 +158,18 @@ class PluginPage extends PluginPageBase
 
     // ---- portal screens -------------------------------------------------
 
+    /**
+     * The card of "My insights" of Exment (ISS02964): the issues assigned to the user who looks
+     * (Exment calls it with that user and the period; older Exment versions never do).
+     *
+     * @param mixed $user the login user
+     * @return array<string, mixed>|null
+     */
+    public function myInsightsCard($user, \Carbon\Carbon $from, \Carbon\Carbon $to)
+    {
+        return PortalMyInsights::card($user, $from, $to);
+    }
+
     public function index()
     {
         return $this->respond($this->portal()->index(request(), new Content()));

@@ -2306,4 +2306,15 @@ return [
     'back_tip' => 'Quay lại %s',
     // ROW-1
     'row_unread' => 'Chưa đọc',
+    // the card of "My insights" of Exment (ISS02964)
+    'my_insights' => [
+        'title' => 'Công việc của tôi (ExmentPM)',
+        'open' => 'Được giao cho tôi (chưa xong)',
+        'overdue' => 'Quá hạn',
+        'due_soon' => 'Đến hạn trong %s ngày',
+        'finished' => 'Hoàn thành trong khoảng này',
+        'hours' => 'Giờ thực tế (công việc được giao)',
+        'open_list' => 'Mở danh sách công việc',
+        'help' => 'Các công việc ExmentPM có bạn trong người phụ trách.',
+    ],
 ];

@@ -2306,4 +2306,15 @@ return [
     'back_tip' => '返回%s',
     // ROW-1
     'row_unread' => '未读',
+    // the card of "My insights" of Exment (ISS02964)
+    'my_insights' => [
+        'title' => '我的课题（ExmentPM）',
+        'open' => '分配给我的（未完成）',
+        'overdue' => '已过期',
+        'due_soon' => '%s 天内到期',
+        'finished' => '此期间完成的课题',
+        'hours' => '实际工时（分配给我的课题合计）',
+        'open_list' => '打开课题列表',
+        'help' => 'ExmentPM 中负责人包含您的课题。',
+    ],
 ];

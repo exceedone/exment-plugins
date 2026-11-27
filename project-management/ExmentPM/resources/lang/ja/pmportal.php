@@ -2343,4 +2343,15 @@ return [
         'close' => '閉じる',
         'reload' => '再読み込み',
     ],
+    // the card of "My insights" of Exment (ISS02964)
+    'my_insights' => [
+        'title' => '自分の課題（ExmentPM）',
+        'open' => '担当の課題（終わっていない）',
+        'overdue' => '期限を過ぎた課題',
+        'due_soon' => '%s 日以内が期限',
+        'finished' => 'この期間に終えた課題',
+        'hours' => '実績時間（担当の課題の合計）',
+        'open_list' => '課題の一覧を開く',
+        'help' => 'ExmentPM の課題で、担当者にあなたが入っているものです。',
+    ],
 ];
