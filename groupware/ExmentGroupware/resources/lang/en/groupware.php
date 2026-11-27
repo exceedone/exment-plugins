@@ -14,6 +14,8 @@ return [
         'today' => 'Today',
         'prev' => 'Previous',
         'next' => 'Next',
+        'prev_day' => 'Previous day',
+        'next_day' => 'Next day',
         'day' => 'Day',
         'week' => 'Week',
         'month' => 'Month',
