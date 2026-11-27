@@ -62,6 +62,16 @@
 .gwc-replybar .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gwc-msg .ed textarea{width:100%;min-height:60px;border:1px solid var(--line);border-radius:6px;padding:4px 6px}
 .gwc-msg.hl .bub{outline:2px solid var(--acc)}
+.gwc-msg .tk{font-size:11px;color:var(--sub);margin-top:2px}
+.gwc-msg .tk b{color:var(--acc)}
+.gwc-search{padding:0 10px 8px}
+.gwc-search input{width:100%;border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+.gwc-panel{position:absolute;right:12px;top:48px;width:min(420px,calc(100% - 24px));max-height:70%;overflow:auto;background:var(--box);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:6;padding:8px 10px}
+.gwc-panel .it{padding:6px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.gwc-panel .it:hover{background:var(--hover)}
+.gwc-panel .it small{color:var(--faint)}
+.gwc-panel .it.done .t{text-decoration:line-through;color:var(--faint)}
+.gwc-main{position:relative}
 @media (max-width:760px){
   .gwc-app{grid-template-columns:1fr}
   .gwc-app.open .gwc-side{display:none}
@@ -73,10 +83,11 @@
 <div class="gwc-app" id="gwc-app">
   <aside class="gwc-side" aria-label="ルーム">
     <div class="hd"><button type="button" class="b" id="gwc-new"><i class="fa fa-users"></i> グループ</button><button type="button" class="b" id="gwc-dm"><i class="fa fa-user"></i> 1 対 1</button></div>
+    <div class="gwc-search"><input type="search" id="gwc-q" placeholder="メッセージを探す" aria-label="メッセージを探す"></div>
     <div class="gwc-rooms" id="gwc-rooms" role="list"></div>
   </aside>
   <section class="gwc-main">
-    <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
+    <div class="gwc-top"><button type="button" class="b gwc-back" id="gwc-back" aria-label="ルームの一覧へ"><i class="fa fa-chevron-left"></i></button><span id="gwc-title"></span><span class="sp"></span><button type="button" class="b" id="gwc-tasks"><i class="fa fa-check-square-o"></i> タスク</button> <button type="button" class="b" id="gwc-mem" hidden><i class="fa fa-user-plus"></i> メンバー</button></div>
     <div class="gwc-list" id="gwc-list" aria-live="polite"><div class="gwc-empty">左のルームを選ぶか、新しいルームを作ってください。</div></div>
     <div class="off" id="gwc-off" hidden>しばらく何もしていないので、新しいメッセージの確かめを止めています。ページを動かすとまた確かめます。</div>
     <div class="gwc-replybar" id="gwc-replybar" hidden><i class="fa fa-reply"></i><span class="t" id="gwc-replyt"></span><button type="button" class="b" id="gwc-replyx" aria-label="返信をやめる"><i class="fa fa-times"></i></button></div>
@@ -141,10 +152,11 @@ function msgHtml(m, prevDay) {
         '<div class="gwc-msg' + (mine ? ' me' : '') + (ment ? ' ment' : '') + (m.deleted ? ' del' : '') + '" data-id="' + m.id + '">' +
         (mine ? '' : '<span class="who">' + esc(m.name) + '</span>') +
         (m.deleted ? '' : '<span class="acts"><button type="button" data-act="reply" title="返信">返信</button><button type="button" data-act="react" title="リアクション">☺</button>' +
+            '<button type="button" data-act="task" title="タスクにする">タスク</button>' + (B.pm ? '<button type="button" data-act="issue" title="ExmentPM の課題にする">課題</button>' : '') +
             (mine ? '<button type="button" data-act="edit">編集</button><button type="button" data-act="delete">消す</button>' : '') + '</span>') +
         (m.quote ? '<div class="q" data-goto="' + m.quote.id + '">' + esc(m.quote.name) + '：' + (m.quote.deleted ? '（消されました）' : esc(m.quote.text)) + '</div>' : '') +
         '<div class="bub">' + (m.deleted ? 'このメッセージは消されました' : textHtml(m.body)) + (files ? '<div class="files">' + files + '</div>' : '') + '</div>' +
-        rxHtml(m) +
+        rxHtml(m) + tkHtml(m) +
         '<span class="meta">' + esc(String(m.at).slice(11, 16)) + (m.edited ? '（編集）' : '') + (mine && m.read > 0 ? ' · 既読 ' + m.read : '') + '</span></div>';
 }
 function rxHtml(m) {
@@ -159,6 +171,12 @@ function rxHtml(m) {
 function sig() {
     return JSON.stringify(S.msgs.map(function (m) { return [m.id, m.body, m.deleted, m.edited, m.read, m.reactions, m.tasks, m.quote, m.files]; }));
 }
+function tkHtml(m) {
+    return (m.tasks || []).map(function (t) {
+        if (t.pm_issue) { return '<div class="tk"><i class="fa fa-tasks"></i> ExmentPM の課題にしました</div>'; }
+        return '<div class="tk"><i class="fa ' + (t.done ? 'fa-check-square-o' : 'fa-square-o') + '"></i> タスク' + (t.assignee ? '：<b>' + esc(name(t.assignee)) + '</b>' : '') + (t.due ? '（' + esc(t.due) + ' まで）' : '') + (t.done ? ' 済み' : '') + '</div>';
+    }).join('');
+}
 function replace(m) { for (var i = 0; i < S.msgs.length; i++) { if (S.msgs[i].id === m.id) { S.msgs[i] = m; return true; } } return false; }
 function renderMsgs(keepScroll) {
     var list = $('gwc-list');
@@ -167,7 +185,7 @@ function renderMsgs(keepScroll) {
     list.innerHTML = S.msgs.length ? S.msgs.map(function (m) { var h = msgHtml(m, prev); prev = day(m.at); return h; }).join('') : '<div class="gwc-empty">まだメッセージはありません。</div>';
     if (!keepScroll || atEnd) { list.scrollTop = list.scrollHeight; }
 }
-function openRoom(id) {
+function openRoom(id, then) {
     S.room = id;
     S.editing = false;
     setReply(null);
@@ -183,6 +201,7 @@ function openRoom(id) {
         S.msgs = d.messages || [];
         renderMsgs(false);
         markRead();
+        if (then) { then(); }
     });
     try { history.replaceState(null, '', location.pathname + '?room=' + id); } catch (e) { /* the address only */ }
 }
@@ -328,9 +347,99 @@ $('gwc-list').addEventListener('click', function (ev) {
     if (a === 'reply') { setReply(id); }
     if (a === 'react') { pick(act, id); }
     if (a === 'edit') { startEdit(el, m); }
+    if (a === 'task') { makeTask(m); }
+    if (a === 'issue') { makeIssue(m); }
     if (a === 'delete' && window.confirm('このメッセージを消しますか？')) {
         api(u('delete', id), {}).then(function (d) { if (d && d.message) { replace(d.message); renderMsgs(true); } });
     }
+});
+
+// 「タスクにする」, 「課題にする」, the list of one's tasks, the search
+function memberChecks(roomId, done) {
+    api(u('room', roomId)).then(function (d) { done(d && d.room ? d.room.members : []); });
+}
+function makeTask(m) {
+    memberChecks(m.room, function (members) {
+        var opts = '<option value="">（担当なし）</option>' + members.map(function (id) { return '<option value="' + id + '"' + (id === B.me ? ' selected' : '') + '>' + esc(name(id)) + '</option>'; }).join('');
+        var w = dialog('タスクにする', '<input type="text" class="tt" maxlength="200" style="width:100%"><p style="margin:8px 0 2px">担当</p><select class="as" style="width:100%">' + opts + '</select><p style="margin:8px 0 2px">期限</p><input type="date" class="du">', function (w, close) {
+            api(u('task', m.id), { title: w.querySelector('.tt').value, assignee: w.querySelector('.as').value, due: w.querySelector('.du').value }).then(function (d) {
+                if (!d || d.ok === false) { alert((d && d.message) || 'できませんでした'); return; }
+                close(); reloadOne(m.id);
+            });
+        });
+        w.querySelector('.tt').value = String(m.body || '').split('\n')[0].slice(0, 200);
+    });
+}
+function makeIssue(m) {
+    api(B.url.projects).then(function (d) {
+        var ps = d && d.projects ? d.projects : {};
+        var keys = Object.keys(ps);
+        if (!keys.length) { alert('課題を作れるプロジェクトがありません。'); return; }
+        dialog('ExmentPM の課題にする', '<select class="pj" style="width:100%">' + keys.map(function (k) { return '<option value="' + esc(k) + '">' + esc(ps[k]) + '</option>'; }).join('') + '</select>', function (w, close) {
+            api(u('issue', m.id), { project: w.querySelector('.pj').value }).then(function (r) {
+                if (!r || r.ok === false) { alert((r && r.message) || 'できませんでした'); return; }
+                close(); reloadOne(m.id);
+                if (r.url) { window.open(r.url, '_blank', 'noopener'); }
+            });
+        });
+    });
+}
+function reloadOne(id) {
+    if (!S.room) { return; }
+    api(u('messages', S.room) + '?around=' + id).then(function (d) { (d.messages || []).forEach(function (x) { replace(x); }); renderMsgs(true); });
+}
+function panel(html) {
+    var old = document.querySelector('.gwc-panel');
+    if (old) { old.parentNode.removeChild(old); }
+    if (html === null) { return null; }
+    var p = document.createElement('div');
+    p.className = 'gwc-panel';
+    p.innerHTML = html;
+    document.querySelector('.gwc-main').appendChild(p);
+    setTimeout(function () { document.addEventListener('click', function off(ev) { if (!p.contains(ev.target) && ev.target.id !== 'gwc-tasks' && ev.target.id !== 'gwc-q') { if (p.parentNode) { p.parentNode.removeChild(p); } document.removeEventListener('click', off); } }); }, 0);
+    return p;
+}
+function jump(roomId, messageId) {
+    var go = function () {
+        api(u('messages', roomId) + '?around=' + messageId).then(function (d) {
+            S.msgs = d.messages || [];
+            renderMsgs(true);
+            var el = $('gwc-list').querySelector('.gwc-msg[data-id="' + messageId + '"]');
+            if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 1500); }
+        });
+    };
+    if (S.room !== roomId) { openRoom(roomId, go); } else { go(); }
+}
+$('gwc-tasks').addEventListener('click', function () {
+    api(B.url.tasks).then(function (d) {
+        var list = (d && d.tasks) || [];
+        var p = panel('<b>自分のタスク</b>' + (list.length ? list.map(function (t) {
+            return '<div class="it' + (t.done ? ' done' : '') + '" data-room="' + t.room + '" data-msg="' + t.message + '"><label style="font-weight:400;margin:0"><input type="checkbox" data-done="' + t.id + '"' + (t.done ? ' checked' : '') + (t.pm_issue ? ' disabled' : '') + '> <span class="t">' + esc(t.title) + '</span></label><br><small>' +
+                (t.pm_issue ? 'ExmentPM の課題' : (t.assignee_name ? esc(t.assignee_name) : '担当なし') + (t.due ? ' · ' + esc(t.due) + ' まで' : '')) + '</small></div>';
+        }).join('') : '<p style="color:var(--faint)">タスクはありません。</p>'));
+        p.addEventListener('click', function (ev) {
+            var c = ev.target.closest('[data-done]');
+            if (c) { api(u('task_done', c.getAttribute('data-done')), { done: c.checked }).then(function () { c.closest('.it').classList.toggle('done', c.checked); }); return; }
+            var it = ev.target.closest('.it');
+            if (it && ev.target.tagName !== 'INPUT') { panel(null); jump(parseInt(it.getAttribute('data-room'), 10), parseInt(it.getAttribute('data-msg'), 10)); }
+        });
+    });
+});
+var qTimer = null;
+$('gwc-q').addEventListener('input', function () {
+    var q = this.value.trim();
+    clearTimeout(qTimer);
+    if (!q) { panel(null); return; }
+    qTimer = setTimeout(function () {
+        api(B.url.search + '?q=' + encodeURIComponent(q)).then(function (d) {
+            var rs = (d && d.results) || [];
+            var roomName = function (id) { var r = S.rooms.filter(function (x) { return x.id === id; })[0]; return r ? r.name : ''; };
+            var p = panel('<b>「' + esc(q) + '」</b>' + (rs.length ? rs.map(function (r) {
+                return '<div class="it" data-room="' + r.room + '" data-msg="' + r.id + '">' + esc(r.text) + '<br><small>' + esc(roomName(r.room)) + ' · ' + esc(r.name) + ' · ' + esc(String(r.at).slice(0, 16)) + '</small></div>';
+            }).join('') : '<p style="color:var(--faint)">見つかりません。</p>'));
+            p.addEventListener('click', function (ev) { var it = ev.target.closest('.it'); if (it) { panel(null); jump(parseInt(it.getAttribute('data-room'), 10), parseInt(it.getAttribute('data-msg'), 10)); } });
+        });
+    }, 300);
 });
 
 // rooms
@@ -405,7 +514,7 @@ $('gwc-mem').addEventListener('click', function () {
 
 renderRooms();
 S.top = B.top || 0;
-if (B.open && S.rooms.some(function (r) { return r.id === B.open; })) { openRoom(B.open); }
+if (B.open && S.rooms.some(function (r) { return r.id === B.open; })) { if (B.jump) { jump(B.open, B.jump); } else { openRoom(B.open); } }
 poll();
 })();
 </script>

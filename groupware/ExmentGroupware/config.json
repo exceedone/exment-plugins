@@ -393,6 +393,60 @@
                 "admin.bootstrap",
                 "admin.pjax"
             ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/api/tasks",
+            "function": "chatTasks",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/message/{id}/task",
+            "function": "chatTask",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/task/{id}/done",
+            "function": "chatTaskDone",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/api/projects",
+            "function": "chatProjects",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/message/{id}/issue",
+            "function": "chatIssue",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/api/search",
+            "function": "chatSearch",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
         }
     ]
 }
