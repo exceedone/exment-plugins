@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
  * counts business days (the recurring schedules, the reminders) asks for a BusinessCalendar and
  * never reads the table.
  *
- * When Exment gets a business-day calendar of its own (IT Support's SLA keeps its own list of
+ * When Exment gets a business-day calendar of its own (Support Desk's SLA keeps its own list of
  * holidays today), calendar() reads that one instead, and nothing that uses it changes.
  */
 class PortalCalendarDays

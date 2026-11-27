@@ -1502,6 +1502,9 @@ return [
         'opt_top_is_high_help' => '「至急・高・中・低」のように、上ほど優先度が高い順で並べている場合はオン。逆順に並べている場合はオフにします。',
         'opt_severe_bump' => 'セキュリティ・データ消失の疑いで優先度を 1 段階上げる',
         'opt_severe_bump_help' => '権限の誤り、データの消失や破損、バックアップ失敗が書かれている課題は、影響範囲と緊急度から出た優先度を 1 段階引き上げます。',
+        'opt_nightly_hour' => 'AI のうめ合わせを毎晩動かす（時刻）',
+        'opt_nightly_hour_help' => 'オンにすると、Exment が 5 分ごとに動かすこのプラグインのバッチ（schedule:run）が、1 日に 1 回、この時刻（サーバーの時計）に、AI 自動入力がオンのプロジェクトの空いている項目を AI でうめます。1 回に 100 回まで呼び出し、プロジェクトごとの 1 日の上限も守ります。うまくいかなかったときは、その時間のうちにもう一度試します。手で動かすときは php artisan exment:batch --name=ExmentPM --param1=all です。',
+        'opt_nightly_off' => '動かさない',
         // The key field is write-only: what it says instead of the key.
         'opt_api_key_placeholder' => '設定済み（変更するときだけ入力）',
         'opt_api_key_state_set' => '現在、キーが保存されています。空欄のまま保存すると、保存済みのキーをそのまま使います。',
@@ -2002,9 +2005,9 @@ return [
     // recurring schedules (ISS00432, stage 2)
     'sched' => [
         'feature' => 'プロジェクト管理：繰り返しの予定',
-        'feature_help' => '毎年・毎月・毎週・毎日・決まった日付の予定から、ひな形の課題を写して、期限の何日か前に課題を作ります。プロジェクトの管理者が、プロジェクトの設定の「繰り返しの予定」で決めます。cron で php artisan exment:batch --name=ExmentPM --param1=schedule を 1 日 1 回以上動かしてください。',
+        'feature_help' => '毎年・毎月・毎週・毎日・決まった日付の予定から、ひな形の課題を写して、期限の何日か前に課題を作ります。プロジェクトの管理者が、プロジェクトの設定の「繰り返しの予定」で決めます。Exment の schedule:run（Exment に要る毎分の cron）が、このプラグインのバッチを 5 分ごとに動かします。schedule:run を動かしていないときは、cron で php artisan exment:batch --name=ExmentPM --param1=schedule を 5 分ごとに動かしてください（どちらもないときは、ポータルのトップかプロジェクトを開いたときに作ります）。課題は予定を作った人として作ります。',
         'on' => '繰り返しの予定を使う',
-        'on_help' => '毎年・毎月・毎週などの予定から、課題を自動で作ります。cron で php artisan exment:batch --name=ExmentPM --param1=schedule を動かしてください。',
+        'on_help' => '毎年・毎月・毎週などの予定から、課題を自動で作ります。Exment の schedule:run が 5 分ごとに動かします（動かしていないときは cron で php artisan exment:batch --name=ExmentPM --param1=schedule を 5 分ごとに）。',
         'page_title' => '繰り返しの予定',
         'page_help' => '決まりの日付ごとに、ひな形の課題を写して課題を作ります。作るのは「何日前に作るか」の日です。過ぎた回は作りません。',
         'saved' => '保存しました。',
@@ -2013,6 +2016,10 @@ return [
         'delete' => '消す',
         'delete_ask' => 'この予定を消しますか？（作った課題は残ります）',
         'off' => '止めています',
+        'blocked_no_owner' => 'この予定からは課題を作れません。予定を作った人がいないか、プロジェクトのメンバーではなくなっていて、プロジェクトに管理者もいません。予定を作り直すか、プロジェクトに管理者を入れてください。',
+        'blocked_no_right' => 'この予定からは課題を作れません。課題を作る人（予定を作った人、またはプロジェクトの最初の管理者）に、課題のテーブルを編集できる権限がありません。',
+        'blocked_since' => ':at から',
+        'err_no_right' => 'このプロジェクトに課題を追加する権限がないため、予定を保存できません。予定の課題は、あとで予定を作った人として、だれにも聞かずに作られます。',
         'name' => '名前',
         'template' => 'ひな形の課題',
         'template_help' => 'この課題の件名・種別・担当者・本文などを写します。状態は初めの状態に、ファイルと実績は写しません。開始日は、ひな形の開始日と期限日の間と同じだけ前にします。',

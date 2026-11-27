@@ -6,6 +6,16 @@ return [
     'feature_office' => 'Office（ibisOffice）',
     'feature_calendar' => 'カレンダー',
     'feature_calendar_help' => '共有のカレンダー：自分・ほかの人・部署の予定を日・週・月・リストで見る、くりかえし、参加者と返事、公開の範囲（Exment Plugin Groupware）。',
+    // a secret of the plugin's settings (SecretField): never shown again
+    'secret' => [
+        'set' => '設定済み',
+        'not_set' => '未設定',
+        'help_set' => '保存した値は表示しません。変えるときだけ新しい値を入れます。空のまま保存すると今の値のままです。',
+        'help_not_set' => '値を入れて保存します。保存した値は暗号化して保存し、あとで表示しません。',
+        'placeholder_set' => '設定済み（変えるときだけ入力）',
+        'placeholder_not_set' => '',
+        'clear' => '値を消す',
+    ],
     // the calendar (ISS02947)
     'cal' => [
         'title' => 'カレンダー',
@@ -146,7 +156,7 @@ return [
     'feature_call' => '通話',
     'feature_call_help' => 'チャットのルームから、4 人までの声・カメラ・画面の共有で通話する（ブラウザーどうしで直接つなぐ。録音はしない）。',
     'feature_calendar_links' => 'カレンダーの連携（ICS）',
-    'feature_calendar_links_help' => '自分のカレンダーを ICS の URL でほかのカレンダーに見せる・ほかのカレンダー（ICS の URL）を読みこむ（Exment Plugin Groupware）。',
+    'feature_calendar_links_help' => '自分のカレンダーを ICS の URL でほかのカレンダーに見せる・ほかのカレンダー（ICS の URL、Google カレンダー、Microsoft 365）を読みこむ（Exment Plugin Groupware）。',
     // the calendar's outside calendars and its ICS export (ISS02947 part 5)
     'cal_links' => [
         'open' => '連携',
@@ -223,5 +233,26 @@ return [
         'err_failed' => 'うまくいきませんでした。しばらくしてからもう一度ためしてください。',
         'err_expired' => 'ページの有効期限が切れました。ページを読みこみなおしてください。',
         'err_network' => 'サーバーにつながりません。',
+        // Google and Microsoft calendars, read only (part 6)
+        'cloud_title' => 'Google・Microsoft 365 のカレンダーを読みこむ',
+        'cloud_help' => 'サインインすると、そのアカウントのメインのカレンダーの予定を 15 分ごとに読みこみます（30 日前から 180 日先まで。読むだけで、ここでは変えられません）。そちらで「非公開」の予定は、ほかの人にはいつも「予定あり」とだけ見せます。',
+        'connect_google' => 'Google と連携',
+        'connect_microsoft' => 'Microsoft と連携',
+        'reconnect' => '再接続',
+        'name_google' => 'Google カレンダー',
+        'name_microsoft' => 'Microsoft 365',
+        'provider_google' => 'Google',
+        'provider_microsoft' => 'Microsoft 365',
+        'oauth_connected' => '連携しました。読みこみは少しあとに始まります。',
+        'e_oauth_denied' => 'サインインを取り消しました。',
+        'e_oauth_failed' => 'サインインできませんでした。',
+        'e_oauth_state' => 'サインインの有効期限が切れたか、この画面で始めたサインインではありません。もう一度やり直してください。',
+        'e_oauth_token' => 'サインインできませんでした（トークンを受けとれませんでした）。',
+        'e_oauth_scope' => 'カレンダーを読む許可がありませんでした。もう一度連携して、カレンダーの許可にチェックを入れてください。',
+        'e_oauth_client' => 'サイトのアプリの設定でサインインできません（クライアント シークレットの期限切れなど）。システム管理者に、プラグインの設定をたしかめてもらってください。',
+        'e_not_configured' => 'このサイトでは、まだ使えません（システム管理者がプラグインの設定でアプリを入れる必要があります）。',
+        'e_auth' => 'サインインが切れました。「再接続」でもう一度サインインしてください。',
+        'e_host' => '決まったサーバーではない URL なので、つなぎませんでした。',
+        'err_not_configured' => 'このサイトでは、まだ使えません（システム管理者がプラグインの設定でアプリを入れる必要があります）。',
     ],
 ];

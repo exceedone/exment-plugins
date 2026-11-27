@@ -5,7 +5,7 @@ namespace App\Plugins\ExmentGroupware\Mail;
 /**
  * MIME for the Web mail: what Japanese mail actually looks like.
  *
- * Copied from Exment Plugin IT Support (the two plugins install separately),
+ * Copied from Exment Plugin Support Desk (the two plugins install separately),
  * plus Content-ID and inline parts, so HTML mail can show its own images.
  *
  * No extension is needed (ext-imap and ext-mailparse are missing on most

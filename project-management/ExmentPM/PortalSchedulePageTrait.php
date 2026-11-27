@@ -68,7 +68,11 @@ trait PortalSchedulePageTrait
         $sid = $request->input('schedule_id');
         $f = $request->only(['name', 'template', 'kind', 'interval', 'by', 'monthday', 'nth', 'weekday', 'month', 'weekdays', 'rrule', 'start_date', 'end_date', 'rdates', 'shift', 'lead_days', 'enabled']);
         $split = BusinessCalendar::normalize($request->input('split_from'));
-        if ($split !== null && ctype_digit(strval($sid))) {
+        // the schedule's issues are made as its owner later, with no one asked then: whoever saves
+        // it must be able to add issues to the project now (and see the template: save())
+        if (!PortalSchedule::saverMayAdd($project, intval(\Exment::getUserId()), $this->issue_table)) {
+            $errors = [strval(PortalDefinition::trans('sched.err_no_right'))];
+        } elseif ($split !== null && ctype_digit(strval($sid))) {
             // ISS00432 2b: from this date on
             [$saved, $errors] = PortalSchedule::split(intval($project->id), intval($sid), $split, $f, intval(\Exment::getUserId()), $this->issue_table);
         } else {

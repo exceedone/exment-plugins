@@ -27,11 +27,18 @@ parameters:
             - ../../project-management/tools/test-pm-digest.php
             # also the test of Web Push (and stand-ins of Log, app() and config())
             - ../../project-management/tools/test-pm-push.php
+            # Groupware's test of the web mail's client secrets declares stand-ins of Laravel and of the form field
+            - ../../groupware/tools/test-gw-mail-secret.php
             # Groupware's test of the calendar's ICS declares stand-ins of Laravel's facades (DB, Crypt...)
             - ../../groupware/tools/test-gw-calendar-ics.php
-            # IT Support's connectors of the data sync (7.3.0), and their test in an Exment 7.3
-            - ../../it-support/ExmentITSupport/Sync
-            - ../../it-support/tools/test-asset-sync-db.php
+            # and its test of the Google and Microsoft calendars (part 6)
+            - ../../groupware/tools/test-gw-calendar-cloud.php
+            # Support Desk's connectors of the data sync (7.3.0), and their test in an Exment 7.3
+            - ../../support-desk/ExmentSupportDesk/Sync
+            - ../../support-desk/tools/test-asset-sync-db.php
+            # the test of the Plugin class of multi-type plugins declares stand-ins of Exment's
+            # PluginPageBase and PluginBase (used without --exment)
+            - ../../groupware/tools/test-plugin-class.php
     bootstrapFiles:
         - bootstrap.php
     # The baseline may list files that a branch does not have yet.
