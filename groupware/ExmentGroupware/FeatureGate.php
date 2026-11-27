@@ -38,6 +38,15 @@ class FeatureGate
         return class_exists(static::FEATURES);
     }
 
+    /** Whether the site uses the feature at all (a batch has no login user; true without Feature management). */
+    public static function allowedOnSite(string $key): bool
+    {
+        if (!static::available()) {
+            return true;
+        }
+        return boolval(call_user_func([static::FEATURES, 'enabled'], $key));
+    }
+
     /** Whether the login user may use the feature (true without Feature management). */
     public static function allowed(string $key): bool
     {
