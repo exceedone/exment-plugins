@@ -712,7 +712,7 @@ class Desk
         $sent = Mailer::send($ticket, [$to], Mailer::subjectFor($ticket), Mailer::customerBody($ticket, $body, null), []);
         Tickets::addMessage($ticket, ['kind' => 'system', 'body' => '通話のリンクを送りました（' . ($sent !== null ? 'メール送信済み' : 'メールを送れませんでした') . '）。', 'via' => 'staff']);
 
-        return response()->json(['ok' => true, 'call' => $made['call'], 'mailed' => $sent !== null, 'ice' => GuestCall::iceServers(Its::setting('call_ice', ''))]);
+        return response()->json(['ok' => true, 'call' => $made['call'], 'mailed' => $sent !== null, 'ice' => GuestCall::iceServers(Its::setting('call_ice', '')), 'ice_outside' => GuestCall::outsideNote(Its::setting('call_ice', ''), ManualLink::url())]);
     }
 
     public function postCallSignal(Request $request, $id)
@@ -1345,6 +1345,7 @@ class Desk
 
         return $this->view('settings', [
             's' => Its::settings(),
+            'callOutside' => GuestCall::outsideNoticeHtml(GuestCall::outsideSummary(Its::setting('call_ice', '')), 'its-warn'),
             'state' => Its::state(),
             'publicHome' => Its::publicUrl(),
             'intakeAlert' => Its::publicUrl('intake', 'alert'),

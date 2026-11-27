@@ -32,6 +32,7 @@ class GuestCallController
                 'signals' => PublicRoutes::url('call', 'api', 'signals'),
                 'end' => PublicRoutes::url('call', 'api', 'end'),
                 'ice' => GuestCall::iceServers(Its::setting('call_ice', '')),
+                'ice_outside' => GuestCall::outsideNote(Its::setting('call_ice', ''), ManualLink::url()),
             ],
         ])->render();
 

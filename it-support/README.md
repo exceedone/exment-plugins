@@ -76,6 +76,8 @@ ITreview の「ヘルプデスクツール」カテゴリー（2026 年 11 月�
 
 **Unreleased / 未リリース**: SLA のエスカレーションを段階に分けられるようにしました（設定の「SLA のエスカレーション」、初めは使わない）。期限までの時間の 75%（変えられます）で担当者へ、期限を過ぎたらリーダーへ、さらに 60 分（変えられます）過ぎたら管理者へ、それぞれ 1 回だけ知らせます。知らせ方は、画面のベル・メール・Teams のワークフロー・LINE WORKS（Exment 7.3 以降）・Webhook（JSON）から選びます。優先度が変わるなどで期限が変わると、はじめからやり直します。使うあいだは、今までの「まもなく期限」「超過」の 1 回の知らせのかわりになります。
 
+**Unreleased / 未リリース**: 通話のサーバーにサイトでない外のサーバー（`stun.l.google.com` など）があるとき、設定の欄の下に、ブラウザーがそのサーバーに知らせることとファイアウォールで許可する `ホスト:ポート` を出し、通話の画面（担当者・お客様）でも 1 回だけマニュアルへのリンクと出します。[通話のサーバーと外への接続](#通話のサーバーと外への接続) / When the call's servers name one outside the site, the settings and, once, the call screens say so: [Call servers and outside connections](#call-servers-and-outside-connections).
+
 **Unreleased / 未リリース**: The two entries in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5); another language reads English.
 機能の管理に出る 2 つの入口の名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
 
@@ -246,6 +248,28 @@ An IT support / help desk plugin for Exment. Requests from customers (mail, a pu
 
 The chat window limits new chats per client IP and per box (the box's 「チャット：1 つの IP から 1 時間に始められる数」, default 5, and 「チャット：この受付箱で 1 時間に始められる数（全体）」, default 60).
 The IP is Laravel's `request()->ip()`, which follows the site's trusted proxies (Exment's TrustProxies, `ADMIN_TRUST_PROXY_IPS` in .env); a raw `X-Forwarded-For` is never read. Behind a load balancer (Exment SaaS: AWS ALB) set the trusted proxies to the balancer, or every customer has the balancer's IP and the per-IP limit becomes one for the whole site; the per-box limit bounds a burst either way.
+
+## Call servers and outside connections
+
+The setting 「お客様との通話のサーバー（STUN / TURN）」 (the help desk's settings, 「チャットへの知らせ」) lists the STUN / TURN servers that help the browsers of a call find each other, one per line (`stun:host:port`, `turn:host:port|user|password`).
+
+- **Empty**: no outside server is used. Only browsers that reach each other directly (the same LAN or VPN) can talk.
+- **A server that is not this site** (for example the public `stun:stun.l.google.com:19302`): when a call starts, the browsers of the agent and of the customer each tell that server their IP address, so that the other side can be reached. The voice and the screen do not pass through a STUN server. A TURN server relays the voice and the screen (still encrypted) when the browsers cannot reach each other directly.
+- Browsers connect to these servers over **UDP** (for example `stun.l.google.com:19302`; `turns:` uses TCP). A company firewall or policy may block that. The settings screen lists under the field each `host:port (protocol)` to allow.
+- To make no outside connection, leave the setting empty, or run your own STUN / TURN server (coturn, for example) and enter it.
+
+While a server outside the site is set, the settings screen says so under the field, and the call screen says once in each browser 「通話をつなぐために、外のサーバー（host）を使います」 (in the language of the user) with a link to the manual.
+
+## 通話のサーバーと外への接続
+
+設定の「お客様との通話のサーバー（STUN / TURN）」（サポート窓口の設定の「チャットへの知らせ」）には、通話のブラウザーどうしが相手を見つけるための STUN / TURN のサーバーを 1 行に 1 つ入れます（`stun:ホスト:ポート`、`turn:ホスト:ポート|ユーザー|パスワード`）。
+
+- **空のとき**：外のサーバーは使いません。直接つながるブラウザーどうし（同じ LAN・VPN）だけ話せます。
+- **このサイトでない外のサーバーのとき**（たとえば公開の `stun:stun.l.google.com:19302`）：通話を始めると、相手からつながれるように、担当者とお客様のブラウザーは、それぞれその外のサーバーに IP アドレスを知らせます。声と画面の中身は STUN のサーバーを通りません。TURN のサーバーは、ブラウザーどうしが直接つながらないときに、声と画面を暗号化したまま中つぎします。
+- ブラウザーは **UDP** でそのサーバーにつなぎます（たとえば `stun.l.google.com:19302`。`turns:` は TCP）。会社のファイアウォールや決まり（ポリシー）で止められていることがあります。設定の画面の欄の下に、許可する `ホスト:ポート（プロトコル）` を並べます。
+- 外につながないようにするには、設定を空にするか、自社で STUN / TURN のサーバー（coturn など）を立てて、その場所を入れてください。
+
+外のサーバーを入れているあいだは、設定の画面の欄の下にそのことを出し、通話の画面では、ブラウザーごとに 1 回だけ「通話をつなぐために、外のサーバー（ホスト）を使います」とマニュアルへのリンクを出します。
 
 ## プロキシのうしろの Web サイトのチャット
 

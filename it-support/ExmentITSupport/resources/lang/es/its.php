@@ -17,4 +17,16 @@ return [
         'web_form' => 'Soporte de TI: formularios del sitio web',
         'web_form_help' => 'Un formulario para insertar en un sitio web, por bandeja de entrada (un formulario público de Exment). Lo que se envía se convierte en un ticket de esa bandeja. Exment 7.3.0 o posterior.',
     ],
+    // a setting of the call with a server outside this site
+    'call_outside' => [
+        'title' => 'Calls reach an outside server',
+        'lead' => 'This setting has servers that are not this site (:hosts).',
+        'ip' => 'When a call starts, the browsers of the agent and of the customer each tell these servers their IP address. The voice and the screen do not pass through a STUN server.',
+        'turn' => 'A TURN server relays the voice and the screen, still encrypted, when the browsers cannot reach each other directly.',
+        'firewall' => 'Browsers reach these servers over UDP (or TCP). A company firewall or policy may block them. These are the ones to allow:',
+        'avoid' => 'To make no outside connection, leave this empty (calls then work only inside one LAN or VPN), or run your own STUN / TURN server (coturn, for example) and enter it here.',
+        'note' => 'To connect the call, an outside server (:hosts) is used.',
+        'more' => 'Learn more',
+        'close' => 'Close',
+    ],
 ];

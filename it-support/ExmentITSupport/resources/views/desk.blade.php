@@ -622,7 +622,45 @@ function callSend(type, payload) {
     // one JSON text, past the server's trimming of input strings (an SDP ends with CRLF)
     return api(u('call_signal', CALL.id), { type: type, payload_json: payload == null ? '' : JSON.stringify(payload) });
 }
-function callOpen(id, ice, t) {
+// once in this browser for a set of servers: the call uses a server outside this site
+// (the setting of the call's STUN / TURN names one); the text and the manual come from the server
+function callOutsideNote(box, o, before, light) {
+    if (!box || !o || !o.hosts || !o.hosts.length) { return; }
+    var key = 'exment-call-outside:' + o.hosts.join(',');
+    try {
+        if (window.localStorage.getItem(key)) { return; }
+        window.localStorage.setItem(key, '1');
+    } catch (e) { /* no storage (a private window): said on each call */ }
+    var n = document.createElement('div');
+    n.className = 'call-outside';
+    n.setAttribute('role', 'note');
+    n.style.cssText = 'display:flex;gap:8px;align-items:flex-start;padding:8px 10px;font-size:12px;line-height:1.5;border-radius:8px;margin:4px;' +
+        (light ? 'background:#fff7e6;color:#5c3d00;border:1px solid #f0d199' : 'background:#2b2b2b;color:#eee');
+    var tx = document.createElement('span');
+    tx.style.flex = '1';
+    tx.textContent = o.text + ' ';
+    if (o.manual) {
+        var a = document.createElement('a');
+        a.href = o.manual;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.color = light ? 'inherit' : '#9cc3ff';
+        a.style.textDecoration = 'underline';
+        a.textContent = o.more;
+        tx.appendChild(a);
+    }
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '\u00d7';
+    x.title = o.close;
+    x.setAttribute('aria-label', o.close);
+    x.style.cssText = 'border:0;background:none;color:inherit;cursor:pointer;font-size:16px;line-height:1;padding:0 4px;min-width:auto';
+    x.onclick = function () { if (n.parentNode) { n.parentNode.removeChild(n); } };
+    n.appendChild(tx);
+    n.appendChild(x);
+    box.insertBefore(n, before || box.firstChild);
+}
+function callOpen(id, ice, t, outside) {
     var w = document.createElement('div');
     w.className = 'd-call';
     w.style.cssText = 'position:fixed;right:16px;bottom:16px;width:min(520px,calc(100% - 32px));background:#111;color:#fff;border-radius:12px;z-index:1090;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden';
@@ -631,6 +669,7 @@ function callOpen(id, ice, t) {
         '<textarea class="nt" rows="2" placeholder="通話のメモ（切るとチケットの社内メモになります）" style="width:100%;border-radius:6px;border:0;padding:4px 6px;color:#111"></textarea>' +
         '<div style="display:flex;gap:6px;margin-top:6px"><button type="button" class="mu its-btn small">マイク</button><button type="button" class="sh its-btn small">画面</button><span style="flex:1"></span><button type="button" class="end its-btn small" style="background:#e5484d;color:#fff">切る</button></div></div>';
     document.body.appendChild(w);
+    callOutsideNote(w, outside, null, false);
     var pc = new RTCPeerConnection({ iceServers: ice });
     CALL = { id: id, pc: pc, box: w, after: 0, mic: null, screen: null, timer: null, making: false, ready: false, ticket: t.id };
     var stx = function (s) { if (CALL) { w.querySelector('.st').textContent = s; } };
@@ -725,7 +764,7 @@ function bindTicket() {
                 cl.disabled = false;
                 if (!r || r.ok === false) { toast((r && r.message) || 'できませんでした', true); return; }
                 toast(r.mailed ? '通話のリンクを送りました。お客様が開くのを待っています。' : 'リンクはできましたが、メールを送れませんでした。', !r.mailed);
-                callOpen(r.call, r.ice || [], t);
+                callOpen(r.call, r.ice || [], t, r.ice_outside);
             });
         };
     }
