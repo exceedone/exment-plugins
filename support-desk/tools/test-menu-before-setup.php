@@ -44,11 +44,11 @@ if ($I::isInstalled()) {
 // 2. a fresh site: the plugin installed, 表示する in Feature management, no setup yet
 DB::beginTransaction();
 try {
-    $its = $I::plugin();
-    $options = (array) $its->options;
+    $sd = $I::plugin();
+    $options = (array) $sd->options;
     $options[$I::STATE_KEY] = [];
-    $its->options = $options;
-    $its->save();
+    $sd->options = $options;
+    $sd->save();
     DB::table('admin_menu')->where('menu_type', 'plugin')->where('menu_target', strval($plugin->id))->delete();
     // the role groups get the plugin in the setup
     DB::table('role_group_permissions')->where('role_group_permission_type', RoleType::PLUGIN)->where('role_group_target_id', $plugin->id)->delete();

@@ -58,7 +58,7 @@ class Feature
         $core = static::CORE;
         $base = $plugin->getRouteUri();
         $lang = 'exment_' . snake_case($plugin->plugin_name) . '::sd.feature.';
-        // existing: a site that had the plugin before feature management keeps it on.
+        // existing: false for all: the plugin is new under this name, so every feature starts off.
         $core::register(static::PORTAL, [
             'label' => $lang . 'portal',
             'description' => $lang . 'portal_help',
@@ -66,7 +66,7 @@ class Feature
             'plugin' => $plugin->plugin_name,
             'requires' => static::DESK,
             'who' => false,
-            'existing' => true,
+            'existing' => false,
         ]);
         $core::register(static::SALES_LINK, [
             'label' => $lang . 'sales_link',
@@ -114,7 +114,7 @@ class Feature
             'description' => $lang . 'desk_help',
             'endpoints' => [$base],
             'plugin' => $plugin->plugin_name,
-            'existing' => true,
+            'existing' => false,
         ]);
     }
 

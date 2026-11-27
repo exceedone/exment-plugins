@@ -29,8 +29,8 @@ class GuestChatController
         $src = json_encode(PublicRoutes::url('chat', $key), JSON_UNESCAPED_SLASHES);
         $js = <<<JS
 (function () {
-  if (window.__itsChat) { return; }
-  window.__itsChat = true;
+  if (window.__sdChat) { return; }
+  window.__sdChat = true;
   var b = document.createElement('button');
   b.type = 'button';
   b.textContent = 'お問い合わせ（チャット）';
