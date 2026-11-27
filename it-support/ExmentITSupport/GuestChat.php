@@ -22,6 +22,8 @@ class GuestChat
     const TOKEN_HOURS = 24;
     const MAX_BODY = 2000;
     const STARTS_PER_HOUR = 5;
+    /** All the starts of one box an hour, when the box does not say (a burst from anywhere stops here). */
+    const BOX_STARTS_PER_HOUR = 60;
     const LINES_PER_10MIN = 30;
     const OFFLINE_MINUTES = 10;
 
@@ -233,6 +235,20 @@ class GuestChat
         return $n;
     }
 
+    /**
+     * The limits of a box: starts per IP an hour, all starts an hour (the box's settings, or 5 and 60).
+     *
+     * @return array{0: int, 1: int}
+     */
+    public static function limitsOf($value): array
+    {
+        $v = (array) $value;
+        $ip = intval($v['chat_per_ip'] ?? 0);
+        $box = intval($v['chat_per_hour'] ?? 0);
+
+        return [$ip >= 1 && $ip <= 1000 ? $ip : static::STARTS_PER_HOUR, $box >= 1 && $box <= 100000 ? $box : static::BOX_STARTS_PER_HOUR];
+    }
+
     /** Too many tries for a key (IP or token) in a while? */
     protected static function limited(string $name, int $max, int $seconds): bool
     {
@@ -255,7 +271,15 @@ class GuestChat
         if (!isset($box)) {
             abort(404);
         }
-        if (static::limited('its_chat_start:' . sha1($ip), static::STARTS_PER_HOUR, 3600)) {
+        // the client's IP as Laravel resolves it with the site's trusted proxies (never a raw
+        // X-Forwarded-For), and a ceiling for the box whatever the IPs
+        [$perIp, $perBox] = static::limitsOf($box->value);
+        // the IP first, every try counted (one person's tries are theirs); the box only counts the
+        // chats that start, so someone refused cannot use up the box for everyone
+        if (static::limited('its_chat_start:' . sha1($ip), $perIp, 3600)) {
+            abort(429);
+        }
+        if (RateLimiter::tooManyAttempts('its_chat_box:' . $box->id, $perBox)) {
             abort(429);
         }
         // the site's reCAPTCHA, when it has one
@@ -283,6 +307,7 @@ class GuestChat
             'requester_name' => $name,
             'requester_email' => $email,
         ], ['body' => $body]);
+        RateLimiter::hit('its_chat_box:' . $box->id, 3600);
         $token = bin2hex(random_bytes(32));
         DB::table('its_tokens')->insert([
             'kind' => static::KIND,

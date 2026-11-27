@@ -49,8 +49,10 @@ class Schema
      * 12: the ticket's quote of the sales pack (sales_quote) and trial key (trial_key, trial_until).
      * 13: the chat window of a box on a website (ISS02941): its key (chat_key) and the sites that
      *    may show it (chat_sites); the channel chat of the tickets.
+     * 14: the chat window's limits per box: starts per IP an hour (chat_per_ip) and all its starts
+     *    an hour (chat_per_hour).
      */
-    const VERSION = 13;
+    const VERSION = 14;
 
     /** The menu's name (ISS02941: the IT support became the help desk). */
     const MENU_TITLE = 'サポート窓口';
@@ -133,6 +135,8 @@ class Schema
                     ['sla', 'SLA', 'select_table', ['select_target_table_name' => Its::T_SLA, 'help' => 'この受付箱の SLA。お客様（会社）に SLA があるときは、そちらが先です。空なら「標準」。']],
                     ['chat_key', 'チャットの窓のキー', 'text', ['help' => 'Web サイトのチャットの窓のアドレスに入る、ランダムな文字（秘密ではありません。チャットを始めることだけができます）。受付箱の画面で作ります。']],
                     ['chat_sites', 'チャットの窓を出してよいサイト', 'textarea', ['help' => '1 行に 1 つ、https://www.example.co.jp のように。空なら、どのサイトにも出せます。']],
+                    ['chat_per_ip', 'チャット：1 つの IP から 1 時間に始められる数', 'integer', ['number_min' => '1', 'number_max' => '1000', 'help' => '空なら 5。']],
+                    ['chat_per_hour', 'チャット：この受付箱で 1 時間に始められる数（全体）', 'integer', ['number_min' => '1', 'number_max' => '100000', 'help' => '空なら 60。プロキシのうしろで IP がそろってしまうときも、ここで止まります。']],
                 ],
             ],
             Its::T_ASSET => [

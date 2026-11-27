@@ -31,6 +31,10 @@ $check('online: seen 5 min ago', G::online($now - 300, $now));
 $check('offline: seen 10 min ago', !G::online($now - 600, $now));
 $check('offline: never seen', !G::online(null, $now));
 
+$check('limits: the defaults', G::limitsOf([]) === [5, 60]);
+$check('limits: the box own', G::limitsOf(['chat_per_ip' => '20', 'chat_per_hour' => 500]) === [20, 500]);
+$check('limits: out of range is the default', G::limitsOf(['chat_per_ip' => 0, 'chat_per_hour' => 999999]) === [5, 60] && G::limitsOf(['chat_per_ip' => 'x']) === [5, 60]);
+
 $own = ['https://exment.example.invalid'];
 $check('from the window: its own origin', G::fromWindow('https://exment.example.invalid', null, 'same-origin', $own));
 $check('from another site: refused', !G::fromWindow('https://evil.invalid', null, 'cross-site', $own) && !G::fromWindow('https://evil.invalid', null, null, $own));
