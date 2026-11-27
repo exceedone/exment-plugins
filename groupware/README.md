@@ -6,6 +6,12 @@
 
 <a id="english"></a>
 
+**Changed in 0.5.2**
+
+- Web mail: the client secrets of the Microsoft 365 and Google apps in the plugin's settings are stored encrypted, not shown again: the settings show 「設定済み」 ("Set"), an empty field keeps the saved value, and 「値を消す」 removes it. The secrets saved before are encrypted on the update (`database/migrations`). See [Web mail](#web-mail).
+- The calendar's client secrets of Google and Microsoft 365 in the plugin's settings work the same way: the field is always empty, 「設定済み」 shows that one is saved, and 「値を消す」 removes it.
+- The messages of the web mail are shown as before with the newer versions of Exment's admin screens too.
+
 **Changed in 0.5.1**
 
 - A site whose plugin files were replaced (copied onto the server) without uploading the zip no longer fails on every page. From 0.5.0 the plugin has two types (page, batch), but such a site still has `plugins.plugin_types` = `page` from before; Exment then looked for a class `Plugin`, found an empty one, and every page answered 500, the login included. `Plugin` is now the page itself (the same as `PluginPage`, with the settings form of `PluginSetting`), so the site keeps working. The reminders and the retention of the chat (the batch) still need the row updated: upload `ExmentGroupware-<version>.zip` in **Admin settings → Plugins** rather than replacing the files, or update `plugins.plugin_types` and the options and run the plugin's migrations as the [manual](https://exment.net/docs/plugin_groupware.html) says.
@@ -23,7 +29,6 @@
 - A new version of this plugin may ask for a newer ibisOffice (ISS02827). Until now the site then said ibisOffice was not installed and Office stopped. Now Office keeps opening with the version already installed, and Feature management and the page of the plugin say a newer version is there, with **ibisOffice を X に更新する**. The update installs it as an install does (checked by its SHA-256) and then deletes the older folders.
 - On an Exment without the menu groups (before 7.2.1), the menu **Mail** is no longer at the end of the left menu under the administrator settings: it goes just above them. Only the menu as the plugin made it moves; one an administrator moved or renamed stays. On Exment 7.2.1 and later it is in the group グループウェア, as before.
 - Web mail: the dates of the mails are shown in the time zone the user chose in Exment (Exment 7.2.4; a user who chose none gets the time zone of the site). On an older Exment they are shown in the time zone of the browser, as before.
-- Web mail: the client secrets of the Microsoft 365 and Google apps in the plugin's settings are kept encrypted (Exment's data keys when the site has one, else the app key) and are not shown again: the settings show 「設定済み」 ("Set"), an empty field keeps the saved value, and 「値を消す」 removes it. The secrets saved before are encrypted on the update (`database/migrations`). See [Web mail](#web-mail).
 - The names and descriptions in Feature management are also in Vietnamese, Simplified Chinese, Korean, German and Spanish (`resources/lang/vi`, `zh_CN`, `ko`, `de`, `es`), shown in the language of each user (Exment 7.2.5). Another language reads English.
 - Calendar: the ICS export address and outside calendars (ISS02947, part 5; Feature management → **カレンダーの連携（ICS）**, off at first). A person can make an ICS address of their calendar for Google Calendar or Outlook (events open to all with their title, any other as 「予定あり」 only), and read ICS addresses of other calendars into theirs every 15 minutes. See [Calendar: the ICS export and outside calendars](#calendar-links).
 - Calendar: Google Calendar and Microsoft 365 read only (ISS02947, part 6; the same feature and dialog). **Google と連携** / **Microsoft と連携** sign in with OAuth (the site's own app in the plugin's settings) and read that account's main calendar every 15 minutes. See [Google and Microsoft 365 calendars](#calendar-google-microsoft).
@@ -212,6 +217,12 @@ Coming: an export of one's own calendar with all its details, with a token of it
 
 <a id="japanese"></a>
 
+**0.5.2 で変わったこと**
+
+- Web メール：プラグインの設定の Microsoft 365・Google のアプリのクライアント シークレットを暗号化して保存し、あとで表示しません。設定の画面には「設定済み」と出て、空のまま保存すると今の値のまま、「値を消す」で消せます。前に保存したシークレットは、更新のときに暗号化します（`database/migrations`）。[Web メール](#web-mail-ja)を参照。
+- カレンダーの Google・Microsoft 365 のクライアント シークレットも同じです。入力欄はいつも空で、保存してあれば「設定済み」と出て、「値を消す」で消せます。
+- Web メールのメッセージを、新しい版の Exment の管理画面でも今までどおりに出すようにしました。
+
 **0.5.1 で変わったこと**
 
 - プラグインのファイルを（サーバーにコピーして）入れかえ、zip をアップロードしなかったサイトで、すべての画面がエラーになることがなくなりました。0.5.0 からこのプラグインは 2 つの種類（ページ・バッチ）ですが、そのようなサイトでは `plugins.plugin_types` が前の `page` のままです。Exment は `Plugin` というクラスを探して空のクラスを見つけ、ログインも含めてすべての画面が 500 になっていました。今は `Plugin` がページそのもの（`PluginPage` と同じで、設定の画面は `PluginSetting` のもの）なので、サイトは動きます。カレンダーのリマインダーとチャットの保存期間（バッチ）には、行の更新が要ります。ファイルを入れかえるのではなく、**管理者設定 → プラグイン** で `ExmentGroupware-<version>.zip` をアップロードしてください。または、[マニュアル](https://exment.net/docs/ja/plugin_groupware.html) のとおりに `plugins.plugin_types` とオプションを更新し、プラグインのマイグレーションを動かしてください。
@@ -227,7 +238,6 @@ Coming: an export of one's own calendar with all its details, with a token of it
 - カレンダー：その日の会議室・備品に、「使わない」にした会議室・備品も、その日に予約が残っていれば「使わない」と付けて出します。
 - メニューのグループがない Exment（7.2.1 より前）で、「メール」のメニューが左のメニューの最後（管理者設定の下）に入らないようにしました。管理者設定のすぐ上に動かします。プラグインが作ったままのメニューだけを動かし、管理者が動かしたり名前を変えたりしたものはそのままです。7.2.1 からの Exment では、これまでどおりグループ「グループウェア」の中です。
 - Web メール：メールの日付を、ユーザーが Exment で選んだタイムゾーンで出します（Exment 7.2.4。選んでいないユーザーはサイトのタイムゾーン）。それより前の Exment では、今までどおりブラウザのタイムゾーンで出します。
-- Web メール：プラグインの設定の Microsoft 365・Google のアプリのクライアント シークレットを暗号化して保存し（サイトにデータの鍵があればそれで、なければアプリの鍵で）、あとで表示しません。設定の画面には「設定済み」と出て、空のまま保存すると今の値のまま、「値を消す」で消せます。前に保存したシークレットは、更新のときに暗号化します（`database/migrations`）。[Web メール](#web-mail-ja)を参照。
 - 機能の管理に出る名前と説明に、ベトナム語・中国語（簡体字）・韓国語・ドイツ語・スペイン語を足しました（`resources/lang/vi`・`zh_CN`・`ko`・`de`・`es`）。ユーザーごとの言語で出ます（Exment 7.2.5）。ほかの言語では英語です。
 - カレンダー：ICS の書き出しの URL と、ほかのカレンダーの読みこみ（ISS02947 の 5。機能の管理 → **カレンダーの連携（ICS）**、初めは使わない）。自分のカレンダーの ICS の URL を作って Google カレンダーや Outlook で見られます（「全員」の予定は件名と場所、それ以外は「予定あり」だけ）。ほかのカレンダーの ICS の URL を、15 分ごとに自分のカレンダーに読みこめます。[カレンダー：ICS の書き出しとほかのカレンダー](#calendar-links-ja) を参照。
 - カレンダー：Google カレンダー・Microsoft 365 を読むだけで読みこむ（ISS02947 の 6。同じ機能・同じ画面）。**Google と連携**・**Microsoft と連携** で OAuth でサインインし（サイトのアプリはプラグインの設定に入れます）、そのアカウントのメインのカレンダーを 15 分ごとに読みこみます。[Google カレンダー・Microsoft 365 の予定表](#calendar-google-microsoft-ja) を参照。

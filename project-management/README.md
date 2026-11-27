@@ -15,6 +15,13 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Changed in 1.9.0 / 1.9.0 で変わったこと**
+
+- Push notifications (Web Push), off at first: with **Push notifications (Web Push)** and **Phone app (PWA)** on in Feature management, each person can turn on **⚙ → Notify this device**, and a new notice of the bell also shows as a notification on that phone or computer; a tap opens the portal's list of notices. Only the subject and the link are sent. The browsers' subscriptions and the site's key are stored encrypted, not shown again; the subscriptions kept before are encrypted on the update (`database/migrations`). See [Push notifications (Web Push)](#push-notifications-web-push--プッシュ通知).
+  プッシュ通知（Web Push）を足しました（初めは使いません）。機能の管理で **プッシュ通知（Web Push）** と **スマホのアプリ（PWA）** をオンにすると、使う人が **⚙ → この端末に通知する** をオンにでき、ベルの新しいお知らせがその端末にも通知で出ます。タップするとお知らせの一覧を開きます。送るのは件名とリンクだけです。ブラウザーの登録とサイトの鍵は暗号化して保存し、あとで表示しません。前に登録したものは、更新のときに暗号化します（`database/migrations`）。
+- The messages of the portal's setup (and the portal's own message boxes) are shown as before with the newer versions of Exment's admin screens too.
+  ポータルのセットアップのメッセージ（とポータルのメッセージの枠）を、新しい版の Exment の管理画面でも今までどおりに出すようにしました。
+
 **Changed in 1.8.0 / 1.8.0 で変わったこと**
 
 - **If you run `exment:batch --name=ExmentPM` without parameters for the AI fill, add `--param1=all` or turn on the nightly setting.** The batch without parameters (how Exment's scheduler calls a plugin) now makes the issues of the recurring schedules, and no longer runs the AI fill. The nightly setting is 「AI のうめ合わせを毎晩動かす（時刻）」 / "Run the AI fill nightly (hour)" in the plugin's settings, with the other AI settings (off at first). One fill runs at a time (a lock in the cache): if several servers run schedule:run, give them a shared cache (redis, database, memcached), or run schedule:run on one server only.
@@ -415,6 +422,7 @@ Off at first: turn on **Phone app (PWA)** in **Admin settings → Feature manage
 
 Off at first: turn on **Push notifications (Web Push)** in **Admin settings → Feature management**, with **Phone app (PWA)** on too (its service worker shows the notifications). Then each person turns on **⚙ → Notify this device** on each phone or computer (the browser asks for permission; on iPhone and iPad, in the app added to the home screen). A new notice of the bell then also shows as a notification; a tap opens the portal's list of notices. Only the notice's subject (at most 120 characters) and the link are sent, never the text of a comment. The server sends only to the browsers' push services (Google FCM, Mozilla, Apple, Microsoft WNS), after the answer to the request (or at the end of the batch), and a device the push service no longer knows (or that failed 5 times in a row) is removed. The site's address must be https (APP_URL, or the address the site is opened at) for the push services to take the notifications. The site's key pair (VAPID) is made the first time and kept encrypted, and so is each device's subscription; **Settings → Push notification keys → Make new keys** replaces it, and every device has to turn the notifications on again.
 最初は使いません。**管理者設定 → 機能の管理** で **プッシュ通知（Web Push）** をオンにします（通知を出すのはサービスワーカーなので、**スマホのアプリ（PWA）** もオンにします）。そのあと、使う人がそれぞれ端末ごとに **⚙ → この端末に通知する** をオンにします（ブラウザーが許可をたずねます。iPhone・iPad は、ホーム画面に追加したアプリで）。ベルに新しいお知らせが来ると、端末にも通知が出て、タップするとプロジェクト管理のお知らせの一覧が開きます。送るのはお知らせの件名（120 文字まで）とリンクだけで、コメントの本文は送りません。サーバーが送るのはブラウザーの通知サービス（Google FCM、Mozilla、Apple、Microsoft WNS）だけで、画面の応答のあと（またはバッチの終わり）に送ります。通知サービスがもう知らない端末や、5 回つづけて失敗した端末は外します。通知サービスが受け取るには、サイトのアドレスが https である必要があります（APP_URL、またはサイトを開いているアドレス）。サイトの鍵（VAPID）は最初に作って暗号化して保存します（端末ごとの通知の設定も暗号化して保存します）。**設定 → プッシュ通知の鍵 → 鍵を作り直す** で作り直すと、すべての端末でもう一度オンにする必要があります。
+
 ## Notices / お知らせ
 
 The bell on the portal's top bar opens the person's own newest 30 notices, unread first: a menu on a wide screen, the whole screen on a phone (Exment's own list is a table made for a desktop). A tap opens the issue (and marks the notice read, through Exment), **Mark all read** marks the person's own notices read, and **All notifications** opens Exment's list.
