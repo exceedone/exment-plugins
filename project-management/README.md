@@ -15,6 +15,11 @@ Exment のプロジェクト管理・チケット管理のプラグインです�
 | Address / アドレス | `/admin/plugins/exment_pm`（1.3.0 までは `/admin/plugins/pm_portal`） |
 | Screen title and menu / 画面の見出しとメニュー | プロジェクト管理 |
 
+**Unreleased / 未リリース**
+
+- The editors say they take Markdown (MD-1): under the comment box, the issue body and a wiki page, a small 「Markdown が使えます」 mark opens a cheat sheet (見出し, 太字, リスト, 番号, 引用, コード, リンク, 表, チェックボックス, and how to paste an image); a line puts its Markdown at the caret. The boxes' placeholder and the toolbar's tooltips show the Markdown. The comment box has 書く｜プレビュー as a pair. 「並べて表示」 puts a live preview beside the text on a screen 900px or wider (each person's choice, kept in their Exment settings; off at first). The preview is drawn the way the comment or the body is shown.
+  書く欄が Markdown を使えることがわかるようにしました（MD-1）。コメント欄・課題の本文・Wiki のページの下に「Markdown が使えます」の目印を出し、押すと書き方の早見表（見出し・太字・リスト・番号・引用・コード・リンク・表・チェックボックス・画像の貼り付け方）が出ます。行を押すと、その書き方をカーソルの所に入れます。欄の薄い字と道具のボタンの説明にも Markdown を出します。コメント欄は「書く｜プレビュー」の 2 つのボタンにしました。「並べて表示」で、幅 900px 以上の画面では右にプレビューを並べ、書くとすぐ変わります（1 人ずつ Exment の設定に覚えます。はじめは OFF）。プレビューは、本当の表示と同じ描き方です。
+
 **Changed in 1.7.20 / 1.7.20 で変わったこと**
 
 - The comment dock's 「ほかの項目も変える」 also has 管理者 and レビュアー (the same picker as 担当者) and 難易度, beside 副担当者, each where the issue table has the column; saved with the comment, in the history like the other fields.

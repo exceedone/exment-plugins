@@ -1,3 +1,15 @@
+    // A link to a stored file never goes through the admin's page loading (pjax): pjax would read
+    // the file and put it into the page. Marked at the click, before pjax's own handler (capture).
+    if (!window.__ppFileLinks) {
+        window.__ppFileLinks = true;
+        document.addEventListener('click', function (ev) {
+            var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+            if (a && /\/(files|tmpfiles)\//.test(a.getAttribute('href') || '') && !a.hasAttribute('data-nopjax')) {
+                a.setAttribute('data-nopjax', '');
+                if (!a.getAttribute('target')) { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener'); }
+            }
+        }, true);
+    }
     var root = document.getElementById('pmportal');
     if (!root || root.dataset.ppBound) { return; }
     root.dataset.ppBound = '1';

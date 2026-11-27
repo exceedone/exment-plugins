@@ -197,6 +197,101 @@
         },
         {
             "method": "get",
+            "uri": "chat",
+            "function": "chatPage"
+        },
+        {
+            "method": "get",
+            "uri": "chat/api/rooms",
+            "function": "chatRooms",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/rooms",
+            "function": "chatPostRoom",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/api/room/{id}",
+            "function": "chatRoom",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/direct/{id}",
+            "function": "chatDirect",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/room/{id}/members",
+            "function": "chatMembers",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/api/room/{id}/messages",
+            "function": "chatMessages",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/room/{id}/post",
+            "function": "chatPost",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "post",
+            "uri": "chat/api/room/{id}/read",
+            "function": "chatRead",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/api/poll",
+            "function": "chatPoll",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
+            "uri": "chat/file/{uuid}",
+            "function": "chatFile",
+            "middleware_except": [
+                "admin.bootstrap",
+                "admin.pjax"
+            ]
+        },
+        {
+            "method": "get",
             "uri": "cal",
             "function": "cal"
         },

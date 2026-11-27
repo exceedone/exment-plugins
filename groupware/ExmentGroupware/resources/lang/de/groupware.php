@@ -91,4 +91,6 @@ return [
         'err_expired' => 'Die Seite ist abgelaufen. Laden Sie die Seite neu.',
         'err_network' => 'Der Server ist nicht erreichbar.',
     ],
+    'feature_chat' => 'Chat',
+    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
 ];

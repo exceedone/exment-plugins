@@ -23,6 +23,8 @@ class FeatureGate
     const MAIL = 'exment_groupware.mail';
     const OFFICE = 'exment_groupware.office';
     const CALENDAR = 'exment_groupware.calendar';
+    /** The chat (ISS02945): new, off at first. */
+    const CHAT = 'exment_groupware.chat';
     const FILE_SERVER = 'file_server';
 
     // a string, not ::class: an Exment without Feature management does not have the class
@@ -130,6 +132,21 @@ class FeatureGate
             $definition['action'] = ['label' => 'ibisOffice を ' . IbisOffice::VERSION . ' に更新する', 'url' => $plugin->getFullUrl()];
         }
         call_user_func([static::FEATURES, 'register'], static::OFFICE, $definition);
+    }
+
+    /** The chat (ISS02945): its page and its API are plugins/<uri>/chat. Off at first. */
+    public static function registerChat($plugin): void
+    {
+        if (!static::available()) {
+            return;
+        }
+        call_user_func([static::FEATURES, 'register'], static::CHAT, [
+            'label' => static::text('feature_chat', 'チャット'),
+            'description' => static::text('feature_chat_help', 'グループと 1 対 1 のルームで話す。@メンション・既読の人数・ファイル（Exment Plugin Groupware）。'),
+            'endpoints' => [$plugin->getRouteUri('chat')],
+            'plugin' => $plugin->plugin_name,
+            'existing' => false,
+        ]);
     }
 
     /**

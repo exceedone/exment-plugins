@@ -91,4 +91,6 @@ return [
         'err_expired' => 'La página ha caducado. Vuelva a cargar la página.',
         'err_network' => 'No se puede conectar con el servidor.',
     ],
+    'feature_chat' => 'Chat',
+    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
 ];

@@ -1811,7 +1811,7 @@
                 body = '<div class="chg"><i class="fa fa-plus" style="color:var(--bl-accent);margin-right:6px;"></i>' + esc(L.added) + '</div>';
             } else if (e.tp === 'file') {
                 body = '<div class="chg"><i class="fa fa-paperclip" style="margin-right:6px;"></i>' + esc(L.file_added) +
-                    ' <a class="bl-file" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a>' + officeViewBtn(e) + '</div>';
+                    ' <a class="bl-file" data-nopjax target="_blank" rel="noopener" href="' + esc(linkUrl(e.url)) + '"><i class="fa fa-file-o"></i>' + esc(e.name) + '</a>' + officeViewBtn(e) + '</div>';
             } else {
                 // Only the author may rewrite or remove what they wrote; the
                 // address of a comment is public to everyone who can read it.

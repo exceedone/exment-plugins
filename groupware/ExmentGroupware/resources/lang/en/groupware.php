@@ -91,4 +91,6 @@ return [
         'err_expired' => 'The page has expired. Reload the page.',
         'err_network' => 'Cannot reach the server.',
     ],
+    'feature_chat' => 'Chat',
+    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
 ];

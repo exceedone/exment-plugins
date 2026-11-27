@@ -38,6 +38,7 @@ const FILES = [
     'wiki.js',
     'files.js',            // files, Office view
     'attach-edit.js',      // attachments edited in place, their versions (ISS02938)
+    'attach-preview.js',   // attachments seen in place: download / open online, Excel, Word, PDF (ISS02938)
     'read-receipts.js',
     'writes.js',
     'typeahead.js',
@@ -52,6 +53,7 @@ const FILES = [
     'events.js',           // tabs, hovercard, other bindings
     'list-events.js',      // paging, tree view, ticking rows, staying current
     'palette.js',          // Ctrl+K: every action of the screen with its key
+    'md-help.js',          // MD-1: the Markdown mark, cheat sheet and side-by-side preview of the editors
     'boot.js',             // shortcuts, boot
 ];
 

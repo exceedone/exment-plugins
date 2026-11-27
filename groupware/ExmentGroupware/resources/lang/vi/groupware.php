@@ -91,4 +91,6 @@ return [
         'err_expired' => 'Trang đã hết hạn. Hãy tải lại trang.',
         'err_network' => 'Không kết nối được với máy chủ.',
     ],
+    'feature_chat' => 'Chat',
+    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
 ];

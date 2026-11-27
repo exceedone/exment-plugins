@@ -43,6 +43,7 @@ class Plugin extends PluginPageBase
         FeatureGate::registerOffice($plugin);
         // the calendar (ISS02947): a feature of Feature management, off at first
         FeatureGate::registerCalendar($plugin);
+        FeatureGate::registerChat($plugin);
     }
 
     /**
@@ -662,5 +663,76 @@ class Plugin extends PluginPageBase
     public function calPeople()
     {
         return $this->calDenied() ?? $this->calendar()->people(request());
+    }
+
+    // ---- the chat (ISS02945) ------------------------------------------------
+
+    protected function chat(): \App\Plugins\ExmentGroupware\Chat\ChatPage
+    {
+        if (!FeatureGate::allowed(FeatureGate::CHAT)) {
+            abort(404);
+        }
+
+        return new \App\Plugins\ExmentGroupware\Chat\ChatPage($this->plugin);
+    }
+
+    protected function chatDenied()
+    {
+        return FeatureGate::deny(FeatureGate::CHAT);
+    }
+
+    public function chatPage()
+    {
+        return $this->chatDenied() ?? $this->chat()->page();
+    }
+
+    public function chatRooms()
+    {
+        return $this->chatDenied() ?? $this->chat()->apiRooms();
+    }
+
+    public function chatPostRoom()
+    {
+        return $this->chatDenied() ?? $this->chat()->postRoom(request());
+    }
+
+    public function chatRoom($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->apiRoom($id);
+    }
+
+    public function chatDirect($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postDirect($id);
+    }
+
+    public function chatMembers($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postMembers(request(), $id);
+    }
+
+    public function chatMessages($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->apiMessages(request(), $id);
+    }
+
+    public function chatPost($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postMessage(request(), $id);
+    }
+
+    public function chatRead($id)
+    {
+        return $this->chatDenied() ?? $this->chat()->postRead(request(), $id);
+    }
+
+    public function chatPoll()
+    {
+        return $this->chatDenied() ?? $this->chat()->apiPoll(request());
+    }
+
+    public function chatFile($uuid)
+    {
+        return $this->chatDenied() ?? $this->chat()->file($uuid);
     }
 }

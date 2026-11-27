@@ -124,6 +124,9 @@ jobs:
       - name: Screens made easier to use (ExmentPM UX)
         run: node project-management/tools/test-pm-ux.js
 
+      - name: Markdown help of the editors (ExmentPM)
+        run: node project-management/tools/test-pm-md.js
+
       # The custom attributes on the screen (ISS02939): the JSON a save sends,
       # how a value reads, the filters, the sort and the bulk edit.
       - name: Custom attributes check (ExmentPM screen)
@@ -193,6 +196,10 @@ jobs:
       - name: Notice settings (ExmentPM)
         run: php project-management/tools/test-pm-notify-prefs.php
 
+      # links to files open outside the page loading of the admin screens
+      - name: File links (ExmentPM, Groupware, IT Support)
+        run: php project-management/tools/check-file-links.php
+
       # The project routes without admin.morph still find a project the same way as the others.
       - name: Morph-less routes check (ExmentPM)
         run: php project-management/tools/test-pm-morph-routes.php
@@ -249,6 +256,10 @@ jobs:
       # what the help desk tells a chat, and Slack's marks kept as text (ISS02941)
       - name: Help desk chat notices (IT Support)
         run: php it-support/tools/test-chat-notices.php
+
+      # the chat of the groupware: mentions, read counts, direct rooms, the polling (ISS02945)
+      - name: Groupware chat (ExmentGroupware)
+        run: php groupware/tools/test-chat-text.php
 
       # 「ExmentPM の課題にする」 and every route with its method (ISS02941)
       - name: Help desk ExmentPM link (IT Support)

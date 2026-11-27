@@ -91,4 +91,6 @@ return [
         'err_expired' => 'ページの有効期限が切れました。ページを読みこみなおしてください。',
         'err_network' => 'サーバーにつながりません。',
     ],
+    'feature_chat' => 'チャット',
+    'feature_chat_help' => 'グループと 1 対 1 のルームで話す。@メンション・既読の人数・ファイル（Exment Plugin Groupware）。',
 ];

@@ -91,4 +91,6 @@ return [
         'err_expired' => '页面已过期。请重新加载页面。',
         'err_network' => '无法连接到服务器。',
     ],
+    'feature_chat' => 'Chat',
+    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
 ];

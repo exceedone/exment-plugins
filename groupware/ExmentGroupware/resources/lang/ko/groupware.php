@@ -91,4 +91,6 @@ return [
         'err_expired' => '페이지가 만료되었습니다. 페이지를 새로 고치세요.',
         'err_network' => '서버에 연결할 수 없습니다.',
     ],
+    'feature_chat' => 'Chat',
+    'feature_chat_help' => 'Talk in group and one-to-one rooms, with @mentions, read counts and files (Exment Plugin Groupware).',
 ];
