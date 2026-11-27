@@ -96,6 +96,8 @@
             if (scr === 'issue') { ppDockFit(); }
             ppPinFit();
             ppListFit();
+            // BACK-3: after the scroll above, or it would move the row away again
+            if (scr === 'issues') { backFlash(); }
         });
     }
     // Coming out of a ticket used to land you at the top of the issue list
@@ -123,7 +125,17 @@
     function backTarget(from) {
         var to = backFrom(from);
         var names = { issues: L.back_list, board: L.back_board, gantt: L.back_gantt, home: L.back_home };
-        return { hash: '#' + to, label: names[to] || L.back_list, tip: String(L.back_tip || '%s').replace('%s', names[to] || L.back_list) };
+        return { hash: '#' + to + (to === 'issues' ? backListQuery() : ''), label: names[to] || L.back_list, tip: String(L.back_tip || '%s').replace('%s', names[to] || L.back_list) };
+    }
+    // BACK-3: the list not on screen yet in this page (a reload, a new tab, a
+    // link): the conditions it was last left with. A link's query is applied
+    // whole (route), so a list left with none says p=1, which clears them.
+    function backListQuery() {
+        if (LIST_SEEN) { return ''; }
+        var q = listLastQuery();
+        if (q === null) { return ''; }
+
+        return '?' + (q || 'p=1');
     }
     function backButton(cls) {
         var t = backTarget(BACK.from);
@@ -131,6 +143,8 @@
             '<i class="fa fa-arrow-left"></i><span class="tx"> ' + esc(t.label) + '</span></a>';
     }
     // Back in the list: the issue just left, lit up for a moment and in view.
+    // Called by show() once the list is on screen (BACK-3: it used to wait
+    // for the list's next render, which going back does not do).
     function backFlash() {
         if (!BACK.flash) { return; }
         var id = BACK.flash;
@@ -138,7 +152,13 @@
         var row = document.querySelector('#pp-issue-rows tr[data-issue="' + String(id).replace(/[^0-9]/g, '') + '"]');
         if (!row) { return; }
         row.classList.add('pp-back-flash');
-        try { row.scrollIntoView({ block: 'nearest' }); } catch (e) { row.scrollIntoView(false); }
+        // Moved only when it is not already in sight below the pinned header,
+        // and to the middle, where no sticky header or pager covers it.
+        var r = row.getBoundingClientRect();
+        var top = ppStickTop();
+        if (r.top < top + 40 || r.bottom > (window.innerHeight || document.documentElement.clientHeight)) {
+            try { row.scrollIntoView({ block: 'center' }); } catch (e) { row.scrollIntoView(false); }
+        }
         setTimeout(function () { row.classList.remove('pp-back-flash'); }, 1600);
     }
     function scrollBucket(scr, issueId) {
