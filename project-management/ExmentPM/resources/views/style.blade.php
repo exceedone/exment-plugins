@@ -2142,4 +2142,24 @@ body.pp-ib-open{overflow:hidden;}
   .pmportal .bl-wiki.pp-wtree-pinned > .bl-card-box:nth-child(2){grid-column:auto;}
   .pmportal .bl-wtree{max-height:40vh;overflow:auto;}
 }
+/* ISS02939 item 6, step 1b: a phone (A15's measures at 390 x 844 and 360 x 800).
+   Taps of 44px for the small controls of the project bar and the trail; the comment
+   sheet above the home bar; a short screen (the keyboard open) gives the sheet the height. */
+@media (max-width:760px){
+  .pmportal .bl-projhead .bl-dback-proj,.pmportal .bl-projttl .bl-projset{display:inline-flex;align-items:center;justify-content:center;
+    min-width:44px;min-height:44px;box-sizing:border-box;}
+  .pmportal .bl-projmore{width:44px;height:44px;}
+  .pmportal .pp-crumbs a{display:inline-flex;align-items:center;min-height:36px;}
+  .pmportal .bl-cmtdock{padding-bottom:env(safe-area-inset-bottom,0px);}
+  .pmportal .bl-dockbar{min-height:44px;}
+  .pmportal .bl-dockclose{min-width:44px;min-height:44px;}
+  .pmportal .pp-ed-hint{margin:6px 8px 0;padding:4px 8px;font-size:12px;}
+  .pmportal .pp-dmode-hint{font-size:11.5px;padding:0 0 0 7px;}
+  .pmportal .pp-dmode-hint .x{min-width:44px;min-height:44px;}
+}
+@media (max-width:760px) and (max-height:620px){
+  .pmportal .bl-cmtdock{max-height:calc(100dvh - 8px);}
+  .pmportal .bl-dockhead{padding:4px 12px;}
+  .pmportal .bl-dockbody{padding:8px 10px 0;}
+}
 </style>

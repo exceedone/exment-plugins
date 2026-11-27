@@ -10,6 +10,7 @@ require __DIR__ . '/../ExmentGroupware/Calendar/Occurrences.php';
 require __DIR__ . '/../ExmentGroupware/Calendar/Visibility.php';
 require __DIR__ . '/../ExmentGroupware/Calendar/Reminders.php';
 require __DIR__ . '/../ExmentGroupware/Calendar/Resources.php';
+require __DIR__ . '/../ExmentGroupware/Calendar/PmLayer.php';
 
 use App\Plugins\ExmentGroupware\Calendar\Occurrences as O;
 use App\Plugins\ExmentGroupware\Calendar\Visibility as V;
@@ -116,6 +117,57 @@ $mine = \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($weekly, '202
 $theirs = \App\Plugins\ExmentGroupware\Calendar\Occurrences::between($once, '2026-12-01 00:00:00', '2027-01-01 00:00:00');
 $c = RS::overlaps($mine, $theirs);
 gw_cal_check('rooms: a weekly meeting clashes with a once-only one on its day only', count($c) === 1 && $c[0]['start'] === '2026-12-15 01:00:00', $c);
+
+// ---- ExmentPM on the calendar (part 4)
+use App\Plugins\ExmentGroupware\Calendar\PmLayer as PM;
+
+gw_cal_check('pm: a project keeps its colour, one of the list', PM::color(7) === PM::color(7) && in_array(PM::color(7), PM::COLORS, true) && PM::color(7) !== PM::color(8));
+gw_cal_check('pm: start and due: a bar, both days shown', PM::span('2026-12-01', '2026-12-04') === ['start' => '2026-12-01', 'end' => '2026-12-05', 'kind' => 'bar']);
+gw_cal_check('pm: due only: a mark on the due date', PM::span(null, '2026-12-04') === ['start' => '2026-12-04', 'end' => '2026-12-05', 'kind' => 'due']);
+gw_cal_check('pm: a start after the due date: the due date', PM::span('2026-12-09', '2026-12-04')['kind'] === 'due');
+gw_cal_check('pm: start only: that day', PM::span('2026-12-01 00:00:00', '')['start'] === '2026-12-01' && PM::span('2026-12-01', '')['kind'] === 'start');
+gw_cal_check('pm: no date (or not one): not shown', PM::span(null, null) === null && PM::span('', 'tomorrow') === null);
+gw_cal_check('pm: a bar over the window is in it; one that ended before is not', PM::inWindow(PM::span('2026-11-01', '2027-01-31'), '2026-12-01', '2027-01-01') && !PM::inWindow(PM::span('2026-11-01', '2026-11-30'), '2026-12-01', '2027-01-01'));
+gw_cal_check('pm: the last day of the window is in it, the day after is not', PM::inWindow(PM::span(null, '2026-12-31'), '2026-12-01', '2027-01-01') && !PM::inWindow(PM::span(null, '2027-01-01'), '2026-12-01', '2027-01-01'));
+gw_cal_check('pm: a user column names the user (one, several, as JSON)', PM::names('5', 5) && PM::names(5, 5) && PM::names(['3', '5'], 5) && PM::names([3, 5], 5) && PM::names('["3","5"]', 5));
+gw_cal_check('pm: ...and not another (15 is not 5; nobody is 0)', !PM::names(['15', '51'], 5) && !PM::names(null, 5) && !PM::names('', 5) && !PM::names(['0'], 0));
+$cols = ['manager' => 'manager', 'members' => 'members', 'viewers' => 'viewers', 'member_orgs' => 'member_orgs', 'viewer_orgs' => 'viewer_orgs'];
+gw_cal_check('pm: on a project as its manager, a member, a viewer', PM::onProject(['manager' => '5'], $cols, 5, []) && PM::onProject(['members' => ['2', '5']], $cols, 5, []) && PM::onProject(['viewers' => ['5']], $cols, 5, []));
+gw_cal_check('pm: on a project by an organization', PM::onProject(['viewer_orgs' => ['9']], $cols, 5, [9]) && !PM::onProject(['viewer_orgs' => ['9']], $cols, 5, [8]));
+gw_cal_check('pm: not on a project', !PM::onProject(['manager' => '4', 'members' => ['6']], $cols, 5, [1]));
+gw_cal_check('pm: done by the status list (is_done), or the word', PM::done('3', [3]) && !PM::done('4', [3]) && PM::done('closed', []) && PM::done(['3'], [3]) && !PM::done('open', []) && !PM::done(null, [3]));
+
+// a working day as ExmentPM's business calendar: 2026-12-05 is a Saturday, 2027-01-11 Coming of Age Day
+$days = ['2027-01-11' => ['kind' => 'holiday'], '2026-12-07' => ['kind' => 'off'], '2026-12-12' => ['kind' => 'work']];
+gw_cal_check('pm: a weekday works; Saturday, a holiday, a company day off do not', PM::workingDay('2026-12-04', $days) && !PM::workingDay('2026-12-05', $days) && !PM::workingDay('2027-01-11', $days) && !PM::workingDay('2026-12-07', $days));
+gw_cal_check('pm: a company working day on a Saturday works', PM::workingDay('2026-12-12', $days));
+gw_cal_check('pm: a day off kept, moved before, after, or skipped', PM::shifted('2026-12-05', 'keep', $days) === '2026-12-05' && PM::shifted('2026-12-05', 'before', $days) === '2026-12-04' && PM::shifted('2026-12-05', 'after', $days) === '2026-12-08' && PM::shifted('2026-12-05', 'skip', $days) === null);
+gw_cal_check('pm: a working day is not moved', PM::shifted('2026-12-04', 'after', $days) === '2026-12-04' && PM::shifted('2026-12-04', 'skip', $days) === '2026-12-04');
+
+// a monthly schedule on the 5th, from 2026-10-05; today 2026-12-03
+$monthly = ['rrule' => 'FREQ=MONTHLY;BYMONTHDAY=5', 'start_date' => '2026-10-05', 'end_date' => null, 'rdates' => '[]', 'shift' => 'keep'];
+$dates = function ($list) {
+    return array_map(function ($d) {
+        return $d['original'] . '>' . $d['date'];
+    }, $list);
+};
+$r = PM::scheduleDates($monthly, '2026-11-30', '2027-03-01', '2026-12-03', [], [], $days);
+gw_cal_check('pm: the dates of a schedule from today, as its rule says', $dates($r) === ['2026-12-05>2026-12-05', '2027-01-05>2027-01-05', '2027-02-05>2027-02-05'], $dates($r));
+$r = PM::scheduleDates($monthly, '2026-11-30', '2027-03-01', '2026-12-03', [], ['2026-12-05'], $days);
+gw_cal_check('pm: a date made into an issue already is not shown (the issue is)', $dates($r) === ['2027-01-05>2027-01-05', '2027-02-05>2027-02-05'], $dates($r));
+$r = PM::scheduleDates($monthly, '2026-11-30', '2027-03-01', '2026-12-03', ['2027-01-05' => null, '2027-02-05' => '2027-02-10'], [], $days);
+gw_cal_check('pm: a date skipped is gone, a date moved is on its new day', $dates($r) === ['2026-12-05>2026-12-05', '2027-02-05>2027-02-10'], $dates($r));
+$r = PM::scheduleDates($monthly, '2027-01-01', '2027-02-01', '2026-12-03', ['2026-12-05' => '2027-01-20'], [], $days);
+gw_cal_check('pm: a date moved into the window from outside it is in it', $dates($r) === ['2027-01-05>2027-01-05', '2026-12-05>2027-01-20'], $dates($r));
+$r = PM::scheduleDates(['shift' => 'after'] + $monthly, '2026-11-30', '2027-01-01', '2026-12-03', [], [], $days);
+gw_cal_check('pm: a date on a day off moves as the schedule says (Saturday 12-05 to Tuesday 12-08: 12-07 is a company day off)', $dates($r) === ['2026-12-05>2026-12-08'], $dates($r));
+$r = PM::scheduleDates($monthly, '2026-10-01', '2026-12-01', '2026-12-03', [], [], $days);
+gw_cal_check('pm: no date before today (a past one with no issue was not made)', $r === []);
+$r = PM::scheduleDates(['end_date' => '2027-01-31'] + $monthly, '2026-11-30', '2027-06-01', '2026-12-03', [], [], $days);
+gw_cal_check('pm: not after the schedule ends', count($r) === 2, $dates($r));
+$r = PM::scheduleDates(['rrule' => '', 'rdates' => '["2026-12-24","2027-03-01"]'] + $monthly, '2026-12-01', '2027-01-01', '2026-12-03', [], [], $days);
+gw_cal_check('pm: a schedule of dates only', $dates($r) === ['2026-12-24>2026-12-24'], $dates($r));
+gw_cal_check('pm: a rule it cannot read: nothing', PM::scheduleDates(['rrule' => 'FREQ=HOURLY'] + $monthly, '2026-12-01', '2027-01-01', '2026-12-03', [], [], $days) === []);
 
 echo $failed ? "\n$failed failed\n" : "\nall passed\n";
 exit($failed ? 1 : 0);
