@@ -98,6 +98,7 @@ class Its
         'phone' => '電話',
         'monitor' => '監視・エラーログ',
         'staff' => '社内で登録',
+        'chat' => 'Web サイトのチャット',
         'asset' => '資産の期限',
     ];
 

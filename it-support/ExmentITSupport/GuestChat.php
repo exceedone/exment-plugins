@@ -1,0 +1,237 @@
+<?php
+
+namespace App\Plugins\ExmentITSupport;
+
+use Exceedone\Exment\Model\CustomValue;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
+
+/**
+ * The chat window of a 受付箱 on a website (ISS02941): a customer without a login talks to the
+ * help desk; the talk is a ticket of the box (channel chat). See docs/guest-chat-design.md.
+ *
+ * - The box key (in the script's address) is not a secret: it only lets a chat start.
+ * - A started chat has a guest token (only its sha256 kept, its_tokens kind chat), sent back in
+ *   the X-Chat-Token header: it reads and writes that one ticket's talk, nothing else.
+ * - Everything a guest writes is text (the window and the desk draw it as text).
+ */
+class GuestChat
+{
+    const KIND = 'chat';
+    const TOKEN_HOURS = 24;
+    const MAX_BODY = 2000;
+    const STARTS_PER_HOUR = 5;
+    const LINES_PER_10MIN = 30;
+    const OFFLINE_MINUTES = 10;
+
+    public static function enabled(): bool
+    {
+        return Feature::on(Feature::WEB_CHAT);
+    }
+
+    /** A new box key: 24 random hex characters. */
+    public static function newKey(): string
+    {
+        return bin2hex(random_bytes(12));
+    }
+
+    public static function validKey($key): bool
+    {
+        return is_string($key) && preg_match('/^[0-9a-f]{24}$/', $key) === 1;
+    }
+
+    /**
+     * The frame-ancestors of a box's window: its allowed sites (one origin per line, https or
+     * http with a host), or any site when it has none.
+     */
+    public static function frameAncestors($sites): string
+    {
+        $out = [];
+        foreach (preg_split('/\r\n|\r|\n|\s+/', strval($sites ?? '')) ?: [] as $s) {
+            $s = trim($s);
+            if (preg_match('#^https?://[A-Za-z0-9.\-]+(:\d{1,5})?$#', $s)) {
+                $out[] = $s;
+            }
+            if (count($out) >= 20) {
+                break;
+            }
+        }
+
+        return $out === [] ? '*' : implode(' ', array_unique($out));
+    }
+
+    /** A guest's text: one paragraph block, no control characters but line breaks, at most 2,000. */
+    public static function clean($text, int $max = self::MAX_BODY): string
+    {
+        $s = str_replace(["\r\n", "\r"], "\n", strval($text ?? ''));
+        $s = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $s) ?? '';
+
+        return mb_substr(trim($s), 0, $max);
+    }
+
+    /** Whether an agent was on the desk lately (the desk marks it, Desk::apiList). */
+    public static function online(?int $lastSeen, int $now): bool
+    {
+        return $lastSeen !== null && ($now - $lastSeen) < static::OFFLINE_MINUTES * 60;
+    }
+
+    public static function markAgentSeen(): void
+    {
+        try {
+            Cache::put('its_agent_seen', time(), 3600);
+        } catch (\Throwable $e) {
+            // the window then says nobody is there
+        }
+    }
+
+    public static function agentSeen(): ?int
+    {
+        try {
+            $v = Cache::get('its_agent_seen');
+
+            return $v !== null ? intval($v) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /** The box of a key, when its chat window is used; else null. */
+    public static function box(string $key): ?CustomValue
+    {
+        if (!static::validKey($key) || ($t = Its::table(Its::T_CATEGORY)) === null) {
+            return null;
+        }
+
+        return $t->getValueModel()->query()->withoutGlobalScope(\Exceedone\Exment\Model\CustomValueModelScope::class)
+            ->where('value->chat_key', $key)->first();
+    }
+
+    /** A box's key, made the first time (the 受付箱 page). */
+    public static function keyOf(CustomValue $box): string
+    {
+        $key = strval(array_get($box->value, 'chat_key'));
+        if (!static::validKey($key)) {
+            $key = static::newKey();
+            $box->setValue(['chat_key' => $key]);
+            $box->save();
+        }
+
+        return $key;
+    }
+
+    /** Too many tries for a key (IP or token) in a while? */
+    protected static function limited(string $name, int $max, int $seconds): bool
+    {
+        if (RateLimiter::tooManyAttempts($name, $max)) {
+            return true;
+        }
+        RateLimiter::hit($name, $seconds);
+
+        return false;
+    }
+
+    /**
+     * Start a chat: a ticket of the box, its first line, and the guest token.
+     *
+     * @return array{token: string, ticket: string, online: bool}
+     */
+    public static function start(string $key, string $name, string $email, string $body, string $ip): array
+    {
+        $box = static::box($key);
+        if (!isset($box)) {
+            abort(404);
+        }
+        if (static::limited('its_chat_start:' . sha1($ip), static::STARTS_PER_HOUR, 3600)) {
+            abort(429);
+        }
+        $name = static::clean($name, 100);
+        $email = Its::normalizeEmail($email);
+        $body = static::clean($body);
+        if ($name === '' || !Its::isEmail($email) || $body === '') {
+            throw new \InvalidArgumentException('名前・メールアドレス・お問い合わせを入れてください。');
+        }
+        $ticket = Tickets::create([
+            'subject' => mb_substr(strval(array_get($box->value, 'name')) . '：' . preg_replace('/\s+/u', ' ', $body), 0, 120),
+            'description' => $body,
+            'category' => strval($box->id),
+            'channel' => 'chat',
+            'requester_name' => $name,
+            'requester_email' => $email,
+        ], ['body' => $body]);
+        $token = bin2hex(random_bytes(32));
+        DB::table('its_tokens')->insert([
+            'kind' => static::KIND,
+            'token_hash' => Tokens::hash($token),
+            'ticket_id' => $ticket->id,
+            'email' => $email,
+            'expires_at' => now()->addHours(static::TOKEN_HOURS),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return ['token' => $token, 'ticket' => strval(array_get($ticket->value, 'ticket_no')), 'online' => static::online(static::agentSeen(), time())];
+    }
+
+    /** The ticket of a guest token, still good (its use moves the expiry on); else 404. */
+    public static function ticketOf(string $token): CustomValue
+    {
+        if (!preg_match('/^[0-9a-f]{64}$/', $token)) {
+            abort(404);
+        }
+        $row = DB::table('its_tokens')->where('kind', static::KIND)->where('token_hash', Tokens::hash($token))
+            ->whereNull('revoked_at')->where('expires_at', '>', now())->first();
+        $ticket = isset($row) ? Tickets::find($row->ticket_id) : null;
+        if (!isset($ticket)) {
+            abort(404);
+        }
+        DB::table('its_tokens')->where('id', $row->id)->update([
+            'last_used_at' => now(), 'use_count' => DB::raw('use_count + 1'), 'expires_at' => now()->addHours(static::TOKEN_HOURS),
+        ]);
+
+        return $ticket;
+    }
+
+    /** The talk the guest sees: their lines and the agents' replies (no notes, no system lines). */
+    public static function lines(string $token, int $after): array
+    {
+        $ticket = static::ticketOf($token);
+        $out = [];
+        foreach (Tickets::messages($ticket, true) as $m) {
+            if (intval($m->id) <= $after) {
+                continue;
+            }
+            $out[] = [
+                'id' => intval($m->id),
+                'me' => array_get($m->value, 'kind') === 'customer',
+                'name' => array_get($m->value, 'kind') === 'customer' ? '' : strval(array_get($m->value, 'author_name') ?: '担当者'),
+                'text' => strval(array_get($m->value, 'body')),
+                'at' => strval($m->created_at),
+            ];
+        }
+
+        return ['lines' => $out, 'online' => static::online(static::agentSeen(), time())];
+    }
+
+    public static function post(string $token, string $body): array
+    {
+        $ticket = static::ticketOf($token);
+        if (static::limited('its_chat_line:' . Tokens::hash($token), static::LINES_PER_10MIN, 600)) {
+            abort(429);
+        }
+        $body = static::clean($body);
+        if ($body === '') {
+            throw new \InvalidArgumentException('書くことを入れてください。');
+        }
+        Tickets::customerWrote($ticket, $body, 'chat', strval(array_get($ticket->value, 'requester_email')), strval(array_get($ticket->value, 'requester_name')));
+
+        return ['ok' => true];
+    }
+
+    /** Whether the guest's window is open now (used in the last 2 minutes): an agent's reply then needs no mail. */
+    public static function windowOpen(int $ticketId): bool
+    {
+        return DB::table('its_tokens')->where('kind', static::KIND)->where('ticket_id', $ticketId)
+            ->where('last_used_at', '>', now()->subMinutes(2))->exists();
+    }
+}

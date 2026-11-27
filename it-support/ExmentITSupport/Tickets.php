@@ -92,7 +92,7 @@ class Tickets
             }
         }
 
-        if (in_array($values['channel'], ['mail', 'form', 'portal', 'phone'], true)) {
+        if (in_array($values['channel'], ['mail', 'form', 'portal', 'phone', 'chat'], true)) {
             $values['last_customer_at'] = Carbon::now()->format('Y-m-d H:i:s');
         }
 
@@ -367,7 +367,9 @@ class Tickets
                 $values['first_responded_at'] = $now;
             }
             $to = strval(array_get($ticket->value, 'requester_email'));
-            if (Its::isEmail($to)) {
+            // a website chat whose window is open: the reply shows there, a mail is not needed
+            $inWindow = strval(array_get($ticket->value, 'channel')) === 'chat' && GuestChat::windowOpen(intval($ticket->id));
+            if (Its::isEmail($to) && !$inWindow) {
                 $cc = array_filter(array_map('trim', explode(',', strval($input['cc'] ?? array_get($ticket->value, 'cc', '')))));
                 $link = boolval(array_get($ticket->value, 'customer_visible', '1')) && Its::portalOn()
                     ? Tokens::linkFor(intval($ticket->id), $to) : null;

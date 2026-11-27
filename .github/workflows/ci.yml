@@ -285,6 +285,10 @@ jobs:
       - name: Help desk quotes and trial keys (IT Support)
         run: php it-support/tools/test-sales-link.php
 
+      # the chat window of a box on a website: its key, the sites that may show it, the offline rule (ISS02941)
+      - name: Help desk website chat (IT Support)
+        run: php it-support/tools/test-guest-chat.php
+
       # The kintone REST API as the data sync reads it, with a fake kintone (ExmentKintone,
       # plain PHP)
       - name: kintone API check (ExmentKintone)

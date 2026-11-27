@@ -47,8 +47,10 @@ class Schema
      *    table and its first column), and the menu's group 「ITサポート」 → 「サポート窓口」.
      * 11: the ticket's ExmentPM issue (pm_issue, "<project id>:<issue id>").
      * 12: the ticket's quote of the sales pack (sales_quote) and trial key (trial_key, trial_until).
+     * 13: the chat window of a box on a website (ISS02941): its key (chat_key) and the sites that
+     *    may show it (chat_sites); the channel chat of the tickets.
      */
-    const VERSION = 12;
+    const VERSION = 13;
 
     /** The menu's name (ISS02941: the IT support became the help desk). */
     const MENU_TITLE = 'サポート窓口';
@@ -129,6 +131,8 @@ class Schema
                     ['flow', '流れ（段階）', 'textarea', ['help' => '1 行に 1 つ、「段階の名前|状態」。状態は new・open・pending・on_hold・resolved・closed（resolved と closed は終わり）。空なら種類の流れ（例：受付|new、対応|open、確認|pending、完了|resolved）。']],
                     ['fields', '入力する項目', 'textarea', ['help' => '1 行に 1 つ、「チケットの列の名前|必須」（例：requester_name|必須）。Web サイトのフォームに出す項目です。']],
                     ['sla', 'SLA', 'select_table', ['select_target_table_name' => Its::T_SLA, 'help' => 'この受付箱の SLA。お客様（会社）に SLA があるときは、そちらが先です。空なら「標準」。']],
+                    ['chat_key', 'チャットの窓のキー', 'text', ['help' => 'Web サイトのチャットの窓のアドレスに入る、ランダムな文字（秘密ではありません。チャットを始めることだけができます）。受付箱の画面で作ります。']],
+                    ['chat_sites', 'チャットの窓を出してよいサイト', 'textarea', ['help' => '1 行に 1 つ、https://www.example.co.jp のように。空なら、どのサイトにも出せます。']],
                 ],
             ],
             Its::T_ASSET => [
@@ -371,6 +375,29 @@ class Schema
      * The old names an install kept (the importer leaves the names of a table it has): only
      * where they are still the old ones, not ones an administrator gave.
      */
+    /** The choices of the ticket's channel as Its::CHANNELS says (the importer keeps a column's old ones). */
+    protected static function refreshChannels(): bool
+    {
+        $table = \Exceedone\Exment\Model\CustomTable::getEloquent(Its::T_TICKET);
+        $column = isset($table) ? \Exceedone\Exment\Model\CustomColumn::getEloquent('channel', $table) : null;
+        if (!isset($column)) {
+            return false;
+        }
+        $want = implode("\n", array_map(function ($k, $v) {
+            return $k . ',' . $v;
+        }, array_keys(Its::CHANNELS), Its::CHANNELS));
+        $options = (array) $column->options;
+        if (strval($options['select_item_valtext'] ?? '') === $want) {
+            return false;
+        }
+        $options['select_item_valtext'] = $want;
+        $column->options = $options;
+        $column->save();
+        System::clearCache();
+
+        return true;
+    }
+
     protected static function renameBoxTable(): bool
     {
         $table = \Exceedone\Exment\Model\CustomTable::getEloquent(Its::T_CATEGORY);
@@ -462,6 +489,9 @@ class Schema
             }
             if (!$fresh && $before < 10 && static::renameBoxTable()) {
                 $steps[] = 'テーブル「チケットの種類」を「受付箱」にしました。';
+            }
+            if (!$fresh && $before < 13 && static::refreshChannels()) {
+                $steps[] = 'チケットの「受付の方法」に「Web サイトのチャット」を足しました。';
             }
             $granted = static::grantRoles();
             if ($granted > 0) {
