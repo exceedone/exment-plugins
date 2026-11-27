@@ -1982,9 +1982,9 @@ return [
     // recurring schedules (ISS00432, stage 2)
     'sched' => [
         'feature' => 'Project management: recurring schedules',
-        'feature_help' => 'Makes issues from yearly, monthly, weekly, daily or fixed-date schedules by copying a template issue, some days before the due date. The project manager sets them in the project settings under "Recurring schedules". Run php artisan exment:batch --name=ExmentPM --param1=schedule with cron at least once a day.',
+        'feature_help' => 'Makes issues from yearly, monthly, weekly, daily or fixed-date schedules by copying a template issue, some days before the due date. The project manager sets them in the project settings under "Recurring schedules". Run php artisan exment:batch --name=ExmentPM --param1=schedule with cron every 5 minutes (when it does not run, they are made when the portal is opened). Issues are made as the user who made the schedule.',
         'on' => 'Use recurring schedules',
-        'on_help' => 'Makes issues automatically from yearly, monthly, weekly and other schedules. Run php artisan exment:batch --name=ExmentPM --param1=schedule with cron.',
+        'on_help' => 'Makes issues automatically from yearly, monthly, weekly and other schedules. Run php artisan exment:batch --name=ExmentPM --param1=schedule with cron every 5 minutes.',
         'page_title' => 'Recurring schedules',
         'page_help' => 'For each date of the rule, an issue is made by copying the template issue, on the day set in "Days before". Dates already past are not made.',
         'saved' => 'Saved.',
@@ -1993,6 +1993,9 @@ return [
         'delete' => 'Delete',
         'delete_ask' => 'Delete this schedule? (The issues it made stay.)',
         'off' => 'Stopped',
+        'blocked_no_owner' => 'This schedule cannot make issues. The user who made it is gone or no longer a member of the project, and the project has no manager. Make the schedule again, or add a manager to the project.',
+        'blocked_no_right' => 'This schedule cannot make issues. The user it makes them as (the user who made the schedule, or the project\'s first manager) has no role that can edit the issue table.',
+        'blocked_since' => 'since :at',
         'name' => 'Name',
         'template' => 'Template issue',
         'template_help' => 'Copies the subject, type, assignees, description and so on of this issue. The status becomes the first status; files and actual hours are not copied. The start date is set as far before the due date as in the template.',

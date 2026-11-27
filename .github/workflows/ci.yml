@@ -235,6 +235,9 @@ jobs:
       # the copies (ExmentPM, plain PHP)
       - name: Schedule issue shares and keys (ExmentPM)
         run: php project-management/tools/test-pm-schedule-shares.php
+      # whom a schedule's issues are made as, the batch first, a schedule that cannot run (ExmentPM)
+      - name: Schedule owner and batch (ExmentPM)
+        run: php project-management/tools/test-pm-schedule-owner.php
 
       # The holidays, the business days and the dates of the reminders (ExmentPM, ISS00432)
       - name: Business calendar and reminder dates (ExmentPM)

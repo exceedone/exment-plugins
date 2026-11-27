@@ -68,6 +68,14 @@ class PortalRules
     protected static $suspended = false;
 
     /**
+     * Whether the save is the plugin's own, made on behalf of a project's user who was checked
+     * already (PortalRunOwner): the rules then do not ask the visitor whose request it is.
+     *
+     * @var array<int, bool> the rows, by object id
+     */
+    protected static $onBehalf = [];
+
+    /**
      * The named database locks this process holds on project keys, until the
      * save that took them is committed.
      *
@@ -94,6 +102,35 @@ class PortalRules
         } finally {
             static::$suspended = false;
         }
+    }
+
+    /**
+     * Run $work as the batch runs, with nobody to ask about: the value rules still hold, the
+     * checks of what the request's user may do are left out. For an issue the plugin makes by
+     * itself (a recurring schedule's, the copy of a recurring issue) on behalf of a user
+     * PortalRunOwner has checked; never for what a person asked for.
+     *
+     * Only the saves of $row: another row saved meanwhile is asked about as always.
+     *
+     * @param CustomValue $row
+     * @param callable $work
+     * @return mixed whatever $work returns
+     */
+    public static function onBehalf(CustomValue $row, callable $work)
+    {
+        $key = spl_object_id($row);
+        static::$onBehalf[$key] = true;
+        try {
+            return $work();
+        } finally {
+            unset(static::$onBehalf[$key]);
+        }
+    }
+
+    /** Whether there is nobody to ask about: a batch, the schema upgrade, or onBehalf() for this row. */
+    protected static function nobodyAsks(CustomValue $model): bool
+    {
+        return isset(static::$onBehalf[spl_object_id($model)]) || \Exment::user() === null;
     }
 
     /**
@@ -1085,7 +1122,7 @@ class PortalRules
         if (static::projectArchived($def, $from)) {
             return PortalDefinition::trans('rules.project_archived');
         }
-        if (\Exment::user() === null) {
+        if (static::nobodyAsks($model)) {
             return null;
         }
         $old = static::findRow($projectTable, $from, true);
@@ -1149,7 +1186,7 @@ class PortalRules
         }
 
         // A batch or the schema upgrade: no person to ask about.
-        if (\Exment::user() === null) {
+        if (static::nobodyAsks($model)) {
             return [];
         }
 

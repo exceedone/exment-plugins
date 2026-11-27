@@ -112,13 +112,17 @@ class PluginBatch extends PluginBatchBase
             return 0;
         }
 
-        // --param1=schedule: the issues of the recurring schedules (ISS00432), once a day or more
+        // --param1=schedule: the issues of the recurring schedules (ISS00432), from cron every 5 minutes
         if ($target === 'schedule') {
             \Exceedone\Exment\Middleware\Morph::defineMorphMap();
             if (!PortalSchedule::enabled()) {
                 $this->say('schedule_off');
 
                 return 0;
+            }
+            if (!$dry) {
+                // page loads leave the schedules to the batch while it runs (PortalSchedule::tick)
+                PortalSchedule::batchRan();
             }
             $made = PortalSchedule::run($dry);
             $this->say($dry ? 'schedule_dry' : 'schedule', ['count' => count($made)]);

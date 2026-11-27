@@ -17,8 +17,14 @@ use Illuminate\Support\Facades\Log;
  * two. A date that is a day off moves as the schedule says (before, after, keep, skip).
  *
  * Off until an administrator turns it on (Feature management: exment_pm.schedule; without it, the
- * plugin setting "schedule_on"). Run by the batch (exment:batch --name=ExmentPM --param1=schedule)
- * and by page loads (every few minutes at most).
+ * plugin setting "schedule_on"). Run by the batch, from cron every 5 minutes:
+ *
+ *   0-59/5 * * * * cd /path/to/exment && php artisan exment:batch --name=ExmentPM --param1=schedule
+ *
+ * Page loads run them too, but only when the batch has not run for FALLBACK_MINUTES (or never
+ * did), every TICK_MINUTES at most. Either way an issue is made as the schedule's owner
+ * (PortalRunOwner), never as the visitor; a schedule that cannot run as anyone says so on the
+ * schedule screen (run_error) and in the log, once.
  */
 class PortalSchedule
 {
@@ -29,6 +35,8 @@ class PortalSchedule
     const ITEMS = 'pm_portal_schedule_items';
 
     const TICK_MINUTES = 5;
+    // page loads run the schedules only when the batch has not run for this long
+    const FALLBACK_MINUTES = 30;
     const RUN_LIMIT = 200;
     const MAX_LEAD = 90;
 
@@ -360,10 +368,100 @@ class PortalSchedule
         }
     }
 
+    /**
+     * What a run does with why a schedule cannot run ($now, null: it can) when it was stopped for
+     * $prev before: 'log' when the reason is new (logged once, shown on the schedule screen),
+     * 'clear' when it can run again, null when nothing changed.
+     */
+    public static function blockChange(?string $prev, ?string $now): ?string
+    {
+        $prev = ($prev === null || $prev === '') ? null : $prev;
+        if ($now === $prev) {
+            return null;
+        }
+
+        return $now === null ? 'clear' : 'log';
+    }
+
+    /** Whether the schedules table has the columns of why a schedule cannot run (a migration). */
+    protected static function hasBlockColumns(): bool
+    {
+        static $has = null;
+        if ($has === null) {
+            $has = \Schema::hasColumn(static::TABLE, 'run_error');
+        }
+
+        return $has;
+    }
+
+    /**
+     * Keep why a schedule cannot run (PortalRunOwner::NO_OWNER, NO_RIGHT, or null: it can), log it
+     * once when it starts, and say so once when it runs again.
+     */
+    protected static function setBlocked(object $s, ?string $reason): void
+    {
+        try {
+            if (static::hasBlockColumns()) {
+                $prev = $s->run_error ?? null;
+            } else {
+                // before the migration: once a day at most
+                $prev = Cache::get('pmportal_schedule_block:' . DB::connection()->getDatabaseName() . ':' . $s->id);
+            }
+            $change = static::blockChange($prev, $reason);
+            if ($change === null) {
+                return;
+            }
+            if (static::hasBlockColumns()) {
+                DB::table(static::TABLE)->where('id', $s->id)->update(['run_error' => $reason, 'run_error_at' => $reason === null ? null : now()]);
+            } elseif ($reason === null) {
+                Cache::forget('pmportal_schedule_block:' . DB::connection()->getDatabaseName() . ':' . $s->id);
+            } else {
+                Cache::put('pmportal_schedule_block:' . DB::connection()->getDatabaseName() . ':' . $s->id, $reason, now()->addDay());
+            }
+            $s->run_error = $reason;
+            if ($change === 'log') {
+                Log::warning('PmPortal schedule ' . $s->id . ' (project ' . $s->project_id . ') makes no issues: '
+                    . ($reason === PortalRunOwner::NO_OWNER ? 'the user who made it is gone or off the project, and the project has no manager' : 'the user it runs as may not add issues'));
+            } else {
+                Log::info('PmPortal schedule ' . $s->id . ' makes issues again');
+            }
+        } catch (\Throwable $e) {
+            Log::warning('PmPortal schedule ' . $s->id . ': ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * The batch ran (exment:batch --name=ExmentPM --param1=schedule): page loads leave the
+     * schedules to it while it keeps running.
+     */
+    public static function batchRan(?int $at = null): void
+    {
+        try {
+            Cache::forever(static::batchKey(), $at ?? time());
+        } catch (\Throwable $e) {
+            Log::warning('PmPortal schedules: ' . $e->getMessage());
+        }
+    }
+
+    /** Whether the batch ran within FALLBACK_MINUTES of $now (both Unix times). */
+    public static function batchFresh($lastRun, int $now): bool
+    {
+        return is_numeric($lastRun) && intval($lastRun) > 0 && $now - intval($lastRun) <= self::FALLBACK_MINUTES * 60;
+    }
+
+    protected static function batchKey(): string
+    {
+        return 'pmportal_schedule_batch:' . DB::connection()->getDatabaseName();
+    }
+
+    /**
+     * A page load: runs the schedules only when the batch has not run for FALLBACK_MINUTES (or
+     * never did), at most every TICK_MINUTES. Never throws.
+     */
     public static function tick(): void
     {
         try {
-            if (!static::enabled()) {
+            if (!static::enabled() || static::batchFresh(Cache::get(static::batchKey()), time())) {
                 return;
             }
             $key = 'pmportal_schedule:' . DB::connection()->getDatabaseName();
@@ -405,6 +503,15 @@ class PortalSchedule
             if (!isset($tpl) || intval($tpl->parent_id) !== intval($project->id)) {
                 continue;
             }
+            // made as the schedule's owner (PortalRunOwner), never as the visitor
+            $owner = null;
+            $blocked = PortalRunOwner::check($project, intval($s->created_user_id ?? 0) ?: null, $issueTable, $owner);
+            if (!$dry) {
+                static::setBlocked($s, $blocked);
+            }
+            if ($blocked !== null || $owner === null) {
+                continue;
+            }
             // a date moved earlier than its rule's lands inside the window from a later original
             $to = (new \DateTimeImmutable($today))->modify('+' . (intval($s->lead_days) + 31) . ' day')->format('Y-m-d');
             $until = (new \DateTimeImmutable($today))->modify('+' . intval($s->lead_days) . ' day')->format('Y-m-d');
@@ -420,7 +527,7 @@ class PortalSchedule
                 if (count($made) >= static::RUN_LIMIT) {
                     return $made;
                 }
-                $id = $dry ? null : static::make($issueTable, $tpl, $project, $s, $original, $due, $def);
+                $id = $dry ? null : static::make($issueTable, $tpl, $project, $s, $original, $due, $def, $owner);
                 if (!$dry && $id === null) {
                     continue;
                 }
@@ -435,7 +542,7 @@ class PortalSchedule
      * One issue of a date: the date claimed first (the unique key), then the copy; a copy that
      * fails gives the date back.
      */
-    protected static function make(CustomTable $issueTable, $tpl, $project, object $s, string $original, string $due, array $def): ?int
+    protected static function make(CustomTable $issueTable, $tpl, $project, object $s, string $original, string $due, array $def, int $owner): ?int
     {
         $now = now();
         try {
@@ -463,10 +570,8 @@ class PortalSchedule
             $row->parent_id = $project->id;
             $row->parent_type = $project->custom_table->table_name;
             $row->setValue($value);
-            // no creator's share for whoever's page load ran the schedule (PortalRunShares)
-            PortalRunShares::saveNew($row);
-            $by = intval($s->updated_user_id ?? 0) ?: intval($tpl->created_user_id);
-            DB::table(getDBTableName($issueTable))->where('id', $row->id)->update(['created_user_id' => $by, 'updated_user_id' => $by]);
+            // made as the owner, with no creator's share for whoever's page load ran it
+            PortalRunOwner::saveAs($row, $owner);
             DB::table(static::ITEMS)->where('schedule_id', intval($s->id))->where('original_date', $original)->update(['issue_id' => intval($row->id)]);
 
             return intval($row->id);

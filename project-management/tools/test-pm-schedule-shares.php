@@ -227,10 +227,13 @@ $src = function ($f) {
 };
 $make = $src('PortalSchedule.php');
 $make = substr($make, strpos($make, 'protected static function make('));
-ok(strpos($make, 'PortalRunShares::saveNew($row);') !== false && strpos($make, '$row->save()') === false, 'a schedule\'s run saves with saveNew');
+$saveAs = $src('PortalRunOwner.php');
+$saveAs = substr($saveAs, strpos($saveAs, 'public static function saveAs('), 1500);
+ok(strpos($saveAs, 'PortalRunShares::saveNew($row);') !== false, 'saveAs saves with saveNew');
+ok(strpos($make, 'PortalRunOwner::saveAs($row, $owner);') !== false && strpos($make, '$row->save()') === false, 'a schedule\'s run saves with saveAs (saveNew)');
 $copyFn = $src('PortalRecurrence.php');
-$copyFn = substr($copyFn, strpos($copyFn, 'protected static function copy('), 3000);
-ok(strpos($copyFn, 'PortalRunShares::saveNew($row);') !== false && strpos($copyFn, '$row->save()') === false, 'a recurring issue\'s copy saves with saveNew');
+$copyFn = substr($copyFn, strpos($copyFn, 'protected static function copy('), 4000);
+ok(strpos($copyFn, 'PortalRunOwner::saveAs($row, $owner);') !== false && strpos($copyFn, '$row->save()') === false, 'a recurring issue\'s copy saves with saveAs (saveNew)');
 ok(strpos($src('PortalRecurrence.php'), '$value = static::withoutOwn(') !== false, 'copyValues drops the issue\'s own values');
 $batchSrc = $src('PluginBatch.php');
 ok(strpos($batchSrc, "\$target === 'schedule_shares'") !== false && strpos($batchSrc, "\$target === 'schedule_keys'") !== false && substr_count($batchSrc, "=== 'apply'") === 2, 'the batch: schedule_shares and schedule_keys, dry runs unless apply');
