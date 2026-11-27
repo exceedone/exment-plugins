@@ -26,6 +26,10 @@ class PortalMyInsights
      */
     public static function card($user, Carbon $from, Carbon $to): ?array
     {
+        // only for a user who may open ExmentPM itself: the link of the card goes there
+        if (!static::canOpen($user)) {
+            return null;
+        }
         $def = PortalDefinition::config();
         $table = CustomTable::getEloquent(array_get($def, 'issue_table'));
         if (!isset($table) || !$table->hasPermission(Permission::AVAILABLE_VIEW_CUSTOM_VALUE)) {
@@ -91,6 +95,21 @@ class PortalMyInsights
             'url_label' => PortalDefinition::trans('my_insights.open_list'),
             'help' => PortalDefinition::trans('my_insights.help'),
         ];
+    }
+
+    /**
+     * Whether the user may open the pages of ExmentPM (the plugin is active and the user has its
+     * access, as Exment checks for the menu of the plugin).
+     *
+     * @param mixed $user
+     */
+    public static function canOpen($user): bool
+    {
+        $plugin = PortalDefinition::plugin();
+        if (!isset($plugin) || !boolval($plugin->active_flg) || !is_object($user) || !method_exists($user, 'hasPermissionPlugin')) {
+            return false;
+        }
+        return boolval($user->hasPermissionPlugin($plugin, Permission::PLUGIN_ACCESS));
     }
 
     /**
