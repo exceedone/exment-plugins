@@ -45,6 +45,10 @@
             var dl = document.createElement('a');
             dl.href = href;
             dl.setAttribute('download', name || '');
+            // a real download: not taken by the admin's page loading (pjax would put the file in the page)
+            dl.setAttribute('data-nopjax', '');
+            dl.setAttribute('target', '_blank');
+            dl.setAttribute('rel', 'noopener');
             dl.className = 'pp-pvbtn';
             dl.innerHTML = '<i class="fa fa-download"></i>';
             dl.appendChild(document.createTextNode(' ' + P().L.pv_download));
@@ -52,6 +56,7 @@
             if (pvKind(name)) {
                 var op = document.createElement('a');
                 op.href = 'javascript:void(0);';
+                op.setAttribute('data-nopjax', '');
                 op.className = 'pp-pvbtn pp-pvopen';
                 op.setAttribute('data-pv-url', href);
                 op.setAttribute('data-pv-name', name || '');
@@ -77,6 +82,7 @@
             var links = root.querySelectorAll('a[href*="/files/"]');
             for (var i = 0; i < links.length; i++) {
                 var a = links[i];
+                if (!a.hasAttribute('data-nopjax')) { a.setAttribute('data-nopjax', ''); }
                 if (a.hasAttribute('data-pv') || a.closest('.pp-pvb, .pp-pv, .pp-aed, .pp-pvskip')) { continue; }
                 a.setAttribute('data-pv', '1');
                 // a picture or an icon only (the list's thumbnail): its name link next to it gets them
@@ -119,6 +125,10 @@
             var dl = wrap.querySelector('.dl');
             dl.href = href;
             dl.setAttribute('download', name);
+            // a real download: not taken by the admin's page loading (pjax would put the file in the page)
+            dl.setAttribute('data-nopjax', '');
+            dl.setAttribute('target', '_blank');
+            dl.setAttribute('rel', 'noopener');
             dl.appendChild(document.createTextNode(P().L.pv_download));
             document.body.appendChild(wrap);
             wrap.querySelector('.x').addEventListener('click', pvClose);

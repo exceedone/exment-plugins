@@ -292,7 +292,7 @@ class PortalDefinition
             return null;
         }
         try {
-            $ext = $name === 'script' ? 'js' : 'css';
+            $ext = (static::ASSETS[$name]['tag'] ?? '') === 'script' ? 'js' : 'css';
             $dir = public_path(static::PUBLIC_ASSET_DIR);
             $base = $name . '.' . $version . '.' . $ext;
             if (!is_file($dir . '/' . $base)) {
