@@ -37,6 +37,7 @@ button:disabled{opacity:.6}
     <input type="text" id="name" placeholder="お名前" maxlength="100" autocomplete="name" required>
     <input type="email" id="email" placeholder="メールアドレス" maxlength="255" autocomplete="email" required>
     <textarea id="first" placeholder="お問い合わせ" rows="3" required></textarea>
+    <div id="robot" style="margin-bottom:6px"></div>
     <div class="err" id="err1"></div>
     <button type="submit" id="go">はじめる</button>
   </form>
@@ -95,16 +96,36 @@ function poll() {
 ['mousemove', 'keydown', 'touchstart', 'focus'].forEach(function (ev) { window.addEventListener(ev, function () { var was = Date.now() - S.idleAt > 1800000; S.idleAt = Date.now(); if (was && S.token) { poll(); } }, { passive: true }); });
 document.addEventListener('visibilitychange', function () { if (!document.hidden && S.token) { schedule(); } });
 
+// the site's reCAPTCHA on the first message (v2: the box; v3: no box)
+var ROBOT = { widget: null };
+if (B.robot) {
+    window.itsRobotReady = function () {
+        if (B.robot.version === 'v2') { ROBOT.widget = window.grecaptcha.render($('robot'), { sitekey: B.robot.sitekey }); }
+    };
+    var rs = document.createElement('script');
+    rs.src = 'https://www.google.com/recaptcha/api.js?onload=itsRobotReady' + (B.robot.version === 'v3' ? '&render=' + encodeURIComponent(B.robot.sitekey) : '&render=explicit');
+    rs.async = true;
+    document.head.appendChild(rs);
+}
+function robotToken() {
+    if (!B.robot) { return Promise.resolve(''); }
+    if (!window.grecaptcha) { return Promise.reject(new Error('ロボットでないことの確かめを読み込めませんでした。')); }
+    if (B.robot.version === 'v2') { return Promise.resolve(ROBOT.widget !== null ? window.grecaptcha.getResponse(ROBOT.widget) : ''); }
+    return new Promise(function (ok) { window.grecaptcha.ready(function () { window.grecaptcha.execute(B.robot.sitekey, { action: 'chat' }).then(ok, function () { ok(''); }); }); });
+}
 $('form').addEventListener('submit', function (ev) {
     ev.preventDefault();
     $('go').disabled = true; $('err1').textContent = '';
-    api(B.start, { key: B.key, name: $('name').value, email: $('email').value, body: $('first').value }).then(function (d) {
+    robotToken().then(function (robot) {
+        return api(B.start, { key: B.key, name: $('name').value, email: $('email').value, body: $('first').value, robot: robot });
+    }).then(function (d) {
+        if (B.robot && B.robot.version === 'v2' && ROBOT.widget !== null && (!d || !d.ok)) { window.grecaptcha.reset(ROBOT.widget); }
         $('go').disabled = false;
         if (!d || !d.ok) { $('err1').textContent = (d && d.message) || 'はじめられませんでした'; return; }
         S.token = d.token;
         try { sessionStorage.setItem('its_chat_' + B.key, d.token); } catch (e) { /* the window only */ }
         chatting();
-    }).catch(function () { $('go').disabled = false; $('err1').textContent = 'はじめられませんでした'; });
+    }).catch(function (e) { $('go').disabled = false; $('err1').textContent = (e && e.message) || 'はじめられませんでした'; });
 });
 function send() {
     var t = $('body').value;

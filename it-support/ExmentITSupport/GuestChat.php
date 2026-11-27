@@ -30,6 +30,32 @@ class GuestChat
         return Feature::on(Feature::WEB_CHAT);
     }
 
+    const PUBLIC_FORM = '\\Exceedone\\Exment\\Model\\PublicForm';
+    const RECAPTCHA = '\\Exceedone\\Exment\\Services\\ReCaptchaService';
+
+    /**
+     * The robot check of the first message, as the site's public forms have it (reCAPTCHA v2 or
+     * v3, Exment's setting): ['version' => 'v2'|'v3', 'sitekey' => ...] or null when not set.
+     */
+    public static function robot(): ?array
+    {
+        $f = static::PUBLIC_FORM;
+        try {
+            if (!class_exists($f) || !class_exists(static::RECAPTCHA) || $f::isEnableRecaptcha() !== true) {
+                return null;
+            }
+            $version = strval($f::recaptchaVersion());
+            $key = strval($f::recaptchaSiteKey());
+            if ($key === '' || !in_array($version, ['v2', 'v3'], true)) {
+                return null;
+            }
+
+            return ['version' => $version, 'sitekey' => $key];
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     /** A new box key: 24 random hex characters. */
     public static function newKey(): string
     {
@@ -219,7 +245,7 @@ class GuestChat
      *
      * @return array{token: string, ticket: string, online: bool}
      */
-    public static function start(string $key, string $name, string $email, string $body, string $ip): array
+    public static function start(string $key, string $name, string $email, string $body, string $ip, ?string $robot = null): array
     {
         $box = static::box($key);
         if (!isset($box)) {
@@ -227,6 +253,14 @@ class GuestChat
         }
         if (static::limited('its_chat_start:' . sha1($ip), static::STARTS_PER_HOUR, 3600)) {
             abort(429);
+        }
+        // the site's reCAPTCHA, when it has one
+        $check = static::robot();
+        if ($check !== null) {
+            $service = static::RECAPTCHA;
+            if (!$service::verify($robot !== '' ? $robot : null, $ip, $check['version'])) {
+                throw new \InvalidArgumentException('ロボットでないことを確かめてください。');
+            }
         }
         if (mb_strlen(trim($body)) > static::MAX_BODY) {
             throw new \InvalidArgumentException(static::MAX_BODY . ' 文字までです。');
