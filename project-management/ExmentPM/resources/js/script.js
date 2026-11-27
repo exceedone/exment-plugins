@@ -6379,7 +6379,12 @@ window.PmPortalBoot = function () {
         if (!page) { page = wiki.pages[0]; }
         setTitle(page.title + ' | ' + L.tab_wiki);
         var files = page.files || [];
-        document.getElementById('pp-whead').innerHTML = '<span>' + esc(page.title) + '</span>' +
+        // BACK-1: 「← Wiki 一覧」 on a phone, where the list of pages sits above the page
+        var wtip = String(L.back_tip || '%s').replace('%s', L.back_wiki);
+        document.getElementById('pp-whead').innerHTML =
+            '<a class="bl-btn-sub pp-back pp-wback" href="javascript:void(0);" title="' + esc(wtip) + '" aria-label="' + esc(wtip) + '">' +
+            '<i class="fa fa-arrow-left"></i><span class="tx"> ' + esc(L.back_wiki) + '</span></a>' +
+            '<span>' + esc(page.title) + '</span>' +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             '<span class="bl-btn-sub">' + starBtn('star', D.wiki_table, page.id, page.star, page.my_star) + '</span>' +
             // Offered only to whoever may read the page's history: Exment's
@@ -13908,6 +13913,22 @@ window.PmPortalBoot = function () {
         if (moveDo) { issueMoveRun(currentIssue, moveDo); return; }
         var issueDel = ev.target.closest('.pp-issuedel');
         if (issueDel) { issueDelete(currentIssue, issueDel); return; }
+        // BACK-1: back up to the list of the pages, the page just read lit up there
+        var wback = ev.target.closest('.pp-wback');
+        if (wback) {
+            ev.preventDefault();
+            var wbox = document.getElementById('pp-wtree');
+            var wcard = wbox ? wbox.closest('.bl-card-box') : null;
+            if (wcard) {
+                try { wcard.scrollIntoView({ block: 'start' }); } catch (e) { wcard.scrollIntoView(true); }
+                var won = wbox.querySelector('.nd.on');
+                if (won) {
+                    won.classList.add('pp-back-flash');
+                    setTimeout(function () { won.classList.remove('pp-back-flash'); }, 1600);
+                }
+            }
+            return;
+        }
         var wtgl = ev.target.closest('.pp-wtgl');
         if (wtgl) {
             // a fold, not a way into the page (ISS00361)

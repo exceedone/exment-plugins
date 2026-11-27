@@ -113,7 +113,12 @@
         if (!page) { page = wiki.pages[0]; }
         setTitle(page.title + ' | ' + L.tab_wiki);
         var files = page.files || [];
-        document.getElementById('pp-whead').innerHTML = '<span>' + esc(page.title) + '</span>' +
+        // BACK-1: 「← Wiki 一覧」 on a phone, where the list of pages sits above the page
+        var wtip = String(L.back_tip || '%s').replace('%s', L.back_wiki);
+        document.getElementById('pp-whead').innerHTML =
+            '<a class="bl-btn-sub pp-back pp-wback" href="javascript:void(0);" title="' + esc(wtip) + '" aria-label="' + esc(wtip) + '">' +
+            '<i class="fa fa-arrow-left"></i><span class="tx"> ' + esc(L.back_wiki) + '</span></a>' +
+            '<span>' + esc(page.title) + '</span>' +
             '<span style="margin-left:auto;display:flex;gap:8px;">' +
             '<span class="bl-btn-sub">' + starBtn('star', D.wiki_table, page.id, page.star, page.my_star) + '</span>' +
             // Offered only to whoever may read the page's history: Exment's

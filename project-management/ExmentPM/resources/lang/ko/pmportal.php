@@ -2292,5 +2292,6 @@ return [
     'back_board' => '보드',
     'back_gantt' => '간트',
     'back_home' => '홈',
+    'back_wiki' => '위키 목록',
     'back_tip' => '%s(으)로 돌아가기',
 ];
